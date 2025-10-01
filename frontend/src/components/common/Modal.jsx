@@ -19,11 +19,11 @@ const Modal = ({ isOpen, onClose, title, children }) => {
                 `animate-scale-in` is a custom animation for a subtle zoom-in effect.
             */}
             <div 
-                className="bg-white rounded-lg shadow-xl w-full max-w-2xl transform transition-transform duration-300 scale-95 animate-scale-in"
+                className="bg-white rounded-lg shadow-xl w-full max-w-2xl transform transition-transform duration-300 scale-95 animate-scale-in modal-panel"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header */}
-                <div className="p-4 border-b flex justify-between items-center">
+                <div className="p-4 border-b flex justify-between items-center modal-header">
                     <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
                     <button 
                         onClick={onClose} 
@@ -33,7 +33,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
                     </button>
                 </div>
                 {/* Modal Body */}
-                <div className="p-6">
+                <div className="p-6 modal-body">
                     {children}
                 </div>
             </div>

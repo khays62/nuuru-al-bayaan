@@ -1,12 +1,18 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Loader, RefreshCw, User, Phone, Calendar, MapPin, Users, IdCard } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getStudentTranscript } from '../api/apiService';
 // Modal and reassign API removed; reassign now handled from Students table
 
 // Student Profile page: fetches student profile + latest enrollment + stats + history (paginated)
 export default function StudentProfilePage() {
     const { studentId } = useParams(); // Waa _id ee Mongo (not studentId readable)
+    const location = useLocation();
+    const search = new URLSearchParams(location.search);
+    const ay = search.get('ay') || '';
+    const gs = search.get('gs') || '';
+    const returnUrl = search.get('return') || '';
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -16,6 +22,10 @@ export default function StudentProfilePage() {
     const [histPage, setHistPage] = useState(1);
     const [histMeta, setHistMeta] = useState({ page: 1, totalPages: 1, total: 0 });
     const [historyLoading, setHistoryLoading] = useState(false);
+
+    // Transcript state (optional based on query params)
+    const [tLoading, setTLoading] = useState(false);
+    const [transcript, setTranscript] = useState(null);
 
     // Reassign UI removed from profile; handled in Students page
 
@@ -77,15 +87,34 @@ export default function StudentProfilePage() {
     useEffect(() => { fetchProfile(); }, [fetchProfile]);
     useEffect(() => { fetchHistory(histPage); }, [fetchHistory, histPage]);
 
+    // Fetch transcript if AY+GS provided in URL
+    useEffect(() => {
+        (async () => {
+            if (!ay || !gs) return;
+            setTLoading(true);
+            const { ok, data, error } = await getStudentTranscript({ academicYearId: ay, gradeSectionId: gs, studentId });
+            setTLoading(false);
+            if (!ok) { toast.error(error || 'Transcript load failed'); return; }
+            setTranscript(data);
+        })();
+    }, [ay, gs, studentId]);
+
     const retry = () => fetchProfile();
 
     // Reassign handlers removed
 
     return (
         <div className="space-y-6">
-            <Link to="/students" className="flex items-center text-sm text-blue-600 hover:underline">
-                <ArrowLeft size={16} className="mr-1" /> Back to Students
-            </Link>
+            <div className="flex items-center gap-2">
+                <Link to="/students" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border bg-white hover:bg-gray-50 shadow-sm">
+                    <ArrowLeft size={14} /> Back to Students
+                </Link>
+                {returnUrl && (
+                    <Link to={returnUrl} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border bg-white hover:bg-gray-50 shadow-sm text-indigo-700 border-indigo-300">
+                        <ArrowLeft size={14} /> Back to Results
+                    </Link>
+                )}
+            </div>
 
             {/* Profile Card */}
             <div className="bg-white rounded-xl shadow overflow-hidden">
@@ -197,6 +226,55 @@ export default function StudentProfilePage() {
                     </div>
                 </div>
             </div>
+            {/* Transcript (if available) */}
+            {(ay && gs) && (
+                <div className="bg-white p-6 rounded-lg shadow">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-gray-800">Transcript</h2>
+                        {tLoading && <Loader size={16} className="animate-spin text-gray-400" />}
+                    </div>
+                    {!transcript && !tLoading ? (
+                        <p className="text-sm text-gray-500">No transcript data.</p>
+                    ) : (
+                        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                            <table className="min-w-full text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <Th>Subject</Th>
+                                        {(transcript?.examTypes || []).map(et => (
+                                            <Th key={String(et._id)}>{et.typeName}</Th>
+                                        ))}
+                                        <Th>Total</Th>
+                                        <Th>Average</Th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(transcript?.rows || []).map(row => (
+                                        <tr key={String(row.subjectId)} className="bg-white hover:bg-gray-50 transition-colors">
+                                            <Td>{row.subjectName}</Td>
+                                            {(transcript?.examTypes || []).map(et => {
+                                                const cell = row.exams.find(e => String(e.examTypeId) === String(et._id));
+                                                return <Td key={String(et._id)}>{Number((cell?.score ?? 0).toFixed?.(2))}</Td>;
+                                            })}
+                                            <Td className="font-medium">{Number((row.total ?? 0).toFixed?.(2))}</Td>
+                                            <Td>{Number((row.average ?? 0).toFixed?.(2))}</Td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <Td className="font-semibold">Overall</Td>
+                                        <Td colSpan={(transcript?.examTypes || []).length}></Td>
+                                        <Td className="font-semibold">{Number((transcript?.overall?.total ?? 0).toFixed?.(2))}</Td>
+                                        <Td className="font-semibold">{Number((transcript?.overall?.average ?? 0).toFixed?.(2))}</Td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Reassign Modal removed */}
         </div>
     );

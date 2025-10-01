@@ -33,14 +33,26 @@ const StudentTable = ({ students, onEdit, onDelete, onReassign }) => (
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{st.contactNumber || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                            <Link to={`/students/${st._id}`} className="text-blue-600 hover:text-blue-800 inline-block p-1 rounded-full hover:bg-blue-100 transition-colors" title="View Profile">
-                                <Eye size={18} />
+                            <Link
+                                to={`/students/${st._id}`}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-white hover:bg-gray-50 shadow-sm text-blue-700 border-blue-300"
+                                title="View Profile"
+                            >
+                                <Eye size={16} /> <span className="hidden sm:inline">View</span>
                             </Link>
-                            <button onClick={() => onEdit(st)} className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-green-100 transition-colors" title="Edit Student">
-                                <Pencil size={18} />
+                            <button
+                                onClick={() => onEdit(st)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300"
+                                title="Edit Student"
+                            >
+                                <Pencil size={16} /> <span className="hidden sm:inline">Edit</span>
                             </button>
-                            <button onClick={() => onReassign && onReassign(st)} className="text-indigo-600 hover:text-indigo-800 p-1 rounded-full hover:bg-indigo-100 transition-colors" title="Reassign Section">
-                                <Repeat size={18} />
+                            <button
+                                onClick={() => onReassign && onReassign(st)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-300"
+                                title="Reassign Section"
+                            >
+                                <Repeat size={16} /> <span className="hidden sm:inline">Reassign</span>
                             </button>
                             {st.status === 'Active' ? (
                                 <button
@@ -57,9 +69,10 @@ const StudentTable = ({ students, onEdit, onDelete, onReassign }) => (
                                             }
                                         } catch (e) { console.error(e); toast.error('Network error'); }
                                     }}
-                                    className="text-orange-600 hover:text-orange-800 p-1 rounded-full hover:bg-orange-100 transition-colors" title="Deactivate Student"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-300"
+                                    title="Deactivate Student"
                                 >
-                                    <Trash2 size={18} />
+                                    <Trash2 size={16} /> <span className="hidden sm:inline">Deactivate</span>
                                 </button>
                             ) : (
                                 <button
@@ -75,9 +88,10 @@ const StudentTable = ({ students, onEdit, onDelete, onReassign }) => (
                                             }
                                         } catch (e) { console.error(e); toast.error('Network error'); }
                                     }}
-                                    className="text-purple-600 hover:text-purple-800 p-1 rounded-full hover:bg-purple-100 transition-colors" title="Reactivate Student"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-300"
+                                    title="Reactivate Student"
                                 >
-                                    <RotateCcw size={18} />
+                                    <RotateCcw size={16} /> <span className="hidden sm:inline">Reactivate</span>
                                 </button>
                             )}
                         </td>

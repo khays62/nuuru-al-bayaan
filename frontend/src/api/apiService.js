@@ -77,6 +77,100 @@ export const deleteSubject = async (id) => {
     }
 };
 
+// --- Exams API ---
+export const getExamTypes = async () => {
+    try {
+        const res = await fetch(`${API_BASE_URL}/exams/types`);
+        if (!res.ok) throw new Error('Failed to fetch exam types');
+        return await res.json();
+    } catch (e) {
+        console.error('Failed to fetch exam types', e);
+        return [];
+    }
+};
+
+export const getExamGrid = async ({ academicYearId, gradeSectionId, subjectId }) => {
+    try {
+        const query = new URLSearchParams({ academicYearId, gradeSectionId, subjectId });
+        const res = await fetch(`${API_BASE_URL}/exams/grid?${query.toString()}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || 'Failed to fetch exam grid');
+        return { ok: true, data };
+    } catch (e) {
+        console.error('Failed to fetch exam grid', e);
+        return { ok: false, error: 'Network or server error' };
+    }
+};
+
+export const saveExamScore = async ({ studentId, examId, subjectId, scoreObtained }) => {
+    try {
+        const res = await fetch(`${API_BASE_URL}/exams/score`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId, examId, subjectId, scoreObtained })
+        });
+        const data = await res.json().catch(()=>({}));
+        return { ok: res.ok, status: res.status, data };
+    } catch (e) {
+        console.error('Failed to save exam score', e);
+        return { ok: false, status: 0, data: { message: 'Network error' } };
+    }
+};
+
+export const getExamSummary = async (params = {}) => {
+    try {
+        const query = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== '') query.append(k, v);
+        });
+        const qs = query.toString();
+        const res = await fetch(`${API_BASE_URL}/exams/summary${qs ? `?${qs}` : ''}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || 'Failed to fetch summary');
+        return { ok: true, data };
+    } catch (e) {
+        console.error('Failed to fetch exam summary', e);
+        return { ok: false, error: e?.message || 'Network or server error' };
+    }
+};
+
+// Abort-capable variant for debounced/cancellable requests from pages
+export const getExamSummaryAbort = async (params = {}, opts = {}) => {
+    const { signal } = opts;
+    try {
+        const query = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== '') query.append(k, v);
+        });
+        const qs = query.toString();
+        const res = await fetch(`${API_BASE_URL}/exams/summary${qs ? `?${qs}` : ''}`, { signal });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || 'Failed to fetch summary');
+        return { ok: true, data };
+    } catch (e) {
+        if (e.name === 'AbortError') return { ok: false, error: 'aborted' };
+        console.error('Failed to fetch exam summary (abort)', e);
+        return { ok: false, error: e?.message || 'Network or server error' };
+    }
+};
+
+export const getStudentTranscript = async (params = {}) => {
+    try {
+        const query = new URLSearchParams();
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== '') query.append(k, v);
+        });
+        const qs = query.toString();
+        const res = await fetch(`${API_BASE_URL}/exams/transcript${qs ? `?${qs}` : ''}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || 'Failed to fetch transcript');
+        return { ok: true, data };
+    } catch (e) {
+        console.error('Failed to fetch transcript', e);
+        return { ok: false, error: e?.message || 'Network or server error' };
+    }
+};
+
 // --- Lookup Functions ---
 // Shaqadan waxay si gaar ah ula soo baxaysaa liiska Grades-ka.
 // ---- Grades (cached) ----
@@ -202,6 +296,18 @@ export const deleteGradeSection = async (id) => {
     } catch (e) {
         console.error('Failed to delete grade section', e);
         return { ok:false, error: 'Network or server error' };
+    }
+};
+
+export const getGradeSectionById = async (id) => {
+    try {
+        const res = await fetch(`${API_BASE_URL}/grades/sections/${id}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || 'Failed to fetch grade section');
+        return { ok: true, data };
+    } catch (e) {
+        console.error('Failed to fetch grade section', e);
+        return { ok: false, error: 'Network or server error' };
     }
 };
 

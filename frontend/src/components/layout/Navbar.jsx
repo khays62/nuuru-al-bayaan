@@ -7,7 +7,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const { user, logout } = useAuth();
 
     return (
-        <header className="bg-white shadow-lg p-4 flex items-center justify-between z-10 ">
+        <header className="bg-white shadow-lg p-4 flex items-center justify-between z-10 no-print">
             {/* Left side: Mobile Menu Toggle and Current Page Title */}
             <div className="flex items-center gap-4">
                 {/* Mobile Menu Toggle (Hamburger Icon) */}

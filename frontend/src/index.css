@@ -12,3 +12,50 @@
 	background-size: 200% 200%;
 	animation: gradientShift 12s ease infinite;
 }
+
+/* Print-specific styles for clean printouts */
+@media print {
+	/* Hide navigation, sidebars, and any explicit no-print elements */
+	header, aside, .no-print { display: none !important; }
+	.print-only { display: block !important; }
+
+	/* Make transcript modal print full width and clean */
+	.modal-header { display: none !important; }
+	.modal-panel { width: 100% !important; max-width: none !important; box-shadow: none !important; border: none !important; transform: none !important; }
+	.modal-body { padding: 0 !important; }
+	.print-banner { margin-bottom: 8mm; }
+
+	/* Print footer visible only in print */
+	.print-footer { 
+		position: fixed; 
+		left: 0; right: 0; bottom: 0; 
+		padding: 6px 12px; 
+		border-top: 1px solid #ccc; 
+		font-size: 10pt; 
+		color: #000; 
+		background: #ffffff; 
+		display: flex !important; 
+		justify-content: space-between; 
+		align-items: center;
+	}
+	.print-footer .pageNumber::after { content: counter(page); }
+	.print-footer .totalPages::after { content: counter(pages); }
+
+	/* Make background white and remove box-shadows */
+	body { background: #ffffff !important; }
+	.shadow, .shadow-md, .shadow-lg { box-shadow: none !important; }
+	.bg-white { background-color: #ffffff !important; }
+
+	/* Tables: full width, collapsed borders, clear text */
+	table { width: 100% !important; border-collapse: collapse !important; }
+	th, td { border: 1px solid #ccc !important; color: #000 !important; }
+
+	/* Disable sticky headers in print */
+	th { position: static !important; }
+}
+
+/* Suggest clean margins (note: cannot programmatically remove browser header/footer) */
+@page { margin: 12mm 12mm 18mm 12mm; }
+
+/* Default: hide print-only blocks on screen */
+.print-only { display: none; }

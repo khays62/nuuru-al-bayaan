@@ -11,6 +11,7 @@ import lookupRoutes from './routes/lookupRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import gradeSectionRoutes from './routes/gradeSectionRoutes.js';
+import examRoutes from './routes/examRoutes.js';
 
 
 dotenv.config();
@@ -34,6 +35,7 @@ const startServer = async () => {
     app.use('/api/subjects', subjectRoutes);
   // legacy /api/classes removed
   app.use('/api/grades', gradeSectionRoutes);
+    app.use('/api/exams', examRoutes);
 
 
     const PORT = process.env.PORT || 7000;
