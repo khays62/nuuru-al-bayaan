@@ -1,10 +1,95 @@
-// Seed script: ExamType only (Mid-term, Final)
+// Seed script: Lookups (ExamType, Grade, Shift, AcademicYear)
 // Run with: node backend/seed/seedLookups.js
 import mongoose from 'mongoose';
 import ExamType from '../models/ExamType.js';
+import Grade from '../models/Grade.js';
+import Shift from '../models/Shift.js';
+import AcademicYear from '../models/AcademicYear.js';
 import { dbURL } from '../config/config.js';
 
+// Exam Types (English UI)
 const EXAM_TYPES = ['Mid-term', 'Final'];
+
+// Grades (Arabic): مستوى الأول → مستوى العاشر
+const ARABIC_GRADES = [
+  'مستوى الأول',
+  'مستوى الثاني',
+  'مستوى الثالث',
+  'مستوى الرابع',
+  'مستوى الخامس',
+  'مستوى السادس',
+  'مستوى السابع',
+  'مستوى الثامن',
+  'مستوى التاسع',
+  'مستوى العاشر',
+];
+
+// Shifts (Arabic)
+const SHIFTS = ['صباحي', 'مسائي'];
+
+// Academic Years (dynamic around current year)
+function generateAcademicYears() {
+  const now = new Date();
+  // Academic year starts around Aug/Sep. If month >= 7 (Aug=7 zero-based?), use current year as start
+  // JS months: 0=Jan ... 11=Dec. Treat Aug (7) as threshold.
+  const month = now.getMonth();
+  const base = month >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+  const list = [
+    (base - 1) + '-' + base,
+    base + '-' + (base + 1),
+    (base + 1) + '-' + (base + 2),
+  ];
+  return list;
+}
+
+async function seedExamTypes() {
+  for (const t of EXAM_TYPES) {
+    const exists = await ExamType.findOne({ typeName: t });
+    if (!exists) {
+      await ExamType.create({ typeName: t });
+      console.log('[seed] Added ExamType:', t);
+    } else {
+      console.log('[seed] ExamType exists:', t);
+    }
+  }
+}
+
+async function seedGrades() {
+  for (const name of ARABIC_GRADES) {
+    const exists = await Grade.findOne({ gradeName: name });
+    if (!exists) {
+      await Grade.create({ gradeName: name });
+      console.log('[seed] Added Grade:', name);
+    } else {
+      console.log('[seed] Grade exists:', name);
+    }
+  }
+}
+
+async function seedShifts() {
+  for (const name of SHIFTS) {
+    const exists = await Shift.findOne({ shiftName: name });
+    if (!exists) {
+      await Shift.create({ shiftName: name });
+      console.log('[seed] Added Shift:', name);
+    } else {
+      console.log('[seed] Shift exists:', name);
+    }
+  }
+}
+
+async function seedAcademicYears() {
+  const years = generateAcademicYears();
+  for (const y of years) {
+    const exists = await AcademicYear.findOne({ yearName: y });
+    if (!exists) {
+      await AcademicYear.create({ yearName: y });
+      console.log('[seed] Added AcademicYear:', y);
+    } else {
+      console.log('[seed] AcademicYear exists:', y);
+    }
+  }
+}
 
 async function seed() {
   const mongoUri = dbURL || process.env.MONGO_URI || process.env.MONGODB_URI;
@@ -16,14 +101,17 @@ async function seed() {
   await mongoose.connect(mongoUri);
   console.log('[seed] Connected');
 
-  for (const t of EXAM_TYPES) {
-    const exists = await ExamType.findOne({ typeName: t });
-    if (!exists) { await ExamType.create({ typeName: t }); console.log('Added ExamType:', t); } else { console.log('ExamType exists:', t); }
-  }
+  await seedExamTypes();
+  await seedGrades();
+  await seedShifts();
+  await seedAcademicYears();
 
   console.log('[seed] Done');
   await mongoose.disconnect();
   process.exit(0);
 }
 
-seed().catch(e=>{ console.error('[seed] Failed', e); process.exit(1); });
+seed().catch((e) => {
+  console.error('[seed] Failed', e);
+  process.exit(1);
+});

@@ -9,7 +9,7 @@
 - Haddii Atlas uu xannibo IP-ga, ku dar IP-gaaga ama ku meelgaar 0.0.0.0/0 inta lagu tijaabinayo
 
 ## Run
-- Backend: `cd backend` → `npm install` → `npm start`
+- Backend: `cd backend` → `npm install` → `npm start server`
 - Frontend: `cd frontend` → `npm install` → `npm run dev` → browser: http://localhost:5173
 
 ## Notes
