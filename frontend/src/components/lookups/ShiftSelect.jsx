@@ -1,6 +1,6 @@
 // ShiftSelect.jsx
 import React, { useEffect, useState } from 'react';
-import { getShifts } from '../../api/apiService';
+import { getShifts } from '../../api';
 
 export default function ShiftSelect({ value, onChange, disabled = false, className = '', placeholder = 'Any', id, name, ...rest }) {
   const [items, setItems] = useState([]);

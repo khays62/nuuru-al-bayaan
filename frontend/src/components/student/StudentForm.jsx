@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAcademicYears, getGrades, getShifts, listGradeSections } from '../../api/apiService';
+import { getAcademicYears, getGrades, getShifts, listGradeSections } from '../../api';
 import toast from 'react-hot-toast';
 
 // Refactored StudentForm aligned with backend API (POST /api/students)
@@ -56,8 +56,8 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
     }, []);
 
     // When AY/Grade/Shift changes, fetch sections
+    const { academicYearId, gradeId, shiftId } = formData;
     useEffect(() => {
-        const { academicYearId, gradeId, shiftId } = formData;
         if (!academicYearId || !gradeId || !shiftId) {
             setSections([]);
             setFormData(prev => ({ ...prev, gradeSectionId: '' }));
@@ -75,7 +75,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
             })
             .catch(() => setSections([]))
             .finally(() => setLoadingSections(false));
-    }, [formData.academicYearId, formData.gradeId, formData.shiftId]);
+    }, [academicYearId, gradeId, shiftId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

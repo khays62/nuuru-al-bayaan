@@ -2,8 +2,8 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Loader, RefreshCw, User, Phone, Calendar, MapPin, Users, IdCard } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getStudentTranscript, getStudentTransfers } from '../api/apiService';
-import { getFullTranscript } from '../api/apiService';
+import { getStudentTranscript, getStudentTransfers } from '../api';
+import { getFullTranscript } from '../api';
 import TransferBadge from '../components/student/TransferBadge';
 import TransferTimeline from '../components/student/TransferTimeline';
 // Modal and reassign API removed; reassign now handled from Students table

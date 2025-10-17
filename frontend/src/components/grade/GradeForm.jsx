@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
-import { getGrades, createGradeSection, updateGradeSection, getSubjects } from '../../api/apiService';
+import { getGrades, createGradeSection, updateGradeSection, getSubjects } from '../../api';
 import AcademicYearSelect from '../lookups/AcademicYearSelect';
 import GradeSelect from '../lookups/GradeSelect';
 import ShiftSelect from '../lookups/ShiftSelect';

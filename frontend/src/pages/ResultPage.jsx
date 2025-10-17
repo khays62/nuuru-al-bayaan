@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import bannerImg from '../assets/image.png';
 import toast from 'react-hot-toast';
-import { getAcademicYears, getGrades, getShifts, getGradeSectionById, getExamSummaryAbort, getExamTypes } from '../api/apiService';
+import { getAcademicYears, getGrades, getShifts, getGradeSectionById, getExamSummaryAbort, getExamTypes } from '../api';
 import { useCascadingFilters } from '../hooks/useCascadingFilters';
 import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';

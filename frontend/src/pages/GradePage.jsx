@@ -11,7 +11,7 @@ import SortControls from '../components/common/DataToolbar/SortControls';
 import PaginationControls from '../components/common/Pagination/PaginationControls';
 import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
-import { listGradeSections, deleteGradeSection } from '../api/apiService';
+import { listGradeSections, deleteGradeSection } from '../api';
 // Reusable lookup selects (replace ad-hoc FilterSelects)
 import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';

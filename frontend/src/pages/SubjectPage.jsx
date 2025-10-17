@@ -17,7 +17,7 @@ import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
 
 // API services (existing ones for now)
-import { getSubjects, addSubject, getGrades, updateSubject, deleteSubject } from '../api/apiService';
+import { getSubjects, addSubject, getGrades, updateSubject, deleteSubject } from '../api';
 
 // NOTE: getSubjects(apiService) returns { data, meta }. We'll wrap it in fetchFn signature.
 

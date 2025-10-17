@@ -1,5 +1,7 @@
 # Qorshaha Dib‑u‑Habeynta Mashruuca (Somali)
 
+Fiiro muhiim ah: Dukumeentigan waa qorshe taariikhi ah (historical plan). Qaabka hadda jira ee API‑ga frontend waxaa lagu sharaxay `FRONTEND_API_RESTRUCTURE.md`. Halkani ha u aragto xusuus/qorshe hore, ee ma aha sida hadda wax u shaqeeyaan.
+
 Dukumeentigan waxa uu qeexayaa qorshe nidaamsan oo aan ku nadiifineyno oo ku casriyeyneyno mashruuca (MERN) annagoo ilaalineyna shaqada hadda socota. Ujeeddadu waa in aan:
 - Ka saarno ku-celcelis (duplicates) iyo iswaafajin la’aan (consistency issues).
 - Dhisno qaab-dhismeed faylal (folders) oo casri ah oo fududeeya dib‑u‑isticmaalka (reusable: qaybo/koodh dib marar badan loogu adeegsan karo meelo kala duwan iyada oo aan la qorin mar kasta).

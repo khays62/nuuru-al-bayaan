@@ -1,6 +1,6 @@
 // SubjectSelect.jsx
 import React, { useEffect, useState } from 'react';
-import { getSubjects } from '../../api/apiService';
+import { getSubjects } from '../../api';
 
 export default function SubjectSelect({ value, onChange, disabled = false, className = '', placeholder = 'Any' }) {
   const [items, setItems] = useState([]);

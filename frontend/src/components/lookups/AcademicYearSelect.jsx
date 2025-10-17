@@ -1,7 +1,7 @@
 // AcademicYearSelect.jsx
 // Select reusable oo soo bandhiga Academic Years.
 import React, { useEffect, useState } from 'react';
-import { getAcademicYears } from '../../api/apiService';
+import { getAcademicYears } from '../../api';
 
 export default function AcademicYearSelect({ value, onChange, disabled = false, className = '', placeholder = 'Any', id, name, ...rest }) {
   const [items, setItems] = useState([]);

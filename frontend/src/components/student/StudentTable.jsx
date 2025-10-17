@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import TableShell from '../common/table/TableShell';
 import StatusBadge from '../common/badges/StatusBadge';
 import ActionButton from '../common/ActionButton';
-import { deactivateStudentApi, reactivateStudentApi } from '../../api/apiService';
+import { deactivateStudentApi, reactivateStudentApi } from '../../api';
 import { emitStudentsChanged } from '../../utils/events';
 
 // Displays students returned by backend list endpoint

@@ -105,7 +105,7 @@ export function useEntityList({
     setIsLoading(true);
     setError(null);
     try {
-      const result = await fetchRef.current(effectiveParams);
+  const result = await fetchRef.current(effectiveParams);
       setItems(result.data || []);
       if (result.meta) {
         if (result.meta.totalPages > 0 && page > result.meta.totalPages) {
@@ -131,7 +131,7 @@ export function useEntityList({
         nextSignatureRef.current = null;
       }
     }
-  }, [paramsSignature, persistKey]);
+  }, [paramsSignature, persistKey, page]);
   // Fiiro gaar ah: fetchFn lama gelin dependency sababtoo ah waxaan isticmaalnaa ref.
 
   // --- Load Effect ---

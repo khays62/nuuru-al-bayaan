@@ -6,7 +6,7 @@ import Modal from '../components/common/Modal';
 import PaginationControls from '../components/common/Pagination/PaginationControls';
 import { useEntityList } from '../hooks/useEntityList';
 import toast from 'react-hot-toast';
-import { listStudents, createStudent, updateStudent as updateStudentApi, getStudentProfile as fetchStudentProfile, getAcademicYears, getGrades, getShifts, listGradeSections, transferEnrollmentApi } from '../api/apiService';
+import { listStudents, createStudent, updateStudent as updateStudentApi, getStudentProfile as fetchStudentProfile, getAcademicYears, getGrades, getShifts, listGradeSections, transferEnrollmentApi } from '../api';
 import { on as onEvent, off as offEvent, EVENTS, emitStudentsChanged } from '../utils/events';
 import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';

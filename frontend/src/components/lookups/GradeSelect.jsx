@@ -1,6 +1,6 @@
 // GradeSelect.jsx
 import React, { useEffect, useState } from 'react';
-import { getGrades } from '../../api/apiService';
+import { getGrades } from '../../api';
 
 export default function GradeSelect({ value, onChange, disabled = false, className = '', placeholder = 'Any', id, name, ...rest }) {
   const [items, setItems] = useState([]);

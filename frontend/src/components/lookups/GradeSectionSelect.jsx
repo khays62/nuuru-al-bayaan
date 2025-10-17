@@ -1,6 +1,6 @@
 // GradeSectionSelect.jsx
 import React, { useEffect, useState } from 'react';
-import { listGradeSections } from '../../api/apiService';
+import { listGradeSections } from '../../api';
 
 export default function GradeSectionSelect({ academicYearId, gradeId, shiftId, value, onChange, disabled = false, className = '', placeholder = 'Any', id, name, ...rest }) {
   const [items, setItems] = useState([]);

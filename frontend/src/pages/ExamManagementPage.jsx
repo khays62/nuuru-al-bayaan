@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getExamGrid, saveExamScore, getGradeSectionById } from '../api/apiService';
+import { getExamGrid, saveExamScore, getGradeSectionById } from '../api';
 import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
