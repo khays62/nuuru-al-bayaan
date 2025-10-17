@@ -1,0 +1,20 @@
+﻿
+> frontend@0.0.0 lint
+> eslint .
+
+
+C:\Users\AAA\Desktop\gruadtion project\Nuuru Al-Bayaan\frontend\src\components\student\StudentForm.jsx
+  78:8  warning  React Hook useEffect has a missing dependency: 'formData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\Nuuru Al-Bayaan\frontend\src\hooks\useEntityList.js
+  134:6  warning  React Hook useCallback has missing dependencies: 'effectiveParams' and 'page'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\Nuuru Al-Bayaan\frontend\src\pages\StudentPage.jsx
+   52:11  error    'fetchFn' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u         no-unused-vars
+  201:87  error    'e' is defined but never used                                                                   no-unused-vars
+  211:29  error    'e' is defined but never used                                                                   no-unused-vars
+  294:9   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+Γ£û 6 problems (3 errors, 3 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

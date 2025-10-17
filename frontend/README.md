@@ -1,12 +1,49 @@
-# React + Vite
+# Nuuru Al-Bayaan — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite 7 UI for the Nuuru Al-Bayaan system.
 
-Currently, two official plugins are available:
+## Environment setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+This app reads its API base URL from Vite env variables. The repo ignores actual `.env*` files (see root `.gitignore`). Use the provided template to create your local env files.
 
-## Expanding the ESLint configuration
+1) Copy the example file
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+cp .env.example .env.development
+```
+
+2) Edit `.env.development` for your local backend
+
+```env
+VITE_API_BASE_URL=http://localhost:7000/api
+```
+
+3) Production build (optional)
+
+Create `.env.production` when building for production. If you run behind a reverse proxy, `/api` is typical.
+
+```env
+VITE_API_BASE_URL=/api
+```
+
+Notes:
+- Variables must start with `VITE_` to be exposed to the client (Vite behavior).
+- Do not put secrets in frontend `.env*` files (they are bundled for the browser). Keep secrets only in the backend environment.
+
+## Scripts
+
+From this folder:
+
+- `npm run dev` — start Vite dev server
+- `npm run build` — production build
+- `npm run preview` — preview the production build
+- `npm run lint` — run ESLint
+
+## Routing and 404
+
+- 404 page is rendered outside the app layout (no Sidebar/Navbar)
+- In-app wildcard redirects to `/404` to ensure a clean standalone 404
+
+## API base URL helper
+
+All frontend API calls use an `apiUrl` helper which prefixes paths with `VITE_API_BASE_URL` and normalizes slashes.

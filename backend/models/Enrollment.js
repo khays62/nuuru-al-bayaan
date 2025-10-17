@@ -8,7 +8,8 @@ const enrollmentSchema = new Schema({
     academicYear: { type: Schema.Types.ObjectId, ref: 'AcademicYear', required: true },
     grade: { type: Schema.Types.ObjectId, ref: 'Grade', required: true },
     shift: { type: Schema.Types.ObjectId, ref: 'Shift', required: true },
-    status: { type: String, enum: ['active', 'transferred', 'promoted', 'graduated', 'withdrawn'], default: 'active' },
+    // Ku dar 'inactive' si si ku-meelgaar ah loo xiro socodka (transfer/promote) iyada oo aan la dhigin leftAt
+    status: { type: String, enum: ['active', 'inactive', 'transferred', 'promoted', 'graduated', 'withdrawn'], default: 'active' },
     joinedAt: { type: Date, required: true },
     leftAt: { type: Date }
 }, { timestamps: true });

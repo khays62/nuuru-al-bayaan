@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import FilterSelect from '../components/common/DataToolbar/FilterSelect';
-import { getAcademicYears, getGrades, getShifts, listGradeSections, getExamGrid, saveExamScore, getGradeSectionById } from '../api/apiService';
+import { getExamGrid, saveExamScore, getGradeSectionById } from '../api/apiService';
+import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
+import GradeSelect from '../components/lookups/GradeSelect';
+import ShiftSelect from '../components/lookups/ShiftSelect';
+import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
 
 export default function ExamManagementPage() {
-    const [years, setYears] = useState([]);
-    const [grades, setGrades] = useState([]);
-    const [shifts, setShifts] = useState([]);
-    const [sections, setSections] = useState([]);
     const [subjects, setSubjects] = useState([]); // subjects assigned to the selected section only
 
     const [academicYearId, setAcademicYearId] = useState('');
@@ -23,32 +22,12 @@ export default function ExamManagementPage() {
     const [errorCells, setErrorCells] = useState(new Set()); // keys with last error
     const debounceTimers = useRef(new Map()); // key -> timer
 
-    // Lookups
+    // Lookups are handled by reusable select components.
+    // GradeSectionSelect will fetch sections based on AY/Grade/Shift.
     useEffect(() => {
-        (async () => {
-            try {
-                const [ys, gs, ss] = await Promise.all([getAcademicYears(), getGrades(), getShifts()]);
-                setYears(Array.isArray(ys) ? ys : (ys?.data || []));
-                setGrades(Array.isArray(gs) ? gs : (gs?.data || []));
-                setShifts(Array.isArray(ss) ? ss : (ss?.data || []));
-            } catch (e) { toast.error('Failed to load lookups'); }
-        })();
-    }, []);
-
-    useEffect(() => {
-        (async () => {
-            if (academicYearId && gradeId && shiftId) {
-                try {
-                    const res = await listGradeSections({ academicYear: academicYearId, grade: gradeId, shift: shiftId, limit: 200 });
-                    setSections(res?.data || []);
-                } catch (e) {
-                    setSections([]);
-                }
-            } else {
-                setSections([]);
-                setGradeSectionId('');
-            }
-        })();
+        // Clear downstream selections if parents change
+        setGradeSectionId('');
+        setSubjectId('');
     }, [academicYearId, gradeId, shiftId]);
 
     // When section changes, load only its assigned subjects
@@ -180,21 +159,18 @@ export default function ExamManagementPage() {
         })();
     }, [academicYearId, gradeSectionId, subjectId]);
 
-    const onChangeScore = async (studentId, examId, value) => {
-        const num = Number(value);
-        if (!Number.isFinite(num)) return; // ignore non-number
-        if (num < 0 || num > 100) { toast.error('Score must be 0..100'); return; }
-        const prev = scoreMap.get(`${studentId}-${examId}-${subjectId}`);
-        // optimistic update
-        setGrid(g => ({ ...g, scores: updateScoreArray(g.scores, { student: studentId, exam: examId, subject: subjectId, scoreObtained: num }) }));
-        const { ok, data } = await saveExamScore({ studentId, examId, subjectId, scoreObtained: num });
-        if (!ok) {
-            // revert
-            setGrid(g => ({ ...g, scores: updateScoreArray(g.scores, { student: studentId, exam: examId, subject: subjectId, scoreObtained: prev ?? undefined }) }));
-            toast.error(data?.message || 'Save failed');
-        } else {
-            toast.success('Saved');
-        }
+    // removed legacy onChangeScore (now handled by debounced handleChange/flushDebounce)
+    const handleReset = () => {
+        setAcademicYearId('');
+        setGradeId('');
+        setShiftId('');
+        setGradeSectionId('');
+        setSubjectId('');
+        setSubjects([]);
+        setGrid({ students: [], columns: [], scores: [] });
+        setLocalInputs({});
+        setSavingCells(new Set());
+        setErrorCells(new Set());
     };
 
     return (
@@ -204,12 +180,18 @@ export default function ExamManagementPage() {
                 <p className="mt-1 text-sm text-gray-600">Select filters; the grid loads automatically when a subject is chosen. Enter scores inline (0..100).</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow flex flex-col md:flex-row gap-3">
-                <FilterSelect value={academicYearId} onChange={setAcademicYearId} options={years.map(y=>({ value:y._id, label:y.yearName }))} placeholder="Academic Year" />
-                <FilterSelect value={gradeId} onChange={setGradeId} options={grades.map(g=>({ value:g._id, label:g.gradeName }))} placeholder="Grade" />
-                <FilterSelect value={shiftId} onChange={setShiftId} options={shifts.map(s=>({ value:s._id, label:s.shiftName }))} placeholder="Shift" />
-                <FilterSelect value={gradeSectionId} onChange={setGradeSectionId} options={sections.map(sc=>({ value:sc._id, label:formatSection(sc) }))} placeholder="Section" />
-                <FilterSelect value={subjectId} onChange={setSubjectId} options={(subjects||[]).map(su=>({ value: su._id, label: su.subjectName }))} placeholder="Subject" disabled={!gradeSectionId} />
+            <div className="bg-white p-4 rounded-lg shadow grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+                <AcademicYearSelect id="exam-ay" name="exam-ay" aria-label="Academic Year" value={academicYearId} onChange={setAcademicYearId} className="w-full" placeholder="Academic Year" />
+                <GradeSelect id="exam-grade" name="exam-grade" aria-label="Grade" value={gradeId} onChange={setGradeId} className="w-full" placeholder="Grade" />
+                <ShiftSelect id="exam-shift" name="exam-shift" aria-label="Shift" value={shiftId} onChange={setShiftId} className="w-full" placeholder="Shift" />
+                <GradeSectionSelect id="exam-section" name="exam-section" aria-label="Section" academicYearId={academicYearId} gradeId={gradeId} shiftId={shiftId} value={gradeSectionId} onChange={setGradeSectionId} className="w-full" placeholder="Section" />
+                <select id="exam-subject" name="exam-subject" aria-label="Subject" className="w-full border rounded px-2 py-1" value={subjectId} onChange={(e)=> setSubjectId(e.target.value)} disabled={!gradeSectionId}>
+                    <option value="">Subject</option>
+                    {(subjects||[]).map(su => (<option key={su._id} value={su._id}>{su.subjectName}</option>))}
+                </select>
+                <div className="md:col-span-5 flex md:justify-end">
+                    <button type="button" onClick={handleReset} className="px-3 py-2 text-sm rounded border bg-white hover:bg-gray-50">Reset filters</button>
+                </div>
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow overflow-auto">
@@ -240,7 +222,6 @@ export default function ExamManagementPage() {
                         <tbody>
                             {grid.students.map(st => {
                                 const rowTotal = grid.columns.reduce((sum, col) => {
-                                    const key = getCellKey(st.studentId, col.examId);
                                     const raw = getInputValue(st.studentId, col.examId);
                                     const n = Number(raw);
                                     const weight = weightMap[col.examId] ?? 100;
@@ -287,14 +268,7 @@ export default function ExamManagementPage() {
     );
 }
 
-function formatSection(item) {
-    const gradeName = item?.grade?.gradeName || 'Grade';
-    const section = item?.section || '1';
-    const yearName = item?.academicYear?.yearName || '';
-    const shiftName = item?.shift?.shiftName || '';
-    const tail = [yearName, shiftName].filter(Boolean).join(' - ');
-    return tail ? `${gradeName} - Sec ${section} (${tail})` : `${gradeName} - Sec ${section}`;
-}
+// No formatSection needed; GradeSectionSelect handles label rendering internally (via placeholder and fetched items)
 
 function updateScoreArray(arr, { student, exam, subject, scoreObtained }) {
     const idx = arr.findIndex(x => String(x.student) === String(student) && String(x.exam) === String(exam) && String(x.subject) === String(subject));

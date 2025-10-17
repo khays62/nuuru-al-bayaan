@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import bannerImg from '../assets/image.png';
 import toast from 'react-hot-toast';
-import FilterSelect from '../components/common/DataToolbar/FilterSelect';
-import { getAcademicYears, getGrades, getShifts, listGradeSections, getGradeSectionById, getExamSummaryAbort, getExamTypes, getStudentTranscript } from '../api/apiService';
-import Modal from '../components/common/Modal';
-import { Link } from 'react-router-dom';
+import { getAcademicYears, getGrades, getShifts, getGradeSectionById, getExamSummaryAbort, getExamTypes } from '../api/apiService';
+import { useCascadingFilters } from '../hooks/useCascadingFilters';
+import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
+import GradeSelect from '../components/lookups/GradeSelect';
+import ShiftSelect from '../components/lookups/ShiftSelect';
+import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
 
 export default function ResultPage() {
     // Persist filters in sessionStorage (not URL)
@@ -15,15 +17,27 @@ export default function ResultPage() {
     const [years, setYears] = useState([]);
     const [grades, setGrades] = useState([]);
     const [shifts, setShifts] = useState([]);
-    const [sections, setSections] = useState([]);
     const [subjects, setSubjects] = useState([]);
     const [examTypes, setExamTypes] = useState([]);
 
-    // initialize from session storage if present
-    const [academicYearId, setAcademicYearId] = useState(saved.ay || '');
-    const [gradeId, setGradeId] = useState(saved.g || '');
-    const [shiftId, setShiftId] = useState(saved.sh || '');
-    const [gradeSectionId, setGradeSectionId] = useState(saved.gs || '');
+    // initialize from session storage if present (via cascading hook)
+    const {
+        academicYearId,
+        setAcademicYearId,
+        gradeId,
+        setGradeId,
+        shiftId,
+        setShiftId,
+        gradeSectionId,
+        setGradeSectionId,
+    sections,
+        resetLower,
+    } = useCascadingFilters({
+        academicYearId: saved.ay || '',
+        gradeId: saved.g || '',
+        shiftId: saved.sh || '',
+        gradeSectionId: saved.gs || '',
+    });
     const [subjectId, setSubjectId] = useState(saved.sub || '');
     const [examTypeId, setExamTypeId] = useState(saved.et || '');
 
@@ -31,16 +45,13 @@ export default function ResultPage() {
     const [mode, setMode] = useState(saved.mode || 'subject');
     const [topN, setTopN] = useState(Number(saved.top || 0));
     const [bottomN, setBottomN] = useState(Number(saved.bot || 0));
-    const [minTotal, setMinTotal] = useState('');
-    const [minAvg, setMinAvg] = useState('');
+    const [minTotal] = useState('');
+    const [minAvg] = useState('');
 
     const [loading, setLoading] = useState(false);
     const [summary, setSummary] = useState({ results: [], classAverage: 0 });
 
-    // add transcript state
-    const [transcriptOpen, setTranscriptOpen] = useState(false);
-    const [transcriptLoading, setTranscriptLoading] = useState(false);
-    const [transcript, setTranscript] = useState(null);
+    // Transcript modal removed from Results; use dedicated Transcript page instead
 
     // Lookups (with simple memo cache for exam types to avoid duplicate requests)
     useEffect(() => {
@@ -51,29 +62,18 @@ export default function ResultPage() {
                 setGrades(Array.isArray(gs) ? gs : (gs?.data || []));
                 setShifts(Array.isArray(ss) ? ss : (ss?.data || []));
                 setExamTypes(Array.isArray(et) ? et : (et?.data || []));
-            } catch (e) { toast.error('Failed to load lookups'); }
+            } catch { toast.error('Failed to load lookups'); }
         })();
     }, []);
 
     // Persist filters to sessionStorage
     useEffect(() => {
         const payload = { ay: academicYearId, g: gradeId, sh: shiftId, gs: gradeSectionId, sub: subjectId, et: examTypeId, mode, top: topN, bot: bottomN };
-        try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload)); } catch {}
+        try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload)); } catch (err) { void err; }
     }, [academicYearId, gradeId, shiftId, gradeSectionId, subjectId, examTypeId, mode, topN, bottomN]);
 
     // Sections for selection
-    useEffect(() => {
-        (async () => {
-            if (academicYearId && gradeId && shiftId) {
-                try {
-                    const res = await listGradeSections({ academicYear: academicYearId, grade: gradeId, shift: shiftId, limit: 200 });
-                    setSections(res?.data || []);
-                } catch (e) { setSections([]); }
-            } else {
-                setSections([]); setGradeSectionId('');
-            }
-        })();
-    }, [academicYearId, gradeId, shiftId]);
+    // handled by useCascadingFilters
 
     // Subjects from selected section
     useEffect(() => {
@@ -88,6 +88,23 @@ export default function ResultPage() {
 
     // Auto-fetch summary with debounce and abort to avoid duplicate requests
     const fetchAbortRef = useRef(null);
+    const handleReset = () => {
+        try { sessionStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
+        if (fetchAbortRef.current) {
+            try { fetchAbortRef.current.abort(); } catch { /* ignore */ }
+        }
+        setAcademicYearId('');
+        setGradeId('');
+        setShiftId('');
+        setGradeSectionId('');
+        setSubjectId('');
+        setExamTypeId('');
+        setMode('subject');
+        setTopN(0);
+        setBottomN(0);
+        setSummary({ results: [], classAverage: 0 });
+        setLoading(false);
+    };
     useEffect(() => {
         // quick validations
         if (!academicYearId || !gradeSectionId) { setSummary({ results: [], classAverage: 0 }); return; }
@@ -127,7 +144,7 @@ export default function ResultPage() {
             }
         }, 400); // debounce
         return () => clearTimeout(handle);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
     }, [academicYearId, gradeSectionId, subjectId, examTypeId, mode, topN, bottomN, minTotal, minAvg]);
 
     const results = useMemo(() => summary?.results || [], [summary]);
@@ -168,23 +185,19 @@ export default function ResultPage() {
         window.print();
     };
 
-    const openTranscript = async (student) => {
-        if (!academicYearId || !gradeSectionId) { toast.error('Please select AY and Section'); return; }
-        setTranscriptOpen(true);
-        setTranscriptLoading(true);
-        setTranscript(null);
-        const { ok, data, error } = await getStudentTranscript({ academicYearId, gradeSectionId, studentId: student.studentId });
-        setTranscriptLoading(false);
-        if (!ok) { toast.error(error || 'Transcript load failed'); return; }
-        setTranscript(data);
-    };
+    // openTranscript removed
+
+    // (Transfer logs UI omitted on this page)
 
     return (
         <div className="space-y-6">
-            {/* Print-only header with banner and context info */}
+            {/* Print-only header (clean style like transcript) */}
             <div className="print-only">
                 <div className="mb-4">
                     <img src={bannerImg} alt="School Banner" className="w-full h-auto" />
+                </div>
+                <div className="text-center mb-2">
+                    <h2 className="text-xl font-bold">Class Results & Rankings</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                     <div><span className="text-gray-600">Academic Year:</span> <span className="font-semibold">{years.find(y=>y._id===academicYearId)?.yearName || '-'}</span></div>
@@ -195,28 +208,71 @@ export default function ResultPage() {
             </div>
             <div className='no-print'>
                 <h1 className="text-2xl font-bold text-gray-800 ">Results & Rankings</h1>
-                <p className="mt-1 text-sm text-gray-600">Dooro filters; natiijooyinka iyo darajooyinka (rank) ayaa si toos ah u soo bixi doona. Total-ka waxa lagu xisaabiyaa 100 guud ahaan.</p>
+                <p className="mt-1 text-sm text-gray-600">Pick filters to load class results and rankings automatically. Totals are normalized to 100.</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow flex flex-col md:flex-row gap-3 no-print">
-                <FilterSelect value={academicYearId} onChange={setAcademicYearId} options={years.map(y=>({ value:y._id, label:y.yearName }))} placeholder="Academic Year" />
-                <FilterSelect value={gradeId} onChange={setGradeId} options={grades.map(g=>({ value:g._id, label:g.gradeName }))} placeholder="Grade" />
-                <FilterSelect value={shiftId} onChange={setShiftId} options={shifts.map(s=>({ value:s._id, label:s.shiftName }))} placeholder="Shift" />
-                <FilterSelect value={gradeSectionId} onChange={setGradeSectionId} options={sections.map(sc=>({ value:sc._id, label:formatSection(sc) }))} placeholder="Section" />
-                <FilterSelect value={mode} onChange={setMode} options={[
-                    {value:'subject',label:'Subject'},
-                    {value:'overall',label:'Overall'},
-                    {value:'examType',label:'Exam Type'},
-                    {value:'top',label:'Top N'},
-                    {value:'bottom',label:'Bottom N'},
-                    {value:'trend',label:'Trend (Mid vs Final)'},
-                    {value:'difficulty',label:'Subject Difficulty'}
-                ]} placeholder="Mode" />
+            <div className="bg-white p-4 rounded-lg shadow flex flex-col md:flex-row md:items-center gap-3 no-print">
+                <AcademicYearSelect
+                    value={academicYearId}
+                    onChange={(v)=>{ setAcademicYearId(v); resetLower('ay'); }}
+                    placeholder="Academic Year"
+                />
+                <GradeSelect
+                    value={gradeId}
+                    onChange={(v)=>{ setGradeId(v); resetLower('grade'); }}
+                    placeholder="Grade"
+                />
+                <ShiftSelect
+                    value={shiftId}
+                    onChange={(v)=>{ setShiftId(v); resetLower('shift'); }}
+                    placeholder="Shift"
+                />
+                <GradeSectionSelect
+                    academicYearId={academicYearId}
+                    gradeId={gradeId}
+                    shiftId={shiftId}
+                    value={gradeSectionId}
+                    onChange={setGradeSectionId}
+                    placeholder="Section"
+                />
+                <select
+                    className="border rounded px-2 py-1"
+                    value={mode}
+                    onChange={(e)=> setMode(e.target.value)}
+                >
+                    <option value="subject">Subject</option>
+                    <option value="overall">Overall</option>
+                    <option value="examType">Exam Type</option>
+                    <option value="top">Top N</option>
+                    <option value="bottom">Bottom N</option>
+                    <option value="trend">Trend (Mid vs Final)</option>
+                    <option value="difficulty">Subject Difficulty</option>
+                </select>
                 {mode === 'subject' && (
-                    <FilterSelect value={subjectId} onChange={setSubjectId} options={(subjects||[]).map(su=>({ value: su._id, label: su.subjectName }))} placeholder="Subject" disabled={!gradeSectionId} />
+                    <select
+                        className="border rounded px-2 py-1"
+                        value={subjectId}
+                        onChange={(e)=> setSubjectId(e.target.value)}
+                        disabled={!gradeSectionId}
+                    >
+                        <option value="">Subject</option>
+                        {(subjects||[]).map(su => (
+                            <option key={su._id} value={su._id}>{su.subjectName}</option>
+                        ))}
+                    </select>
                 )}
                 {mode === 'examType' && (
-                    <FilterSelect value={examTypeId} onChange={setExamTypeId} options={(examTypes||[]).map(et=>({ value: et._id, label: et.typeName }))} placeholder="Exam Type" disabled={!gradeSectionId} />
+                    <select
+                        className="border rounded px-2 py-1"
+                        value={examTypeId}
+                        onChange={(e)=> setExamTypeId(e.target.value)}
+                        disabled={!gradeSectionId}
+                    >
+                        <option value="">Exam Type</option>
+                        {(examTypes||[]).map(et => (
+                            <option key={et._id} value={et._id}>{et.typeName}</option>
+                        ))}
+                    </select>
                 )}
                 {(mode === 'top' || mode === 'bottom') && (
                     <div className="flex items-center gap-2">
@@ -224,43 +280,52 @@ export default function ResultPage() {
                         <input className="w-20 border rounded px-2 py-1" type="number" min={1} max={100} value={mode==='top'?topN:bottomN} onChange={e=> (mode==='top'? setTopN(Number(e.target.value)||0): setBottomN(Number(e.target.value)||0))} />
                     </div>
                 )}
+                <div className="md:ml-auto">
+                    <button
+                        type="button"
+                        onClick={handleReset}
+                        className="px-3 py-2 text-sm rounded border bg-white hover:bg-gray-50"
+                    >
+                        Reset filters
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow overflow-auto">
                 {(!academicYearId || !gradeSectionId) ? (
-                    <p className="text-sm text-gray-500">Dooro Academic Year, Grade, Shift iyo Section.</p>
+                    <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift, and Section to view results.</p>
                 ) : (mode === 'subject' && !subjectId) ? (
-                    <p className="text-sm text-gray-500">Dooro Subject si aad u aragto natiijooyinka.</p>
+                    <p className="text-sm text-gray-500">Choose a Subject to view results.</p>
                 ) : (mode === 'examType' && !examTypeId) ? (
-                    <p className="text-sm text-gray-500">Dooro Exam Type.</p>
+                    <p className="text-sm text-gray-500">Choose an Exam Type to view results.</p>
                 ) : loading ? (
                     <p className="text-sm text-gray-500">Loading results…</p>
                 ) : (mode === 'trend') ? (
                     <table className="min-w-full text-sm border-separate border-spacing-0">
                         <thead>
                             <tr>
-                                <th className="text-left p-3 border-b sticky top-0 bg-white z-10">Rank</th>
-                                <th className="text-left p-3 border-b sticky top-0 bg-white z-10">Student</th>
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10">Mid-term</th>
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10">Final</th>
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10">Delta</th>
+                                <th className="text-left p-3 border-b sticky top-0 bg-gray-50 z-10">Rank</th>
+                                <th className="text-left p-3 border-b sticky top-0 bg-gray-50 z-10">Student</th>
+                                <th className="text-right p-3 border-b sticky top-0 bg-gray-50 z-10">Mid-term</th>
+                                <th className="text-right p-3 border-b sticky top-0 bg-gray-50 z-10">Final</th>
+                                <th className="text-right p-3 border-b sticky top-0 bg-gray-50 z-10">Delta</th>
                             </tr>
                         </thead>
                         <tbody>
                             {results.map(r => (
                                 <tr key={r.studentId} className="odd:bg-gray-50 hover:bg-gray-50">
-                                    <td className="p-3 border-b">{r.rank}</td>
+                                    <td className="p-3 border-b text-right">{r.rank}</td>
                                     <td className="p-3 border-b whitespace-nowrap">{r.fullName}</td>
-                                    <td className="p-3 border-b text-center">{Number((r.mid ?? 0).toFixed?.(2))}</td>
-                                    <td className="p-3 border-b text-center">{Number((r.final ?? 0).toFixed?.(2))}</td>
-                                    <td className="p-3 border-b text-center font-semibold">{Number((r.delta ?? 0).toFixed?.(2))}</td>
+                                    <td className="p-3 border-b text-right">{Number((r.mid ?? 0).toFixed?.(2))}</td>
+                                    <td className="p-3 border-b text-right">{Number((r.final ?? 0).toFixed?.(2))}</td>
+                                    <td className="p-3 border-b text-right font-semibold">{Number((r.delta ?? 0).toFixed?.(2))}</td>
                                 </tr>
                             ))}
                         </tbody>
                         <tfoot>
                             <tr>
                                 <td className="p-3 border-t text-gray-600" colSpan={4}>Class Avg Delta</td>
-                                <td className="p-3 border-t text-center font-semibold">{Number((summary.classAverage ?? 0).toFixed?.(2))}</td>
+                                <td className="p-3 border-t text-right font-semibold">{Number((summary.classAverage ?? 0).toFixed?.(2))}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -268,35 +333,33 @@ export default function ResultPage() {
                     <table className="min-w-full text-sm border-separate border-spacing-0">
                         <thead>
                             <tr>
-                                <th className="text-left p-3 border-b sticky top-0 bg-white z-10">Subject</th>
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10">Avg</th>
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10">Students</th>
+                                <th className="text-left p-3 border-b sticky top-0 bg-gray-50 z-10">Subject</th>
+                                <th className="text-right p-3 border-b sticky top-0 bg-gray-50 z-10">Avg</th>
+                                <th className="text-right p-3 border-b sticky top-0 bg-gray-50 z-10">Students</th>
                             </tr>
                         </thead>
                         <tbody>
                             {(summary?.subjects || []).map(sc => (
                                 <tr key={String(sc._id)} className="odd:bg-gray-50 hover:bg-gray-50">
                                     <td className="p-3 border-b whitespace-nowrap">{sc.subjectName}</td>
-                                    <td className="p-3 border-b text-center">{Number((sc.average ?? 0).toFixed?.(2))}</td>
-                                    <td className="p-3 border-b text-center text-gray-600">{sc.count ?? '—'}</td>
+                                    <td className="p-3 border-b text-right">{Number((sc.average ?? 0).toFixed?.(2))}</td>
+                                    <td className="p-3 border-b text-right text-gray-600">{sc.count ?? '—'}</td>
                                 </tr>
                             ))}
                         </tbody>
                         <tfoot>
                             <tr>
                                 <td className="p-3 border-t text-gray-600">Class Avg (subjects)</td>
-                                <td className="p-3 border-t text-center font-semibold">{Number((summary.classAverage ?? 0).toFixed?.(2))}</td>
-                                <td className="p-3 border-t text-center text-gray-500">—</td>
+                                <td className="p-3 border-t text-right font-semibold">{Number((summary.classAverage ?? 0).toFixed?.(2))}</td>
+                                <td className="p-3 border-t text-right text-gray-500">—</td>
                             </tr>
                         </tfoot>
                     </table>
                 ) : (results.length === 0) ? (
-                    <p className="text-sm text-gray-500">Natiijooyin lama helin.</p>
+                    <p className="text-sm text-gray-500">No results found for the selected filters.</p>
                 ) : (
                     <>
-                    <div className="flex items-center gap-3">
-                        {/* existing selects/inputs stay here */}
-                    </div>
+                    <div className="flex items-center gap-3" />
                     <div className="ml-auto flex items-center gap-2 no-print">
                         <button
                             type="button"
@@ -317,107 +380,34 @@ export default function ResultPage() {
                     <table className="min-w-full text-sm border-separate border-spacing-0">
                         <thead>
                             <tr>
-                                <th className="text-left p-3 border-b sticky top-0 bg-white z-10">Rank</th>
-                                <th className="text-left p-3 border-b sticky top-0 bg-white z-10">Student</th>
+                                <th className="text-left p-3 border-b sticky top-0 bg-gray-50 z-10">Rank</th>
+                                <th className="text-left p-3 border-b sticky top-0 bg-gray-50 z-10">Student</th>
                                 {subjectCols.map(sc => (
-                                    <th key={String(sc._id)} className="text-center p-3 border-b sticky top-0 bg-white z-10">{sc.subjectName}</th>
+                                    <th key={String(sc._id)} className="text-right p-3 border-b sticky top-0 bg-gray-50 z-10">{sc.subjectName}</th>
                                 ))}
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10">Total (100)</th>
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10">Average</th>
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10 no-print">Actions</th>
+                                <th className="text-right p-3 border-b sticky top-0 bg-gray-50 z-10">Total (100)</th>
+                                <th className="text-right p-3 border-b sticky top-0 bg-gray-50 z-10">Average</th>
                             </tr>
                         </thead>
                         <tbody>
                             {results.map(r => (
                                 <tr key={r.studentId} className="odd:bg-gray-50 hover:bg-gray-50">
-                                    <td className="p-3 border-b">{r.rank}</td>
+                                    <td className="p-3 border-b text-right">{r.rank}</td>
                                     <td className="p-3 border-b whitespace-nowrap">{r.fullName}</td>
                                     {subjectCols.map(sc => {
                                         const found = (r.subjectScores || []).find(s => String(s.subjectId) === String(sc._id));
-                                        return <td key={String(sc._id)} className="p-3 border-b text-center">{Number((found?.total ?? 0).toFixed?.(2) || (found?.total ?? 0))}</td>;
+                                        return <td key={String(sc._id)} className="p-3 border-b text-right">{Number((found?.total ?? 0).toFixed?.(2) || (found?.total ?? 0))}</td>;
                                     })}
-                                    <td className="p-3 border-b text-center font-semibold">{Number(r.total?.toFixed?.(2) ?? r.total)}</td>
-                                    <td className="p-3 border-b text-center">{Number((r.average ?? 0).toFixed?.(2))}</td>
-                                                                        <td className="p-3 border-b text-center no-print">
-                                                                                <div className="flex items-center justify-center gap-2">
-                                                                                        <Link
-                                                                                            to={`/students/${r.studentId}?ay=${encodeURIComponent(academicYearId)}&gs=${encodeURIComponent(gradeSectionId)}&return=/results`}
-                                                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border bg-white hover:bg-gray-50 shadow-sm active:scale-[0.99] transition"
-                                                                                        >
-                                                                                            View
-                                                                                        </Link>
-                                                                                        <button
-                                                                                            onClick={() => openTranscript(r)}
-                                                                                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 shadow-sm active:scale-[0.99] transition"
-                                                                                        >
-                                                                                            Transcript
-                                                                                        </button>
-                                                                                </div>
-                                                                        </td>
+                                    <td className="p-3 border-b text-right font-semibold">{Number(r.total?.toFixed?.(2) ?? r.total)}</td>
+                                    <td className="p-3 border-b text-right">{Number((r.average ?? 0).toFixed?.(2))}</td>
+                                                                        
                                 </tr>
                             ))}
                         </tbody>
-        {/* Transcript Modal */}
-        <Modal isOpen={transcriptOpen} onClose={() => setTranscriptOpen(false)} title={transcript?.student?.fullName ? `${transcript.student.fullName} — Transcript` : 'Transcript'}>
-            {transcriptLoading ? (
-                <p className="text-sm text-gray-500">Loading…</p>
-            ) : !transcript ? (
-                <p className="text-sm text-gray-500">No data.</p>
-            ) : (
-                <div className="space-y-3">
-                    {/* Print-only top banner as header for transcript modal */}
-                    <div className="print-only print-banner">
-                        <img src={bannerImg} alt="School Banner" className="w-full h-auto" />
-                    </div>
-                    <div className="text-sm text-gray-700">
-                        <div>Academic Year: <span className="font-semibold">{years.find(y=>y._id===academicYearId)?.yearName || '-'}</span></div>
-                        <div>Grade/Section: <span className="font-semibold">{formatSection((sections||[]).find(sc=>sc._id===gradeSectionId) || {})}</span></div>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm border">
-                            <thead>
-                                <tr>
-                                    <th className="p-2 border">Subject</th>
-                                    {transcript.examTypes.map(et => (
-                                        <th key={String(et._id)} className="p-2 border text-center">{et.typeName}</th>
-                                    ))}
-                                    <th className="p-2 border text-center">Total</th>
-                                    <th className="p-2 border text-center">Average</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {transcript.rows.map(row => (
-                                    <tr key={String(row.subjectId)}>
-                                        <td className="p-2 border whitespace-nowrap">{row.subjectName}</td>
-                                        {transcript.examTypes.map(et => {
-                                            const cell = row.exams.find(e => String(e.examTypeId) === String(et._id));
-                                            return <td key={String(et._id)} className="p-2 border text-center">{Number((cell?.score ?? 0).toFixed?.(2))}</td>;
-                                        })}
-                                        <td className="p-2 border text-center font-medium">{Number((row.total ?? 0).toFixed?.(2))}</td>
-                                        <td className="p-2 border text-center">{Number((row.average ?? 0).toFixed?.(2))}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td className="p-2 border font-semibold">Overall</td>
-                                    <td className="p-2 border text-center" colSpan={transcript.examTypes.length}></td>
-                                    <td className="p-2 border text-center font-semibold">{Number((transcript.overall.total ?? 0).toFixed?.(2))}</td>
-                                    <td className="p-2 border text-center font-semibold">{Number((transcript.overall.average ?? 0).toFixed?.(2))}</td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    <div className="no-print flex justify-end gap-2">
-                        <button className="px-3 py-2 text-sm rounded-md border bg-blue-600 text-white hover:bg-blue-700 shadow-sm active:scale-[0.99] transition" onClick={() => window.print()}>Print</button>
-                        <button className="px-3 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 shadow-sm active:scale-[0.99] transition" onClick={() => setTranscriptOpen(false)}>Close</button>
-                    </div>
-                </div>
-            )}
-        </Modal>
+        
                         <tfoot>
                             <tr>
-                                <td className="p-3 border-t text-gray-600" colSpan={2}>Class Average</td>
+                                                                <td className="p-3 border-t text-gray-600" colSpan={2}>Class Average</td>
                                 {subjectCols.map(sc => {
                                   let sum = 0; let count = 0;
                                   for (const r of results) {
@@ -425,10 +415,10 @@ export default function ResultPage() {
                                     if (typeof found?.total === 'number') { sum += found.total; count += 1; }
                                   }
                                   const avg = count ? fmt2(sum / count) : 0;
-                                  return <td key={String(sc._id)} className="p-3 border-t text-center font-medium">{avg}</td>;
+                                                                    return <td key={String(sc._id)} className="p-3 border-t text-right font-medium">{avg}</td>;
                                 })}
-                                <td className="p-3 border-t text-center font-semibold" colSpan={1}>{fmt2(summary.classAverage ?? 0)}</td>
-                                <td className="p-3 border-t text-center text-gray-500">—</td>
+                                                                <td className="p-3 border-t text-right font-semibold" colSpan={1}>{fmt2(summary.classAverage ?? 0)}</td>
+                                                                <td className="p-3 border-t text-right text-gray-500">—</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -455,7 +445,7 @@ function formatSection(item) {
 
 // Lightweight client-side caches
 let __examTypesCache = null;
-export async function getExamTypesCached() {
+async function getExamTypesCached() {
     if (__examTypesCache) return __examTypesCache;
     const data = await getExamTypes();
     __examTypesCache = data;

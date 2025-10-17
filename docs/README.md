@@ -13,5 +13,10 @@ Kani waa index-ka documents-ka mashruuca. Dhammaan dukumentiyada hoos ku xiran w
  - USER_MANAGEMENT.md — Naqshadda Users/Auth/RBAC (Admin, Teacher, Student View, Staff) iyo qorshaha hirgelinta.
 - TEACHER_WORKFLOW.md — Lifecycle-ka Teacher: abuuris, assignment, privileges, UI/Backend, iyo API-yada la xiriira.
  - RESULTS.md — Hagaha buuxa ee tab-ka “Results”: filters, modes, darajooyin, CSV, print, Transcript, iyo talooyin.
+ - TRANSFER.md — Wareejinta ardayga (transfer): data model, APIs, UI flow, xeerar, edge cases, audit, testing.
 
 Fiiro: UI-ga waxa uu ku socda English, sharaxaadaha iyo dukumentiyada waa af-Soomaali sida aad codsatay.
+
+Qoraallo kale:
+- FRONTEND_LOOKUPS.md — Isticmaalka components‑ka filters‑ka (AcademicYearSelect, GradeSelect, ShiftSelect, GradeSectionSelect) iyo hook‑ga useCascadingFilters.
+

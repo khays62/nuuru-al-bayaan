@@ -138,6 +138,52 @@ export function useEntityList({
   useEffect(() => { load(); }, [load]);
 
   // --- Public API ---
+  const resetAndReload = async ({ filters: newFilters = {}, search = '' } = {}) => {
+    // Update internal states synchronously
+    setFilters(newFilters);
+    setSearchTermRaw(search);
+    setPage(1);
+    // Build immediate params bypassing debounced search
+    const immediateParams = {
+      page: 1,
+      limit,
+      search: search || undefined,
+      sortBy,
+      sortDir,
+      ...Object.fromEntries(
+        Object.entries(newFilters).filter(([, v]) => v !== '' && v !== undefined && v !== null)
+      )
+    };
+    const signature = (function buildSignature(obj) {
+      const flat = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (v === undefined || v === null || v === '') continue;
+        flat[k] = String(v);
+      }
+      const keys = Object.keys(flat).sort();
+      return keys.map(k => `${k}=${flat[k]}`).join('&');
+    })(immediateParams);
+    // Perform immediate load regardless of in-flight state
+    inFlightRef.current = true;
+    lastSignatureRef.current = signature;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await fetchRef.current(immediateParams);
+      setItems(result.data || []);
+      if (result.meta) {
+        setMeta(result.meta);
+      }
+      localStorage.setItem(`${persistKey}.sortBy`, immediateParams.sortBy || '');
+      localStorage.setItem(`${persistKey}.sortDir`, immediateParams.sortDir || '');
+    } catch (e) {
+      setError(e.message || 'Failed to load data');
+    } finally {
+      inFlightRef.current = false;
+      setIsLoading(false);
+      nextSignatureRef.current = null;
+    }
+  };
   return {
     items,
     meta: { ...meta, sortBy, sortDir },
@@ -153,6 +199,7 @@ export function useEntityList({
     refresh: () => load(true),
     // Haddii aad rabto in aad isticmaasho behavior kii hore (no force) waxaad heli kartaa softRefresh
     softRefresh: () => load(false),
-    currentParams: effectiveParams
+    currentParams: effectiveParams,
+    resetAndReload
   };
 }

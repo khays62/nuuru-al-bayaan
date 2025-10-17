@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
-import { getGrades, getAcademicYears, getShifts, createGradeSection, updateGradeSection, getSubjects } from '../../api/apiService';
+import { getGrades, createGradeSection, updateGradeSection, getSubjects } from '../../api/apiService';
+import AcademicYearSelect from '../lookups/AcademicYearSelect';
+import GradeSelect from '../lookups/GradeSelect';
+import ShiftSelect from '../lookups/ShiftSelect';
 import { getCachedSubjects, setCachedSubjects, invalidateSubjectsCache } from './subjectsCache';
 
 // Helper: turn array of ids from multi-select into array
@@ -18,8 +21,6 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   const [subjects, setSubjects] = useState((cls?.subjects || []).map(s => s._id || s));
 
   const [grades, setGrades] = useState([]);
-  const [years, setYears] = useState([]);
-  const [shifts, setShifts] = useState([]);
   const [gradeSubjects, setGradeSubjects] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -29,14 +30,10 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   // Load lookups
   useEffect(() => {
     (async () => {
-      const [g, y, s] = await Promise.all([
+      const [g] = await Promise.all([
         getGrades(),
-        getAcademicYears(),
-        getShifts()
       ]);
       setGrades(g || []);
-      setYears(y || []);
-      setShifts(s || []);
     })();
   }, []);
 
@@ -72,9 +69,11 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
             setLoadingSubs(true);
             const res = await getSubjects({ grade, limit: 1000, sort: 'subjectName:asc' });
             const list = res.data || [];
-            subjectsCache[grade] = list;
+            setCachedSubjects(grade, list);
             setGradeSubjects(list);
-          } catch(err) { console.error(err); } finally { setLoadingSubs(false); }
+          } catch {
+            console.error('Failed to refresh subjects after change');
+          } finally { setLoadingSubs(false); }
         })();
       }
     }
@@ -129,7 +128,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
     }
 
     if (result.removedSubjects && result.removedSubjects.length) {
-      toast((t) => (
+      toast(() => (
         <div>
           <div className="font-semibold mb-1">Removed subjects:</div>
           <ul className="list-disc ml-4 text-sm">
@@ -157,25 +156,16 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
             <input disabled={submitting} value={section} onChange={e=>setSection(e.target.value)} type="text" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60" placeholder="e.g. 1, 2, A, B" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Academic Year</label>
-            <select disabled={submitting} value={academicYear} onChange={e=>setAcademicYear(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60" required>
-              <option value="">Select...</option>
-              {years.map(y => <option key={y._id || y.yearName} value={y._id}>{y.yearName || y.label || y.name}</option>)}
-            </select>
+            <label htmlFor="gradeform-ay" className="block text-sm font-medium text-gray-700">Academic Year</label>
+            <AcademicYearSelect id="gradeform-ay" name="gradeform-ay" disabled={submitting} value={academicYear} onChange={(v)=>setAcademicYear(v)} className="mt-1 w-full" placeholder="Select..." />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Grade</label>
-            <select disabled={submitting} value={grade} onChange={onGradeChange} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60" required>
-              <option value="">Select...</option>
-              {grades.map(g => <option key={g._id || g.gradeName} value={g._id}>{g.gradeName}</option>)}
-            </select>
+            <label htmlFor="gradeform-grade" className="block text-sm font-medium text-gray-700">Grade</label>
+            <GradeSelect id="gradeform-grade" name="gradeform-grade" disabled={submitting} value={grade} onChange={(v)=> onGradeChange({ target: { value: v } })} className="mt-1 w-full" placeholder="Select..." />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Shift</label>
-            <select disabled={submitting} value={shift} onChange={e=>setShift(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60" required>
-              <option value="">Select...</option>
-              {shifts.map(s => <option key={s._id || s.shiftName} value={s._id}>{s.shiftName}</option>)}
-            </select>
+            <label htmlFor="gradeform-shift" className="block text-sm font-medium text-gray-700">Shift</label>
+            <ShiftSelect id="gradeform-shift" name="gradeform-shift" disabled={submitting} value={shift} onChange={(v)=>setShift(v)} className="mt-1 w-full" placeholder="Select..." />
           </div>
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-700">Subjects {loadingSubs && <span className="text-xs text-gray-400">(Loading...)</span>}</label>

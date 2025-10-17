@@ -7,8 +7,25 @@ export default function DataToolbar({
   filtersSlot,
   sortSlot,
   actionsSlot,
-  className = ''
+  className = '',
+  onReset
 }) {
+  const handleReset = () => {
+    if (typeof onReset === 'function') {
+      onReset();
+      return;
+    }
+    // Fallback (older behavior): clear persisted sort and reload if no handler provided
+    try {
+      const keys = Object.keys(localStorage);
+      for (const k of keys) {
+        if (/\.sort(By|Dir)$/.test(k)) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch { /* ignore */ }
+    try { window.location.reload(); } catch { /* no-op */ }
+  };
   return (
     <div className={`bg-white p-4 rounded-lg shadow ${className}`}>
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
@@ -17,8 +34,18 @@ export default function DataToolbar({
           {filtersSlot && <div className="flex items-center gap-2 flex-wrap">{filtersSlot}</div>}
           {sortSlot && <div className="flex items-center gap-2">{sortSlot}</div>}
         </div>
-        {actionsSlot && (
-          <div className="md:ml-auto md:self-start self-stretch flex justify-end">
+        {(filtersSlot || searchSlot || actionsSlot) && (
+          <div className="md:ml-auto md:self-start self-stretch flex justify-end gap-2">
+            {(filtersSlot || searchSlot) && (
+              <button
+                type="button"
+                onClick={handleReset}
+                aria-label="Reset filters"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm"
+              >
+                Reset filters
+              </button>
+            )}
             {actionsSlot}
           </div>
         )}

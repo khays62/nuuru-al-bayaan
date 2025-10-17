@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 
 import './index.css';
 import App from './App';
@@ -13,15 +13,17 @@ import GradePage from './pages/GradePage';
 import SubjectPage from './pages/SubjectPage';
 import ExamManagementPage from './pages/ExamManagementPage';
 import ResultPage from './pages/ResultPage';
+import TranscriptPage from './pages/TranscriptPage';
 import UserManagementPage from './pages/UserManagementPage';
+import NotFoundPage from './pages/NotFoundPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
 const router = createBrowserRouter([
-  {
-    path: '/login',
-    element: <LoginPage />,
-  },
+  // Top-level routes that do not use the App shell
+  { path: '/login', element: <LoginPage /> },
+  // Dedicated 404 outside the app layout (no sidebar/navbar)
+  { path: '/404', element: <NotFoundPage /> },
   {
     path: '/',
     element: <App />,
@@ -35,11 +37,14 @@ const router = createBrowserRouter([
       { path: 'subjects', element: <SubjectPage /> },
       { path: 'exams', element: <ExamManagementPage /> },
       { path: 'results', element: <ResultPage /> },
+  { path: 'transcripts', element: <TranscriptPage /> },
       { path: 'users', element: <UserManagementPage /> },
-      // Fallback 404 -> redirect to dashboard
-      { path: '*', element: <DashboardPage /> },
+  // In-app wildcard: redirect to top-level 404 so layout (Sidebar/Navbar) is not rendered
+  { path: '*', element: <Navigate to="/404" replace /> },
     ],
   },
+  // Global wildcard (any unmatched) → 404
+  { path: '*', element: <NotFoundPage /> },
 ]);
 
 ReactDOM.createRoot(document.getElementById('root')).render(

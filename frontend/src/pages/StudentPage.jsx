@@ -6,13 +6,18 @@ import Modal from '../components/common/Modal';
 import PaginationControls from '../components/common/Pagination/PaginationControls';
 import { useEntityList } from '../hooks/useEntityList';
 import toast from 'react-hot-toast';
-import { listStudents, createStudent, updateStudent as updateStudentApi, getStudentProfile as fetchStudentProfile, getAcademicYears, getGrades, getShifts, listGradeSections, reassignEnrollmentApi } from '../api/apiService';
+import { listStudents, createStudent, updateStudent as updateStudentApi, getStudentProfile as fetchStudentProfile, getAcademicYears, getGrades, getShifts, listGradeSections, transferEnrollmentApi } from '../api/apiService';
+import { on as onEvent, off as offEvent, EVENTS, emitStudentsChanged } from '../utils/events';
 import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
 import DataToolbar from '../components/common/DataToolbar/DataToolbar';
 import SearchInput from '../components/common/DataToolbar/SearchInput';
 import SortControls from '../components/common/DataToolbar/SortControls';
 import FilterSelect from '../components/common/DataToolbar/FilterSelect';
+import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
+import GradeSelect from '../components/lookups/GradeSelect';
+import ShiftSelect from '../components/lookups/ShiftSelect';
+import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
 
 // Student listing page using reusable entity list hook + pagination controls
 export default function StudentPage() {
@@ -27,12 +32,11 @@ export default function StudentPage() {
     const [yearFilter, setYearFilter] = useState('');
     const [gradeFilter, setGradeFilter] = useState('');
     const [shiftFilter, setShiftFilter] = useState('');
-    const [filterSections, setFilterSections] = useState([]);
-    const [filterSectionsLoading, setFilterSectionsLoading] = useState(false);
-    // Reassign modal state (row action)
-    const [isReassignOpen, setIsReassignOpen] = useState(false);
-    const [reassignStudent, setReassignStudent] = useState(null);
-    const [reassignBusy, setReassignBusy] = useState(false);
+    // removed: legacy filterSections state (using GradeSectionSelect which loads itself)
+    // Transfer modal state (row action)
+    const [isTransferOpen, setIsTransferOpen] = useState(false);
+    const [transferStudent, setTransferStudent] = useState(null);
+    const [transferBusy, setTransferBusy] = useState(false);
     // Cascading lookups
     const [years, setYears] = useState([]);
     const [grades, setGrades] = useState([]);
@@ -42,8 +46,6 @@ export default function StudentPage() {
     const [selGrade, setSelGrade] = useState('');
     const [selShift, setSelShift] = useState('');
     const [selSection, setSelSection] = useState('');
-    const [sections, setSections] = useState([]);
-    const [sectionsLoading, setSectionsLoading] = useState(false);
     // No filter persistence per request
 
     // fetchFn ha noqon mid aan dib isu abuureyn marka filters is beddelaan; filters waxay imanayaan extraFilters
@@ -61,7 +63,8 @@ export default function StudentPage() {
         setPage,
         setLimit,
         refresh,
-        toggleSort
+        toggleSort,
+        resetAndReload
     } = useEntityList({
         fetchFn,
         initialSortBy: 'createdAt',
@@ -75,7 +78,7 @@ export default function StudentPage() {
     // ------------------------------------------------------------
     // Fetch classes (cache + guard): Ka hortag laba-mar request (StrictMode / remount)
     // Isticmaal refs + module-level caching (optional future extract to context)
-    // ------------------------------------------------------------
+                // setSectionsLoading(false);
     const classesCacheRef = useRef(null);      // xogtii la helay
     const classesLoadingRef = useRef(false);   // in-flight guard
     const fetchClasses = useCallback(async () => {
@@ -88,11 +91,9 @@ export default function StudentPage() {
         if (classesLoadingRef.current) return;
         classesLoadingRef.current = true;
         try {
-            // Fetch Grade Sections (formerly classes) for the enrollment dropdown
-            const res = await fetch('/api/grades/sections');
-            if (!res.ok) throw new Error('Failed classes fetch');
-            const json = await res.json();
-            const arr = json.data || json || [];
+            // Fetch Grade Sections (formerly classes) for the enrollment dropdown via apiService
+            const result = await listGradeSections({ limit: 1000, sortBy: 'createdAt', sortDir: 'desc' });
+            const arr = result?.data || [];
             // Build readable label similar to old className for UI reuse
             const formatted = arr.map(item => {
                 const gradeName = item?.grade?.gradeName || 'Grade';
@@ -124,9 +125,7 @@ export default function StudentPage() {
                 setYears(Array.isArray(ys) ? ys : (ys?.data || []));
                 setGrades(Array.isArray(gs) ? gs : (gs?.data || []));
                 setShifts(Array.isArray(ss) ? ss : (ss?.data || []));
-            } catch (e) {
-                toast.error('Failed to load filters');
-            }
+            } catch { toast.error('Failed to load filters'); }
         })();
     }, []);
 
@@ -134,40 +133,18 @@ export default function StudentPage() {
     // No filter persistence
 
     useEffect(() => { fetchClasses(); }, [fetchClasses]);
-    // Fetch toolbar Section options when parents selected; clear section on parent change
+    // Toolbar Section options are handled by GradeSectionSelect internally; simply clear selected section when parents change
     useEffect(() => {
-        (async () => {
-            // clear previously selected section when any parent changes
-            setGradeSectionFilter('');
-            if (yearFilter && gradeFilter && shiftFilter) {
-                setFilterSectionsLoading(true);
-                try {
-                    const res = await listGradeSections({ academicYear: yearFilter, grade: gradeFilter, shift: shiftFilter, limit: 200 });
-                    const list = res?.data || [];
-                    setFilterSections(list);
-                    if (list.length === 0) toast.error('No sections found for selected filters');
-                } catch (e) {
-                    console.error('toolbar sections fetch failed', e);
-                    setFilterSections([]);
-                    toast.error('Failed to load sections');
-                } finally {
-                    setFilterSectionsLoading(false);
-                }
-            } else {
-                setFilterSections([]);
-            }
-        })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        setGradeSectionFilter('');
     }, [yearFilter, gradeFilter, shiftFilter]);
     useEffect(() => {
         const handler = () => refresh();
-        window.addEventListener('students:changed', handler);
-        // Clear any cached profiles so next edit fetches fresh data
         const clearProfiles = () => { profileCacheRef.current = {}; };
-        window.addEventListener('students:changed', clearProfiles);
+        onEvent(EVENTS.STUDENTS_CHANGED, handler);
+        onEvent(EVENTS.STUDENTS_CHANGED, clearProfiles);
         return () => {
-            window.removeEventListener('students:changed', handler);
-            window.removeEventListener('students:changed', clearProfiles);
+            offEvent(EVENTS.STUDENTS_CHANGED, handler);
+            offEvent(EVENTS.STUDENTS_CHANGED, clearProfiles);
         };
     }, [refresh]);
 
@@ -212,11 +189,7 @@ export default function StudentPage() {
             setLoadingEdit(false);
         }
     };
-    const handleDelete = (studentId) => {
-        if (window.confirm('Delete not implemented yet. Continue?')) {
-            console.log('Would delete', studentId);
-        }
-    };
+    // Delete flow intentionally unimplemented in Phase 1
     const closeModal = () => { setIsModalOpen(false); setEditingStudent(null); };
 
     const handleSubmit = async (payload) => {
@@ -227,19 +200,19 @@ export default function StudentPage() {
                 if (ok) {
                     toast.success('Student updated');
                     // Invalidate and warm profile cache for immediate re-edit
-                    try { delete profileCacheRef.current[editingStudent._id]; } catch(e) { /* ignore */ }
+                    try { delete profileCacheRef.current[editingStudent._id]; } catch { /* ignore */ }
                     try {
                         const profile = await fetchStudentProfile(editingStudent._id);
                         if (profile && profile.student) {
                             const enriched = { ...profile.student };
-                            if (profile.latestEnrollment?.class?._id) {
-                                enriched.classId = profile.latestEnrollment.class._id;
+                            if (profile.latestEnrollment?.gradeSection?._id) {
+                                enriched.classId = profile.latestEnrollment.gradeSection._id;
                             }
                             profileCacheRef.current[editingStudent._id] = enriched;
                         }
-                    } catch(e) { /* no-op prefetch */ }
+                    } catch { /* no-op prefetch */ }
                     closeModal();
-                    window.dispatchEvent(new CustomEvent('students:changed'));
+                    emitStudentsChanged();
                 } else {
                     if (status === 409) toast.error(data.message || 'Conflict updating student');
                     else toast.error(data.message || 'Update failed');
@@ -249,7 +222,7 @@ export default function StudentPage() {
                 if (ok) {
                     toast.success('Student created');
                     closeModal();
-                    window.dispatchEvent(new CustomEvent('students:changed'));
+                    emitStudentsChanged();
                 } else if (status === 409) {
                     toast.error(data.message || 'Conflict creating student');
                 } else {
@@ -286,28 +259,13 @@ export default function StudentPage() {
         }
     }, [years.length, grades.length, shifts.length]);
 
-    const updateSections = useCallback(async (ay, gr, sh) => {
-        if (!ay || !gr || !sh) { setSections([]); return; }
-        setSectionsLoading(true);
-        try {
-            const res = await listGradeSections({ academicYear: ay, grade: gr, shift: sh, limit: 200 });
-            const items = res?.data || [];
-            setSections(items);
-            if (items.length === 0) toast.error('No sections found for selected filters');
-        } catch (e) {
-            console.error('Sections fetch failed', e);
-            setSections([]);
-            toast.error('Failed to load sections');
-        } finally {
-            setSectionsLoading(false);
-        }
-    }, []);
+    // Removed updateSections; GradeSectionSelect handles loading its options
 
-    const openReassignModalFromRow = async (st) => {
+    const openTransferModalFromRow = async (st) => {
         try {
-            setReassignStudent(st);
-            setIsReassignOpen(true);
-            setSelYear(''); setSelGrade(''); setSelShift(''); setSelSection(''); setSections([]);
+            setTransferStudent(st);
+            setIsTransferOpen(true);
+            setSelYear(''); setSelGrade(''); setSelShift(''); setSelSection('');
             await ensureLookupsLoaded();
             // Fetch full profile to prefill selections
             const profile = await fetchStudentProfile(st._id);
@@ -320,49 +278,50 @@ export default function StudentPage() {
                 setSelGrade(gr);
                 setSelShift(sh);
                 // Load candidate sections for these filters
-                await updateSections(ay, gr, sh);
+                // options are loaded within GradeSectionSelect
                 // Do not preselect current section, force explicit choice
             }
-        } catch (e) {
-            console.error('Open reassign failed', e);
+        } catch {
+            console.error('Open transfer failed');
         }
     };
 
     // React to cascade filter changes
     useEffect(() => {
-        if (!isReassignOpen) return;
+        if (!isTransferOpen) return;
         // Only fetch when all 3 parents selected
-        if (selYear && selGrade && selShift) {
-            updateSections(selYear, selGrade, selShift);
-        } else {
-            setSections([]);
+        if (!selYear || !selGrade || !selShift) {
             setSelSection('');
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selYear, selGrade, selShift, isReassignOpen]);
+    }, [selYear, selGrade, selShift, isTransferOpen]);
 
-    const handleReassignSubmit = async () => {
-        if (!reassignStudent || !selSection) return;
+    const handleTransferSubmit = async () => {
+        if (!transferStudent || !selSection) return;
         try {
-            setReassignBusy(true);
-            const { ok, data, status } = await reassignEnrollmentApi(reassignStudent._id, { gradeSectionId: selSection });
+            setTransferBusy(true);
+            const { ok, data, status } = await transferEnrollmentApi(transferStudent._id, { gradeSectionId: selSection });
             if (!ok) {
-                toast.error(data?.message || `Failed to reassign (status ${status})`);
+                toast.error(data?.message || `Failed to transfer (status ${status})`);
                 return;
             }
-            toast.success('Enrollment reassigned');
-            setIsReassignOpen(false);
-            setReassignStudent(null);
-            setSelYear(''); setSelGrade(''); setSelShift(''); setSelSection(''); setSections([]);
-            // Refresh table
+            const msg = (data?.message || '').toString();
+            if (/no\s+changes/i.test(msg)) {
+                // No-op: already in this section
+                toast.success('No changes: already in this section');
+            } else {
+                toast.success('Enrollment transferred');
+            }
+            setIsTransferOpen(false);
+            setTransferStudent(null);
+            setSelYear(''); setSelGrade(''); setSelShift(''); setSelSection('');
+            // Refresh table then notify listeners
             await refresh();
-            // Let others know
-            window.dispatchEvent(new CustomEvent('students:changed'));
+            emitStudentsChanged();
         } catch (e) {
             console.error(e);
             toast.error('Network or server error');
         } finally {
-            setReassignBusy(false);
+            setTransferBusy(false);
         }
     };
 
@@ -380,37 +339,21 @@ export default function StudentPage() {
 
             <DataToolbar
                 searchSlot={<SearchInput value={searchTerm} onChange={(v)=> setSearch(v)} placeholder="Search by name or ID..." />}
+                onReset={() => {
+                    // Clear filters + search and perform immediate load (no debounce)
+                    setYearFilter('');
+                    setGradeFilter('');
+                    setShiftFilter('');
+                    setGradeSectionFilter('');
+                    setStatusFilter('');
+                    resetAndReload({ filters: {}, search: '' });
+                }}
                 filtersSlot={(
                     <div className="flex flex-col sm:flex-row gap-3">
-                        <FilterSelect
-                            value={yearFilter}
-                            onChange={(v) => { setYearFilter(v); setPage(1); }}
-                            options={years.map(y => ({ value: y._id, label: y.yearName }))}
-                            placeholder="Academic Year"
-                        />
-                        <FilterSelect
-                            value={gradeFilter}
-                            onChange={(v) => { setGradeFilter(v); setPage(1); }}
-                            options={grades.map(g => ({ value: g._id, label: g.gradeName }))}
-                            placeholder="Grade"
-                        />
-                        <FilterSelect
-                            value={shiftFilter}
-                            onChange={(v) => { setShiftFilter(v); setPage(1); }}
-                            options={shifts.map(s => ({ value: s._id, label: s.shiftName }))}
-                            placeholder="Shift"
-                        />
-                        <select
-                            value={gradeSectionFilter}
-                            onChange={(e) => { setGradeSectionFilter(e.target.value); setPage(1); }}
-                            className="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            disabled={!yearFilter || !gradeFilter || !shiftFilter || filterSectionsLoading}
-                        >
-                            <option value="">{filterSectionsLoading ? 'Loading...' : 'Section'}</option>
-                            {filterSections.map(s => (
-                                <option key={s._id} value={s._id}>{`${s.grade?.gradeName || ''} - Sec ${s.section} (${s.academicYear?.yearName || ''} - ${s.shift?.shiftName || ''})`}</option>
-                            ))}
-                        </select>
+                        <AcademicYearSelect placeholder="Academic Year" value={yearFilter} onChange={(v)=>{ setYearFilter(v); setPage(1); }} className="min-w-40" />
+                        <GradeSelect placeholder="Grade" value={gradeFilter} onChange={(v)=>{ setGradeFilter(v); setPage(1); }} className="min-w-32" />
+                        <ShiftSelect placeholder="Shift" value={shiftFilter} onChange={(v)=>{ setShiftFilter(v); setPage(1); }} className="min-w-32" />
+                        <GradeSectionSelect academicYearId={yearFilter} gradeId={gradeFilter} shiftId={shiftFilter} value={gradeSectionFilter} onChange={(v)=>{ setGradeSectionFilter(v); setPage(1); }} className="min-w-48" />
                         <FilterSelect
                             value={statusFilter}
                             onChange={(v) => { setStatusFilter(v); setPage(1); }}
@@ -440,7 +383,7 @@ export default function StudentPage() {
             ) : students.length === 0 ? (
                 <EmptyState title="No students found" description="Try adjusting filters or add a new student." actionLabel="Add Student" onAction={handleAddNew} />
             ) : (
-                <StudentTable students={students} onEdit={handleEdit} onDelete={handleDelete} onReassign={openReassignModalFromRow} />
+                <StudentTable students={students} onEdit={handleEdit} onTransfer={openTransferModalFromRow} />
             )}
 
             <PaginationControls
@@ -462,45 +405,31 @@ export default function StudentPage() {
                 </div>
             </Modal>
 
-            {/* Reassign Section Modal (row action) */}
-            <Modal isOpen={isReassignOpen} onClose={() => setIsReassignOpen(false)} title={`Reassign Section${reassignStudent ? `: ${reassignStudent.fullName}` : ''}`}>
+            {/* Transfer Section Modal (row action) */}
+            <Modal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} title={`Transfer Section${transferStudent ? `: ${transferStudent.fullName}` : ''}`}>
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Academic Year</label>
-                            <select value={selYear} onChange={e=> { setSelYear(e.target.value); setSelSection(''); }} className="w-full border rounded px-3 py-2 text-sm">
-                                <option value="">-- Select --</option>
-                                {years.map(y => <option key={y._id} value={y._id}>{y.yearName}</option>)}
-                            </select>
+                            <AcademicYearSelect placeholder="-- Select Academic Year --" value={selYear} onChange={(v)=> { setSelYear(v); setSelSection(''); }} className="w-full" />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Grade</label>
-                            <select value={selGrade} onChange={e=> { setSelGrade(e.target.value); setSelSection(''); }} className="w-full border rounded px-3 py-2 text-sm" disabled={!selYear}>
-                                <option value="">-- Select --</option>
-                                {grades.map(g => <option key={g._id} value={g._id}>{g.gradeName}</option>)}
-                            </select>
+                            <GradeSelect placeholder="-- Select Grade --" value={selGrade} onChange={(v)=> { setSelGrade(v); setSelSection(''); }} className="w-full" />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Shift</label>
-                            <select value={selShift} onChange={e=> { setSelShift(e.target.value); setSelSection(''); }} className="w-full border rounded px-3 py-2 text-sm" disabled={!selYear || !selGrade}>
-                                <option value="">-- Select --</option>
-                                {shifts.map(s => <option key={s._id} value={s._id}>{s.shiftName}</option>)}
-                            </select>
+                            <ShiftSelect placeholder="-- Select Shift --" value={selShift} onChange={(v)=> { setSelShift(v); setSelSection(''); }} className="w-full" />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Section</label>
-                            <select value={selSection} onChange={e=> setSelSection(e.target.value)} className="w-full border rounded px-3 py-2 text-sm" disabled={!selYear || !selGrade || !selShift || sectionsLoading}>
-                                <option value="">{sectionsLoading ? 'Loading...' : '-- Select --'}</option>
-                                {sections.map(s => (
-                                    <option key={s._id} value={s._id}>{`${s.grade?.gradeName || ''} - Sec ${s.section} (${s.academicYear?.yearName || ''} - ${s.shift?.shiftName || ''})`}</option>
-                                ))}
-                            </select>
+                            <GradeSectionSelect academicYearId={selYear} gradeId={selGrade} shiftId={selShift} value={selSection} onChange={(v)=> setSelSection(v)} className="w-full" />
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button onClick={()=> setIsReassignOpen(false)} className="px-3 py-2 text-sm rounded border">Cancel</button>
-                        <button disabled={reassignBusy || !selSection} onClick={handleReassignSubmit} className="px-3 py-2 text-sm rounded bg-blue-600 text-white disabled:opacity-50">
-                            {reassignBusy ? 'Reassigning...' : 'Confirm Reassign'}
+                        <button onClick={()=> setIsTransferOpen(false)} className="px-3 py-2 text-sm rounded border">Cancel</button>
+                        <button disabled={transferBusy || !selSection} onClick={handleTransferSubmit} className="px-3 py-2 text-sm rounded bg-blue-600 text-white disabled:opacity-50">
+                            {transferBusy ? 'Transferring...' : 'Confirm Transfer'}
                         </button>
                     </div>
                 </div>

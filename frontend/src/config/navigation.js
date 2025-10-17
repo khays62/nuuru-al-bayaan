@@ -10,5 +10,6 @@ export const navItems = [
     { path: '/subjects', label: 'Subjects', icon: BookOpenCheck },
     { path: '/exams', label: 'Exam Management', icon: BarChart2 },
     { path: '/results', label: 'Results', icon: BarChart2 }, // Using the same icon for now
+    { path: '/transcripts', label: 'Transcripts', icon: BookOpenCheck },
     { path: '/users', label: 'User Management', icon: UserCog },
 ];

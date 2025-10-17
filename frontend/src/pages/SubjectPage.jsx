@@ -9,7 +9,8 @@ import { toast } from 'react-hot-toast';
 import { useEntityList } from '../hooks/useEntityList';
 import DataToolbar from '../components/common/DataToolbar/DataToolbar';
 import SearchInput from '../components/common/DataToolbar/SearchInput';
-import FilterSelect from '../components/common/DataToolbar/FilterSelect';
+// import FilterSelect from '../components/common/DataToolbar/FilterSelect';
+import GradeSelect from '../components/lookups/GradeSelect';
 import SortControls from '../components/common/DataToolbar/SortControls';
 import PaginationControls from '../components/common/Pagination/PaginationControls';
 import LoadingState from '../components/common/Feedback/LoadingState';
@@ -52,11 +53,11 @@ export default function SubjectPage() {
     error,
     searchTerm,
     setSearch,
-    setFilter,
     toggleSort,
     setPage,
     setLimit,
-    refresh
+    refresh,
+    resetAndReload
   } = list;
 
   // --- Load Grades (lookup) ---
@@ -65,7 +66,7 @@ export default function SubjectPage() {
       try {
         const gradeList = await getGrades();
         setGrades(gradeList);
-      } catch (e) {
+      } catch {
         toast.error('Failed to load grades');
       }
     })();
@@ -139,11 +140,14 @@ export default function SubjectPage() {
   );
 
   const filtersSlot = (
-    <FilterSelect
+    <GradeSelect
+      id="subjects-grade-filter"
+      name="subjects-grade-filter"
+      aria-label="Grade"
       value={gradeFilter}
       onChange={(v) => { setGradeFilter(v); setPage(1); }}
-      options={grades.map(g => ({ value: g._id, label: g.gradeName }))}
-      placeholder="Filter by Grade"
+      className="min-w-32"
+      placeholder="Grade"
     />
   );
 
@@ -183,6 +187,10 @@ export default function SubjectPage() {
         searchSlot={searchSlot}
         filtersSlot={filtersSlot}
         sortSlot={sortSlot}
+        onReset={() => {
+          setGradeFilter('');
+          resetAndReload({ filters: {}, search: '' });
+        }}
         // actionsSlot removed: button is now in header top-right
       />
 

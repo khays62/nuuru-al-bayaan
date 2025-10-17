@@ -2,7 +2,10 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { ArrowLeft, Loader, RefreshCw, User, Phone, Calendar, MapPin, Users, IdCard } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getStudentTranscript } from '../api/apiService';
+import { getStudentTranscript, getStudentTransfers } from '../api/apiService';
+import { getFullTranscript } from '../api/apiService';
+import TransferBadge from '../components/student/TransferBadge';
+import TransferTimeline from '../components/student/TransferTimeline';
 // Modal and reassign API removed; reassign now handled from Students table
 
 // Student Profile page: fetches student profile + latest enrollment + stats + history (paginated)
@@ -12,7 +15,7 @@ export default function StudentProfilePage() {
     const search = new URLSearchParams(location.search);
     const ay = search.get('ay') || '';
     const gs = search.get('gs') || '';
-    const returnUrl = search.get('return') || '';
+    // 'return' link to Results removed to decouple pages
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -26,6 +29,14 @@ export default function StudentProfilePage() {
     // Transcript state (optional based on query params)
     const [tLoading, setTLoading] = useState(false);
     const [transcript, setTranscript] = useState(null);
+    // Full transcript (multi-enrollment) state
+    const [fullTLoading, setFullTLoading] = useState(false);
+    const [fullTranscript, setFullTranscript] = useState(null); // response of full-transcript
+    const [openEnrollmentIds, setOpenEnrollmentIds] = useState([]); // accordions open list
+    // Transfer logs state
+    const [transferLogs, setTransferLogs] = useState([]); // dhammaan transfer-yada ardayga
+    const [transferLoading, setTransferLoading] = useState(false); // spinner state
+    const [showAllTransfers, setShowAllTransfers] = useState(false); // toggle: latest vs all
 
     // Reassign UI removed from profile; handled in Students page
 
@@ -87,6 +98,22 @@ export default function StudentProfilePage() {
     useEffect(() => { fetchProfile(); }, [fetchProfile]);
     useEffect(() => { fetchHistory(histPage); }, [fetchHistory, histPage]);
 
+    // Fetch transfer logs
+    useEffect(() => {
+        (async () => {
+            if (!studentId) return;
+            setTransferLoading(true);
+            try {
+                const res = await getStudentTransfers(studentId, { limit: 50 });
+                setTransferLogs(res.data || []);
+            } catch (e) {
+                console.error('Transfers load failed', e);
+            } finally {
+                setTransferLoading(false);
+            }
+        })();
+    }, [studentId]);
+
     // Fetch transcript if AY+GS provided in URL
     useEffect(() => {
         (async () => {
@@ -109,11 +136,7 @@ export default function StudentProfilePage() {
                 <Link to="/students" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border bg-white hover:bg-gray-50 shadow-sm">
                     <ArrowLeft size={14} /> Back to Students
                 </Link>
-                {returnUrl && (
-                    <Link to={returnUrl} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border bg-white hover:bg-gray-50 shadow-sm text-indigo-700 border-indigo-300">
-                        <ArrowLeft size={14} /> Back to Results
-                    </Link>
-                )}
+                {/* Back to Results removed */}
             </div>
 
             {/* Profile Card */}
@@ -144,7 +167,11 @@ export default function StudentProfilePage() {
                                 <div className="flex flex-wrap gap-2 items-center">
                                     <Badge color="emerald">{profile.stats?.activeStatus ?? profile.student.status}</Badge>
                                     <Badge>{`Total Years: ${profile.stats?.totalYears ?? 0}`}</Badge>
-                                    {/* Reassign button removed; use Students list actions */}
+                                    {/* Latest transfer badge if exists */}
+                                    {transferLogs.length > 0 && (
+                                        // halkan waxa aan ku tusaynaa log-ga ugu dambeeya (index 0) oo ah midka ugu cusub
+                                        <TransferBadge log={transferLogs[0]} />
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -225,6 +252,138 @@ export default function StudentProfilePage() {
                         <button disabled={histMeta.page >= histMeta.totalPages} onClick={() => setHistPage(p => Math.min(histMeta.totalPages, p + 1))} className="px-2 py-1 rounded border disabled:opacity-40">Next</button>
                     </div>
                 </div>
+            </div>
+            {/* Transfer Timeline */}
+            <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">Transfers</h2>
+                    <div className="flex items-center gap-3">
+                        {/* Toggle: Latest only vs All */}
+                        {transferLogs.length > 1 && (
+                            <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    className="rounded border-gray-300"
+                                    checked={showAllTransfers}
+                                    onChange={e => setShowAllTransfers(e.target.checked)}
+                                />
+                                {showAllTransfers ? 'Show only latest' : 'Show all'}
+                            </label>
+                        )}
+                        {transferLoading && <Loader size={16} className="animate-spin text-gray-400" />}
+                    </div>
+                </div>
+                {/* Haddii showAllTransfers = false → hal log (latest) */}
+                <TransferTimeline logs={showAllTransfers ? transferLogs : (transferLogs.slice(0,1))} />
+                {(!showAllTransfers && transferLogs.length > 1) && (
+                    <p className="mt-2 text-[11px] text-gray-500">Showing latest only. Toggle to view all history.</p>
+                )}
+            </div>
+
+            {/* Full Transcript (Multi-Enrollments) */}
+            <div className="bg-white p-6 rounded-lg shadow">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800">Full Transcript (All Enrollments)</h2>
+                    <div className="flex items-center gap-2">
+                        {!fullTranscript && (
+                            <button
+                                onClick={async () => {
+                                    if (fullTLoading) return;
+                                    setFullTLoading(true);
+                                    try {
+                                        const { ok, data, error } = await getFullTranscript(studentId);
+                                        if (!ok) toast.error(error || 'Full transcript failed');
+                                        else setFullTranscript(data);
+                                    } finally { setFullTLoading(false); }
+                                }}
+                                className="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                                disabled={fullTLoading}
+                            >
+                                {fullTLoading ? 'Loading…' : 'Load'}
+                            </button>
+                        )}
+                        {fullTranscript && (
+                            <button
+                                onClick={() => { setFullTranscript(null); setOpenEnrollmentIds([]); }}
+                                className="px-3 py-1.5 text-xs rounded-md border bg-white hover:bg-gray-50"
+                            >Reset</button>
+                        )}
+                    </div>
+                </div>
+                {!fullTranscript && !fullTLoading && (
+                    <p className="text-sm text-gray-500">Riix “Load” si aad u hesho transcripts dhammaan enrollments (multi-year). Waxaa imanaya hal request oo kaliya.</p>
+                )}
+                {fullTLoading && <p className="text-sm text-gray-500">Loading full transcript…</p>}
+                {fullTranscript && (
+                    <div className="space-y-4">
+                        {/* Summary */}
+                        <div className="p-3 rounded-md bg-gray-50 border text-xs flex flex-wrap gap-3">
+                            <span><strong>Enrollments:</strong> {fullTranscript.summary?.enrollmentCount}</span>
+                            <span><strong>Distinct Subjects:</strong> {fullTranscript.summary?.distinctSubjects}</span>
+                            <span><strong>Cumulative Total:</strong> {Number(fullTranscript.summary?.cumulativeTotal || 0)}</span>
+                            <span><strong>Cumulative Avg:</strong> {Number((fullTranscript.summary?.cumulativeAverage || 0).toFixed?.(2))}</span>
+                        </div>
+                        {/* Accordions */}
+                        <div className="divide-y divide-gray-200 border rounded-md">
+                            {(fullTranscript.enrollments || []).map(en => {
+                                const open = openEnrollmentIds.includes(String(en.enrollmentId));
+                                const toggle = () => setOpenEnrollmentIds(ids => open ? ids.filter(i => i !== String(en.enrollmentId)) : [...ids, String(en.enrollmentId)]);
+                                const t = en.transcript || { examTypes: [], subjects: [], rows: [], overall: { total:0, average:0 } };
+                                return (
+                                    <div key={String(en.enrollmentId)}>
+                                        <button onClick={toggle} className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-gray-50">
+                                            <span className="text-sm font-medium text-gray-700">{en.academicYear?.yearName || ''} • {en.gradeSection?.grade || ''} {en.gradeSection?.section ? `(${en.gradeSection.section})` : ''}</span>
+                                            <span className="text-xs text-indigo-600">{open ? 'Hide' : 'Show'}</span>
+                                        </button>
+                                        {open && (
+                                            <div className="px-4 pb-4 text-xs bg-white overflow-x-auto">
+                                                {t.subjects.length === 0 ? (
+                                                    <p className="text-gray-500">No subjects / scores.</p>
+                                                ) : (
+                                                    <table className="min-w-full text-[11px] border">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="px-2 py-1 text-left">Subject</th>
+                                                                {t.examTypes.map(et => (
+                                                                    <th key={String(et._id)} className="px-2 py-1 text-left">{et.typeName}</th>
+                                                                ))}
+                                                                <th className="px-2 py-1 text-left">Total</th>
+                                                                <th className="px-2 py-1 text-left">Avg</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {t.rows.map(r => (
+                                                                <tr key={String(r.subjectId)} className="even:bg-gray-50">
+                                                                    <td className="px-2 py-1 whitespace-nowrap">{r.subjectName}</td>
+                                                                    {t.examTypes.map(et => {
+                                                                        const cell = r.exams.find(e => String(e.examTypeId) === String(et._id));
+                                                                        return <td key={String(et._id)} className="px-2 py-1">{Number((cell?.score || 0).toFixed?.(2))}</td>;
+                                                                    })}
+                                                                    <td className="px-2 py-1 font-medium">{Number((r.total || 0).toFixed?.(2))}</td>
+                                                                    <td className="px-2 py-1">{Number((r.average || 0).toFixed?.(2))}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                        <tfoot>
+                                                            <tr className="bg-gray-100 font-semibold">
+                                                                <td className="px-2 py-1">Overall</td>
+                                                                <td colSpan={t.examTypes.length} className="px-2 py-1"></td>
+                                                                <td className="px-2 py-1">{Number((t.overall.total || 0).toFixed?.(2))}</td>
+                                                                <td className="px-2 py-1">{Number((t.overall.average || 0).toFixed?.(2))}</td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {/* Note Somali explanation */}
+                        <p className="text-[11px] text-gray-500">Fiiro: Transcript-kan wuxuu isku keenayaa sanad walba enrollment uu ardaygu lahaa. Wax walba hal wicitaan (efficient).</p>
+                    </div>
+                )}
             </div>
             {/* Transcript (if available) */}
             {(ay && gs) && (
