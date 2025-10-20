@@ -11,7 +11,7 @@ const variants = {
 };
 
 export default function ActionButton({ variant = 'neutral', onClick, title, icon, children, className = '', disabled = false }) {
-  const base = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border shadow-sm text-sm disabled:opacity-60 disabled:cursor-not-allowed';
+  const base = 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border shadow-sm text-sm whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed';
   const cls = `${base} ${variants[variant] || variants.neutral} ${className}`;
   return (
     <button type="button" title={title} onClick={onClick} className={cls} disabled={disabled}>

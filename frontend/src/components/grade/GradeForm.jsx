@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { getGrades, createGradeSection, updateGradeSection, getSubjects } from '../../api';
+import { hasScores as apiHasScores } from '../../api';
+import { Lock, RotateCcw } from 'lucide-react';
 import AcademicYearSelect from '../lookups/AcademicYearSelect';
 import GradeSelect from '../lookups/GradeSelect';
 import ShiftSelect from '../lookups/ShiftSelect';
-import { getCachedSubjects, setCachedSubjects, invalidateSubjectsCache } from './subjectsCache';
-
-// Helper: turn array of ids from multi-select into array
-function getSelectValues(selectEl) { return Array.from(selectEl.selectedOptions).map(o => o.value); }
+import { setCachedSubjects, invalidateSubjectsCache } from './subjectsCache';
 
 const GradeForm = ({ cls, onClose, onSuccess }) => {
   const isEdit = Boolean(cls?._id);
@@ -23,9 +22,13 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   const [grades, setGrades] = useState([]);
   const [gradeSubjects, setGradeSubjects] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
+  const [hasScoreMap, setHasScoreMap] = useState({}); // subjectId -> boolean (has scores)
+  const hasScoresAbortRef = useRef(null);
+  const hasScoresTimerRef = useRef(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const pendingGradeRef = useRef(null);
+  const skipFirstGradeEffectRef = useRef(true); // avoid fetch on initial mount/open
 
   // Load lookups
   useEffect(() => {
@@ -37,49 +40,28 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
     })();
   }, []);
 
-  // Load subjects for selected grade
-  useEffect(() => {
+  // Helper: refresh subjects for current grade (force fresh)
+  const refreshSubjects = async () => {
     if (!grade) { setGradeSubjects([]); return; }
-    let cancelled = false;
-    async function load() {
-      const cached = getCachedSubjects(grade);
-      if (cached) { if (!cancelled) setGradeSubjects(cached); return; }
-      setLoadingSubs(true);
-      try {
-        const res = await getSubjects({ grade, limit: 1000, sort: 'subjectName:asc' });
-        const list = res.data || [];
-        setCachedSubjects(grade, list);
-        if (!cancelled) setGradeSubjects(list);
-      } catch (e) { console.error(e); }
-      finally { if (!cancelled) setLoadingSubs(false); }
-    }
-    load();
-    return () => { cancelled = true; };
+    setLoadingSubs(true);
+    try {
+      invalidateSubjectsCache(grade);
+      const res = await getSubjects({ grade, limit: 1000, sort: 'subjectName:asc' });
+      const list = res.data || [];
+      setCachedSubjects(grade, list);
+      setGradeSubjects(list);
+    } catch (e) { console.error(e); }
+    finally { setLoadingSubs(false); }
+  };
+
+  // Load subjects only when user changes the grade (skip initial open)
+  useEffect(() => {
+    if (skipFirstGradeEffectRef.current) { skipFirstGradeEffectRef.current = false; return; }
+    if (!grade) { setGradeSubjects([]); return; }
+    void refreshSubjects();
   }, [grade]);
 
-  // Live sync on subjects changes
-  useEffect(() => {
-    function onSubjectsChanged(e) {
-      if (!grade) return;
-      const impacted = e.detail?.gradeIds || [];
-      if (impacted.includes(grade)) {
-        invalidateSubjectsCache(grade);
-        (async () => {
-          try {
-            setLoadingSubs(true);
-            const res = await getSubjects({ grade, limit: 1000, sort: 'subjectName:asc' });
-            const list = res.data || [];
-            setCachedSubjects(grade, list);
-            setGradeSubjects(list);
-          } catch {
-            console.error('Failed to refresh subjects after change');
-          } finally { setLoadingSubs(false); }
-        })();
-      }
-    }
-    window.addEventListener('subjects:changed', onSubjectsChanged);
-    return () => window.removeEventListener('subjects:changed', onSubjectsChanged);
-  }, [grade]);
+  // Removed auto live-sync via global events to avoid implicit network requests.
 
   // Handle Grade Change confirm (if subjects already chosen)
   const onGradeChange = (e) => {
@@ -114,6 +96,9 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
       if (!res.ok) {
         if (res.code === 'CLASS_STRUCTURAL_LOCKED') {
           toast.error(`Update blocked: ${res.error}. (${(res.blocked||[]).join(', ')})`);
+        } else if (res.code === 'SUBJECTS_HAVE_SCORES') {
+          const items = (res.blockedSubjects || []).map(s => s.subjectName || s._id).join(', ');
+          toast.error(`Cannot remove subjects with scores: ${items}`);
         } else {
           toast.error(res.error || 'Failed to update');
         }
@@ -145,7 +130,43 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
     onClose();
   };
 
-  const onSubjectsChange = (e) => { setSubjects(getSelectValues(e.target)); };
+  // Toggle subject selection for checkbox list
+  const toggleSubject = (id) => {
+    setSubjects((prev) => {
+      const has = prev.includes(id);
+      // Prevent deselect if it has scores (guard in UI); backend will also enforce
+      if (has && isEdit && hasScoreMap[id]) return prev;
+      if (has) return prev.filter(s => s !== id);
+      return [...prev, id];
+    });
+  };
+
+  // Query has-scores for selected subjects in edit mode to disable deselection
+  useEffect(() => {
+    // Debounce and abort in-flight calls to reduce network noise
+    if (!isEdit || !cls?._id || !subjects || subjects.length === 0) {
+      setHasScoreMap({});
+      if (hasScoresTimerRef.current) { clearTimeout(hasScoresTimerRef.current); hasScoresTimerRef.current = null; }
+      if (hasScoresAbortRef.current) { hasScoresAbortRef.current.abort(); hasScoresAbortRef.current = null; }
+      return;
+    }
+    if (hasScoresTimerRef.current) clearTimeout(hasScoresTimerRef.current);
+    hasScoresTimerRef.current = setTimeout(async () => {
+      if (hasScoresAbortRef.current) { hasScoresAbortRef.current.abort(); }
+      const ctrl = new AbortController();
+      hasScoresAbortRef.current = ctrl;
+      try {
+        const params = { gradeSectionId: cls._id, subjectIds: subjects.join(',') };
+        const res = await apiHasScores(params, { signal: ctrl.signal });
+        if (!ctrl.signal.aborted && res.ok) setHasScoreMap(res.data?.map || {});
+      } catch (e) {
+        // ignore abort errors
+      }
+    }, 200);
+    return () => {
+      if (hasScoresTimerRef.current) { clearTimeout(hasScoresTimerRef.current); hasScoresTimerRef.current = null; }
+    };
+  }, [isEdit, cls?._id, subjects]);
 
   return (
     <div className="relative">
@@ -168,13 +189,47 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
             <ShiftSelect id="gradeform-shift" name="gradeform-shift" disabled={submitting} value={shift} onChange={(v)=>setShift(v)} className="mt-1 w-full" placeholder="Select..." />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700">Subjects {loadingSubs && <span className="text-xs text-gray-400">(Loading...)</span>}</label>
-            <select multiple disabled={submitting} value={subjects} onChange={onSubjectsChange} className="mt-1 block w-full px-3 py-2 h-40 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60">
-              {gradeSubjects.map(sub => (
-                <option key={sub._id} value={sub._id}>{sub.subjectName}</option>
-              ))}
-            </select>
-            <p className="mt-1 text-xs text-gray-500">Hold Ctrl (Cmd on Mac) to select multiple.</p>
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+              <span>Subjects</span>
+              <button
+                type="button"
+                onClick={refreshSubjects}
+                disabled={!grade || loadingSubs}
+                title="Refresh subjects for this grade"
+                className="inline-flex items-center rounded border px-1.5 py-1 text-xs text-slate-700 bg-slate-50 hover:bg-slate-100 disabled:opacity-50"
+              >
+                <RotateCcw size={14} className={loadingSubs ? 'animate-spin' : ''} />
+              </button>
+              {loadingSubs && <span className="text-xs text-gray-400">(Loading...)</span>}
+            </label>
+            <div className="mt-1 max-h-56 overflow-y-auto border border-gray-300 rounded-md px-3 py-2 divide-y divide-gray-100">
+              {gradeSubjects.length === 0 && (
+                <div className="text-sm text-gray-500 py-4">No subjects for this grade.</div>
+              )}
+              {gradeSubjects.map(sub => {
+                const id = sub._id;
+                const checked = subjects.includes(id);
+                const locked = isEdit && checked && !!hasScoreMap[id];
+                return (
+                  <label key={id} className={`flex items-center gap-3 py-2 ${locked ? 'opacity-70' : ''}`}>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      disabled={submitting || locked}
+                      checked={checked}
+                      onChange={() => toggleSubject(id)}
+                    />
+                    <span className="text-sm text-gray-800">{sub.subjectName}</span>
+                    {locked && (
+                      <span className="ml-auto inline-flex items-center gap-1 text-xs text-gray-500">
+                        <Lock size={14} /> has scores
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">Tick subjects to include. Subjects with existing scores cannot be removed.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Capacity</label>

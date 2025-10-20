@@ -85,3 +85,23 @@ export async function getStudentTranscript(params = {}) {
     return { ok: false, error: e?.message || 'Network or server error' };
   }
 }
+
+// Check if a set of subjects have scores recorded for a GradeSection (and optional AY)
+export async function hasScores(params = {}, opts = {}) {
+  try {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.append(k, v);
+    });
+    const qs = query.toString();
+    const { signal } = opts;
+  const res = await fetch(`${apiUrl('/exams/has-scores')}${qs ? `?${qs}` : ''}`, { signal, cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data?.message || 'Failed to check has-scores');
+    return { ok: true, data };
+  } catch (e) {
+    if (e?.name === 'AbortError') return { ok: false, error: 'aborted' };
+    console.error('Failed to check has-scores', e);
+    return { ok: false, error: e?.message || 'Network or server error' };
+  }
+}

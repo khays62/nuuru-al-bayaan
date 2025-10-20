@@ -45,16 +45,13 @@ export default function SubjectForm({ subject, onClose, onSubmit, allGrades, isS
         handleChange(e);
     };
 
-    // Shaqada maareysa isbeddelka dropdown-ka heerarka
-    const handleGradeChange = (e) => {
-        const options = e.target.options;
-        const selectedGrades = [];
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].selected) {
-                selectedGrades.push(options[i].value);
-            }
-        }
-        setFormData(prev => ({ ...prev, grades: selectedGrades }));
+    // Toggle grade selection (checkbox style)
+    const toggleGrade = (id) => {
+        setFormData(prev => {
+            const exists = prev.grades.includes(id);
+            const grades = exists ? prev.grades.filter(g => g !== id) : [...prev.grades, id];
+            return { ...prev, grades };
+        });
         onDirty && onDirty();
     };
 
@@ -84,13 +81,24 @@ export default function SubjectForm({ subject, onClose, onSubmit, allGrades, isS
                 </div>
                 <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">Associated Grades</label>
-                    <select multiple value={formData.grades} onChange={handleGradeChange} className="mt-1 block w-full px-3 py-2 h-40 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
-                        {/* Hadda si sax ah ayuu u soo bandhigayaa heerarka database-ka ku jira */}
-                        {allGrades.map(grade => (
-                            <option key={grade._id} value={grade._id}>{grade.gradeName}</option>
-                        ))}
-                    </select>
-                    <p className="mt-1 text-xs text-gray-500">Hold Ctrl/Cmd to select multiple.</p>
+                    <div className="mt-1 max-h-56 overflow-y-auto border border-gray-300 rounded-md px-3 py-2 divide-y divide-gray-100">
+                        {allGrades.map(grade => {
+                            const id = grade._id;
+                            const checked = formData.grades.includes(id);
+                            return (
+                                <label key={id} className="flex items-center gap-3 py-2">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4"
+                                        checked={checked}
+                                        onChange={() => toggleGrade(id)}
+                                    />
+                                    <span className="text-sm text-gray-800">{grade.gradeName}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Select one or more grades.</p>
                 </div>
             </div>
             <div className="mt-6 flex justify-end space-x-4">

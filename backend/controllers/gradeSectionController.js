@@ -221,7 +221,40 @@ export const updateGradeSection = async (req, res) => {
     if (grade !== undefined && !enrollmentExists) cls.grade = grade;
     if (academicYear !== undefined && !enrollmentExists) cls.academicYear = academicYear;
     if (shift !== undefined && !enrollmentExists) cls.shift = shift;
-    if (subjects !== undefined) cls.subjects = subjects;
+    // Before applying subject changes, compute which subjects are being removed
+    let removedCandidateIds = [];
+    if (subjects !== undefined) {
+      const prev = (cls.subjects || []).map(id => id.toString());
+      const next = (subjects || []).map(id => id.toString());
+      removedCandidateIds = prev.filter(id => !next.includes(id));
+
+      // Guard: prevent removing subjects that already have scores recorded for this class & AY
+      if (removedCandidateIds.length) {
+        try {
+          const Exam = (await import('../models/Exam.js')).default;
+          const ExamScore = (await import('../models/ExamScore.js')).default;
+          const exams = await Exam.find({ gradeSection: cls._id, academicYear: cls.academicYear }).select('_id').lean();
+          const examIds = exams.map(e => e._id);
+          if (examIds.length) {
+            const count = await ExamScore.countDocuments({ exam: { $in: examIds }, subject: { $in: removedCandidateIds } });
+            if (count > 0) {
+              const subDocs = await Subject.find({ _id: { $in: removedCandidateIds } }).select('subjectName').lean();
+              const blockedSubjects = subDocs.map(s => ({ _id: s._id, subjectName: s.subjectName }));
+              return res.status(409).json({
+                message: 'Cannot remove subjects that already have recorded scores in this class.',
+                code: 'SUBJECTS_HAVE_SCORES',
+                blockedSubjects
+              });
+            }
+          }
+        } catch (guardErr) {
+          console.error('Subject removal guard error', guardErr);
+          return res.status(500).json({ message: 'Server error' });
+        }
+      }
+
+      cls.subjects = subjects;
+    }
 
     // className removed from schema; labels are computed on the fly from grade+section on the client.
 

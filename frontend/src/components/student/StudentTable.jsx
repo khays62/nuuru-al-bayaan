@@ -11,29 +11,29 @@ import { emitStudentsChanged } from '../../utils/events';
 // Displays students returned by backend list endpoint
 const StudentTable = ({ students, onEdit, onTransfer }) => (
     <TableShell>
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-800">
                 <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Full Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Full Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Gender</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Grade</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Contact</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Actions</th>
                 </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200">
                 {students.map(st => (
-                    <tr key={st._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{st.studentId}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{st.fullName}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{st.gender}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{st.gradeDisplay || st.grade || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                    <tr key={st._id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200">{st.studentId}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200">{st.fullName}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200">{st.gender}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200">{st.gradeDisplay || st.grade || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap border-x border-gray-200">
                             <StatusBadge status={st.status} />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{st.contactNumber || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200">{st.contactNumber || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-gray-200">
                             <Link to={`/students/${st._id}`} title="View Profile" className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-white hover:bg-gray-50 shadow-sm text-blue-700 border-blue-300">
                                 <Eye size={16} /> <span className="hidden sm:inline">View</span>
                             </Link>

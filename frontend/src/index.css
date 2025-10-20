@@ -1,20 +1,69 @@
 @import "tailwindcss";
 
-/* Minimal print helpers used across pages */
+/* Print helpers + enhanced layout */
+@page {
+	size: A4;
+	margin: 12mm 10mm 18mm 10mm;
+}
+
 @media print {
+	html, body, #root { height: auto !important; overflow: visible !important; }
+	#root > div { overflow: visible !important; }
+	main, section, article, .print-container { overflow: visible !important; }
+	/* Kill viewport-height and hidden overflow that prevent pagination */
+	.h-screen, .min-h-screen { height: auto !important; min-height: auto !important; }
+	.overflow-hidden { overflow: visible !important; }
+	/* Hide app chrome */
 	.no-print { display: none !important; }
 	.print-only { display: block !important; }
+
+	/* Force accurate colors for key elements */
+	* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+	/* No fixed header; header is rendered inline in pages that need it */
+
+	/* Footer */
 	.print-footer {
 		position: fixed;
 		bottom: 0;
 		left: 0;
 		right: 0;
-		display: flex;
-		justify-content: space-between;
+		display: grid;
+		grid-template-columns: 1fr 1fr 1fr;
+		align-items: center;
 		padding: 4px 12px;
 		font-size: 12px;
+		border-top: 1px solid #e5e7eb;
+		background: #ffffff;
+		min-height: 10mm;
+		line-height: 1.2;
 	}
+
+	/* Page number counters (supported in most modern browsers) */
+	.pageNumber::before { content: counter(page); }
+	.totalPages::before { content: counter(pages); }
+
+	/* Page break helpers */
+	.page-break { page-break-before: always; break-before: page; }
+	.avoid-break { break-inside: avoid; page-break-inside: avoid; }
+
+	/* Transcript: natural pagination; avoid splitting blocks */
+	.print-two > .student-block { page-break-inside: avoid; break-inside: avoid; }
+
+	/* Optional bottom padding to prevent footer overlap */
+	.with-print-footer { padding-bottom: 0 !important; }
+
+	/* Avoid scrollbars in print: let tables expand */
+	.overflow-x-auto, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
+	table { width: 100% !important; table-layout: auto !important; border-collapse: collapse !important; }
+	th, td { white-space: normal !important; word-break: break-word; }
+
+	/* Results table print tuning */
+	.results-print table { font-size: 11px !important; }
+	.results-print th, .results-print td { padding: 6px 8px !important; }
 }
 @media screen {
 	.print-only { display: none !important; }
 }
+
+/* (no extra table CSS; we use Tailwind utilities directly) */

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import ExamType from '../models/ExamType.js';
 import Exam from '../models/Exam.js';
 import ExamScore from '../models/ExamScore.js';
+import GradeSection from '../models/GradeSection.js';
 import Enrollment from '../models/Enrollment.js';
 import Student from '../models/Student.js';
 import Subject from '../models/Subject.js';
@@ -15,6 +16,55 @@ export const getExamTypes = async (req, res) => {
   } catch (err) {
     console.error('getExamTypes error', err);
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// GET /api/exams/has-scores
+// Query: gradeSectionId (required), academicYearId? (optional filter), subjectIds? (comma-separated)
+// Response: { map: { [subjectId]: boolean } }
+export const hasScores = async (req, res) => {
+  try {
+    const { gradeSectionId, academicYearId, subjectIds } = req.query || {};
+    if (!gradeSectionId || !mongoose.isValidObjectId(gradeSectionId)) {
+      return res.status(400).json({ message: 'gradeSectionId is required' });
+    }
+
+    // Validate grade section exists (helps avoid silent errors)
+    const gs = await GradeSection.findById(gradeSectionId).select('_id subjects').lean();
+    if (!gs) return res.status(404).json({ message: 'GradeSection not found' });
+
+    // Determine subject list to check
+    let subjectsToCheck = [];
+    if (typeof subjectIds === 'string' && subjectIds.trim()) {
+      subjectsToCheck = subjectIds.split(',').map(s => s.trim()).filter(s => mongoose.isValidObjectId(s));
+    }
+    if (!subjectsToCheck.length) {
+      subjectsToCheck = (gs.subjects || []).map(s => String(s));
+    }
+    if (!subjectsToCheck.length) return res.json({ map: {} });
+
+    // Exams for gradeSection (and optional AY)
+    const examQuery = { gradeSection: gradeSectionId };
+    if (academicYearId && mongoose.isValidObjectId(academicYearId)) examQuery.academicYear = academicYearId;
+    const exams = await Exam.find(examQuery).select('_id').lean();
+    const examIds = exams.map(e => e._id);
+    if (!examIds.length) {
+      // No exams → definitely no scores
+      const emptyMap = Object.fromEntries(subjectsToCheck.map(id => [String(id), false]));
+      return res.json({ map: emptyMap });
+    }
+
+    // Aggregate scores grouped by subject
+    const agg = await ExamScore.aggregate([
+      { $match: { exam: { $in: examIds }, subject: { $in: subjectsToCheck.map(id => new mongoose.Types.ObjectId(id)) } } },
+      { $group: { _id: '$subject', count: { $sum: 1 } } }
+    ]);
+    const withScores = new Set(agg.map(a => String(a._id)));
+    const map = Object.fromEntries(subjectsToCheck.map(id => [String(id), withScores.has(String(id))]));
+    res.json({ map });
+  } catch (err) {
+    console.error('hasScores error', err);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

@@ -79,13 +79,23 @@ export default function GradePage() {
 		};
 		const closeModal = () => { setIsModalOpen(false); setEditingClass(null); };
 
+		// Apply filters in a coalesced way to avoid multiple fetches
+		const applyFilters = (patch) => {
+			if (patch.grade !== undefined) setGradeFilter(patch.grade);
+			if (patch.academicYear !== undefined) setYearFilter(patch.academicYear);
+			if (patch.shift !== undefined) setShiftFilter(patch.shift);
+			if (patch.section !== undefined) setSectionFilter(patch.section);
+			// Single page reset; hook will coalesce identical signatures
+			setPage(1);
+		};
+
 		// Toolbar slots
 		const searchSlot = (
-				<SearchInput
-						value={searchTerm}
-						onChange={(v) => { setSearch(v); setPage(1); }}
-						placeholder="Search by grade name..."
-				/>
+		<SearchInput
+			value={searchTerm}
+			onChange={(v) => { setSearch(v); /* setPage(1) handled by hook when search changes */ }}
+			placeholder="Search by grade name..."
+		/>
 		);
 		const filtersSlot = (
 			<div className="flex flex-col sm:flex-row gap-3">
@@ -94,7 +104,7 @@ export default function GradePage() {
 					name="grades-grade-filter"
 					aria-label="Grade"
 					value={gradeFilter}
-					onChange={(v) => { setGradeFilter(v); setPage(1); }}
+					onChange={(v) => applyFilters({ grade: v })}
 					className="min-w-32"
 					placeholder="Grade"
 				/>
@@ -103,7 +113,7 @@ export default function GradePage() {
 					name="grades-year-filter"
 					aria-label="Academic Year"
 					value={yearFilter}
-					onChange={(v) => { setYearFilter(v); setPage(1); }}
+					onChange={(v) => applyFilters({ academicYear: v })}
 					className="min-w-40"
 					placeholder="Academic Year"
 				/>
@@ -112,7 +122,7 @@ export default function GradePage() {
 					name="grades-shift-filter"
 					aria-label="Shift"
 					value={shiftFilter}
-					onChange={(v) => { setShiftFilter(v); setPage(1); }}
+					onChange={(v) => applyFilters({ shift: v })}
 					className="min-w-32"
 					placeholder="Shift"
 				/>
@@ -122,7 +132,7 @@ export default function GradePage() {
 					aria-label="Section"
 					type="text"
 					value={sectionFilter}
-					onChange={(e) => { setSectionFilter(e.target.value); setPage(1); }}
+					onChange={(e) => applyFilters({ section: e.target.value })}
 					className="px-3 py-2 border rounded-md"
 					placeholder="e.g. 1, A"
 				/>

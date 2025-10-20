@@ -9,10 +9,10 @@ export default function SortControls({ currentField, currentDir, fields = [], on
         const active = currentField === f.field;
         const arrow = active ? (currentDir === 'asc' ? '↑' : '↓') : '';
         return (
-          <button
-            key={f.field}
+            <button
+              key={f.field}
             onClick={() => onSort(f.field)}
-            className={`px-2 py-1 border rounded hover:bg-gray-50 transition ${active ? 'bg-gray-100 font-medium' : ''}`}
+            className={`px-2.5 py-1.5 rounded-md border shadow-sm transition text-sm ${active ? 'bg-blue-50 text-blue-700 border-blue-300' : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'}`}
           >
             {f.label} {arrow}
           </button>

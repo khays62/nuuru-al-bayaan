@@ -124,6 +124,7 @@ export default function SubjectPage() {
       setIsSubmitting(false);
       return;
     }
+    // Refresh only this list; GradeForm will refresh on demand via its refresh button or when grade changes
     await refresh();
     closeModal();
     toast.success(editingSubject ? 'Subject updated' : 'Subject created', { position: 'top-center' });

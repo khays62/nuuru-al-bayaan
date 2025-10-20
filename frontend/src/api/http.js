@@ -13,7 +13,10 @@ export function apiUrl(path = '/') {
 
 export async function fetchJson(urlOrPath, options = {}) {
   const url = /^https?:\/\//.test(urlOrPath) ? urlOrPath : apiUrl(urlOrPath);
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const method = String(options.method || 'GET').toUpperCase();
+  // Avoid setting Content-Type for GET/HEAD to prevent unnecessary CORS preflights
+  const baseHeaders = (options.headers || {});
+  const headers = (method === 'GET' || method === 'HEAD') ? baseHeaders : { 'Content-Type': 'application/json', ...baseHeaders };
   const res = await fetch(url, { ...options, headers });
   const isJson = (res.headers.get('content-type') || '').includes('application/json');
   const data = isJson ? await res.json().catch(() => ({})) : await res.text();

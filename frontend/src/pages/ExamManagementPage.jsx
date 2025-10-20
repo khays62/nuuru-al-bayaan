@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import ActionButton from '../components/common/ActionButton';
+import { RotateCcw } from 'lucide-react';
+import TableShell from '../components/common/table/TableShell';
 import { getExamGrid, saveExamScore, getGradeSectionById } from '../api';
 import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
@@ -64,8 +67,9 @@ export default function ExamManagementPage() {
             const midIdx = names.findIndex(n => n.includes('mid'));
             const finalIdx = names.findIndex(n => n.includes('final'));
             if (midIdx !== -1 && finalIdx !== -1) {
-                map[cols[midIdx].examId] = 50;
-                map[cols[finalIdx].examId] = 50;
+                // Enforce 40/60 weighting (Mid-Term 40, Final 60)
+                map[cols[midIdx].examId] = 40;
+                map[cols[finalIdx].examId] = 60;
                 return map;
             }
         }
@@ -180,7 +184,7 @@ export default function ExamManagementPage() {
                 <p className="mt-1 text-sm text-gray-600">Select filters; the grid loads automatically when a subject is chosen. Enter scores inline (0..100).</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+            <div className="bg-white p-4 rounded-lg shadow grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
                 <AcademicYearSelect id="exam-ay" name="exam-ay" aria-label="Academic Year" value={academicYearId} onChange={setAcademicYearId} className="w-full" placeholder="Academic Year" />
                 <GradeSelect id="exam-grade" name="exam-grade" aria-label="Grade" value={gradeId} onChange={setGradeId} className="w-full" placeholder="Grade" />
                 <ShiftSelect id="exam-shift" name="exam-shift" aria-label="Shift" value={shiftId} onChange={setShiftId} className="w-full" placeholder="Shift" />
@@ -189,8 +193,8 @@ export default function ExamManagementPage() {
                     <option value="">Subject</option>
                     {(subjects||[]).map(su => (<option key={su._id} value={su._id}>{su.subjectName}</option>))}
                 </select>
-                <div className="md:col-span-5 flex md:justify-end">
-                    <button type="button" onClick={handleReset} className="px-3 py-2 text-sm rounded border bg-white hover:bg-gray-50">Reset filters</button>
+                <div className="md:col-span-1 flex md:justify-end md:self-end">
+                    <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
                 </div>
             </div>
 
@@ -204,22 +208,37 @@ export default function ExamManagementPage() {
                 ) : grid.students.length === 0 ? (
                     <p className="text-sm text-gray-500">No students or data for this selection.</p>
                 ) : (
-                    <table className="min-w-full text-sm border-separate border-spacing-0">
-                        <thead>
+                    <TableShell>
+                        <thead className="bg-gray-800">
                             <tr>
-                                <th className="text-left p-3 border-b sticky top-0 bg-white z-10">Student</th>
-                                {grid.columns.map(col => (
-                                    <th key={col.examId} className="text-center p-3 border-b sticky top-0 bg-white z-10">
+                                <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
+                                {[...grid.columns]
+                                    .sort((a, b) => {
+                                        const aName = (a.typeName || '').toLowerCase();
+                                        const bName = (b.typeName || '').toLowerCase();
+                                        const aIsMid = /mid/.test(aName);
+                                        const bIsMid = /mid/.test(bName);
+                                        const aIsFinal = /final/.test(aName);
+                                        const bIsFinal = /final/.test(bName);
+                                        // Prioritize Mid-Term first, then Final, else by name
+                                        if (aIsMid && !bIsMid) return -1;
+                                        if (!aIsMid && bIsMid) return 1;
+                                        if (aIsFinal && !bIsFinal) return 1;
+                                        if (!aIsFinal && bIsFinal) return -1;
+                                        return aName.localeCompare(bName);
+                                    })
+                                    .map(col => (
+                                    <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">
                                         <div className="flex items-center justify-center gap-2">
-                                            <span className="font-medium">{col.typeName}</span>
-                                            <span className="text-xs text-gray-500">({weightMap[col.examId] ?? '-'})</span>
+                                            <span className="font-medium text-white">{col.typeName}</span>
+                                            <span className="text-xs text-gray-200">({weightMap[col.examId] ?? '-'}%)</span>
                                         </div>
                                     </th>
                                 ))}
-                                <th className="text-center p-3 border-b sticky top-0 bg-white z-10">Total (100)</th>
+                                <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total (100)</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="divide-y divide-gray-200">
                             {grid.students.map(st => {
                                 const rowTotal = grid.columns.reduce((sum, col) => {
                                     const raw = getInputValue(st.studentId, col.examId);
@@ -229,16 +248,30 @@ export default function ExamManagementPage() {
                                     return sum + clamped;
                                 }, 0);
                                 return (
-                                    <tr key={st.studentId} className="odd:bg-gray-50 hover:bg-gray-50">
-                                        <td className="p-3 border-b whitespace-nowrap text-gray-800 font-medium">{st.fullName}</td>
-                                        {grid.columns.map(col => {
+                                    <tr key={st.studentId} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50">
+                                        <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">{st.fullName}</td>
+                                        {[...grid.columns]
+                                            .sort((a, b) => {
+                                                const aName = (a.typeName || '').toLowerCase();
+                                                const bName = (b.typeName || '').toLowerCase();
+                                                const aIsMid = /mid/.test(aName);
+                                                const bIsMid = /mid/.test(bName);
+                                                const aIsFinal = /final/.test(aName);
+                                                const bIsFinal = /final/.test(bName);
+                                                if (aIsMid && !bIsMid) return -1;
+                                                if (!aIsMid && bIsMid) return 1;
+                                                if (aIsFinal && !bIsFinal) return 1;
+                                                if (!aIsFinal && bIsFinal) return -1;
+                                                return aName.localeCompare(bName);
+                                            })
+                                            .map(col => {
                                             const key = getCellKey(st.studentId, col.examId);
                                             const weight = weightMap[col.examId] ?? 100;
                                             const val = getInputValue(st.studentId, col.examId);
                                             const isSaving = savingCells.has(key);
                                             const hasError = errorCells.has(key);
                                             return (
-                                                <td key={col.examId} className="p-2 border-b">
+                                                <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
                                                     <div className="relative inline-flex items-center gap-2">
                                                         <input
                                                             type="number"
@@ -246,7 +279,7 @@ export default function ExamManagementPage() {
                                                             min={0}
                                                             max={weight}
                                                             step="0.5"
-                                                            className={`w-24 border rounded-md px-2 py-1 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 ${hasError ? 'border-red-500' : 'border-gray-300'}`}
+                                                            className={`w-24 border rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${hasError ? 'border-red-500' : 'border-gray-300'}`}
                                                             value={val}
                                                             onChange={(e) => handleChange(st.studentId, col.examId, e.target.value, weight)}
                                                             onBlur={() => flushDebounce(key)}
@@ -256,12 +289,12 @@ export default function ExamManagementPage() {
                                                 </td>
                                             );
                                         })}
-                                        <td className="p-3 border-b text-center font-semibold text-gray-900">{Number(rowTotal.toFixed(2))}</td>
+                                        <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
                                     </tr>
                                 );
                             })}
                         </tbody>
-                    </table>
+                    </TableShell>
                 )}
             </div>
         </div>

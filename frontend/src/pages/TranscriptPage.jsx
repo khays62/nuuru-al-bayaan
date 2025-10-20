@@ -6,6 +6,11 @@ import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
 import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
+import ActionButton from '../components/common/ActionButton';
+import { Printer, RotateCcw } from 'lucide-react';
+import TableShell from '../components/common/table/TableShell';
+import PrintHeader from '../components/print/PrintHeader';
+import PrintFooter from '../components/print/PrintFooter';
 
 export default function TranscriptPage() {
   // Lookups (for labels only)
@@ -192,13 +197,8 @@ export default function TranscriptPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Print header (logo only, fixed in print) */}
-      <div className="print-only print-banner">
-        <div className="flex items-center gap-3">
-          <img src={new URL('../assets/image.png', import.meta.url).href} alt="School Logo" style={{ width: '56px', height: '56px' }} />
-        </div>
-      </div>
+    <div className="space-y-6 with-print-footer">
+  <PrintHeader />
 
       <div className="bg-white p-4 rounded-lg shadow no-print">
         <h1 className="text-lg font-semibold mb-3">Transcript Builder</h1>
@@ -306,22 +306,22 @@ export default function TranscriptPage() {
           </div>
         </div>
         <div className="mt-3 flex gap-2">
-          <button type="button" onClick={handlePrint} className="px-3 py-1.5 rounded border">Print</button>
-          <button type="button" onClick={handleReset} className="px-3 py-1.5 rounded border">Reset filters</button>
+          <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+          <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow print:shadow-none print:p-0">
+  <div className="bg-white p-4 rounded-lg shadow print:shadow-none print:p-0 print-container">
         {loading && <div>Loading…</div>}
         {!loading && selectedStudents.length > 0 && (
-          <div className="space-y-10 print-two">
+          <div className="space-y-8 print-two" style={{ breakInside: 'auto' }}>
             {selectedStudents.map((sel) => {
               const t = transcripts[sel._id];
               const ok = t?.ok && t?.data;
               const dataObj = ok ? t.data : null;
               const enrolls = getFilteredEnrollments(dataObj);
               return (
-                <div key={sel._id} className="space-y-4 student-block">
+                <div key={sel._id} className="space-y-3 student-block avoid-break">
                   <div className="print:text-center">
                     <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
                     <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
@@ -330,7 +330,7 @@ export default function TranscriptPage() {
                     <div className="text-sm text-gray-500">No transcript data for the selected mode/filters.</div>
                   )}
                   {ok && enrolls.map((en, idx) => (
-                    <section key={en.enrollmentId || idx} className="border rounded p-3">
+                    <section key={en.enrollmentId || idx} className="p-3 avoid-break">
                       <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
                         <span><span className="font-medium">Academic Year:</span> {en.academicYear?.yearName || '-'}</span>
                         <span><span className="font-medium">Grade:</span> {en.gradeSection?.grade || '-'}</span>
@@ -339,51 +339,67 @@ export default function TranscriptPage() {
                         <span><span className="font-medium">Status:</span> {en.status}</span>
                       </div>
                       <div className="overflow-x-auto mt-3">
-                        <table className="w-full text-sm transcript-table">
-                          <thead>
-                            <tr className="bg-gray-50">
-                              <th className="text-left p-2">Subject</th>
-                              {(en.transcript?.examTypes || []).map(et => (
-                                <th key={et._id} className="text-right p-2">{et.typeName}</th>
-                              ))}
-                              <th className="text-right p-2">Total</th>
-                              <th className="text-right p-2">Average</th>
+                        <TableShell>
+                            <thead className="bg-gray-800">
+                            <tr>
+                              <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Subject</th>
+                              {[...(en.transcript?.examTypes || [])]
+                                .sort((a, b) => {
+                                  const an = String(a.typeName || '').toLowerCase();
+                                  const bn = String(b.typeName || '').toLowerCase();
+                                  const aMid = /mid/.test(an), bMid = /mid/.test(bn);
+                                  const aFin = /final/.test(an), bFin = /final/.test(bn);
+                                  if (aMid && !bMid) return -1;
+                                  if (!aMid && bMid) return 1;
+                                  if (aFin && !bFin) return 1;
+                                  if (!aFin && bFin) return -1;
+                                  return an.localeCompare(bn);
+                                })
+                                .map(et => (
+                                  <th key={et._id} className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{et.typeName}</th>
+                                ))}
+                              <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total</th>
+                              <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Average</th>
                             </tr>
                           </thead>
-                          <tbody>
+                          <tbody className="divide-y divide-gray-700">
                             {(en.transcript?.rows || []).map(row => (
                               <tr key={String(row.subjectId)} className="odd:bg-white even:bg-gray-50">
-                                <td className="p-2">{row.subjectName}</td>
-                                {(en.transcript?.examTypes || []).map(et => {
-                                  const cell = (row.exams || []).find(x => String(x.examTypeId) === String(et._id));
-                                  return <td key={et._id} className="text-right p-2">{Number(cell?.score || 0).toFixed(2)}</td>;
-                                })}
-                                <td className="text-right p-2">{Number(row.total || 0).toFixed(2)}</td>
-                                <td className="text-right p-2">{Number(row.average || 0).toFixed(2)}</td>
+                                <td className="px-4 py-3 border-x border-gray-700">{row.subjectName}</td>
+                                {[...(en.transcript?.examTypes || [])]
+                                  .sort((a, b) => {
+                                    const an = String(a.typeName || '').toLowerCase();
+                                    const bn = String(b.typeName || '').toLowerCase();
+                                    const aMid = /mid/.test(an), bMid = /mid/.test(bn);
+                                    const aFin = /final/.test(an), bFin = /final/.test(bn);
+                                    if (aMid && !bMid) return -1;
+                                    if (!aMid && bMid) return 1;
+                                    if (aFin && !bFin) return 1;
+                                    if (!aFin && bFin) return -1;
+                                    return an.localeCompare(bn);
+                                  })
+                                  .map(et => {
+                                    const cell = (row.exams || []).find(x => String(x.examTypeId) === String(et._id));
+                                    return <td key={et._id} className="text-right px-4 py-3 border-x border-gray-700">{Number(cell?.score || 0).toFixed(2)}</td>;
+                                  })}
+                                <td className="text-right px-4 py-3 border-x border-gray-700">{Number(row.total || 0).toFixed(2)}</td>
+                                <td className="text-right px-4 py-3 border-x border-gray-700">{Number(row.average || 0).toFixed(2)}</td>
                               </tr>
                             ))}
                           </tbody>
-                          <tfoot>
-                            <tr className="bg-gray-50 font-medium">
-                              <td className="text-right p-2">Overall</td>
-                              <td colSpan={(en.transcript?.examTypes?.length || 0)}></td>
-                              <td className="text-right p-2">{Number(en.transcript?.overall?.total || 0).toFixed(2)}</td>
-                              <td className="text-right p-2">{Number(en.transcript?.overall?.average || 0).toFixed(2)}</td>
+                          <tfoot className="border-t-2 border-gray-700">
+                            <tr className="font-medium">
+                              <td className="text-right px-4 py-3 border-b border-gray-700">Overall</td>
+                              <td colSpan={(en.transcript?.examTypes?.length || 0)} className="border-b border-gray-700"></td>
+                              <td className="text-right px-4 py-3 border-b border-gray-700">{Number(en.transcript?.overall?.total || 0).toFixed(2)}</td>
+                              <td className="text-right px-4 py-3 border-b border-gray-700">{Number(en.transcript?.overall?.average || 0).toFixed(2)}</td>
                             </tr>
                           </tfoot>
-                        </table>
+                        </TableShell>
                       </div>
                     </section>
                   ))}
-                  {ok && (
-                    <footer className="text-sm text-gray-700 print:mt-2">
-                      <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        <span>Distinct Subjects: {dataObj?.summary?.distinctSubjects ?? 0}</span>
-                        <span>Cumulative Total: {Number(dataObj?.summary?.cumulativeTotal || 0).toFixed(2)}</span>
-                        <span>Cumulative Average: {Number(dataObj?.summary?.cumulativeAverage || 0).toFixed(2)}</span>
-                      </div>
-                    </footer>
-                  )}
+                  {/* Removed extra summary footer under table per request */}
                 </div>
               );
             })}
@@ -391,10 +407,7 @@ export default function TranscriptPage() {
         )}
       </div>
 
-      <div className="print-only print-footer">
-        <span>Printed on: {new Date().toLocaleString()}</span>
-        <span>Page <span className="pageNumber" /> of <span className="totalPages" /></span>
-      </div>
+      <PrintFooter left="Generated by Nuuru Al-Bayaan" />
     </div>
   );
 }

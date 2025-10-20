@@ -1,6 +1,8 @@
 // DataToolbar.jsx
 // Isku keenista: Search + Filters + Sort + Actions (Add New). Layout guud.
 import React from 'react';
+import ActionButton from '../ActionButton';
+import { RotateCcw } from 'lucide-react';
 
 export default function DataToolbar({
   searchSlot,
@@ -28,23 +30,23 @@ export default function DataToolbar({
   };
   return (
     <div className={`bg-white p-4 rounded-lg shadow ${className}`}>
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
-        <div className="flex flex-col md:flex-row md:items-center gap-3 flex-1 min-w-[240px]">
+      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-4">
+        <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 flex-1 min-w-[240px]">
           <div className="w-full md:max-w-xs">{searchSlot}</div>
           {filtersSlot && <div className="flex items-center gap-2 flex-wrap">{filtersSlot}</div>}
           {sortSlot && <div className="flex items-center gap-2">{sortSlot}</div>}
         </div>
         {(filtersSlot || searchSlot || actionsSlot) && (
-          <div className="md:ml-auto md:self-start self-stretch flex justify-end gap-2">
+          <div className="md:ml-auto md:self-start self-stretch flex flex-row flex-wrap justify-end gap-2">
             {(filtersSlot || searchSlot) && (
-              <button
-                type="button"
+              <ActionButton
+                variant="neutral"
                 onClick={handleReset}
-                aria-label="Reset filters"
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm"
+                title="Reset filters"
+                icon={<RotateCcw size={16} />}
               >
-                Reset filters
-              </button>
+                Reset
+              </ActionButton>
             )}
             {actionsSlot}
           </div>
