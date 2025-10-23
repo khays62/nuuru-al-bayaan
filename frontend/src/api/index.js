@@ -6,3 +6,4 @@ export * from './modules/subjects.js';
 export * from './modules/exams.js';
 export * from './modules/students.js';
 export * from './modules/gradeSections.js';
+export * from './modules/cohorts.js';

@@ -65,3 +65,15 @@ export async function getGradeSectionById(id) {
     return { ok: false, error: 'Network or server error' };
   }
 }
+
+export async function resyncGradeSectionCohort(id) {
+  try {
+    const res = await fetch(apiUrl(`/grades/sections/${id}/resync-cohort`), { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.message || 'Failed to resync', code: data.code };
+    return { ok: true, ...data, data };
+  } catch (e) {
+    console.error('Failed to resync cohort', e);
+    return { ok: false, error: 'Network or server error' };
+  }
+}

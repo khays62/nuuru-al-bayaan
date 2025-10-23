@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import Student from '../models/Student.js';
 import Enrollment from '../models/Enrollment.js';
 import GradeSection from '../models/GradeSection.js';
+import Counter from '../models/Counter.js';
 
 // @desc    List students including details of their current section
 // @route   GET /api/students
@@ -84,6 +85,9 @@ export const getStudents = async (req, res) => {
             // Join gradeSection (latest.gradeSection) from gradesections collection
             { $lookup: { from: 'gradesections', localField: 'latest.gradeSection', foreignField: '_id', as: 'class' } },
             { $unwind: { path: '$class', preserveNullAndEmptyArrays: true } },
+            // Join cohort for display-id build on list view (optional if null)
+            { $lookup: { from: 'cohorts', localField: 'class.cohort', foreignField: '_id', as: 'cohort' } },
+            { $unwind: { path: '$cohort', preserveNullAndEmptyArrays: true } },
             // Join related grade / shift / academicYear for display
             { $lookup: { from: 'grades', localField: 'class.grade', foreignField: '_id', as: 'grade' } },
             { $lookup: { from: 'shifts', localField: 'class.shift', foreignField: '_id', as: 'shift' } },
@@ -124,6 +128,7 @@ export const getStudents = async (req, res) => {
                 status: '$student.status',
                 gradeDisplay: '$gradeLabel',
                 section: '$class.section',
+                cohort: '$cohort.name',
                 contactNumber: '$student.contactNumber',
                 gradeSectionId: '$class._id',
                 grade: 1,
@@ -175,6 +180,9 @@ export const addStudent = async (req, res) => {
     try {
         const cls = await GradeSection.findById(gradeSectionId).populate(['academicYear', 'grade', 'shift']);
     if (!cls) return res.status(404).json({ message: 'Section not found.' });
+        if (!cls.cohort) {
+            return res.status(400).json({ message: 'Grade Section must have a Cohort before enrolling students.' });
+        }
 
     // Guard 1: Do not allow the same person to be enrolled twice in the same academic year
     // Simple definition of "same person": fullName (case-insensitive, trimmed) + dob
@@ -213,9 +221,42 @@ export const addStudent = async (req, res) => {
                 academicYear: cls.academicYear._id,
                 grade: cls.grade._id,
                 shift: cls.shift._id,
+                cohort: cls.cohort || undefined,
                 status: 'active',
                 joinedAt: admissionDate
             }], { session });
+
+            // After creating enrollment, generate cohort-coded Student ID if cohort exists
+            try {
+                if (cls.cohort) {
+                    // Global continuous sequence (not tied to section/GS)
+                    const sectionCode = String(cls.section || '1').toUpperCase();
+                    const key = 'stu-code:global';
+                    const ctr = await Counter.findOneAndUpdate(
+                        { key },
+                        { $inc: { seq: 1 } },
+                        { new: true, upsert: true, session }
+                    );
+                    const seq = String(ctr.seq).padStart(2, '0');
+                    // Prefix: first two letters of cohort name, default 'DU'
+                    // Number: first digits found in cohort name (e.g., 'dufcada 1aad' -> '1')
+                    let cName = '';
+                    try {
+                        const Cohort = (await import('../models/Cohort.js')).default;
+                        const c = await Cohort.findById(cls.cohort).select('name').lean();
+                        cName = c?.name || '';
+                    } catch {}
+                    const prefix = (cName.match(/[A-Za-z]/g) || []).join('').slice(0,2).toUpperCase() || 'DU';
+                    const numMatch = (cName.match(/\d+/) || [ '' ])[0];
+                    const code = `${prefix}${numMatch}S${sectionCode}${seq}`;
+                    // Update studentId to cohort-coded form
+                    studentDoc.studentId = code;
+                    await studentDoc.save({ session });
+                }
+            } catch (idErr) {
+                // Non-fatal: keep default studentId if coding fails
+                console.warn('Cohort-coded studentId generation warning:', idErr);
+            }
 
             await session.commitTransaction();
             session.endSession();
@@ -251,7 +292,8 @@ export const getStudentProfile = async (req, res) => {
             { path: 'gradeSection', model: 'GradeSection', populate: [{ path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' }, { path: 'academicYear', select: 'yearName' }] },
             { path: 'grade', select: 'gradeName' },
             { path: 'shift', select: 'shiftName' },
-            { path: 'academicYear', select: 'yearName' }
+            { path: 'academicYear', select: 'yearName' },
+            { path: 'cohort', select: 'name' }
         ]);
 
         const totalYears = await Enrollment.countDocuments({ student: id });
@@ -287,7 +329,8 @@ export const getStudentHistory = async (req, res) => {
                     { path: 'gradeSection', model: 'GradeSection', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
                     { path: 'academicYear', select: 'yearName' },
                     { path: 'grade', select: 'gradeName' },
-                    { path: 'shift', select: 'shiftName' }
+                    { path: 'shift', select: 'shiftName' },
+                    { path: 'cohort', select: 'name' }
                 ]),
             Enrollment.countDocuments({ student: id })
         ]);
@@ -509,9 +552,10 @@ export const transferEnrollment = async (req, res) => {
         // Perform atomic update: move to target section and sync grade/shift
         const sourceSectionId = enrollment.gradeSection; // keep old for migration
         const sourceGradeId = enrollment.grade;
-        enrollment.gradeSection = target._id;
-        enrollment.grade = target.grade._id;
-        enrollment.shift = target.shift._id;
+    enrollment.gradeSection = target._id;
+    enrollment.grade = target.grade._id;
+    enrollment.shift = target.shift._id;
+    enrollment.cohort = target.cohort || null; // overwrite denormalized cohort on transfer
         await enrollment.save();
 
         // Exam scores migration (same AY + same Grade):

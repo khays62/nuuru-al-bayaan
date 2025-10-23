@@ -16,6 +16,7 @@ import { listGradeSections, deleteGradeSection } from '../api';
 import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
+import CohortSelect from '../components/lookups/CohortSelect';
 
 export default function GradePage() {
 		const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,7 +25,8 @@ export default function GradePage() {
 		const [gradeFilter, setGradeFilter] = useState('');
 		const [yearFilter, setYearFilter] = useState('');
 		const [shiftFilter, setShiftFilter] = useState('');
-		const [sectionFilter, setSectionFilter] = useState('');
+	const [sectionFilter, setSectionFilter] = useState('');
+	const [cohortFilter, setCohortFilter] = useState('');
 
 		const fetchGrades = useCallback(async (params) => {
 				const result = await listGradeSections({
@@ -35,7 +37,7 @@ export default function GradePage() {
 						academicYear: params.academicYear,
 						shift: params.shift,
 						section: params.section,
-						sortBy: params.sortBy,
+			sortBy: params.sortBy,
 						sortDir: params.sortDir
 				});
 				return result;
@@ -47,7 +49,7 @@ export default function GradePage() {
 				initialSortDir: 'desc',
 				initialLimit: 10,
 				persistKey: 'grades-page',
-				extraFilters: { grade: gradeFilter, academicYear: yearFilter, shift: shiftFilter, section: sectionFilter }
+		extraFilters: { grade: gradeFilter, academicYear: yearFilter, shift: shiftFilter, section: sectionFilter, cohort: cohortFilter }
 		});
 
 		const {
@@ -85,6 +87,7 @@ export default function GradePage() {
 			if (patch.academicYear !== undefined) setYearFilter(patch.academicYear);
 			if (patch.shift !== undefined) setShiftFilter(patch.shift);
 			if (patch.section !== undefined) setSectionFilter(patch.section);
+			if (patch.cohort !== undefined) setCohortFilter(patch.cohort);
 			// Single page reset; hook will coalesce identical signatures
 			setPage(1);
 		};
@@ -125,6 +128,15 @@ export default function GradePage() {
 					onChange={(v) => applyFilters({ shift: v })}
 					className="min-w-32"
 					placeholder="Shift"
+				/>
+				<CohortSelect
+					id="grades-cohort-filter"
+					name="grades-cohort-filter"
+					aria-label="Cohort"
+					value={cohortFilter}
+					onChange={(v)=> applyFilters({ cohort: v })}
+					className="min-w-48"
+					placeholder="Cohort"
 				/>
 				<input
 					id="grades-section-filter"
@@ -172,6 +184,7 @@ export default function GradePage() {
 									setGradeFilter('');
 									setYearFilter('');
 									setShiftFilter('');
+									setCohortFilter('');
 									setSectionFilter('');
 									resetAndReload({ filters: {}, search: '' });
 								}}

@@ -24,13 +24,14 @@ Indexes:
 - academicYear: ObjectId(ref AcademicYear) (required)
 - grade: ObjectId(ref Grade) (required)
 - shift: ObjectId(ref Shift) (required)
+- sequenceInYear: 1 | 2 (default: 1) — mid-year dalacsiin gudaha isla AY
 - status: 'active' | 'inactive' | 'transferred' | 'promoted' | 'graduated' | 'withdrawn' (default: 'active')
 - joinedAt: Date (required)
 - leftAt: Date (optional)
 - timestamps
 
 Indexes:
-- unique: (student, academicYear)
+- unique: (student, academicYear, sequenceInYear)
 - (gradeSection, status)
 - (student, createdAt: -1)
 

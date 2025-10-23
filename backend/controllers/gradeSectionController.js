@@ -5,6 +5,42 @@ import AcademicYear from '../models/AcademicYear.js';
 import Shift from '../models/Shift.js';
 import Grade from '../models/Grade.js';
 import Enrollment from '../models/Enrollment.js';
+import Cohort from '../models/Cohort.js';
+
+// Enforce: For the same (grade, academicYear), all sections/shifts must share ONE cohort value
+async function assertGroupCohortUniformity({ grade, academicYear, cohort, excludeId }) {
+  const groupFilter = { grade: new mongoose.Types.ObjectId(grade), academicYear: new mongoose.Types.ObjectId(academicYear) };
+  if (excludeId) groupFilter._id = { $ne: new mongoose.Types.ObjectId(excludeId) };
+
+  // If trying to CLEAR cohort while others have a value -> block
+  if (!cohort) {
+    const otherHasCohort = await GradeSection.exists({ ...groupFilter, cohort: { $ne: null } });
+    if (otherHasCohort) {
+      const one = await GradeSection.findOne({ ...groupFilter, cohort: { $ne: null } }).populate('cohort', 'name').lean();
+      const msg = `This grade and academic year already use cohort "${one?.cohort?.name || one?.cohort || ''}". All sections must use the same cohort.`;
+      const err = new Error(msg);
+      err.status = 409;
+      err.code = 'COHORT_CONFLICT_CLEAR';
+      err.details = { existingCohort: one?.cohort?._id || one?.cohort };
+      throw err;
+    }
+    return; // allowed to be empty only if none in the group have cohort
+  }
+
+  // If trying to SET cohort but group already has a different cohort -> block
+  const conflict = await GradeSection.findOne({
+    ...groupFilter,
+    $and: [ { cohort: { $ne: null } }, { cohort: { $ne: new mongoose.Types.ObjectId(cohort) } } ]
+  }).populate('cohort', 'name').lean();
+  if (conflict) {
+    const msg = `This grade and academic year already use cohort "${conflict.cohort?.name || conflict.cohort}". All sections must use the same cohort.`;
+    const err = new Error(msg);
+    err.status = 409;
+    err.code = 'COHORT_CONFLICT_SAME_GRADE_AY';
+    err.details = { existingCohort: conflict.cohort?._id || conflict.cohort };
+    throw err;
+  }
+}
 
 function buildSort(sortParam) {
   if (!sortParam) return { createdAt: -1 };
@@ -17,7 +53,7 @@ function buildSort(sortParam) {
 // GET /api/grades/sections
 export const listGradeSections = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = '', grade, academicYear, shift, section, sort } = req.query;
+    const { page = 1, limit = 10, search = '', grade, academicYear, shift, section, cohort, sort } = req.query;
     const pageNum = Math.max(parseInt(page) || 1, 1);
     const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
     const skip = (pageNum - 1) * limitNum;
@@ -28,6 +64,7 @@ export const listGradeSections = async (req, res) => {
     if (academicYear) match.academicYear = new mongoose.Types.ObjectId(academicYear);
   if (shift) match.shift = new mongoose.Types.ObjectId(shift);
   if (section) match.section = section;
+  if (cohort) match.cohort = new mongoose.Types.ObjectId(cohort);
 
     const pipeline = [
       { $match: match },
@@ -37,6 +74,7 @@ export const listGradeSections = async (req, res) => {
       { $unwind: '$academicYear' },
       { $lookup: { from: 'shifts', localField: 'shift', foreignField: '_id', as: 'shift' } },
       { $unwind: '$shift' },
+      { $lookup: { from: 'cohorts', localField: 'cohort', foreignField: '_id', as: 'cohort' } },
     ];
     if (search) {
       pipeline.push({ $match: { $or: [
@@ -67,6 +105,7 @@ export const listGradeSections = async (req, res) => {
         grade: { _id: doc.grade._id, gradeName: doc.grade.gradeName },
         academicYear: { _id: doc.academicYear._id, yearName: doc.academicYear.yearName },
         shift: { _id: doc.shift._id, shiftName: doc.shift.shiftName },
+        cohort: (Array.isArray(doc.cohort) && doc.cohort.length) ? { _id: doc.cohort[0]._id, name: doc.cohort[0].name } : undefined,
         subjects: doc.subjects || [],
         capacity: doc.capacity || undefined,
         createdAt: doc.createdAt,
@@ -89,7 +128,8 @@ export const getGradeSection = async (req, res) => {
       .populate('grade', 'gradeName')
       .populate('academicYear', 'yearName')
       .populate('shift', 'shiftName')
-      .populate('subjects', 'subjectName');
+    .populate('subjects', 'subjectName')
+    .populate('cohort', 'name');
     if (!cls) return res.status(404).json({ message: 'Not found' });
     res.json(cls);
   } catch (err) {
@@ -101,7 +141,7 @@ export const getGradeSection = async (req, res) => {
 // POST /api/grades/sections
 export const createGradeSection = async (req, res) => {
   try {
-  let { grade, academicYear, shift, section, subjects = [], capacity } = req.body;
+  let { grade, academicYear, shift, section, subjects = [], capacity, cohort } = req.body;
     if (!grade || !academicYear || !shift) return res.status(400).json({ message: 'grade, academicYear, shift are required' });
 
     const [gradeDoc, yearDoc, shiftDoc] = await Promise.all([
@@ -115,6 +155,23 @@ export const createGradeSection = async (req, res) => {
 
   // Default section if empty
   if (!section || String(section).trim() === '') section = '1';
+
+    // Optional cohort validation
+    if (cohort !== undefined && cohort !== null && cohort !== '') {
+      if (!mongoose.isValidObjectId(cohort)) return res.status(400).json({ message: 'Invalid cohort' });
+      const cohortDoc = await Cohort.findById(cohort).lean();
+      if (!cohortDoc) return res.status(400).json({ message: 'Invalid cohort' });
+    } else {
+      cohort = undefined; // ensure not set on create when empty
+    }
+
+    // Group-level uniqueness: for same (grade, AY), cohort must be uniform
+    try {
+      await assertGroupCohortUniformity({ grade, academicYear, cohort });
+    } catch (e) {
+      const status = e.status || 409;
+      return res.status(status).json({ message: e.message, code: e.code, details: e.details });
+    }
 
     // Subjects validation: ensure they belong to this grade
     if (subjects.length) {
@@ -134,7 +191,7 @@ export const createGradeSection = async (req, res) => {
 
   let created;
     try {
-  created = await GradeSection.create({ section, capacity, grade, academicYear, shift, subjects });
+  created = await GradeSection.create({ section, capacity, grade, academicYear, shift, subjects, cohort });
     } catch (err) {
       if (err.code === 11000) return res.status(409).json({ message: 'Section already exists for this Grade/Year/Shift/Section' });
       throw err;
@@ -144,7 +201,8 @@ export const createGradeSection = async (req, res) => {
       .populate('grade', 'gradeName')
       .populate('academicYear', 'yearName')
       .populate('shift', 'shiftName')
-      .populate('subjects', 'subjectName');
+    .populate('subjects', 'subjectName')
+    .populate('cohort', 'name');
 
     res.status(201).json({ data: populated, removedSubjects: req._removedSubjects || [] });
   } catch (err) {
@@ -158,7 +216,7 @@ export const updateGradeSection = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid id' });
-  let { grade, academicYear, shift, section, subjects = [], capacity } = req.body;
+  let { grade, academicYear, shift, section, subjects = [], capacity, cohort } = req.body;
   const cls = await GradeSection.findById(id);
     if (!cls) return res.status(404).json({ message: 'Not found' });
 
@@ -186,7 +244,9 @@ export const updateGradeSection = async (req, res) => {
       if (!shiftDoc) return res.status(400).json({ message: 'Invalid shift' });
     }
 
-    const gradeChanged = grade && grade.toString() !== cls.grade.toString();
+  const gradeChanged = grade && grade.toString() !== cls.grade.toString();
+  const prevCohortId = cls.cohort ? cls.cohort.toString() : '';
+  let cohortChanged = false;
     let removedSubjects = [];
 
     if (subjects && subjects.length) {
@@ -212,6 +272,32 @@ export const updateGradeSection = async (req, res) => {
           if (grades.includes(grade.toString())) valid.push(s._id); else removedSubjects.push(s.subjectName || s._id.toString());
         }
         subjects = valid;
+      }
+    }
+
+  // Cohort: allow change anytime; validation and group uniformity
+  if (cohort !== undefined) {
+      if (cohort === null || cohort === '') {
+        // Group uniformity check before clearing
+        try {
+          await assertGroupCohortUniformity({ grade: cls.grade, academicYear: cls.academicYear, cohort: null, excludeId: id });
+        } catch (e) {
+          return res.status(e.status || 409).json({ message: e.message, code: e.code, details: e.details });
+        }
+        cls.cohort = undefined;
+        cohortChanged = prevCohortId !== '';
+      } else {
+        if (!mongoose.isValidObjectId(cohort)) return res.status(400).json({ message: 'Invalid cohort' });
+        const cohortDoc = await Cohort.findById(cohort).lean();
+        if (!cohortDoc) return res.status(400).json({ message: 'Invalid cohort' });
+        // Group uniformity check before setting
+        try {
+          await assertGroupCohortUniformity({ grade: cls.grade, academicYear: cls.academicYear, cohort, excludeId: id });
+        } catch (e) {
+          return res.status(e.status || 409).json({ message: e.message, code: e.code, details: e.details });
+        }
+        cls.cohort = cohort;
+        cohortChanged = prevCohortId !== cohort.toString();
       }
     }
 
@@ -269,11 +355,32 @@ export const updateGradeSection = async (req, res) => {
       .populate('grade', 'gradeName')
       .populate('academicYear', 'yearName')
       .populate('shift', 'shiftName')
-      .populate('subjects', 'subjectName');
+      .populate('subjects', 'subjectName')
+      .populate('cohort', 'name');
 
-    res.json({ data: populated, removedSubjects });
+    const resyncNeeded = !!enrollmentExists && !!cohortChanged;
+    res.json({ data: populated, removedSubjects, resyncNeeded });
   } catch (err) {
     console.error('Update grade section error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// POST /api/grades/sections/:id/resync-cohort
+export const resyncGradeSectionCohort = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid id' });
+    const cls = await GradeSection.findById(id).select('cohort');
+    if (!cls) return res.status(404).json({ message: 'Not found' });
+    const targetCohort = cls.cohort || null;
+    const result = await Enrollment.updateMany(
+      { gradeSection: id, status: 'active' },
+      { $set: { cohort: targetCohort } }
+    );
+    res.json({ ok: true, matched: result.matchedCount ?? result.n, modified: result.modifiedCount ?? result.nModified, cohort: targetCohort });
+  } catch (err) {
+    console.error('Resync cohort error', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

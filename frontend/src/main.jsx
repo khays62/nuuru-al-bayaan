@@ -16,6 +16,8 @@ import ResultPage from './pages/ResultPage';
 import TranscriptPage from './pages/TranscriptPage';
 import UserManagementPage from './pages/UserManagementPage';
 import NotFoundPage from './pages/NotFoundPage';
+import PromotionPage from './pages/PromotionPage';
+import CohortsPage from './pages/CohortsPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -36,6 +38,8 @@ const router = createBrowserRouter([
       { path: '/grades', element: <GradePage /> },
       { path: 'subjects', element: <SubjectPage /> },
       { path: 'exams', element: <ExamManagementPage /> },
+  { path: 'promotions', element: <PromotionPage /> },
+  { path: 'cohorts', element: <CohortsPage /> },
       { path: 'results', element: <ResultPage /> },
   { path: 'transcripts', element: <TranscriptPage /> },
       { path: 'users', element: <UserManagementPage /> },

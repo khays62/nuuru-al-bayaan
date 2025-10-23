@@ -139,6 +139,20 @@ export default function StudentProfilePage() {
     if (profile?.latestEnrollment?.shift?.shiftName) meta.push(`Shift: ${profile.latestEnrollment.shift.shiftName}`);
     if (profile?.latestEnrollment?.gradeSection?.section) meta.push(`Section: ${profile.latestEnrollment.gradeSection.section}`);
 
+    // Build displayId like D<cohortNum>S<section><last3>
+    const buildDisplayId = () => {
+        const sId = profile?.student?.studentId || '';
+        const m = /(\d+)$/.exec(sId.replace(/[^0-9]/g, ''));
+        const lastDigits = m ? m[1].slice(-3) : '';
+        const cohortName = profile?.latestEnrollment?.cohort?.name || '';
+        const cohortNumMatch = /\d+/.exec(cohortName);
+        const cohortNum = cohortNumMatch ? cohortNumMatch[0] : '';
+        const section = (profile?.latestEnrollment?.gradeSection?.section || '').toString().toUpperCase();
+        if (!cohortNum || !section || !lastDigits) return null;
+        return `D${cohortNum}S${section}${lastDigits}`;
+    };
+    const displayId = buildDisplayId();
+
     return (
         <div className="space-y-6 with-print-header with-print-footer">
             <PrintHeader />
@@ -169,8 +183,9 @@ export default function StudentProfilePage() {
                                     </div>
                                     <div>
                                         <h1 className="text-2xl font-bold leading-tight">{profile.student.fullName}</h1>
-                                        <div className="text-xs opacity-90 flex items-center gap-2 mt-1">
-                                            <IdCard size={14} /> <span className="font-mono">{profile.student.studentId}</span>
+                                        <div className="text-xs opacity-90 flex flex-col md:flex-row md:items-center gap-2 mt-1">
+                                            <span className="flex items-center gap-1"><IdCard size={14} /> <span className="font-mono">{profile.student.studentId}</span></span>
+                                            {displayId && <span className="font-mono text-indigo-100 bg-indigo-700/40 px-1.5 py-0.5 rounded">{displayId}</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -205,6 +220,7 @@ export default function StudentProfilePage() {
                                     <Chip>{`Section: ${profile.latestEnrollment.gradeSection?.section || '-'}`}</Chip>
                                     <Chip>{`Year: ${profile.latestEnrollment.academicYear?.yearName || '-'}`}</Chip>
                                     <Chip>{`Shift: ${profile.latestEnrollment.shift?.shiftName || '-'}`}</Chip>
+                                    <Chip>{`Cohort: ${profile.latestEnrollment.cohort?.name || '-'}`}</Chip>
                                     <Chip color="indigo">{`Status: ${profile.latestEnrollment.status}`}</Chip>
                                     <Chip>{`Joined: ${profile.latestEnrollment.joinedAt ? new Date(profile.latestEnrollment.joinedAt).toLocaleDateString() : '-'}`}</Chip>
                                 </div>
@@ -232,6 +248,7 @@ export default function StudentProfilePage() {
                                     <Th>Grade</Th>
                                     <Th>Shift</Th>
                                     <Th>Status</Th>
+                                    <Th>Cohort</Th>
                                     <Th>Joined</Th>
                                     <Th>Left</Th>
                                 </tr>
@@ -247,6 +264,7 @@ export default function StudentProfilePage() {
                                             <Badge color={h.status === 'active' ? 'emerald' : 'gray'}>{h.status}</Badge>
                                             {/* Per-row Reassign removed */}
                                         </Td>
+                                        <Td>{h.cohort?.name || '-'}</Td>
                                         <Td>{h.joinedAt ? new Date(h.joinedAt).toLocaleDateString() : '-'}</Td>
                                         <Td>{h.leftAt ? new Date(h.leftAt).toLocaleDateString() : '-'}</Td>
                                     </tr>

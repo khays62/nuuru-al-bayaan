@@ -8,6 +8,8 @@ const gradeSectionSchema = new Schema({
   grade: { type: Schema.Types.ObjectId, ref: 'Grade', required: true },
   academicYear: { type: Schema.Types.ObjectId, ref: 'AcademicYear', required: true },
   shift: { type: Schema.Types.ObjectId, ref: 'Shift', required: true },
+  // Dufcada (cohort) fasalkan ka tirsan. Ikhtiyaari hadda si aanu u jebinno xogta jira.
+  cohort: { type: Schema.Types.ObjectId, ref: 'Cohort' },
   subjects: [{ type: Schema.Types.ObjectId, ref: 'Subject' }]
 }, { timestamps: true });
 

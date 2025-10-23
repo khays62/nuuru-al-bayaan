@@ -13,7 +13,7 @@ const StudentTable = ({ students, onEdit, onTransfer }) => (
     <TableShell>
             <thead className="bg-gray-800">
                 <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student ID</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student ID</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Full Name</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Gender</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Grade</th>
@@ -25,7 +25,7 @@ const StudentTable = ({ students, onEdit, onTransfer }) => (
             <tbody className="divide-y divide-gray-200">
                 {students.map(st => (
                     <tr key={st._id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200">{st.studentId}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200">{st.studentId}</td>
                         <td className="px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200">{st.fullName}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200">{st.gender}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200">{st.gradeDisplay || st.grade || '-'}</td>

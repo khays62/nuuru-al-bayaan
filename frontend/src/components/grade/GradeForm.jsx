@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { getGrades, createGradeSection, updateGradeSection, getSubjects } from '../../api';
+import { resyncGradeSectionCohort } from '../../api';
 import { hasScores as apiHasScores } from '../../api';
 import { Lock, RotateCcw } from 'lucide-react';
 import AcademicYearSelect from '../lookups/AcademicYearSelect';
 import GradeSelect from '../lookups/GradeSelect';
 import ShiftSelect from '../lookups/ShiftSelect';
+import CohortSelect from '../lookups/CohortSelect';
 import { setCachedSubjects, invalidateSubjectsCache } from './subjectsCache';
 
 const GradeForm = ({ cls, onClose, onSuccess }) => {
@@ -18,6 +20,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   const [academicYear, setAcademicYear] = useState(cls?.academicYear?._id || cls?.academicYear || '');
   const [shift, setShift] = useState(cls?.shift?._id || cls?.shift || '');
   const [subjects, setSubjects] = useState((cls?.subjects || []).map(s => s._id || s));
+  const [cohort, setCohort] = useState(cls?.cohort?._id || cls?.cohort || '');
 
   const [grades, setGrades] = useState([]);
   const [gradeSubjects, setGradeSubjects] = useState([]);
@@ -27,6 +30,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   const hasScoresTimerRef = useRef(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingPhase, setSubmittingPhase] = useState(''); // '', 'saving', 'resync'
   const pendingGradeRef = useRef(null);
   const skipFirstGradeEffectRef = useRef(true); // avoid fetch on initial mount/open
 
@@ -84,12 +88,20 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
     if (!grade || !academicYear || !shift || !section) { toast.error('Please fill all required fields'); return; }
     if (submitting) return; // guard double submit
     setSubmitting(true);
+    setSubmittingPhase('saving');
     // Derive a safe hidden className for backend compatibility
     const selectedGrade = grades.find(g => (g._id === grade));
     const gradeLabel = selectedGrade?.gradeName || 'Unnamed';
     const className = `Section (${gradeLabel})`;
 
     const payload = { className, section, capacity: capacity ? Number(capacity) : undefined, grade, academicYear, shift, subjects };
+    // Cohort: include field; empty string means clear on update; omitted on create if empty
+    if (isEdit) {
+      payload.cohort = cohort !== undefined ? cohort : '';
+    } else if (cohort) {
+      payload.cohort = cohort;
+    }
+    // No duplicate cohort assignment; rely on block above
     let result;
     if (isEdit) {
       const res = await updateGradeSection(cls._id, payload);
@@ -99,16 +111,39 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
         } else if (res.code === 'SUBJECTS_HAVE_SCORES') {
           const items = (res.blockedSubjects || []).map(s => s.subjectName || s._id).join(', ');
           toast.error(`Cannot remove subjects with scores: ${items}`);
+        } else if (res.code === 'COHORT_CONFLICT_SAME_GRADE_AY' || res.code === 'COHORT_CONFLICT_CLEAR') {
+          toast.error(res.error || 'Cohort conflict: All sections in the same grade and year must share one cohort.');
         } else {
           toast.error(res.error || 'Failed to update');
         }
         setSubmitting(false);
+        setSubmittingPhase('');
         return;
       }
       result = res.data;
+      // Auto-resync active enrollments if backend indicates it's needed
+      if (res.resyncNeeded) {
+        setSubmittingPhase('resync');
+        const rx = await resyncGradeSectionCohort(cls._id);
+        if (!rx.ok) {
+          toast.error(rx.error || 'Resync failed');
+          setSubmitting(false);
+          setSubmittingPhase('');
+          return;
+        }
+      }
     } else {
       const res = await createGradeSection(payload);
-      if (!res.ok) { toast.error(res.error || 'Operation failed'); setSubmitting(false); return; }
+      if (!res.ok) {
+        if (res.code === 'COHORT_CONFLICT_SAME_GRADE_AY' || res.code === 'COHORT_CONFLICT_CLEAR') {
+          toast.error(res.error || 'Cohort conflict: All sections in the same grade and year must share one cohort.');
+        } else {
+          toast.error(res.error || 'Operation failed');
+        }
+        setSubmitting(false);
+        setSubmittingPhase('');
+        return;
+      }
       result = res.data;
     }
 
@@ -125,8 +160,11 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
       toast.success(isEdit ? 'Updated' : 'Created');
     }
 
+    // No explicit resync UI; auto-handled above
+
     onSuccess && onSuccess(result.data || result);
     setSubmitting(false);
+    setSubmittingPhase('');
     onClose();
   };
 
@@ -188,6 +226,10 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
             <label htmlFor="gradeform-shift" className="block text-sm font-medium text-gray-700">Shift</label>
             <ShiftSelect id="gradeform-shift" name="gradeform-shift" disabled={submitting} value={shift} onChange={(v)=>setShift(v)} className="mt-1 w-full" placeholder="Select..." />
           </div>
+          <div>
+            <label htmlFor="gradeform-cohort" className="block text-sm font-medium text-gray-700">Cohort (optional)</label>
+            <CohortSelect id="gradeform-cohort" name="gradeform-cohort" disabled={submitting} value={cohort} onChange={(v)=>setCohort(v)} className="mt-1 w-full" placeholder="None" />
+          </div>
           <div className="md:col-span-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <span>Subjects</span>
@@ -236,6 +278,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
             <input disabled={submitting} value={capacity} onChange={e=>setCapacity(e.target.value)} type="number" min={0} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60" />
           </div>
         </div>
+          
         <div className="mt-6 flex justify-end gap-3">
           <button type="button" disabled={submitting} onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 disabled:opacity-60">Cancel</button>
           <button type="submit" disabled={submitting} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2">
@@ -245,7 +288,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
               </svg>
             )}
-            {submitting ? (isEdit ? 'Updating...' : 'Saving...') : (isEdit ? 'Update' : 'Save')}
+            {submitting ? (submittingPhase === 'resync' ? 'Resyncing...' : (isEdit ? 'Updating...' : 'Saving...')) : (isEdit ? 'Update' : 'Save')}
           </button>
         </div>
       </form>

@@ -4,7 +4,8 @@ import {
   getGradeSection,
   createGradeSection,
   updateGradeSection,
-  deleteGradeSection
+  deleteGradeSection,
+  resyncGradeSectionCohort
 } from '../controllers/gradeSectionController.js';
 
 const router = express.Router();
@@ -15,5 +16,6 @@ router.get('/sections/:id', getGradeSection);
 router.post('/sections', createGradeSection);
 router.put('/sections/:id', updateGradeSection);
 router.delete('/sections/:id', deleteGradeSection);
+router.post('/sections/:id/resync-cohort', resyncGradeSectionCohort);
 
 export default router;

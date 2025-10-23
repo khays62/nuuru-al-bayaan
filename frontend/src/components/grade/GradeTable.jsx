@@ -10,7 +10,8 @@ const GradeTable = ({ classes, onEdit, onDelete }) => (
         <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Section</th>
         <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Grade</th>
         <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-gray-700 border-x">Academic Year</th>
-        <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Shift</th>
+  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Shift</th>
+  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Cohort</th>
         <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Subjects</th>
         <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Capacity</th>
         <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Actions</th>
@@ -27,6 +28,7 @@ const GradeTable = ({ classes, onEdit, onDelete }) => (
               <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{gradeName}</td>
               <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{yearName}</td>
               <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{shiftName}</td>
+              <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{cls.cohort?.name || '—'}</td>
               <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{(cls.subjects || []).length}</td>
               <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{cls.capacity || '—'}</td>
               <td className="px-4 py-3 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200">
