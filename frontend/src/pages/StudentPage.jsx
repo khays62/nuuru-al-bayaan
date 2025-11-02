@@ -28,6 +28,8 @@ export default function StudentPage() {
     const [classes, setClasses] = useState([]);
     const [gradeSectionFilter, setGradeSectionFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    // Enrollment filter (open/all/graduated/promoted/transferred/withdrawn)
+    const [enrollmentFilter, setEnrollmentFilter] = useState('open');
     // Toolbar cascading filters
     const [yearFilter, setYearFilter] = useState('');
     const [gradeFilter, setGradeFilter] = useState('');
@@ -49,8 +51,8 @@ export default function StudentPage() {
     // No filter persistence per request
 
     // fetchFn ha noqon mid aan dib isu abuureyn marka filters is beddelaan; filters waxay imanayaan extraFilters
-    const fetchFn = useCallback(async ({ page, limit, search, sortBy, sortDir, gradeSectionId, status, academicYear, grade, shift }) => {
-        const result = await listStudents({ page, limit, search, sortBy, sortDir, gradeSectionId, status, academicYear, grade, shift });
+    const fetchFn = useCallback(async ({ page, limit, search, sortBy, sortDir, gradeSectionId, status, academicYear, grade, shift, enrollmentStatus, includeClosed }) => {
+        const result = await listStudents({ page, limit, search, sortBy, sortDir, gradeSectionId, status, academicYear, grade, shift, enrollmentStatus, includeClosed });
         return { data: result.data, meta: result.meta };
     }, []);
 
@@ -71,7 +73,16 @@ export default function StudentPage() {
         initialSortDir: 'desc',
         initialLimit: 10,
         persistKey: 'students',
-        extraFilters: { gradeSectionId: gradeSectionFilter, status: statusFilter, academicYear: yearFilter, grade: gradeFilter, shift: shiftFilter },
+        extraFilters: (() => {
+            const ef = { gradeSectionId: gradeSectionFilter, status: statusFilter, academicYear: yearFilter, grade: gradeFilter, shift: shiftFilter };
+            // Map UI enrollment filter to API params
+            if (enrollmentFilter === 'all') {
+                ef.includeClosed = true;
+            } else if (['graduated','promoted','transferred','withdrawn'].includes(enrollmentFilter)) {
+                ef.enrollmentStatus = enrollmentFilter;
+            }
+            return ef;
+        })(),
         debounceSearchMs: 350
     });
 
@@ -346,6 +357,7 @@ export default function StudentPage() {
                     setShiftFilter('');
                     setGradeSectionFilter('');
                     setStatusFilter('');
+                    setEnrollmentFilter('open');
                     resetAndReload({ filters: {}, search: '' });
                 }}
                 filtersSlot={(
@@ -353,7 +365,20 @@ export default function StudentPage() {
                         <AcademicYearSelect placeholder="Academic Year" value={yearFilter} onChange={(v)=>{ setYearFilter(v); setPage(1); }} className="min-w-40" />
                         <GradeSelect placeholder="Grade" value={gradeFilter} onChange={(v)=>{ setGradeFilter(v); setPage(1); }} className="min-w-32" />
                         <ShiftSelect placeholder="Shift" value={shiftFilter} onChange={(v)=>{ setShiftFilter(v); setPage(1); }} className="min-w-32" />
-                        <GradeSectionSelect academicYearId={yearFilter} gradeId={gradeFilter} shiftId={shiftFilter} value={gradeSectionFilter} onChange={(v)=>{ setGradeSectionFilter(v); setPage(1); }} className="min-w-48" />
+                        <GradeSectionSelect gradeId={gradeFilter} shiftId={shiftFilter} value={gradeSectionFilter} onChange={(v)=>{ setGradeSectionFilter(v); setPage(1); }} className="min-w-48" />
+                        <FilterSelect
+                            value={enrollmentFilter}
+                            onChange={(v) => { setEnrollmentFilter(v); setPage(1); }}
+                            options={[
+                                { value: 'open', label: 'Open only' },
+                                { value: 'all', label: 'All (include closed)' },
+                                { value: 'graduated', label: 'Graduated only' },
+                                { value: 'promoted', label: 'Promoted only' },
+                                { value: 'transferred', label: 'Transferred only' },
+                                { value: 'withdrawn', label: 'Withdrawn only' },
+                            ]}
+                            placeholder="Enrollment"
+                        />
                         <FilterSelect
                             value={statusFilter}
                             onChange={(v) => { setStatusFilter(v); setPage(1); }}
@@ -423,7 +448,7 @@ export default function StudentPage() {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Section</label>
-                            <GradeSectionSelect academicYearId={selYear} gradeId={selGrade} shiftId={selShift} value={selSection} onChange={(v)=> setSelSection(v)} className="w-full" />
+                            <GradeSectionSelect gradeId={selGrade} shiftId={selShift} value={selSection} onChange={(v)=> setSelSection(v)} className="w-full" />
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">

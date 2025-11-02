@@ -5,7 +5,7 @@ const { Schema } = mongoose;
 const transferLogSchema = new Schema({
   student: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
   fromGradeSection: { type: Schema.Types.ObjectId, ref: 'GradeSection', required: true },
-  toGradeSection: { type: Schema.Types.ObjectId, ref: 'GradeSection', required: true },
+  toGradeSection: { type: Schema.Types.ObjectId, ref: 'GradeSection', required: false },
   byUser: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   date: { type: Date, default: Date.now },
   reason: { type: String, trim: true },

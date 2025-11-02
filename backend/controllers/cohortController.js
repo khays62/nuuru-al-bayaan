@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
 import Cohort from '../models/Cohort.js';
-import GradeSection from '../models/GradeSection.js';
 import Enrollment from '../models/Enrollment.js';
 
 function parseSort(req) {
@@ -163,15 +162,12 @@ export const deleteCohort = async (req, res) => {
     const doc = await Cohort.findById(id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
 
-    const [gsCount, enrCount] = await Promise.all([
-      GradeSection.countDocuments({ cohort: id }),
-      Enrollment.countDocuments({ cohort: id })
-    ]);
-    if (gsCount > 0 || enrCount > 0) {
+    const enrCount = await Enrollment.countDocuments({ cohort: id });
+    if (enrCount > 0) {
       return res.status(409).json({
-        message: 'Cohort is in use by classes or enrollments; cannot delete',
+        message: 'Cohort is in use by enrollments; cannot delete',
         code: 'COHORT_IN_USE',
-        usage: { gradeSections: gsCount, enrollments: enrCount }
+        usage: { gradeSections: 0, enrollments: enrCount }
       });
     }
 

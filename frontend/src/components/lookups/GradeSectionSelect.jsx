@@ -2,17 +2,19 @@
 import React, { useEffect, useState } from 'react';
 import { listGradeSections } from '../../api';
 
+// AY-agnostic: GradeSection is reusable across years; filter by Grade + Shift only.
 export default function GradeSectionSelect({ academicYearId, gradeId, shiftId, value, onChange, disabled = false, className = '', placeholder = 'Any', id, name, ...rest }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let ignore = false;
-    if (!academicYearId || !gradeId || !shiftId) { setItems([]); return; }
+    // Only require grade and shift; ignore academicYearId for fetching sections
+    if (!gradeId || !shiftId) { setItems([]); return; }
     (async () => {
       setLoading(true);
       try {
-        const res = await listGradeSections({ academicYear: academicYearId, grade: gradeId, shift: shiftId, limit: 200 });
+        const res = await listGradeSections({ grade: gradeId, shift: shiftId, limit: 200 });
         const data = Array.isArray(res) ? res : (res?.data || []);
         if (!ignore) setItems(data);
       } catch {
@@ -22,17 +24,16 @@ export default function GradeSectionSelect({ academicYearId, gradeId, shiftId, v
       }
     })();
     return () => { ignore = true; };
-  }, [academicYearId, gradeId, shiftId]);
+  }, [gradeId, shiftId]);
 
   return (
-    <select id={id} name={name} {...rest} value={value} onChange={(e)=>onChange?.(e.target.value)} disabled={disabled || loading || !academicYearId || !gradeId || !shiftId} className={`border rounded px-2 py-1 ${className}`}>
+    <select id={id} name={name} {...rest} value={value} onChange={(e)=>onChange?.(e.target.value)} disabled={disabled || loading || !gradeId || !shiftId} className={`border rounded px-2 py-1 ${className}`}>
       <option value="">{loading ? 'Loading…' : placeholder}</option>
       {items.map(gs => {
         const gradeName = gs?.grade?.gradeName;
         const sectionNum = gs?.section;
-        const yearName = gs?.academicYear?.yearName;
         const shiftName = gs?.shift?.shiftName;
-        const tail = [yearName, shiftName].filter(Boolean).join(' - ');
+        const tail = [shiftName].filter(Boolean).join(' - ');
         const label = [
           gradeName ? `${gradeName}` : null,
           sectionNum ? `Sec ${sectionNum}` : null,

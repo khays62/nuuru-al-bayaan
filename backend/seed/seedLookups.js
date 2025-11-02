@@ -12,20 +12,20 @@ const EXAM_TYPES = ['Mid-term', 'Final'];
 
 // Grades (Arabic): مستوى الأول → مستوى العاشر
 const ARABIC_GRADES = [
-  'مستوى الأول',
-  'مستوى الثاني',
-  'مستوى الثالث',
-  'مستوى الرابع',
-  'مستوى الخامس',
-  'مستوى السادس',
-  'مستوى السابع',
-  'مستوى الثامن',
-  'مستوى التاسع',
-  'مستوى العاشر',
+  'level one',
+  'level two',
+  'level three',
+  'level four',
+  'level five',
+  'level six',
+  'level seven',
+  'level eight',
+  'level nine',
+  'level ten',
 ];
 
 // Shifts (Arabic)
-const SHIFTS = ['صباحي', 'مسائي'];
+const SHIFTS = ['evening', 'morning'];
 
 // Academic Years (dynamic around current year)
 function generateAcademicYears() {
