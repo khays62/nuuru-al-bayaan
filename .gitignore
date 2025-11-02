@@ -46,3 +46,10 @@ dist-ssr/
 
 # Misc
 *.local
+
+# Project temp artifacts
+# Ignore ad-hoc temporary JSON payloads in repo root
+tmp_*.json
+
+# Ignore frontend lint output text dumps
+frontend/lint*.txt
