@@ -221,6 +221,7 @@ export default function ResultPage() {
                     placeholder="Shift"
                 />
                 <GradeSectionSelect
+                    academicYearId={academicYearId}
                     gradeId={gradeId}
                     shiftId={shiftId}
                     value={gradeSectionId}

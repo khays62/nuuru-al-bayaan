@@ -23,10 +23,10 @@ export function useCascadingFilters(initial = {}) {
   useEffect(() => {
     let ignore = false;
     (async () => {
-      if (!gradeId || !shiftId) { setSections([]); return; }
+      if (!academicYearId || !gradeId || !shiftId) { setSections([]); return; }
       setLoadingSections(true);
       try {
-        const res = await listGradeSections({ grade: gradeId, shift: shiftId, limit: 200 });
+        const res = await listGradeSections({ academicYear: academicYearId, grade: gradeId, shift: shiftId, limit: 200 });
         if (!ignore) setSections(res?.data || []);
       } catch {
         if (!ignore) setSections([]);
@@ -35,7 +35,7 @@ export function useCascadingFilters(initial = {}) {
       }
     })();
     return () => { ignore = true; };
-  }, [gradeId, shiftId]);
+  }, [academicYearId, gradeId, shiftId]);
 
   return { academicYearId, setAcademicYearId, gradeId, setGradeId, shiftId, setShiftId, gradeSectionId, setGradeSectionId, sections, loadingSections, resetLower };
 }

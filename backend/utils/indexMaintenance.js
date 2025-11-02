@@ -6,14 +6,16 @@ export async function ensureClassIndexes() {
   try {
     // Work on the shared 'classes' collection via the GradeSection model
     const indexes = await GradeSection.collection.indexes();
-    // Drop any legacy index that includes academicYear on GradeSection
-    const legacyWithAY = indexes.filter(ix => Object.keys(ix.key || {}).includes('academicYear'));
-    for (const ix of legacyWithAY) {
+    const legacy = indexes.find(ix => {
+      const keys = Object.keys(ix.key || {});
+      return keys.includes('grade') && keys.includes('academicYear') && keys.includes('shift') && keys.includes('className');
+    });
+    if (legacy) {
       try {
-        await GradeSection.collection.dropIndex(ix.name);
-        console.log(`[indexes] Dropped legacy GradeSection index ${ix.name} (contained academicYear)`);
+        await GradeSection.collection.dropIndex(legacy.name);
+        console.log(`[indexes] Dropped legacy index ${legacy.name} on classes (legacy className)`);
       } catch (e) {
-        console.warn('[indexes] Failed to drop legacy GradeSection index:', ix.name, e.message);
+        console.warn('[indexes] Failed to drop legacy index (might already be dropped):', e.message);
       }
     }
     // Ensure new indexes from schema (including unique on section)

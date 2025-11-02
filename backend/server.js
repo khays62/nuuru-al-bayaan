@@ -13,7 +13,6 @@ import subjectRoutes from './routes/subjectRoutes.js';
 import gradeSectionRoutes from './routes/gradeSectionRoutes.js';
 import examRoutes from './routes/examRoutes.js';
 import cohortRoutes from './routes/cohortRoutes.js';
-import promotionRoutes from './routes/promotionRoutes.js';
 
 
 dotenv.config();
@@ -35,11 +34,10 @@ const startServer = async () => {
     app.use('/api/lookups', lookupRoutes);
     app.use('/api/students', studentRoutes);
     app.use('/api/subjects', subjectRoutes);
-    // legacy /api/classes removed
-    app.use('/api/grades', gradeSectionRoutes);
-    app.use('/api/exams', examRoutes);
-    app.use('/api/cohorts', cohortRoutes);
-    app.use('/api/promotions', promotionRoutes);
+  // legacy /api/classes removed
+  app.use('/api/grades', gradeSectionRoutes);
+  app.use('/api/exams', examRoutes);
+  app.use('/api/cohorts', cohortRoutes);
 
 
     const PORT = process.env.PORT || 7000;
