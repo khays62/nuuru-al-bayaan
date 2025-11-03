@@ -1,0 +1,1 @@
+{"results":[{"studentId":"6905a9ecbca4bcf2594e07c7","fullName":"Test Student 1","total":60,"average":60,"subjectScores":[{"subjectId":"6905aa89bca4bcf2594e07e4","total":60}],"rank":1}],"classAverage":60,"subjects":[{"_id":"6905aa89bca4bcf2594e07e4","subjectName":"Math"}]}

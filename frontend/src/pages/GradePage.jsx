@@ -13,20 +13,18 @@ import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
 import { listGradeSections, deleteGradeSection } from '../api';
 // Reusable lookup selects (replace ad-hoc FilterSelects)
-import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
-import CohortSelect from '../components/lookups/CohortSelect';
+// AY and Cohort filters removed (GS is AY-agnostic)
 
 export default function GradePage() {
 		const [isModalOpen, setIsModalOpen] = useState(false);
 		const [editingClass, setEditingClass] = useState(null);
 		// Local, controlled filters (mirrors StudentPage pattern for stability)
 		const [gradeFilter, setGradeFilter] = useState('');
-		const [yearFilter, setYearFilter] = useState('');
 		const [shiftFilter, setShiftFilter] = useState('');
 	const [sectionFilter, setSectionFilter] = useState('');
-	const [cohortFilter, setCohortFilter] = useState('');
+
 
 		const fetchGrades = useCallback(async (params) => {
 				const result = await listGradeSections({
@@ -34,7 +32,6 @@ export default function GradePage() {
 						limit: params.limit,
 						search: params.search,
 						grade: params.grade,
-						academicYear: params.academicYear,
 						shift: params.shift,
 						section: params.section,
 			sortBy: params.sortBy,
@@ -49,7 +46,7 @@ export default function GradePage() {
 				initialSortDir: 'desc',
 				initialLimit: 10,
 				persistKey: 'grades-page',
-		extraFilters: { grade: gradeFilter, academicYear: yearFilter, shift: shiftFilter, section: sectionFilter, cohort: cohortFilter }
+		extraFilters: { grade: gradeFilter, shift: shiftFilter, section: sectionFilter }
 		});
 
 		const {
@@ -84,10 +81,8 @@ export default function GradePage() {
 		// Apply filters in a coalesced way to avoid multiple fetches
 		const applyFilters = (patch) => {
 			if (patch.grade !== undefined) setGradeFilter(patch.grade);
-			if (patch.academicYear !== undefined) setYearFilter(patch.academicYear);
 			if (patch.shift !== undefined) setShiftFilter(patch.shift);
 			if (patch.section !== undefined) setSectionFilter(patch.section);
-			if (patch.cohort !== undefined) setCohortFilter(patch.cohort);
 			// Single page reset; hook will coalesce identical signatures
 			setPage(1);
 		};
@@ -111,15 +106,6 @@ export default function GradePage() {
 					className="min-w-32"
 					placeholder="Grade"
 				/>
-				<AcademicYearSelect
-					id="grades-year-filter"
-					name="grades-year-filter"
-					aria-label="Academic Year"
-					value={yearFilter}
-					onChange={(v) => applyFilters({ academicYear: v })}
-					className="min-w-40"
-					placeholder="Academic Year"
-				/>
 				<ShiftSelect
 					id="grades-shift-filter"
 					name="grades-shift-filter"
@@ -128,15 +114,6 @@ export default function GradePage() {
 					onChange={(v) => applyFilters({ shift: v })}
 					className="min-w-32"
 					placeholder="Shift"
-				/>
-				<CohortSelect
-					id="grades-cohort-filter"
-					name="grades-cohort-filter"
-					aria-label="Cohort"
-					value={cohortFilter}
-					onChange={(v)=> applyFilters({ cohort: v })}
-					className="min-w-48"
-					placeholder="Cohort"
 				/>
 				<input
 					id="grades-section-filter"
@@ -164,7 +141,7 @@ export default function GradePage() {
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
 										<h1 className="text-2xl font-bold text-gray-800">Grade Management</h1>
-										<p className="mt-1 text-sm text-gray-600">Manage grade sections by academic year and shift. Subjects are linked to grades.</p>
+										<p className="mt-1 text-sm text-gray-600">Manage grade sections by grade and shift. Subjects are linked to grades.</p>
 								</div>
 								<div>
 										<button
@@ -182,9 +159,7 @@ export default function GradePage() {
 								sortSlot={sortSlot}
 								onReset={() => {
 									setGradeFilter('');
-									setYearFilter('');
 									setShiftFilter('');
-									setCohortFilter('');
 									setSectionFilter('');
 									resetAndReload({ filters: {}, search: '' });
 								}}

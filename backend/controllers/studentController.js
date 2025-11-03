@@ -19,6 +19,8 @@ export const getStudents = async (req, res) => {
             grade,
             shift,
             status,
+            enrollmentStatus,
+            includeClosed,
             sort
         } = req.query;
 
@@ -40,8 +42,16 @@ export const getStudents = async (req, res) => {
         }
 
         // Build match for search + filters (we operate on enrollment pipeline + joined student)
-        // Include both 'active' and 'inactive' so deactivated students still appear in the list
-    const enrollmentMatch = { status: { $in: ['active','inactive'] } };
+        // Default: only active/inactive enrollments
+        let enrollmentStatuses = ['active','inactive'];
+        if (String(includeClosed).toLowerCase() === '1' || String(includeClosed).toLowerCase() === 'true') {
+            enrollmentStatuses = ['active','inactive','promoted','graduated','transferred','withdrawn'];
+        }
+        if (enrollmentStatus && enrollmentStatus !== 'all') {
+            // Allow precise filtering by enrollment.status
+            enrollmentStatuses = [enrollmentStatus];
+        }
+        const enrollmentMatch = { status: { $in: enrollmentStatuses } };
     const sectionId = gradeSectionId || req.query.classId; // legacy fallback
     if (sectionId && mongoose.isValidObjectId(sectionId)) enrollmentMatch.gradeSection = new mongoose.Types.ObjectId(sectionId);
         if (academicYear && mongoose.isValidObjectId(academicYear)) enrollmentMatch.academicYear = new mongoose.Types.ObjectId(academicYear);
@@ -68,6 +78,12 @@ export const getStudents = async (req, res) => {
                     latest: { $first: '$$ROOT' }
                 }
             },
+            // Optionally require at least one graduated enrollment when enrollmentStatus='graduated'
+            ...(enrollmentStatus === 'graduated' ? [
+                { $lookup: { from: 'enrollments', localField: '_id', foreignField: 'student', as: 'allEnrs' } },
+                { $match: { 'allEnrs.status': 'graduated' } },
+                { $project: { allEnrs: 0 } }
+            ] : []),
             // Join student doc
             {
                 $lookup: {
@@ -86,12 +102,12 @@ export const getStudents = async (req, res) => {
             { $lookup: { from: 'gradesections', localField: 'latest.gradeSection', foreignField: '_id', as: 'class' } },
             { $unwind: { path: '$class', preserveNullAndEmptyArrays: true } },
             // Join cohort for display-id build on list view (optional if null)
-            { $lookup: { from: 'cohorts', localField: 'class.cohort', foreignField: '_id', as: 'cohort' } },
+            { $lookup: { from: 'cohorts', localField: 'latest.cohort', foreignField: '_id', as: 'cohort' } },
             { $unwind: { path: '$cohort', preserveNullAndEmptyArrays: true } },
-            // Join related grade / shift / academicYear for display
+            // Join related grade / shift / academicYear for display (AY from enrollment)
             { $lookup: { from: 'grades', localField: 'class.grade', foreignField: '_id', as: 'grade' } },
             { $lookup: { from: 'shifts', localField: 'class.shift', foreignField: '_id', as: 'shift' } },
-            { $lookup: { from: 'academicyears', localField: 'class.academicYear', foreignField: '_id', as: 'ay' } },
+            { $lookup: { from: 'academicyears', localField: 'latest.academicYear', foreignField: '_id', as: 'ay' } },
             { $addFields: {
                 grade: { $arrayElemAt: ['$grade.gradeName', 0] },
                 shift: { $arrayElemAt: ['$shift.shiftName', 0] },
@@ -172,17 +188,26 @@ export const getStudents = async (req, res) => {
 // @route   POST /api/students
 // @access  Private (mustaqbalka)
 export const addStudent = async (req, res) => {
-    const { gradeSectionId, fullName, gender, dob, guardianName, contactNumber, address, admissionDate } = req.body;
-    if (!gradeSectionId || !fullName || !gender || !dob || !guardianName || !contactNumber || !admissionDate) {
-    return res.status(400).json({ message: 'Please fill in all required fields.' });
+    const { gradeSectionId, academicYearId, cohortId, fullName, gender, dob, guardianName, contactNumber, address, admissionDate } = req.body;
+    if (!gradeSectionId || !academicYearId || !fullName || !gender || !dob || !guardianName || !contactNumber || !admissionDate) {
+        return res.status(400).json({ message: 'Please fill in all required fields (including academicYearId).' });
+    }
+    // Policy: Cohort is required for new enrollment (admin chooses the active cohort for the AY)
+    if (!cohortId) {
+        return res.status(400).json({ message: 'Cohort is required.' });
     }
 
     try {
-        const cls = await GradeSection.findById(gradeSectionId).populate(['academicYear', 'grade', 'shift']);
+        const cls = await GradeSection.findById(gradeSectionId).populate(['grade', 'shift']);
     if (!cls) return res.status(404).json({ message: 'Section not found.' });
-        if (!cls.cohort) {
-            return res.status(400).json({ message: 'Grade Section must have a Cohort before enrolling students.' });
-        }
+        // Validate AY and optional Cohort
+        if (!mongoose.isValidObjectId(academicYearId)) return res.status(400).json({ message: 'Invalid academicYearId' });
+        // Validate Cohort (required per policy)
+        let cohortDoc = null;
+        if (!mongoose.isValidObjectId(cohortId)) return res.status(400).json({ message: 'Invalid cohortId' });
+        const Cohort = (await import('../models/Cohort.js')).default;
+        cohortDoc = await Cohort.findById(cohortId).lean();
+        if (!cohortDoc) return res.status(400).json({ message: 'Invalid cohortId' });
 
     // Guard 1: Do not allow the same person to be enrolled twice in the same academic year
     // Simple definition of "same person": fullName (case-insensitive, trimmed) + dob
@@ -209,7 +234,7 @@ export const addStudent = async (req, res) => {
             const studentDoc = student[0];
 
             // Check duplicate enrollment same academicYear (in case of rare race conditions)
-            const existing = await Enrollment.findOne({ student: studentDoc._id, academicYear: cls.academicYear._id }).session(session);
+            const existing = await Enrollment.findOne({ student: studentDoc._id, academicYear: academicYearId }).session(session);
             if (existing) {
                 await session.abortTransaction();
                 return res.status(409).json({ message: 'This student is already enrolled for the selected academic year.' });
@@ -218,17 +243,17 @@ export const addStudent = async (req, res) => {
             const enrollment = await Enrollment.create([{
                 student: studentDoc._id,
                 gradeSection: cls._id,
-                academicYear: cls.academicYear._id,
+                academicYear: academicYearId,
                 grade: cls.grade._id,
                 shift: cls.shift._id,
-                cohort: cls.cohort || undefined,
+                cohort: cohortDoc?._id || undefined,
                 status: 'active',
                 joinedAt: admissionDate
             }], { session });
 
             // After creating enrollment, generate cohort-coded Student ID if cohort exists
             try {
-                if (cls.cohort) {
+                if (cohortDoc?._id) {
                     // Global continuous sequence (not tied to section/GS)
                     const sectionCode = String(cls.section || '1').toUpperCase();
                     const key = 'stu-code:global';
@@ -243,7 +268,7 @@ export const addStudent = async (req, res) => {
                     let cName = '';
                     try {
                         const Cohort = (await import('../models/Cohort.js')).default;
-                        const c = await Cohort.findById(cls.cohort).select('name').lean();
+                        const c = await Cohort.findById(cohortDoc._id).select('name').lean();
                         cName = c?.name || '';
                     } catch {}
                     const prefix = (cName.match(/[A-Za-z]/g) || []).join('').slice(0,2).toUpperCase() || 'DU';
@@ -289,7 +314,7 @@ export const getStudentProfile = async (req, res) => {
 
         // Find latest active (preferred) enrollment; fallback latest any status
         const latest = await Enrollment.findOne({ student: id }).sort({ createdAt: -1 }).populate([
-            { path: 'gradeSection', model: 'GradeSection', populate: [{ path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' }, { path: 'academicYear', select: 'yearName' }] },
+            { path: 'gradeSection', model: 'GradeSection', populate: [{ path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' }] },
             { path: 'grade', select: 'gradeName' },
             { path: 'shift', select: 'shiftName' },
             { path: 'academicYear', select: 'yearName' },
@@ -326,7 +351,7 @@ export const getStudentHistory = async (req, res) => {
                 .skip(skip)
                 .limit(limitNum)
                 .populate([
-                    { path: 'gradeSection', model: 'GradeSection', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
+                    { path: 'gradeSection', model: 'GradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
                     { path: 'academicYear', select: 'yearName' },
                     { path: 'grade', select: 'gradeName' },
                     { path: 'shift', select: 'shiftName' },
@@ -363,9 +388,10 @@ export const getStudentTransfers = async (req, res) => {
         const TransferLog = (await import('../models/TransferLog.js')).default;
         // Determine if User model is registered (some deployments may not have User schema loaded yet)
         const userModelRegistered = !!mongoose.models.User;
+        // GradeSection is AY-agnostic now: populate only grade, shift, section
         const populatePaths = [
-            { path: 'fromGradeSection', select: 'section academicYear grade shift', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
-            { path: 'toGradeSection', select: 'section academicYear grade shift', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] }
+            { path: 'fromGradeSection', select: 'section grade shift', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
+            { path: 'toGradeSection', select: 'section grade shift', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] }
         ];
         if (userModelRegistered) {
             populatePaths.push({ path: 'byUser', select: 'fullName email' });
@@ -512,8 +538,8 @@ export const transferEnrollment = async (req, res) => {
         if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
         if (!mongoose.isValidObjectId(gradeSectionId)) return res.status(400).json({ message: 'Invalid gradeSectionId' });
 
-        // Fetch target section with its AY/grade/shift
-        const target = await GradeSection.findById(gradeSectionId).populate(['academicYear', 'grade', 'shift']);
+    // Fetch target section with its grade/shift (GS no longer carries AY)
+    const target = await GradeSection.findById(gradeSectionId).populate(['grade', 'shift']);
         if (!target) return res.status(404).json({ message: 'Target section not found' });
 
         // Validation: Section capacity
@@ -539,10 +565,7 @@ export const transferEnrollment = async (req, res) => {
             return res.status(400).json({ message: 'Only active enrollments can be transferred' });
         }
 
-        // Academic year must match to avoid breaking per-year constraints
-        if (String(enrollment.academicYear) !== String(target.academicYear._id)) {
-            return res.status(400).json({ message: 'Target section must be in the same academic year. For cross-year transfer, create a new enrollment.' });
-        }
+        // Academic year remains the same on transfer (enrollment keeps its AY)
 
         // No-op if same section
         if (String(enrollment.gradeSection) === String(target._id)) {
@@ -552,17 +575,17 @@ export const transferEnrollment = async (req, res) => {
         // Perform atomic update: move to target section and sync grade/shift
         const sourceSectionId = enrollment.gradeSection; // keep old for migration
         const sourceGradeId = enrollment.grade;
-    enrollment.gradeSection = target._id;
-    enrollment.grade = target.grade._id;
-    enrollment.shift = target.shift._id;
-    enrollment.cohort = target.cohort || null; // overwrite denormalized cohort on transfer
+        enrollment.gradeSection = target._id;
+        enrollment.grade = target.grade._id;
+        enrollment.shift = target.shift._id;
+        // Cohort stays as-is on transfer
         await enrollment.save();
 
         // Exam scores migration (same AY + same Grade):
         // If exams are created per gradeSection, we relink student's scores from source section's exams
         // to target section's corresponding exams (matched by examType).
         try {
-            if (String(sourceSectionId) !== String(target._id) && String(enrollment.academicYear) === String(target.academicYear._id) && String(sourceGradeId) === String(target.grade._id)) {
+            if (String(sourceSectionId) !== String(target._id) && String(sourceGradeId) === String(target.grade._id)) {
                 const Exam = (await import('../models/Exam.js')).default;
                 const ExamType = (await import('../models/ExamType.js')).default;
                 const ExamScore = (await import('../models/ExamScore.js')).default;
@@ -571,16 +594,16 @@ export const transferEnrollment = async (req, res) => {
                 const types = await ExamType.find({}).select('_id').lean();
                 const ensureOps = types.map(t => (
                     Exam.updateOne(
-                        { examType: t._id, academicYear: target.academicYear._id, gradeSection: target._id },
-                        { $setOnInsert: { examType: t._id, academicYear: target.academicYear._id, gradeSection: target._id } },
+                        { examType: t._id, academicYear: enrollment.academicYear, gradeSection: target._id },
+                        { $setOnInsert: { examType: t._id, academicYear: enrollment.academicYear, gradeSection: target._id } },
                         { upsert: true }
                     )
                 ));
                 await Promise.all(ensureOps);
 
                 // Fetch exams per section in same AY (after ensure)
-                const sourceExams = await Exam.find({ academicYear: target.academicYear._id, gradeSection: sourceSectionId }).select('_id examType').lean();
-                const targetExams = await Exam.find({ academicYear: target.academicYear._id, gradeSection: target._id }).select('_id examType').lean();
+                const sourceExams = await Exam.find({ academicYear: enrollment.academicYear, gradeSection: sourceSectionId }).select('_id examType').lean();
+                const targetExams = await Exam.find({ academicYear: enrollment.academicYear, gradeSection: target._id }).select('_id examType').lean();
 
                 // Map examType -> targetExamId
                 const targetByType = new Map(targetExams.map(e => [String(e.examType), String(e._id)]));
@@ -680,7 +703,7 @@ export const getFullTranscript = async (req, res) => {
         const enrollments = await Enrollment.find({ student: id })
             .sort({ joinedAt: 1, createdAt: 1 })
             .populate([
-                { path: 'gradeSection', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
+                { path: 'gradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
                 { path: 'academicYear', select: 'yearName' },
                 { path: 'grade', select: 'gradeName' },
                 { path: 'shift', select: 'shiftName' }
@@ -692,8 +715,8 @@ export const getFullTranscript = async (req, res) => {
         const userModelRegisteredFT = !!mongoose.models.User;
         let transfersQuery = TransferLog.find({ student: id })
             .sort({ date: 1, createdAt: 1 })
-            .populate({ path: 'fromGradeSection', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] })
-            .populate({ path: 'toGradeSection', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] });
+            .populate({ path: 'fromGradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] })
+            .populate({ path: 'toGradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] });
         if (userModelRegisteredFT) {
             transfersQuery = transfersQuery.populate({ path: 'byUser', select: 'fullName email' });
         }
@@ -804,8 +827,8 @@ export const getLatestTransfer = async (req, res) => {
         const TransferLog = (await import('../models/TransferLog.js')).default;
         const userModelRegistered = !!mongoose.models.User;
         const populatePaths = [
-            { path: 'fromGradeSection', select: 'section academicYear grade shift', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
-            { path: 'toGradeSection', select: 'section academicYear grade shift', populate: [ { path: 'academicYear', select: 'yearName' }, { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] }
+            { path: 'fromGradeSection', select: 'section grade shift', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
+            { path: 'toGradeSection', select: 'section grade shift', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] }
         ];
         if (userModelRegistered) populatePaths.push({ path: 'byUser', select: 'fullName email' });
         let logQuery = TransferLog.findOne({ student: id }).sort({ date: -1, createdAt: -1 });

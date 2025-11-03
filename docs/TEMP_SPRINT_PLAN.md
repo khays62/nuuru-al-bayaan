@@ -2,6 +2,133 @@
 
 Dukumeentigan waa jadwal shaqo ku-meel-gaar ah. Marka aan dhammeystirno, waan tirtiri doonnaa. Waxaa ku qoran waxyaabaha la qurxinayo/la hagaajinayo ee jira — ma aha features cusub oo waaweyn.
 
+## NEW (2025-11-01): Enrollment‑Centric Refactor & Workflow — Plan
+
+Ujeeddo: In wax laga beddelo qaabka GradeSection (GS) si uu u noqdo reusable (joogto ah sanado kasta), AY (AcademicYear) iyo Cohort-na looga wareejiyo GS una wareegaan Enrollment, si arday cusub aan loogu qasbin AY/Cohort hore marka ardaydii hore la dalacsiiyo.
+
+### Asbaabta iyo dhibaatada
+- Hadda: GS wuxuu xambaarsan yahay AY iyo mararka qaar Cohort → marka ardaydii la dalacsiiyo sanadka xiga, GS‑kii Level 1 (AY: 2024‑2025) weli wuu taagan yahay; arday cusub haddii lagu daro GS‑kaas, wuxuu ku dhacayaa AY‑gii hore (qalad).
+
+### Xalka la ansixinayo (Refactor)
+- GS (GradeSection) → Ka saar AY iyo Cohort. GS waxa uu noqdaa qeexida fasalka oo keliya: Grade (Level), Section (A/B/…), Shift (Morning/Evening), Capacity, Subjects[].
+- Enrollment → Noqo xudunta xiriirka: Student + GS + AY + Cohort (+ status, sequenceInYear, iwm.).
+- Cohort → Si toos ah loogu xiro AY marka la abuuro; ardayga waxa uu Cohort‑ka ku helaa iyada oo loo marayo Enrollment.
+
+### Qiyaaso & shuruudo (Assumptions)
+- MongoDB waa nadiif (wax data ah kuma jiraan marka laga reebo lookups: Shift, Grade, ExamType, AY). Collections: GradeSection/Student/Enrollment hore ayaa la nadiifiyey.
+- Sidaas daraaddeed, MIGRATION xog adag ma jiro → waxaan toos u qaadaneynaa schemas cusub iyo seeders caadi ah.
+
+### Isbeddelka Model‑lada (Before → After)
+
+#### GradeSection
+
+| Field | Before | After |
+|---|---|---|
+| grade | required (ref Grade) | unchanged |
+| section | required (string) | unchanged |
+| shift | required (ref Shift) | unchanged |
+| capacity | number | unchanged |
+| subjects[] | [ref Subject] | unchanged |
+| academicYear | ref AcademicYear (in GS) | REMOVED (→ waxay tagtaa Enrollment) |
+| cohort | ref Cohort (in GS) | REMOVED (→ waxay tagtaa Enrollment) |
+| unique index | { grade, academicYear, shift, section } | UPDATED → { grade, shift, section } |
+
+#### Enrollment
+
+| Field | Before | After |
+|---|---|---|
+| student | ref Student | unchanged |
+| gradeSection | ref GradeSection | unchanged (laakiin GS waa reusable) |
+| academicYear | ref AcademicYear | ensure REQUIRED & indexed |
+| cohort | ref Cohort | ensure OPTIONAL/REQUIRED per flow; indexed |
+| status | enum (active/inactive/…) | unchanged |
+| sequenceInYear | number | unchanged (unique with student+AY) |
+| unique index | (student, academicYear, sequenceInYear) | unchanged |
+
+#### Cohort
+
+| Field | Before | After |
+|---|---|---|
+| name | string (unique per AY) | unchanged |
+| academicYear | ref Academic Year | unchanged |
+| status/archived | boolean | unchanged |
+
+#### Indexes (summary)
+- Drop legacy GS index: { grade, academicYear, shift, section }.
+- Add GS unique index: { grade, shift, section }.
+- Ensure Enrollment indexes sidii hore (student+AY+sequenceInYear) iyo queries caadiga ah (AY, GS, cohort) → create supporting compound indexes as needed.
+
+### Saameynta API/BE (Checklist)
+
+Models/Schema:
+- [ ] Update `models/GradeSection.js`: ka saar `academicYear`, `cohort`; cusbooneysii unique index; xaqiiji refs iyo virtuals haddii jira.
+- [ ] `models/Enrollment.js`: xaqiiji `academicYear` REQUIRED; `cohort` indexed; indexes ok.
+
+Controllers/Routes:
+- [ ] `gradeSectionController`:
+  - Remove/read fields AY/Cohort from create/update payloads.
+  - Uniformity check: ha ku xirnayn AY; kaliya Grade+Shift+Section.
+  - Listing: haddii aad u baahato filter by AY, waa in lagu saleeyaa Enrollment counts (optional future), laakiin GS liiska laftiisa AY ma laha.
+- [ ] `studentController` (Add student):
+  - Payload cusub: `{ student, enrollment: { academicYearId, cohortId?, gradeSectionId } }`.
+  - Marka la abuuro Student → ku samee Enrollment cusub ee AY hadda socda (iyo Cohort hadda socda) + GS la doortay.
+- [ ] `promotionController`:
+  - Target GS helid: ku saley grade+shift+section (reusable). Haddii GS‑ka xiga ma jiro → auto‑create (once) la’aan AY.
+  - Enrollment cusub marka la promote‑gareeyo: AY cusub + GS cusub; Cohort sida siyaasadda (badanaa isku cohort ama graduation path).
+- [ ] `examController`: Saameyn la’aan badan; logic‑ga wuxuu raacaa Enrollment. Hubi queries aysan ku xiranayn GS.AY.
+- [ ] `lookupController`/`cohortController`: Saameyn la’aan ballaaran.
+
+Seeds/Utils:
+- [ ] `utils/indexMaintenance.js`: ka saar/drop legacy GS indexes; sync new indexes.
+- [ ] `seed/…`: wax ka beddel ma yar ee lookups yihiin kuwa jira; GS seed optional (Admin manually creates base GSs).
+
+### Saameynta FE (Checklist)
+
+Pages/Forms:
+- [ ] Grade Sections (GS) Page/Form: Ka saar AY/Cohort fields; sii daa Grade, Shift, Section, Capacity, Subjects[]. Filasho: GS mar la abuuro, sanado badan dib‑loo‑isticmaali karo.
+- [ ] Student Registration: Ku dar doorashada AY (active) + Cohort (active) + GS (reusable); kadib POST → Student + Enrollment.
+- [ ] Promotions Page: To/From GS waa kuwa reusable; auto‑create GS target haddii maqan (grade+shift+section). AY ka yimaada Year‑End mode sida hadda.
+- [ ] Results/Transcript: Saameyn muuqata ma leh (waxaa ku xiran Enrollment). Labeling/filters waa in ay adeegsadaan AY/Cohort ka imanaya Enrollment.
+
+API Layer:
+- [ ] Update `src/api/modules/gradeSections.js`: payloads cusub ee create/update (la’aan AY/Cohort). List API uma baahna AY filter hadda.
+- [ ] Update `src/api/modules/students.js`: endpoint cusub/updated ee add‑student‑with‑enrollment.
+- [ ] Cross‑check Promotions/Exams modules; badanaa unchanged.
+
+### Hab‑raaca Shaqo Cusub (Workflow)
+1) Setup (hal‑mar): Admin waxa uu abuuraa GS bases: "Level 1‑A‑Morning", "Level 1‑B‑Morning", …; Subjects iyo Grade mapping horey u jiraan.
+2) Yearly: Admin waxa uu sameeyaa AY cusub (Promotion year‑end) + Cohort cusub (AY‑gaas); GS lama taabanayo.
+3) New Student: Create Student → Create Enrollment with { AY: active, Cohort: active, GS: reusable chosen }.
+4) Promotion: From { AY X, GS L1‑A } → To { AY X+1, GS L2‑A } (GS reusable). Enrollment hore close → Enrollment cusub la abuuro.
+
+### Tijaabooyin / QA (Acceptance)
+- Add Student (AY=2025‑2026, Cohort="Dufcadda 1aad", GS=L1‑A): Enrollment waxaa ku qoran AY sax ah; Transcript/Results sax.
+- Promote isla ardayga Year‑End: Enrollment cusub (AY=2026‑2027, GS=L2‑A); GS L1‑A ma xambaarsana AY; arday cusub 2026‑2027 waxa lagu dari karaa L1‑A iyada oo AY sax ah.
+- Delete GS subject with scores → guards weli shaqeeya (BE 409; FE disabled checkbox) — unchanged.
+- Indexes: GS duplicate (grade+shift+section) lama oggola; Enrollment uniqueness (student+AY+sequenceInYear) ilaalan.
+
+### Rollout (DB nadiif ah → simple)
+1) Merge schemas (BE) → run server → ensure indexes synced.
+2) FE updates → forms cusub (GS/Student/Promotion) → manual e2e.
+3) Seeds/Lookups: hubi Shift/Grade/ExamType/AY.
+4) Smoke tests: add student, promote, exams, transcript/print.
+
+### Jadwal kooban (talo)
+- Day 1: BE models/controllers + indexes; minimal tests.
+- Day 2: FE forms/pages + API layer; manual tests.
+- Day 3: QA fixes + docs update (API.md, PROMOTION.md, COHORTS.md).
+
+### API Impact (quick matrix)
+
+| Endpoint | Change | Note |
+|---|---|---|
+| POST /api/grade-sections | Remove AY/Cohort fields | Body: { gradeId, shiftId, section, capacity?, subjects[] }
+| PUT /api/grade-sections/:id | Remove AY/Cohort fields | Same as create |
+| GET /api/grade-sections | AY filter no longer native | Optional future: counts by AY via Enrollment |
+| POST /api/students | Accept embedded enrollment | Body includes { enrollment: { academicYearId, cohortId?, gradeSectionId } } |
+| POST /api/promotions/execute | Reuse GS by grade/shift/section | Auto‑create if missing; AY moves forward |
+| Exams endpoints | No change | Ensure queries use Enrollment, not GS.AY |
+
 ## 1) Qurxin Tables (Shared TableShell) — DONE
 - Ujeeddo: Hal muuqaal isku mid ah dhammaan miisaska.
 - Qodobbo:
@@ -57,13 +184,13 @@ Dukumeentigan waa jadwal shaqo ku-meel-gaar ah. Marka aan dhammeystirno, waan ti
 - Ujeeddo: Qeexid endpoints iyo UI flows mustaqbalka (attendance, grading scopes).
 - Artefacts: `docs/TEACHER_WORKFLOW.md` update.
 
-## 8) Promotions — Apply Doc
+## 8) Promotions — Apply Doc — DONE BUT STILL REFACTORING
 - Ujeeddo: Qorshaha `PROMOTION.md` in la dabaqo marka code la diyaariyo.
 
 ## 9) Users Logic (Admin/Staff/Teacher/Student)
 - Ujeeddo: Define RBAC flows (basic) — placeholder ilaa auth la bilaabo.
 
-## 10) Cohorts (Dufcad) — Graduating Batch Naming (NEW)
+## 10) Cohorts (Dufcad) — Graduating Batch Naming — DONE BUT STILL REFACTORING
 - Ujeeddo: In dugsi walba uu leeyahay "dufcad" (cohort/batch) magac gaar ah oo la raaciyo sanad/waqti; marka ardaydu qalin‑jabiso, dufcaddii ay ka mid ahaayeen ayaan ku lifaaqeynaa natiijooyinka/daabacaadda/warbixinnada.
 - Farsamo (Model + BE):
   - Model: `Cohort` { _id, name (unique per academicYear), slug, academicYear (ref), notes?, createdAt }

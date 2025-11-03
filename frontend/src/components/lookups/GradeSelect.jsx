@@ -22,10 +22,13 @@ export default function GradeSelect({ value, onChange, disabled = false, classNa
     return () => { ignore = true; };
   }, []);
 
+  // Sort grades by createdAt (MongoDB order)
+  const sortedItems = [...items].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
   return (
     <select id={id} name={name} {...rest} value={value} onChange={(e)=>onChange?.(e.target.value)} disabled={disabled || loading} className={`border rounded px-2 py-1 ${className}`}>
       <option value="">{placeholder}</option>
-      {items.map(g => <option key={g._id} value={g._id}>{g.gradeName}</option>)}
+      {sortedItems.map(g => <option key={g._id} value={g._id}>{g.gradeName}</option>)}
     </select>
   );
 }

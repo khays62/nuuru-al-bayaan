@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { getAcademicYears, getGrades, getShifts, listGradeSections } from '../../api';
+import { getAcademicYears, getGrades, getShifts, listGradeSections, listCohorts } from '../../api';
 import toast from 'react-hot-toast';
 
 // Refactored StudentForm aligned with backend API (POST /api/students)
-// NOTE: Academic Year is inferred from selected class server-side now.
+// Academic Year and Cohort are required at creation; GradeSection is AY-agnostic.
 export default function StudentForm({ student, onClose, onSubmit, submitting = false }) {
     const [formData, setFormData] = useState({
         fullName: '',
@@ -15,6 +15,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         admissionDate: new Date().toISOString().split('T')[0],
         status: 'Active', // still local; not sent in create (backend sets default)
         academicYearId: '',
+        cohortId: '',
         gradeId: '',
         shiftId: '',
         gradeSectionId: ''
@@ -24,6 +25,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
     const [years, setYears] = useState([]);
     const [grades, setGradesState] = useState([]);
     const [shifts, setShiftsState] = useState([]);
+    const [cohorts, setCohorts] = useState([]);
     const [sections, setSections] = useState([]);
     const [loadingSections, setLoadingSections] = useState(false);
 
@@ -55,16 +57,29 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         })();
     }, []);
 
-    // When AY/Grade/Shift changes, fetch sections
+    // When AY changes, load cohorts (optionally filter by AY)
+    useEffect(() => {
+        (async () => {
+            try {
+                // Filter cohorts by selected AY if provided; show active by default
+                const { data } = await listCohorts({ status: 'active', ay: formData.academicYearId, limit: 200 });
+                setCohorts(data || []);
+            } catch {
+                setCohorts([]);
+            }
+        })();
+    }, [formData.academicYearId]);
+
+    // When Grade/Shift changes, fetch sections (AY-agnostic)
     const { academicYearId, gradeId, shiftId } = formData;
     useEffect(() => {
-        if (!academicYearId || !gradeId || !shiftId) {
+        if (!gradeId || !shiftId) {
             setSections([]);
             setFormData(prev => ({ ...prev, gradeSectionId: '' }));
             return;
         }
         setLoadingSections(true);
-        listGradeSections({ academicYear: academicYearId, grade: gradeId, shift: shiftId, limit: 200 })
+        listGradeSections({ grade: gradeId, shift: shiftId, limit: 200 })
             .then(res => {
                 const rows = res?.data || [];
                 setSections(rows);
@@ -75,7 +90,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
             })
             .catch(() => setSections([]))
             .finally(() => setLoadingSections(false));
-    }, [academicYearId, gradeId, shiftId]);
+    }, [gradeId, shiftId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -86,6 +101,8 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         e.preventDefault();
         // Only include fields API expects
         const payload = {
+            academicYearId: formData.academicYearId,
+            cohortId: formData.cohortId,
             gradeSectionId: formData.gradeSectionId,
             fullName: formData.fullName.trim(),
             gender: formData.gender,
@@ -145,25 +162,32 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                             </select>
                         </div>
                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Cohort</label>
+                            <select name="cohortId" value={formData.cohortId} onChange={handleChange} required disabled={submitting || !formData.academicYearId} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60">
+                                <option value="">-- Select Cohort --</option>
+                                {(cohorts||[]).map(c => <option key={c._id} value={c._id}>{c.name}{c.startAcademicYear?.yearName ? ` (${c.startAcademicYear.yearName})` : ''}</option>)}
+                            </select>
+                        </div>
+                        <div>
                             <label className="block text-sm font-medium text-gray-700">Grade</label>
                             <select name="gradeId" value={formData.gradeId} onChange={handleChange} required disabled={submitting} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60">
                                 <option value="">-- Select Grade --</option>
-                                {grades.map(g => <option key={g._id} value={g._id}>{g.gradeName}</option>)}
+                                {[...grades].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map(g => <option key={g._id} value={g._id}>{g.gradeName}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Shift</label>
-                            <select name="shiftId" value={formData.shiftId} onChange={handleChange} required disabled={submitting || !formData.academicYearId || !formData.gradeId} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60">
+                            <select name="shiftId" value={formData.shiftId} onChange={handleChange} required disabled={submitting || !formData.gradeId} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60">
                                 <option value="">-- Select Shift --</option>
                                 {shifts.map(s => <option key={s._id} value={s._id}>{s.shiftName}</option>)}
                             </select>
                         </div>
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700">Enroll in Section</label>
-                            <select name="gradeSectionId" value={formData.gradeSectionId} onChange={handleChange} required disabled={submitting || loadingSections || !formData.academicYearId || !formData.gradeId || !formData.shiftId} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60">
+                            <select name="gradeSectionId" value={formData.gradeSectionId} onChange={handleChange} required disabled={submitting || loadingSections || !formData.gradeId || !formData.shiftId} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60">
                                 <option value="">{loadingSections ? 'Loading sections…' : '-- Select Section --'}</option>
                                 {sections.map(sec => (
-                                    <option key={sec._id} value={sec._id}>{`${sec.grade?.gradeName || ''} - Sec ${sec.section} (${sec.academicYear?.yearName || ''} - ${sec.shift?.shiftName || ''})`}</option>
+                                    <option key={sec._id} value={sec._id}>{`${sec.grade?.gradeName || ''} - Sec ${sec.section} (${sec.shift?.shiftName || ''})`}</option>
                                 ))}
                             </select>
                         </div>
