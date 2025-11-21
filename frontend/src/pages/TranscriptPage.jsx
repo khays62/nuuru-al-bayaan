@@ -213,7 +213,7 @@ export default function TranscriptPage() {
                 onChange={e=>{ setSearch(e.target.value); setShowSuggestions(true); }}
                 onFocus={()=> setShowSuggestions(true)}
                 placeholder="Search by name or ID"
-                className="mt-1 w-full border rounded px-2 py-1 pr-20"
+	                className="mt-1 w-full pr-20 px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <div className="absolute right-1 top-1.5 flex gap-1">
                 {mode === 'filter' && (
@@ -237,7 +237,7 @@ export default function TranscriptPage() {
                       value={dropdownSearch}
                       onChange={e=>setDropdownSearch(e.target.value)}
                       placeholder="Filter list..."
-                      className="w-full border rounded px-2 py-1 text-sm"
+                      className="w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                     />
                   </div>
                   {(() => {
@@ -271,7 +271,7 @@ export default function TranscriptPage() {
           </div>
           <div>
             <label htmlFor="transcript-mode" className="text-xs text-gray-500">Mode</label>
-            <select id="transcript-mode" name="transcript-mode" value={mode} onChange={e=>setMode(e.target.value)} className="mt-1 w-full border rounded px-2 py-1">
+            <select id="transcript-mode" name="transcript-mode" value={mode} onChange={e=>setMode(e.target.value)} className="mt-1 w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               <option value="full">Full Transcript (All Years)</option>
               <option value="latest">Latest Enrollment Only</option>
               <option value="filter">Filtered Transcript</option>

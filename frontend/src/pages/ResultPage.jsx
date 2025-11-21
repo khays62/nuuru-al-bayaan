@@ -228,7 +228,7 @@ export default function ResultPage() {
                     placeholder="Section"
                 />
                 <select
-                    className="border rounded px-2 py-1"
+                    className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={mode}
                     onChange={(e)=> setMode(e.target.value)}
                 >
@@ -242,7 +242,7 @@ export default function ResultPage() {
                 </select>
                 {mode === 'subject' && (
                     <select
-                        className="border rounded px-2 py-1"
+                    className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         value={subjectId}
                         onChange={(e)=> setSubjectId(e.target.value)}
                         disabled={!gradeSectionId}
@@ -255,7 +255,7 @@ export default function ResultPage() {
                 )}
                 {mode === 'examType' && (
                     <select
-                        className="border rounded px-2 py-1"
+                        className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         value={examTypeId}
                         onChange={(e)=> setExamTypeId(e.target.value)}
                         disabled={!gradeSectionId}
@@ -270,6 +270,7 @@ export default function ResultPage() {
                     <div className="flex items-center gap-2">
                         <label className="text-sm text-gray-600">N</label>
                         <input className="w-20 border rounded px-2 py-1" type="number" min={1} max={100} value={mode==='top'?topN:bottomN} onChange={e=> (mode==='top'? setTopN(Number(e.target.value)||0): setBottomN(Number(e.target.value)||0))} />
+                        {/* Number input styled separately for consistency */}
                     </div>
                 )}
                 <div className="md:ml-auto flex flex-row flex-wrap gap-2">

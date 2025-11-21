@@ -15,7 +15,7 @@ const TimingSelector = ({ value, onChange }) => (
   <div className="flex items-center gap-3">
     <label className="font-medium">Timing</label>
     <select
-      className="border rounded px-3 py-2 bg-white"
+	      className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
@@ -46,13 +46,24 @@ export default function PromotionPage() {
       api.listCohorts().then(res => setCohortOptions(res.data || res || []));
     });
   }, []);
-  // Fetch students when filters/timing change
+  // filtersReady: all required dropdowns must be chosen (AY, Grade, Shift, Section, Cohort)
+  const filtersReady = useMemo(() => (
+    Boolean(filters.ay) && Boolean(filters.grade) && Boolean(filters.shift) && Boolean(filters.section) && Boolean(filters.cohort)
+  ), [filters.ay, filters.grade, filters.shift, filters.section, filters.cohort]);
+
+  // Fetch students only when filtersReady
   useEffect(() => {
-    // Clear any existing preview when filters or timing change so the user must re-run Preview
     setPreview(null);
+    if (!filtersReady) {
+      // Keep table empty & reset selection until user chooses all filters
+      setStudents([]);
+      setSelectedIds(new Set());
+      setStudentsLoading(false);
+      setStudentsError(null);
+      return;
+    }
     setStudentsLoading(true);
     setStudentsError(null);
-    // Build params for API
     const params = {
       search: filters.q,
       academicYear: filters.ay,
@@ -60,18 +71,29 @@ export default function PromotionPage() {
       shift: filters.shift,
       gradeSectionId: filters.section,
       cohort: filters.cohort,
-      // timing is not used by backend students API, so skip
     };
     listStudents(params)
       .then(res => {
-        setStudents(res.data || []);
+        const raw = res.data || [];
+        // Normalize to provide a `current` object expected by the table formatter
+        const mapped = raw.map(s => ({
+          ...s,
+          current: {
+            grade: s.grade || null,
+            ay: s.academicYear || null,
+            section: s.section || null,
+            shift: s.shift || null,
+            cohort: s.cohort || null,
+          }
+        }));
+        setStudents(mapped);
       })
-      .catch(err => {
+      .catch(() => {
         setStudents([]);
         setStudentsError('Failed to load students');
       })
       .finally(() => setStudentsLoading(false));
-  }, [filters, timing]);
+  }, [filters, timing, filtersReady]);
 
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [preview, setPreview] = useState(null); // { items:[], summary:{} }
@@ -132,6 +154,10 @@ export default function PromotionPage() {
   };
 
   const handlePreview = async () => {
+    if (!filtersReady) {
+      toast.error('Doora AY, Grade, Shift, Section iyo Cohort marka hore');
+      return;
+    }
     if (students.length === 0 || selectedIds.size === 0) {
       toast.error('Select at least one student to preview');
       return;
@@ -143,12 +169,17 @@ export default function PromotionPage() {
       params.append('timing', timing);
       Array.from(selectedIds).forEach(id => params.append('studentIds', id));
     // UI no longer controls auto-create; backend decides and avoids duplicates
-  const { ok, items, summary, error, debug } = await previewPromotion(params);
+  const { ok, items, summary, error, warnings, allNoScores } = await previewPromotion(params);
       if (!ok) throw new Error(error || 'Preview failed');
       // preview items received
       setPreview({ items, summary });
+      // Show a short toast if all selected have no scores, but still render table
+      if (allNoScores || (Array.isArray(warnings) && warnings.includes('NO_SCORES_ALL'))) {
+        toast.error('All selected students have no exam scores.');
+      }
     } catch (err) {
-      toast.error('Preview failed');
+      toast.error(err?.message || 'Preview failed');
+      setPreview(null);
     } finally {
       setLoadingPreview(false);
     }
@@ -200,7 +231,20 @@ export default function PromotionPage() {
       // clear selection but keep preview so user can compare
       setSelectedIds(new Set());
     } catch (err) {
-      toast.error('Promotion failed');
+      const code = err?.data?.error || '';
+      if (code === 'NO_SCORES_ALL') {
+        const names = Array.isArray(err?.data?.details)
+          ? err.data.details.map(d => d.fullName).filter(Boolean)
+          : [];
+        const snippet = names.length === 0
+          ? ''
+          : names.length <= 3
+            ? ` (${names.join(', ')})`
+            : ` (${names.slice(0,3).join(', ')} +${names.length - 3} more)`;
+        toast.error(`All selected students have no exam scores${snippet}. Please add/import scores first, then try Promote again.`);
+      } else {
+        toast.error(err?.message || 'Promotion failed');
+      }
     } finally {
       setLoadingPromote(false);
     }
@@ -213,7 +257,7 @@ export default function PromotionPage() {
           <TimingSelector value={timing} onChange={setTiming} />
           <input
             placeholder="Search students..."
-            className="border rounded px-3 py-2 bg-white min-w-[220px]"
+	            className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-[220px]"
             value={filters.q}
             onChange={(e) => setFilters({ ...filters, q: e.target.value })}
           />
@@ -247,14 +291,14 @@ export default function PromotionPage() {
           <CohortSelect
             value={filters.cohort}
             onChange={v => setFilters({ ...filters, cohort: v })}
-            className="min-w-[120px]"
+            className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="Cohort"
           />
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handlePreview}
-            disabled={loadingPreview || loadingPromote}
+            disabled={!filtersReady || loadingPreview || loadingPromote}
             aria-busy={loadingPreview}
             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -287,7 +331,7 @@ export default function PromotionPage() {
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Students</h3>
             <label className="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
+              <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={!filtersReady || students.length === 0} />
               <span>Select All</span>
             </label>
           </div>
@@ -308,12 +352,15 @@ export default function PromotionPage() {
                 {studentsError && (
                   <tr><td colSpan={4} className="p-4 text-center text-red-500">{studentsError}</td></tr>
                 )}
-                {!studentsLoading && !studentsError && students.length === 0 && (
+                {!studentsLoading && !studentsError && !filtersReady && (
+                  <tr><td colSpan={4} className="p-4 text-center text-gray-500">Select AY, Grade, Shift, Section and Cohort to load students</td></tr>
+                )}
+                {!studentsLoading && !studentsError && filtersReady && students.length === 0 && (
                   <tr><td colSpan={4} className="p-4 text-center text-gray-500">No students found</td></tr>
                 )}
                 {students.map(s => (
                   <tr key={s._id} className="border-t">
-                    <td className="p-2"><input type="checkbox" checked={selectedIds.has(s._id)} onChange={()=>toggleSelected(s._id)} /></td>
+                    <td className="p-2"><input type="checkbox" checked={selectedIds.has(s._id)} onChange={()=>toggleSelected(s._id)} disabled={!filtersReady} /></td>
                     <td className="p-2">{s.studentId} — {s.fullName}</td>
                     <td className="p-2">{formatCurrent(s.current || {}) || '-'}</td>
                     <td className="p-2"><span className="inline-block text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded">{s.current?.cohort || '-'}</span></td>
@@ -345,6 +392,8 @@ export default function PromotionPage() {
                       <th className="p-2 text-left">Student</th>
                       <th className="p-2 text-left">From</th>
                       <th className="p-2 text-left">To</th>
+                      <th className="p-2 text-left">Avg</th>
+                      <th className="p-2 text-left">Failed</th>
                       <th className="p-2 text-left">Status</th>
                     </tr>
                   </thead>
@@ -363,9 +412,17 @@ export default function PromotionPage() {
                           <td className="p-2">
                             {formatTo(target) || '-'}
                           </td>
+                          <td className="p-2 text-xs">
+                            {typeof it.overallAvg === 'number' ? it.overallAvg.toFixed(1) : '-'}
+                          </td>
+                          <td className="p-2 text-xs">
+                            {typeof it.failedSubjects === 'number' ? it.failedSubjects : '-'}
+                          </td>
                           <td className="p-2">
                             {it.action === 'graduate' ? (
                               <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">Graduate</span>
+                            ) : (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay' ? (
+                              <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded">Not eligible (avg &lt; 60)</span>
                             ) : !it.toGS ? (
                               <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded">Missing GS (will be auto-created on promote)</span>
                             ) : (

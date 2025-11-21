@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Plus, Download } from 'lucide-react';
 import StudentTable from '../components/student/StudentTable';
 import StudentForm from '../components/student/StudentForm';
@@ -50,6 +50,26 @@ export default function StudentPage() {
     const [selSection, setSelSection] = useState('');
     // No filter persistence per request
 
+    // Dynamic extra filters: ensure clearing enrollmentStatus/includeClosed when switching back to 'open'
+    const extraFilters = useMemo(() => {
+        const ef = {
+            gradeSectionId: gradeSectionFilter,
+            status: statusFilter,
+            academicYear: yearFilter,
+            grade: gradeFilter,
+            shift: shiftFilter,
+            // Always include enrollmentStatus/includeClosed keys (may be empty string) so stale values are overwritten
+            enrollmentStatus: '',
+            includeClosed: ''
+        };
+        if (enrollmentFilter === 'all') {
+            ef.includeClosed = 'true'; // truthy string; filtered out if ''
+        } else if (['graduated','promoted','transferred','withdrawn'].includes(enrollmentFilter)) {
+            ef.enrollmentStatus = enrollmentFilter;
+        }
+        return ef;
+    }, [gradeSectionFilter, statusFilter, yearFilter, gradeFilter, shiftFilter, enrollmentFilter]);
+
     // fetchFn ha noqon mid aan dib isu abuureyn marka filters is beddelaan; filters waxay imanayaan extraFilters
     const fetchFn = useCallback(async ({ page, limit, search, sortBy, sortDir, gradeSectionId, status, academicYear, grade, shift, enrollmentStatus, includeClosed }) => {
         const result = await listStudents({ page, limit, search, sortBy, sortDir, gradeSectionId, status, academicYear, grade, shift, enrollmentStatus, includeClosed });
@@ -73,16 +93,7 @@ export default function StudentPage() {
         initialSortDir: 'desc',
         initialLimit: 10,
         persistKey: 'students',
-        extraFilters: (() => {
-            const ef = { gradeSectionId: gradeSectionFilter, status: statusFilter, academicYear: yearFilter, grade: gradeFilter, shift: shiftFilter };
-            // Map UI enrollment filter to API params
-            if (enrollmentFilter === 'all') {
-                ef.includeClosed = true;
-            } else if (['graduated','promoted','transferred','withdrawn'].includes(enrollmentFilter)) {
-                ef.enrollmentStatus = enrollmentFilter;
-            }
-            return ef;
-        })(),
+        extraFilters: extraFilters,
         debounceSearchMs: 350
     });
 
@@ -377,7 +388,7 @@ export default function StudentPage() {
                                 { value: 'transferred', label: 'Transferred only' },
                                 { value: 'withdrawn', label: 'Withdrawn only' },
                             ]}
-                            placeholder="Enrollment"
+                            placeholder=""
                         />
                         <FilterSelect
                             value={statusFilter}
