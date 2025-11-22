@@ -70,3 +70,19 @@ export async function archiveCohort(id) {
 export async function activateCohort(id) {
   return updateCohort(id, { status: 'active' });
 }
+
+// Fetch cohorts available for promotion given academicYear + gradeSectionId (or grade+shift+section)
+export async function getAvailableCohortsForPromotion(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v) query.append(k, v); });
+  const qs = query.toString();
+  try {
+    const res = await fetchJson(`${apiUrl('/cohorts/available')}${qs ? `?${qs}` : ''}`);
+    // Expect { data:[], meta } or plain array
+    if (Array.isArray(res)) return { data: res };
+    return { data: res.data || [], meta: res.meta };
+  } catch (e) {
+    console.error('Failed to get available cohorts:', e);
+    return { data: [] };
+  }
+}

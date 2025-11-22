@@ -204,7 +204,7 @@ export default function ResultPage() {
                 <p className="mt-1 text-sm text-gray-600">Pick filters to load class results and rankings automatically. Totals are normalized to 100.</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 no-print">
+            <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap items-center gap-3 no-print">
                 <AcademicYearSelect
                     value={academicYearId}
                     onChange={(v)=>{ setAcademicYearId(v); resetLower('ay'); }}
@@ -273,8 +273,21 @@ export default function ResultPage() {
                         {/* Number input styled separately for consistency */}
                     </div>
                 )}
-                <div className="md:ml-auto flex flex-row flex-wrap gap-2">
+                <div className="flex items-center gap-2 ml-auto flex-wrap">
                     <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
+                    <ActionButton
+                        variant="neutral"
+                        onClick={handleExportCsv}
+                        title="Export CSV"
+                        icon={<Download size={16} />}
+                        disabled={loading || !academicYearId || !gradeSectionId || mode==='trend' || mode==='difficulty' || results.length===0}
+                    >CSV</ActionButton>
+                    <ActionButton
+                        variant="neutral"
+                        onClick={handlePrint}
+                        title="Print"
+                        icon={<Printer size={16} />}
+                    >Print</ActionButton>
                 </div>
             </div>
 
@@ -289,17 +302,7 @@ export default function ResultPage() {
                     <p className="text-sm text-gray-500">Loading results…</p>
                                 ) : (mode === 'trend') ? (
                                         <>
-                                            <div className="flex items-center gap-2 mb-2 no-print flex-wrap">
-                                                <div className="ml-auto" />
-                                                <ActionButton
-                                                    variant="neutral"
-                                                    onClick={handlePrint}
-                                                    title="Print"
-                                                    icon={<Printer size={16} />}
-                                                >
-                                                    Print
-                                                </ActionButton>
-                                            </div>
+                                            {/* Removed duplicate Print action (toolbar already provides it) */}
                                             {academicYearId && gradeSectionId && (
                                                 <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
                                                     {(() => {
@@ -350,17 +353,7 @@ export default function ResultPage() {
                                         </>
                                 ) : (mode === 'difficulty') ? (
                                         <>
-                                            <div className="flex items-center gap-2 mb-2 no-print flex-wrap">
-                                                <div className="ml-auto" />
-                                                <ActionButton
-                                                    variant="neutral"
-                                                    onClick={handlePrint}
-                                                    title="Print"
-                                                    icon={<Printer size={16} />}
-                                                >
-                                                    Print
-                                                </ActionButton>
-                                            </div>
+                                            {/* Removed duplicate Print action (toolbar already provides it) */}
                                             {academicYearId && gradeSectionId && (
                                                 <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
                                                     {(() => {
@@ -410,26 +403,7 @@ export default function ResultPage() {
                     <p className="text-sm text-gray-500">No results found for the selected filters.</p>
                 ) : (
                     <>
-                    <div className="flex items-center gap-2 mb-2 no-print flex-wrap">
-                        <div className="ml-auto" />
-                        <ActionButton
-                            variant="neutral"
-                            onClick={handleExportCsv}
-                            title="Export CSV"
-                            icon={<Download size={16} />}
-                            disabled={loading || !academicYearId || !gradeSectionId || mode==='trend' || mode==='difficulty' || results.length===0}
-                        >
-                            CSV
-                        </ActionButton>
-                        <ActionButton
-                            variant="neutral"
-                            onClick={handlePrint}
-                            title="Print"
-                            icon={<Printer size={16} />}
-                        >
-                            Print
-                        </ActionButton>
-                    </div>
+                    {/* Removed duplicate CSV/Print actions (toolbar already provides them) */}
                                         {/* Info block like Transcript (AY/Grade/Section/Shift) */}
                                         {academicYearId && gradeSectionId && (
                                             <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">

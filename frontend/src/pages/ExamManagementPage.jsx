@@ -184,16 +184,16 @@ export default function ExamManagementPage() {
                 <p className="mt-1 text-sm text-gray-600">Select filters; the grid loads automatically when a subject is chosen. Enter scores inline (0..100).</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-                <AcademicYearSelect id="exam-ay" name="exam-ay" aria-label="Academic Year" value={academicYearId} onChange={setAcademicYearId} className="w-full" placeholder="Academic Year" />
-                <GradeSelect id="exam-grade" name="exam-grade" aria-label="Grade" value={gradeId} onChange={setGradeId} className="w-full" placeholder="Grade" />
-                <ShiftSelect id="exam-shift" name="exam-shift" aria-label="Shift" value={shiftId} onChange={setShiftId} className="w-full" placeholder="Shift" />
-                <GradeSectionSelect id="exam-section" name="exam-section" aria-label="Section" gradeId={gradeId} shiftId={shiftId} value={gradeSectionId} onChange={setGradeSectionId} className="w-full" placeholder="Section" />
-                <select id="exam-subject" name="exam-subject" aria-label="Subject" className="w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50" value={subjectId} onChange={(e)=> setSubjectId(e.target.value)} disabled={!gradeSectionId}>
+            <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap gap-3 items-end">
+                <AcademicYearSelect id="exam-ay" name="exam-ay" aria-label="Academic Year" value={academicYearId} onChange={setAcademicYearId} className="flex-1 min-w-[140px]" placeholder="Academic Year" />
+                <GradeSelect id="exam-grade" name="exam-grade" aria-label="Grade" value={gradeId} onChange={setGradeId} className="flex-1 min-w-[120px]" placeholder="Grade" />
+                <ShiftSelect id="exam-shift" name="exam-shift" aria-label="Shift" value={shiftId} onChange={setShiftId} className="flex-1 min-w-[120px]" placeholder="Shift" />
+                <GradeSectionSelect id="exam-section" name="exam-section" aria-label="Section" gradeId={gradeId} shiftId={shiftId} value={gradeSectionId} onChange={setGradeSectionId} className="flex-1 min-w-[160px]" placeholder="Section" />
+                <select id="exam-subject" name="exam-subject" aria-label="Subject" className="flex-1 min-w-[140px] px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50" value={subjectId} onChange={(e)=> setSubjectId(e.target.value)} disabled={!gradeSectionId}>
                     <option value="">Subject</option>
                     {(subjects||[]).map(su => (<option key={su._id} value={su._id}>{su.subjectName}</option>))}
                 </select>
-                <div className="md:col-span-1 flex md:justify-end md:self-end">
+                <div className="flex items-center gap-2 ml-auto flex-wrap">
                     <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
                 </div>
             </div>

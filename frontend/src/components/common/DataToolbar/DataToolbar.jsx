@@ -10,7 +10,8 @@ export default function DataToolbar({
   sortSlot,
   actionsSlot,
   className = '',
-  onReset
+  onReset,
+  showReset = true
 }) {
   const handleReset = () => {
     if (typeof onReset === 'function') {
@@ -31,14 +32,14 @@ export default function DataToolbar({
   return (
     <div className={`bg-white p-4 rounded-lg shadow ${className}`}>
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-4">
-        <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 flex-1 min-w-[240px]">
-          <div className="w-full md:max-w-xs">{searchSlot}</div>
-          {filtersSlot && <div className="flex items-center gap-2 flex-wrap">{filtersSlot}</div>}
+        <div className={`flex flex-row flex-wrap items-center gap-3 flex-1 ${searchSlot ? 'min-w-[240px]' : ''}`}>
+          {searchSlot && <div className="w-full md:max-w-xs flex-grow">{searchSlot}</div>}
+          {filtersSlot && <div className="flex items-center gap-2 flex-wrap flex-grow">{filtersSlot}</div>}
           {sortSlot && <div className="flex items-center gap-2">{sortSlot}</div>}
         </div>
         {(filtersSlot || searchSlot || actionsSlot) && (
           <div className="md:ml-auto md:self-start self-stretch flex flex-row flex-wrap justify-end gap-2">
-            {(filtersSlot || searchSlot) && (
+            {showReset && (filtersSlot || searchSlot) && (
               <ActionButton
                 variant="neutral"
                 onClick={handleReset}

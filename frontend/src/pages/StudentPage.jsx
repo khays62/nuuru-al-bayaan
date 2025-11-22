@@ -360,59 +360,69 @@ export default function StudentPage() {
             </div>
 
             <DataToolbar
-                searchSlot={<SearchInput value={searchTerm} onChange={(v)=> setSearch(v)} placeholder="Search by name or ID..." />}
-                onReset={() => {
-                    // Clear filters + search and perform immediate load (no debounce)
-                    setYearFilter('');
-                    setGradeFilter('');
-                    setShiftFilter('');
-                    setGradeSectionFilter('');
-                    setStatusFilter('');
-                    setEnrollmentFilter('open');
-                    resetAndReload({ filters: {}, search: '' });
-                }}
-                filtersSlot={(
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <AcademicYearSelect placeholder="Academic Year" value={yearFilter} onChange={(v)=>{ setYearFilter(v); setPage(1); }} className="min-w-40" />
-                        <GradeSelect placeholder="Grade" value={gradeFilter} onChange={(v)=>{ setGradeFilter(v); setPage(1); }} className="min-w-32" />
-                        <ShiftSelect placeholder="Shift" value={shiftFilter} onChange={(v)=>{ setShiftFilter(v); setPage(1); }} className="min-w-32" />
-                        <GradeSectionSelect gradeId={gradeFilter} shiftId={shiftFilter} value={gradeSectionFilter} onChange={(v)=>{ setGradeSectionFilter(v); setPage(1); }} className="min-w-48" />
-                        <FilterSelect
-                            value={enrollmentFilter}
-                            onChange={(v) => { setEnrollmentFilter(v); setPage(1); }}
-                            options={[
-                                { value: 'open', label: 'Open only' },
-                                { value: 'all', label: 'All (include closed)' },
-                                { value: 'graduated', label: 'Graduated only' },
-                                { value: 'promoted', label: 'Promoted only' },
-                                { value: 'transferred', label: 'Transferred only' },
-                                { value: 'withdrawn', label: 'Withdrawn only' },
-                            ]}
-                            placeholder=""
-                        />
-                        <FilterSelect
-                            value={statusFilter}
-                            onChange={(v) => { setStatusFilter(v); setPage(1); }}
-                            options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
-                            placeholder="Status"
-                        />
-                    </div>
-                )}
-                sortSlot={(
-                    <SortControls
-                        currentField={meta.sortBy}
-                        currentDir={meta.sortDir}
-                        onSort={toggleSort}
-                        fields={[
-                            { field: 'createdAt', label: 'Created' },
-                            { field: 'fullName', label: 'Name' },
-                            { field: 'studentId', label: 'Student ID' },
+                showReset={false}
+                searchSlot={<SearchInput value={searchTerm} onChange={setSearch} placeholder="Search by name or ID..." />}
+                filtersSlot={<div className="flex flex-row flex-wrap gap-2 w-full items-center">
+                    <AcademicYearSelect placeholder="Academic Year" value={yearFilter} onChange={(v)=>{ setYearFilter(v); setPage(1); }} className="flex-1 min-w-[140px]" />
+                    <GradeSelect placeholder="Grade" value={gradeFilter} onChange={(v)=>{ setGradeFilter(v); setPage(1); }} className="flex-1 min-w-[120px]" />
+                    <ShiftSelect placeholder="Shift" value={shiftFilter} onChange={(v)=>{ setShiftFilter(v); setPage(1); }} className="flex-1 min-w-[120px]" />
+                    <GradeSectionSelect gradeId={gradeFilter} shiftId={shiftFilter} value={gradeSectionFilter} onChange={(v)=>{ setGradeSectionFilter(v); setPage(1); }} className="flex-1 min-w-[160px]" />
+                    <FilterSelect
+                        value={enrollmentFilter}
+                        onChange={(v) => { setEnrollmentFilter(v); setPage(1); }}
+                        options={[
+                            { value: 'open', label: 'Open only' },
+                            { value: 'all', label: 'All (include closed)' },
+                            { value: 'graduated', label: 'Graduated only' },
+                            { value: 'promoted', label: 'Promoted only' },
+                            { value: 'transferred', label: 'Transferred only' },
+                            { value: 'withdrawn', label: 'Withdrawn only' },
                         ]}
+                        placeholder="Enrollment"
+                        className="flex-1 min-w-[150px]"
                     />
-                )}
-                actionsSlot={(
-                    <button onClick={() => exportCsv(students)} className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center"><Download size={16} className="mr-1"/>CSV</button>
-                )}
+                    <FilterSelect
+                        value={statusFilter}
+                        onChange={(v) => { setStatusFilter(v); setPage(1); }}
+                        options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
+                        placeholder="Status"
+                        className="flex-1 min-w-[120px]"
+                    />
+                    <div className="flex items-center gap-2 ml-auto flex-wrap">
+                        <SortControls
+                            currentField={meta.sortBy}
+                            currentDir={meta.sortDir}
+                            onSort={toggleSort}
+                            fields={[
+                                { field: 'createdAt', label: 'Created' },
+                                { field: 'fullName', label: 'Name' },
+                                { field: 'studentId', label: 'Student ID' },
+                            ]}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => exportCsv(students)}
+                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center"
+                        >
+                            <Download size={16} className="mr-1"/>CSV
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setYearFilter('');
+                                setGradeFilter('');
+                                setShiftFilter('');
+                                setGradeSectionFilter('');
+                                setStatusFilter('');
+                                setEnrollmentFilter('open');
+                                resetAndReload({ filters: {}, search: '' });
+                            }}
+                            className="px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-md border text-sm"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>}
             />
             {isLoading ? (
                 <LoadingState variant="table" message="Loading students..." rows={6} columns={8} />

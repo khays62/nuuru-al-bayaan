@@ -1,6 +1,10 @@
 import mongoose from 'mongoose';
 import Cohort from '../models/Cohort.js';
 import Enrollment from '../models/Enrollment.js';
+import GradeSection from '../models/GradeSection.js';
+
+// Policy: Maximum number of cohorts allowed per Academic Year
+const MAX_COHORTS_PER_ACADEMIC_YEAR = 2; // Mid-year + Year-end intakes
 
 function parseSort(req) {
   const { sort, sortBy = 'createdAt', sortDir = 'desc' } = req.query || {};
@@ -103,6 +107,15 @@ export const createCohort = async (req, res) => {
     const payload = { name, status };
     if (!mongoose.isValidObjectId(startAcademicYear)) return res.status(400).json({ message: 'Invalid startAcademicYear' });
     payload.startAcademicYear = startAcademicYear;
+
+    // Enforce cohort count limit per academic year
+    const existingCount = await Cohort.countDocuments({ startAcademicYear });
+    if (existingCount >= MAX_COHORTS_PER_ACADEMIC_YEAR) {
+      return res.status(409).json({
+        message: `Maximum cohorts (${MAX_COHORTS_PER_ACADEMIC_YEAR}) already created for this Academic Year.`,
+        code: 'COHORT_LIMIT_REACHED'
+      });
+    }
     let created;
     try {
       created = await Cohort.create(payload);
@@ -127,7 +140,14 @@ export const updateCohort = async (req, res) => {
     const doc = await Cohort.findById(id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
 
+    // If cohort already has enrollments, lock name & academic year (only status can change)
+    const inUse = await Enrollment.countDocuments({ cohort: id });
+    const locked = inUse > 0;
+
     if (name !== undefined) {
+      if (locked && name !== doc.name) {
+        return res.status(409).json({ message: 'Cannot change name; cohort already has enrollments.', code: 'COHORT_LOCKED_NAME' });
+      }
       const trimmed = String(name).trim();
       if (!trimmed) return res.status(400).json({ message: 'name cannot be empty' });
       // check duplicate
@@ -136,6 +156,9 @@ export const updateCohort = async (req, res) => {
       doc.name = trimmed;
     }
     if (startAcademicYear !== undefined) {
+      if (locked && String(startAcademicYear) !== String(doc.startAcademicYear)) {
+        return res.status(409).json({ message: 'Cannot change academic year; cohort already has enrollments.', code: 'COHORT_LOCKED_YEAR' });
+      }
       // do not allow clearing; it is required
       if (!startAcademicYear) return res.status(400).json({ message: 'startAcademicYear is required' });
       if (!mongoose.isValidObjectId(startAcademicYear)) return res.status(400).json({ message: 'Invalid startAcademicYear' });
@@ -175,6 +198,59 @@ export const deleteCohort = async (req, res) => {
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete cohort error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// GET /api/cohorts/available
+// Return cohorts that have at least one enrollment in the specified Academic Year + GradeSection
+// or (Grade, Shift, Section) triple (fallback when gradeSectionId not supplied).
+// Query params:
+//   academicYear (required) ObjectId
+//   gradeSectionId (preferred) OR grade + shift + section
+//   status (optional) filter cohort.status
+export const getAvailableCohortsForPromotion = async (req, res) => {
+  try {
+    const { academicYear, gradeSectionId, grade, shift, section, status } = req.query;
+    if (!academicYear || !mongoose.isValidObjectId(academicYear)) {
+      return res.status(400).json({ message: 'academicYear is required and must be a valid id' });
+    }
+    let gsIds = [];
+    if (gradeSectionId) {
+      if (!mongoose.isValidObjectId(gradeSectionId)) return res.status(400).json({ message: 'Invalid gradeSectionId' });
+      gsIds = [gradeSectionId];
+    } else if (grade && shift && section) {
+      // Resolve GradeSection(s) by composite fields
+      if (![grade, shift].every(id => mongoose.isValidObjectId(id))) {
+        return res.status(400).json({ message: 'Invalid grade or shift id' });
+      }
+      const sections = await GradeSection.find({ grade: grade, shift: shift, section: section }).select('_id').lean();
+      gsIds = sections.map(s => s._id);
+      if (gsIds.length === 0) {
+        return res.json({ data: [], meta: { total: 0 } });
+      }
+    } else {
+      return res.status(400).json({ message: 'Provide gradeSectionId or grade+shift+section' });
+    }
+
+    const enrFilter = {
+      academicYear: new mongoose.Types.ObjectId(academicYear),
+      gradeSection: { $in: gsIds.map(id => new mongoose.Types.ObjectId(id)) },
+      cohort: { $exists: true, $ne: null }
+    };
+
+    // Distinct cohort ids used in enrollments
+    const cohortIds = await Enrollment.distinct('cohort', enrFilter);
+    if (!cohortIds || cohortIds.length === 0) {
+      return res.json({ data: [], meta: { total: 0 } });
+    }
+
+    const cFilter = { _id: { $in: cohortIds } };
+    if (status) cFilter.status = status;
+    const cohorts = await Cohort.find(cFilter).populate('startAcademicYear', 'yearName').sort({ name: 1 });
+    res.json({ data: cohorts, meta: { total: cohorts.length } });
+  } catch (err) {
+    console.error('Get available cohorts error', err);
     res.status(500).json({ message: 'Server error' });
   }
 };

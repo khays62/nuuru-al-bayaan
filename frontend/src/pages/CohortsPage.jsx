@@ -151,13 +151,20 @@ export default function CohortsPage() {
       </div>
 
       <DataToolbar
+        showReset={false}
         searchSlot={<SearchInput value={searchTerm} onChange={setSearch} placeholder="Search cohorts..." />}
-        filtersSlot={<>
-          <FilterSelect value={statusFilter} onChange={(v)=>{ setStatusFilter(v); setFilter('status', v || undefined); }} options={statuses} placeholder="Status" />
-          <FilterSelect value={ayFilter} onChange={(v)=>{ setAyFilter(v); setFilter('startAcademicYear', v || undefined); }} options={ayOptions} placeholder="Start AY" />
-        </>}
-        sortSlot={<SortControls currentField={meta.sortBy} currentDir={meta.sortDir} onSort={toggleSort} fields={[{ field: 'createdAt', label: 'Created' }, { field: 'startAcademicYear', label: 'Start AY' }]} />}
-        onReset={() => { setStatusFilter(''); setAyFilter(''); resetAndReload({ filters: { status: undefined, startAcademicYear: undefined }, search: '' }); }}
+        filtersSlot={<div className="flex flex-row flex-wrap gap-2 w-full items-center">
+          <FilterSelect value={statusFilter} onChange={(v)=>{ setStatusFilter(v); setFilter('status', v || undefined); }} options={statuses} placeholder="Status" className="flex-1 min-w-[130px]" />
+          <FilterSelect value={ayFilter} onChange={(v)=>{ setAyFilter(v); setFilter('startAcademicYear', v || undefined); }} options={ayOptions} placeholder="Start AY" className="flex-1 min-w-[150px]" />
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <SortControls currentField={meta.sortBy} currentDir={meta.sortDir} onSort={toggleSort} fields={[{ field: 'createdAt', label: 'Created' }, { field: 'startAcademicYear', label: 'Start AY' }]} />
+            <button
+              type="button"
+              onClick={() => { setStatusFilter(''); setAyFilter(''); resetAndReload({ filters: { status: undefined, startAcademicYear: undefined }, search: '' }); }}
+              className="px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-md border text-sm"
+            >Reset</button>
+          </div>
+        </div>}
       />
 
       {isLoading ? (

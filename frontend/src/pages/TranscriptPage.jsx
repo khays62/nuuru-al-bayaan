@@ -202,7 +202,7 @@ export default function TranscriptPage() {
 
       <div className="bg-white p-4 rounded-lg shadow no-print">
         <h1 className="text-lg font-semibold mb-3">Transcript Builder</h1>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="flex flex-row flex-wrap gap-3 items-start">
           <div className="col-span-1 md:col-span-2" ref={pickerRef}>
             <label htmlFor="transcript-search" className="text-xs text-gray-500">Search Student</label>
             <div className="relative">
@@ -277,7 +277,7 @@ export default function TranscriptPage() {
               <option value="filter">Filtered Transcript</option>
             </select>
           </div>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="flex flex-col gap-2 min-w-[220px]">
             {mode === 'filter' && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -305,7 +305,7 @@ export default function TranscriptPage() {
             )}
           </div>
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-row flex-wrap gap-2 items-center">
           <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
           <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
         </div>

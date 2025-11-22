@@ -185,14 +185,27 @@ export default function SubjectPage() {
       </div>
 
       <DataToolbar
+        showReset={false}
         searchSlot={searchSlot}
-        filtersSlot={filtersSlot}
-        sortSlot={sortSlot}
-        onReset={() => {
-          setGradeFilter('');
-          resetAndReload({ filters: {}, search: '' });
-        }}
-        // actionsSlot removed: button is now in header top-right
+        filtersSlot={<div className="flex flex-row flex-wrap gap-2 w-full items-center">
+          <GradeSelect
+            id="subjects-grade-filter"
+            name="subjects-grade-filter"
+            aria-label="Grade"
+            value={gradeFilter}
+            onChange={(v) => { setGradeFilter(v); setPage(1); }}
+            className="flex-1 min-w-[140px]"
+            placeholder="Grade"
+          />
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            {sortSlot}
+            <button
+              type="button"
+              onClick={() => { setGradeFilter(''); resetAndReload({ filters: {}, search: '' }); }}
+              className="px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-md border text-sm"
+            >Reset</button>
+          </div>
+        </div>}
       />
 
       {isLoading ? (

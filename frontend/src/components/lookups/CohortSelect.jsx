@@ -1,10 +1,10 @@
 // CohortSelect.jsx
 import React, { useEffect, useState } from 'react';
-import { listCohorts } from '../../api';
+import { listCohorts, getAvailableCohortsForPromotion } from '../../api';
 import { getCachedCohorts, setCachedCohorts, getPendingCohorts, setPendingCohorts, clearPendingCohorts } from './cohortsCache';
 
 
-export default function CohortSelect({ value, onChange, disabled = false, className = '', placeholder = 'None', id, name, status = 'active', refreshKey, ...rest }) {
+export default function CohortSelect({ value, onChange, disabled = false, className = '', placeholder = 'None', id, name, status = 'active', refreshKey, mode, academicYear, gradeSectionId, gradeId, shiftId, section, ...rest }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -13,22 +13,38 @@ export default function CohortSelect({ value, onChange, disabled = false, classN
     (async () => {
       setLoading(true);
       try {
+        // Promotion mode: only load cohorts that have enrollments in the selected context
+        if (mode === 'promotion') {
+          // Require academicYear plus either gradeSectionId or (gradeId + shiftId + section)
+          if (!academicYear || !(gradeSectionId || (gradeId && shiftId && section))) {
+            if (!ignore) setItems([]);
+            return;
+          }
+          const params = { academicYear };
+          if (gradeSectionId) params.gradeSectionId = gradeSectionId;
+          else {
+            params.grade = gradeId;
+            params.shift = shiftId;
+            params.section = section;
+          }
+          const res = await getAvailableCohortsForPromotion(params);
+          if (!ignore) setItems(res.data || []);
+          return;
+        }
+        // Default legacy mode: full cohort list with caching
         const key = String(status || 'active');
-        // Only fetch if refreshKey > 0 (i.e. after cohort creation)
         if (typeof refreshKey === 'number' && refreshKey > 0) {
           const res = await listCohorts({ status, limit: 1000, sortBy: 'startAcademicYear', sortDir: 'asc' });
           const list = res?.data || [];
           setCachedCohorts(key, list);
           if (!ignore) setItems(list);
         } else {
-          // 1) Serve from cache immediately when available
           const cached = getCachedCohorts(key);
-          if (cached && !ignore) {
-            setItems(cached);
-            setLoading(false);
-            return; // no fetch
-          }
-          // 2) If another component is already fetching, wait for it
+            if (cached && !ignore) {
+              setItems(cached);
+              setLoading(false);
+              return;
+            }
           const inflight = getPendingCohorts(key);
           if (inflight) {
             const res = await inflight;
@@ -36,7 +52,6 @@ export default function CohortSelect({ value, onChange, disabled = false, classN
             setLoading(false);
             return;
           }
-          // 3) Start a new fetch and publish the promise for dedupe
           const p = listCohorts({ status, limit: 1000, sortBy: 'startAcademicYear', sortDir: 'asc' });
           setPendingCohorts(key, p);
           const res = await p;
@@ -47,13 +62,15 @@ export default function CohortSelect({ value, onChange, disabled = false, classN
       } catch {
         if (!ignore) setItems([]);
       } finally {
-        const key = String(status || 'active');
-        clearPendingCohorts(key);
+        if (mode !== 'promotion') {
+          const key = String(status || 'active');
+          clearPendingCohorts(key);
+        }
         if (!ignore) setLoading(false);
       }
     })();
     return () => { ignore = true; };
-  }, [status, refreshKey]);
+  }, [status, refreshKey, mode, academicYear, gradeSectionId, gradeId, shiftId, section]);
 
   return (
     <select id={id} name={name} {...rest} value={value} onChange={(e)=>onChange?.(e.target.value)} disabled={disabled || loading} className={`border rounded px-2 py-1 ${className}`}>

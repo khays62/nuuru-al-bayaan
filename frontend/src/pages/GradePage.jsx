@@ -154,15 +154,48 @@ export default function GradePage() {
 						</div>
 
 						<DataToolbar
-								searchSlot={searchSlot}
-								filtersSlot={filtersSlot}
-								sortSlot={sortSlot}
-								onReset={() => {
-									setGradeFilter('');
-									setShiftFilter('');
-									setSectionFilter('');
-									resetAndReload({ filters: {}, search: '' });
-								}}
+							showReset={false}
+							searchSlot={searchSlot}
+							filtersSlot={<div className="flex flex-row flex-wrap gap-2 w-full items-center">
+								<GradeSelect
+									id="grades-grade-filter"
+									name="grades-grade-filter"
+									aria-label="Grade"
+									value={gradeFilter}
+									onChange={(v) => applyFilters({ grade: v })}
+									className="flex-1 min-w-[140px]"
+									placeholder="Grade"
+								/>
+								<ShiftSelect
+									id="grades-shift-filter"
+									name="grades-shift-filter"
+									aria-label="Shift"
+									value={shiftFilter}
+									onChange={(v) => applyFilters({ shift: v })}
+									className="flex-1 min-w-[140px]"
+									placeholder="Shift"
+								/>
+								<input
+									id="grades-section-filter"
+									name="grades-section-filter"
+									aria-label="Section"
+									type="text"
+									value={sectionFilter}
+									onChange={(e) => applyFilters({ section: e.target.value })}
+									className="flex-1 min-w-[120px] px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+									placeholder="Section"
+								/>
+								<div className="flex items-center gap-2 ml-auto flex-wrap">
+									{sortSlot}
+									<button
+										type="button"
+										onClick={() => { setGradeFilter(''); setShiftFilter(''); setSectionFilter(''); resetAndReload({ filters: {}, search: '' }); }}
+										className="px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-md border text-sm"
+									>
+										Reset
+									</button>
+								</div>
+							</div>}
 						/>
 
 						{isLoading ? (
