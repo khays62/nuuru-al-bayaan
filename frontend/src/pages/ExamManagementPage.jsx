@@ -4,10 +4,13 @@ import ActionButton from '../components/common/ActionButton';
 import { RotateCcw } from 'lucide-react';
 import TableShell from '../components/common/table/TableShell';
 import { getExamGrid, saveExamScore, getGradeSectionById } from '../api';
+import { getCohortTimeline } from '../api';
 import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
 import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
+import CohortSelect from '../components/lookups/CohortSelect';
+import EnrollmentStatusSelect from '../components/lookups/EnrollmentStatusSelect';
 
 export default function ExamManagementPage() {
     const [subjects, setSubjects] = useState([]); // subjects assigned to the selected section only
@@ -17,6 +20,10 @@ export default function ExamManagementPage() {
     const [shiftId, setShiftId] = useState('');
     const [gradeSectionId, setGradeSectionId] = useState('');
     const [subjectId, setSubjectId] = useState('');
+    const [enrollmentStatus, setEnrollmentStatus] = useState('active');
+    const [cohortId, setCohortId] = useState('');
+    const [timeline, setTimeline] = useState([]);
+    const [timelineLoading, setTimelineLoading] = useState(false);
 
     const [grid, setGrid] = useState({ students: [], columns: [], scores: [] });
     const [loadingGrid, setLoadingGrid] = useState(false);
@@ -25,10 +32,14 @@ export default function ExamManagementPage() {
     const [errorCells, setErrorCells] = useState(new Set()); // keys with last error
     const debounceTimers = useRef(new Map()); // key -> timer
 
+    // Flag to differentiate user manual changes vs timeline-driven changes
+    const applyingTimelineRef = useRef(false);
+
     // Lookups are handled by reusable select components.
     // GradeSectionSelect will fetch sections based on AY/Grade/Shift.
     useEffect(() => {
-        // Clear downstream selections if parents change
+        // Clear downstream selections ONLY if change not triggered by timeline button
+        if (applyingTimelineRef.current) return;
         setGradeSectionId('');
         setSubjectId('');
     }, [academicYearId, gradeId, shiftId]);
@@ -138,6 +149,17 @@ export default function ExamManagementPage() {
     };
 
     // Auto-fetch grid whenever all required filters are selected
+    // Load timeline when cohort selected
+    useEffect(() => {
+        (async () => {
+            if (!cohortId) { setTimeline([]); return; }
+            setTimelineLoading(true);
+            const { data } = await getCohortTimeline(cohortId);
+            setTimelineLoading(false);
+            setTimeline(data || []);
+        })();
+    }, [cohortId]);
+
     useEffect(() => {
         (async () => {
             if (!academicYearId || !gradeSectionId || !subjectId) {
@@ -148,7 +170,7 @@ export default function ExamManagementPage() {
                 return;
             }
             setLoadingGrid(true);
-            const { ok, data, error } = await getExamGrid({ academicYearId, gradeSectionId, subjectId });
+            const { ok, data, error } = await getExamGrid({ academicYearId, gradeSectionId, subjectId, enrollmentStatus, cohortId });
             setLoadingGrid(false);
             if (!ok) {
                 toast.error(error || 'Failed to load grid');
@@ -161,7 +183,7 @@ export default function ExamManagementPage() {
             setSavingCells(new Set());
             setErrorCells(new Set());
         })();
-    }, [academicYearId, gradeSectionId, subjectId]);
+    }, [academicYearId, gradeSectionId, subjectId, enrollmentStatus, cohortId]);
 
     // removed legacy onChangeScore (now handled by debounced handleChange/flushDebounce)
     const handleReset = () => {
@@ -170,6 +192,9 @@ export default function ExamManagementPage() {
         setShiftId('');
         setGradeSectionId('');
         setSubjectId('');
+        setEnrollmentStatus('active');
+        setCohortId('');
+        setTimeline([]); // clear cohort timeline
         setSubjects([]);
         setGrid({ students: [], columns: [], scores: [] });
         setLocalInputs({});
@@ -185,11 +210,14 @@ export default function ExamManagementPage() {
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap gap-3 items-end">
-                <AcademicYearSelect id="exam-ay" name="exam-ay" aria-label="Academic Year" value={academicYearId} onChange={setAcademicYearId} className="flex-1 min-w-[140px]" placeholder="Academic Year" />
-                <GradeSelect id="exam-grade" name="exam-grade" aria-label="Grade" value={gradeId} onChange={setGradeId} className="flex-1 min-w-[120px]" placeholder="Grade" />
-                <ShiftSelect id="exam-shift" name="exam-shift" aria-label="Shift" value={shiftId} onChange={setShiftId} className="flex-1 min-w-[120px]" placeholder="Shift" />
-                <GradeSectionSelect id="exam-section" name="exam-section" aria-label="Section" gradeId={gradeId} shiftId={shiftId} value={gradeSectionId} onChange={setGradeSectionId} className="flex-1 min-w-[160px]" placeholder="Section" />
-                <select id="exam-subject" name="exam-subject" aria-label="Subject" className="flex-1 min-w-[140px] px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50" value={subjectId} onChange={(e)=> setSubjectId(e.target.value)} disabled={!gradeSectionId}>
+                {/* Order: AY → Cohort → Enrollment Status → Grade → Shift → Section → Subject */}
+                <AcademicYearSelect id="exam-ay" name="exam-ay" aria-label="Academic Year" value={academicYearId} onChange={(v)=>{ setAcademicYearId(v); setGradeSectionId(''); setSubjectId(''); setCohortId(''); setTimeline([]); }} className="flex-1 min-w-[140px]" placeholder="Academic Year" />
+                <CohortSelect value={cohortId} onChange={(v)=>{ setCohortId(v); }} mode="context" academicYear={academicYearId} disabled={!academicYearId} className="flex-1 min-w-[140px] border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Cohort" />
+                <EnrollmentStatusSelect value={enrollmentStatus} onChange={(v)=>{ setEnrollmentStatus(v); /* keep cohort & timeline */ }} className="flex-1 min-w-[160px] border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enrollment Status" />
+                <GradeSelect id="exam-grade" name="exam-grade" aria-label="Grade" value={gradeId} onChange={(v)=>{ setGradeId(v); /* keep cohort & timeline */ }} className="flex-1 min-w-[120px]" placeholder="Grade" />
+                <ShiftSelect id="exam-shift" name="exam-shift" aria-label="Shift" value={shiftId} onChange={(v)=>{ setShiftId(v); /* keep cohort & timeline */ }} className="flex-1 min-w-[120px]" placeholder="Shift" />
+                <GradeSectionSelect id="exam-section" name="exam-section" aria-label="Section" gradeId={gradeId} shiftId={shiftId} value={gradeSectionId} onChange={(v)=>{ setGradeSectionId(v); setSubjectId(''); /* keep cohort & timeline */ }} className="flex-1 min-w-[160px]" placeholder="Section" />
+                <select id="exam-subject" name="exam-subject" aria-label="Subject" className="flex-1 min-w-[140px] px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50" value={subjectId} onChange={(e)=> { setSubjectId(e.target.value); /* keep cohort & timeline */ }} disabled={!gradeSectionId}>
                     <option value="">Subject</option>
                     {(subjects||[]).map(su => (<option key={su._id} value={su._id}>{su.subjectName}</option>))}
                 </select>
@@ -197,6 +225,35 @@ export default function ExamManagementPage() {
                     <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
                 </div>
             </div>
+
+            {cohortId && timeline.length > 0 && (
+                <div className="bg-white p-3 rounded-lg shadow flex flex-row flex-wrap gap-2 items-center">
+                    <div className="text-sm font-medium text-gray-600 mr-2">Cohort Timeline:</div>
+                    {timelineLoading && <div className="text-xs text-gray-500">Loading…</div>}
+                                        {!timelineLoading && timeline.map(entry => {
+                                                const active = academicYearId === String(entry.academicYear._id) && gradeSectionId === String(entry.gradeSection._id);
+                                                return (
+                                                        <button
+                                                            key={String(entry.academicYear._id)+String(entry.gradeSection._id)}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                applyingTimelineRef.current = true;
+                                                                setAcademicYearId(String(entry.academicYear._id));
+                                                                setGradeId(String(entry.grade._id));
+                                                                setShiftId(String(entry.shift._id));
+                                                                setGradeSectionId(String(entry.gradeSection._id));
+                                                                setSubjectId('');
+                                                                // Release flag after microtask so effect can run for future manual changes
+                                                                queueMicrotask(() => { applyingTimelineRef.current = false; });
+                                                            }}
+                                                            className={`text-xs px-2 py-1 rounded border ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
+                                                        >
+                                                            {entry.academicYear.yearName} / {entry.grade.gradeName}{entry.gradeSection.section ? ` Sec ${entry.gradeSection.section}` : ''}
+                                                        </button>
+                                                );
+                                        })}
+                </div>
+            )}
 
             <div className="bg-white p-4 rounded-lg shadow overflow-auto">
                 {!academicYearId || !gradeSectionId ? (

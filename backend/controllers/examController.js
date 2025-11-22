@@ -98,7 +98,7 @@ export const ensureExams = async (req, res) => {
 
 export const getExamGrid = async (req, res) => {
   try {
-    const { academicYearId, gradeSectionId, subjectId } = req.query;
+    const { academicYearId, gradeSectionId, subjectId, enrollmentStatus, cohortId } = req.query;
     if (!isId(academicYearId) || !isId(gradeSectionId) || !isId(subjectId)) {
       return res.status(400).json({ message: 'academicYearId, gradeSectionId and subjectId are required' });
     }
@@ -121,8 +121,16 @@ export const getExamGrid = async (req, res) => {
       .map(e => ({ examId: e._id, examTypeId: e.examType?._id || e.examType, typeName: e.examType?.typeName }))
       .sort((a, b) => a.typeName.localeCompare(b.typeName));
 
-    // Active students in this section and academic year
-    const enrolls = await Enrollment.find({ academicYear: academicYearId, gradeSection: gradeSectionId, status: 'active' }).select('student').lean();
+    // Determine statuses to include based on filter (default active only)
+    let statusFilter = ['active'];
+    if (enrollmentStatus === 'all') {
+      statusFilter = ['active','inactive','promoted','graduated','transferred','withdrawn'];
+    } else if (enrollmentStatus && ['active','inactive','promoted','graduated','transferred','withdrawn'].includes(enrollmentStatus)) {
+      statusFilter = [enrollmentStatus];
+    }
+    const enrQuery = { academicYear: academicYearId, gradeSection: gradeSectionId, status: { $in: statusFilter } };
+    if (cohortId && isId(cohortId)) enrQuery.cohort = cohortId;
+    const enrolls = await Enrollment.find(enrQuery).select('student').lean();
     const studentIds = [...new Set(enrolls.map(e => String(e.student)))];
     const studentsDocs = await Student.find({ _id: { $in: studentIds } }).select('fullName').lean();
     const students = studentsDocs
@@ -155,9 +163,9 @@ export const upsertScore = async (req, res) => {
     const exam = await Exam.findById(examId).lean();
     if (!exam) return res.status(404).json({ message: 'Exam not found' });
 
-    // coherence: student must be actively enrolled in same AY + section
-    const active = await Enrollment.findOne({ student: studentId, academicYear: exam.academicYear, gradeSection: exam.gradeSection, status: 'active' }).lean();
-    if (!active) return res.status(409).json({ message: 'Student is not active in this section/year' });
+    // coherence: student must have an enrollment (any status) in same AY + section
+    const enrollment = await Enrollment.findOne({ student: studentId, academicYear: exam.academicYear, gradeSection: exam.gradeSection }).lean();
+    if (!enrollment) return res.status(409).json({ message: 'Student has no enrollment for this section/year' });
 
     const updated = await ExamScore.findOneAndUpdate(
       { student: studentId, exam: examId, subject: subjectId },

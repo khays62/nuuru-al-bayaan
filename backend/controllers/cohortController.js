@@ -254,3 +254,44 @@ export const getAvailableCohortsForPromotion = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// GET /api/cohorts/:id/timeline
+// Returns distinct academic years + gradeSection + grade + shift for enrollments in this cohort
+// Sorted chronologically by academic year name (assumes yearName sortable) then gradeName.
+export const getCohortTimeline = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid cohort id' });
+    // Ensure cohort exists
+    const cohort = await Cohort.findById(id).select('_id name').lean();
+    if (!cohort) return res.status(404).json({ message: 'Cohort not found' });
+
+    const EnrollmentModel = Enrollment; // already imported
+    const pipeline = [
+      { $match: { cohort: new mongoose.Types.ObjectId(id) } },
+      { $lookup: { from: 'academicyears', localField: 'academicYear', foreignField: '_id', as: 'ay' } },
+      { $unwind: '$ay' },
+      { $lookup: { from: 'gradesections', localField: 'gradeSection', foreignField: '_id', as: 'gs' } },
+      { $unwind: '$gs' },
+      { $lookup: { from: 'grades', localField: 'gs.grade', foreignField: '_id', as: 'grade' } },
+      { $unwind: { path: '$grade', preserveNullAndEmptyArrays: true } },
+      { $lookup: { from: 'shifts', localField: 'gs.shift', foreignField: '_id', as: 'shift' } },
+      // NOTE: unwind path must be prefixed with '$'
+      { $unwind: { path: '$shift', preserveNullAndEmptyArrays: true } },
+      { $group: { _id: { ay: '$ay._id', gs: '$gs._id' }, academicYear: { $first: '$ay' }, gradeSection: { $first: '$gs' }, grade: { $first: '$grade' }, shift: { $first: '$shift' } } },
+      { $sort: { 'academicYear.yearName': 1, 'grade.gradeName': 1 } },
+      { $project: {
+          academicYear: { _id: '$academicYear._id', yearName: '$academicYear.yearName' },
+          gradeSection: { _id: '$gradeSection._id', section: '$gradeSection.section' },
+          grade: { _id: '$grade._id', gradeName: '$grade.gradeName' },
+          shift: { _id: '$shift._id', shiftName: '$shift.shiftName' }
+        }
+      }
+    ];
+    const timeline = await EnrollmentModel.aggregate(pipeline);
+    res.json({ cohort: { _id: cohort._id, name: cohort.name }, timeline });
+  } catch (err) {
+    console.error('getCohortTimeline error', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

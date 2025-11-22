@@ -86,3 +86,15 @@ export async function getAvailableCohortsForPromotion(params = {}) {
     return { data: [] };
   }
 }
+
+// Cohort timeline across academic years & grade sections
+export async function getCohortTimeline(id) {
+  if (!id) return { data: [] };
+  try {
+    const res = await fetchJson(apiUrl(`/cohorts/${id}/timeline`));
+    return { data: res.timeline || [], cohort: res.cohort };
+  } catch (e) {
+    console.error('Failed to get cohort timeline:', e);
+    return { data: [] };
+  }
+}

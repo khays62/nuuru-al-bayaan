@@ -31,6 +31,13 @@ export default function CohortSelect({ value, onChange, disabled = false, classN
           if (!ignore) setItems(res.data || []);
           return;
         }
+        // Context mode: limit cohorts to selected Academic Year only (non-promotion editing scenarios)
+        if (mode === 'context') {
+          if (!academicYear) { if (!ignore) setItems([]); return; }
+          const res = await listCohorts({ status, startAcademicYear: academicYear, limit: 100, sortBy: 'createdAt', sortDir: 'asc' });
+          if (!ignore) setItems(res?.data || []);
+          return;
+        }
         // Default legacy mode: full cohort list with caching
         const key = String(status || 'active');
         if (typeof refreshKey === 'number' && refreshKey > 0) {

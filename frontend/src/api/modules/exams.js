@@ -11,9 +11,11 @@ export async function getExamTypes() {
   }
 }
 
-export async function getExamGrid({ academicYearId, gradeSectionId, subjectId }) {
+export async function getExamGrid({ academicYearId, gradeSectionId, subjectId, enrollmentStatus, cohortId }) {
   try {
     const query = new URLSearchParams({ academicYearId, gradeSectionId, subjectId });
+    if (enrollmentStatus) query.append('enrollmentStatus', enrollmentStatus);
+    if (cohortId) query.append('cohortId', cohortId);
     const data = await fetchJson(`${apiUrl('/exams/grid')}?${query.toString()}`, { cache: 'no-store' });
     return { ok: true, data };
   } catch (e) {
