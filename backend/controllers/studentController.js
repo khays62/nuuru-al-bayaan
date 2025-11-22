@@ -777,21 +777,36 @@ export const getFullTranscript = async (req, res) => {
         }
 
         // Merge transcripts back into enrollment objects
-        const transcriptByEnrollment = new Map(enrollmentTranscripts.map(et => [String(et.enrollmentId), et.transcript]));
-        const enrichedEnrollments = enrollments.map(en => ({
-            enrollmentId: en._id,
-            academicYear: en.academicYear?.yearName ? { _id: en.academicYear._id, yearName: en.academicYear.yearName } : en.academicYear,
-            gradeSection: en.gradeSection && en.gradeSection.section ? {
-                _id: en.gradeSection._id,
-                section: en.gradeSection.section,
-                grade: en.gradeSection.grade?.gradeName || en.grade?.gradeName,
-                shift: en.gradeSection.shift?.shiftName || en.shift?.shiftName
-            } : en.gradeSection,
-            joinedAt: en.joinedAt,
-            leftAt: en.leftAt,
-            status: en.status,
-            transcript: transcriptByEnrollment.get(String(en._id)) || { examTypes: [], subjects: [], rows: [], overall: { total:0, average:0 } }
-        }));
+        // Build a map enrollmentId -> transcript and enrich enrollments with transcript + display fields
+        const transcriptByEnrollment = new Map(
+            enrollmentTranscripts.map(et => [String(et.enrollmentId), et.transcript])
+        );
+        const enrichedEnrollments = enrollments.map(en => {
+            const enrichedGradeSection = (en.gradeSection && en.gradeSection.section)
+                ? {
+                    _id: en.gradeSection._id,
+                    section: en.gradeSection.section,
+                    grade: en.gradeSection.grade?.gradeName || en.grade?.gradeName,
+                    shift: en.gradeSection.shift?.shiftName || en.shift?.shiftName
+                }
+                : en.gradeSection;
+            return {
+                enrollmentId: en._id,
+                academicYear: en.academicYear?.yearName
+                    ? { _id: en.academicYear._id, yearName: en.academicYear.yearName }
+                    : en.academicYear,
+                gradeSection: enrichedGradeSection,
+                joinedAt: en.joinedAt,
+                leftAt: en.leftAt,
+                status: en.status,
+                transcript: transcriptByEnrollment.get(String(en._id)) || {
+                    examTypes: [],
+                    subjects: [],
+                    rows: [],
+                    overall: { total: 0, average: 0 }
+                }
+            };
+        });
 
         // Simple cumulative summary (sum totals across enrollments)
         let cumulativeTotal = 0; let cumulativeSubjects = new Set();
