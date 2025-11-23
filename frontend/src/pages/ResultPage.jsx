@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getAcademicYears, getGrades, getShifts, getGradeSectionById, getExamSummaryAbort, getExamTypes } from '../api';
+import { getAcademicYears, getGrades, getShifts, getGradeSectionById, getExamSummaryAbort, getExamTypes, getCohortTimeline } from '../api';
+import CohortSelect from '../components/lookups/CohortSelect';
+import EnrollmentStatusSelect from '../components/lookups/EnrollmentStatusSelect';
 import { useCascadingFilters } from '../hooks/useCascadingFilters';
 import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
@@ -44,6 +46,11 @@ export default function ResultPage() {
     });
     const [subjectId, setSubjectId] = useState(saved.sub || '');
     const [examTypeId, setExamTypeId] = useState(saved.et || '');
+    const [enrollmentStatus, setEnrollmentStatus] = useState(saved.es || 'active');
+    const [cohortId, setCohortId] = useState(saved.coh || '');
+    const [timeline, setTimeline] = useState([]);
+    const [timelineLoading, setTimelineLoading] = useState(false);
+    const applyingTimelineRef = useRef(false);
 
     // Modes: subject | overall | examType | top | bottom (first four requested)
     const [mode, setMode] = useState(saved.mode || 'subject');
@@ -72,9 +79,20 @@ export default function ResultPage() {
 
     // Persist filters to sessionStorage
     useEffect(() => {
-        const payload = { ay: academicYearId, g: gradeId, sh: shiftId, gs: gradeSectionId, sub: subjectId, et: examTypeId, mode, top: topN, bot: bottomN };
+        const payload = { ay: academicYearId, g: gradeId, sh: shiftId, gs: gradeSectionId, sub: subjectId, et: examTypeId, mode, top: topN, bot: bottomN, es: enrollmentStatus, coh: cohortId };
         try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(payload)); } catch (err) { void err; }
-    }, [academicYearId, gradeId, shiftId, gradeSectionId, subjectId, examTypeId, mode, topN, bottomN]);
+    }, [academicYearId, gradeId, shiftId, gradeSectionId, subjectId, examTypeId, mode, topN, bottomN, enrollmentStatus, cohortId]);
+
+    // Load cohort timeline whenever cohort changes
+    useEffect(() => {
+        (async () => {
+            if (!cohortId) { setTimeline([]); return; }
+            setTimelineLoading(true);
+            const { data } = await getCohortTimeline(cohortId);
+            setTimelineLoading(false);
+            setTimeline(data || []);
+        })();
+    }, [cohortId]);
 
     // Sections for selection
     // handled by useCascadingFilters
@@ -108,6 +126,9 @@ export default function ResultPage() {
         setBottomN(0);
         setSummary({ results: [], classAverage: 0 });
         setLoading(false);
+        setEnrollmentStatus('active');
+        setCohortId('');
+        setTimeline([]);
     };
     useEffect(() => {
         // quick validations
@@ -125,6 +146,8 @@ export default function ResultPage() {
                 const controller = new AbortController();
                 fetchAbortRef.current = controller;
                 const params = { academicYearId, gradeSectionId };
+                if (enrollmentStatus) params.enrollmentStatus = enrollmentStatus;
+                if (cohortId) params.cohortId = cohortId;
                 if (mode) params.mode = (mode === 'examType' ? 'examType' : mode);
                 if (mode === 'subject' && subjectId) params.subjectId = subjectId;
                 if (mode === 'examType' && examTypeId) params.examTypeId = examTypeId;
@@ -149,7 +172,7 @@ export default function ResultPage() {
         }, 400); // debounce
         return () => clearTimeout(handle);
         
-    }, [academicYearId, gradeSectionId, subjectId, examTypeId, mode, topN, bottomN, minTotal, minAvg]);
+    }, [academicYearId, gradeSectionId, subjectId, examTypeId, mode, topN, bottomN, minTotal, minAvg, enrollmentStatus, cohortId]);
 
     const results = useMemo(() => summary?.results || [], [summary]);
     const subjectCols = useMemo(() => summary?.subjects || [], [summary]);
@@ -207,17 +230,19 @@ export default function ResultPage() {
             <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap items-center gap-3 no-print">
                 <AcademicYearSelect
                     value={academicYearId}
-                    onChange={(v)=>{ setAcademicYearId(v); resetLower('ay'); }}
+                    onChange={(v)=>{ setAcademicYearId(v); if (!applyingTimelineRef.current) { resetLower('ay'); setCohortId(''); setTimeline([]); } else { applyingTimelineRef.current = false; } }}
                     placeholder="Academic Year"
                 />
+                <CohortSelect value={cohortId} onChange={setCohortId} mode="context" academicYear={academicYearId} disabled={!academicYearId} className="border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Cohort" />
+                <EnrollmentStatusSelect value={enrollmentStatus} onChange={setEnrollmentStatus} className="border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enrollment Status" />
                 <GradeSelect
                     value={gradeId}
-                    onChange={(v)=>{ setGradeId(v); resetLower('grade'); }}
+                    onChange={(v)=>{ setGradeId(v); if (!applyingTimelineRef.current) { resetLower('grade'); } else { applyingTimelineRef.current = false; } }}
                     placeholder="Grade"
                 />
                 <ShiftSelect
                     value={shiftId}
-                    onChange={(v)=>{ setShiftId(v); resetLower('shift'); }}
+                    onChange={(v)=>{ setShiftId(v); if (!applyingTimelineRef.current) { resetLower('shift'); } else { applyingTimelineRef.current = false; } }}
                     placeholder="Shift"
                 />
                 <GradeSectionSelect
@@ -290,6 +315,34 @@ export default function ResultPage() {
                     >Print</ActionButton>
                 </div>
             </div>
+
+            {cohortId && timeline.length > 0 && (
+                <div className="bg-white p-3 rounded-lg shadow flex flex-row flex-wrap gap-2 items-center no-print">
+                    <div className="text-sm font-medium text-gray-600 mr-2">Cohort Timeline:</div>
+                    {timelineLoading && <div className="text-xs text-gray-500">Loading…</div>}
+                    {!timelineLoading && timeline.map(entry => {
+                        const active = academicYearId === String(entry.academicYear._id) && gradeSectionId === String(entry.gradeSection._id);
+                        return (
+                            <button
+                                key={String(entry.academicYear._id)+String(entry.gradeSection._id)}
+                                type="button"
+                                onClick={() => {
+                                    applyingTimelineRef.current = true;
+                                    setAcademicYearId(String(entry.academicYear._id));
+                                    setGradeId(String(entry.grade._id));
+                                    setShiftId(String(entry.shift._id));
+                                    setGradeSectionId(String(entry.gradeSection._id));
+                                    setSubjectId('');
+                                    queueMicrotask(() => { applyingTimelineRef.current = false; });
+                                }}
+                                className={`text-xs px-2 py-1 rounded border ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
+                            >
+                                {entry.academicYear.yearName} / {entry.grade.gradeName}{entry.gradeSection.section ? ` Sec ${entry.gradeSection.section}` : ''}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             <div className="bg-white p-4 rounded-lg shadow overflow-auto results-print">
                 {(!academicYearId || !gradeSectionId) ? (

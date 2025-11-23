@@ -279,7 +279,26 @@ export const getCohortTimeline = async (req, res) => {
       // NOTE: unwind path must be prefixed with '$'
       { $unwind: { path: '$shift', preserveNullAndEmptyArrays: true } },
       { $group: { _id: { ay: '$ay._id', gs: '$gs._id' }, academicYear: { $first: '$ay' }, gradeSection: { $first: '$gs' }, grade: { $first: '$grade' }, shift: { $first: '$shift' } } },
-      { $sort: { 'academicYear.yearName': 1, 'grade.gradeName': 1 } },
+      // Add numeric order for grade words/digits so level three comes before level four etc.
+      { $addFields: { gradeOrder: {
+          $switch: {
+            branches: [
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\bone\b/i } }, then: 1 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\btwo\b/i } }, then: 2 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\bthree\b/i } }, then: 3 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\bfour\b/i } }, then: 4 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\bfive\b/i } }, then: 5 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\bsix\b/i } }, then: 6 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\bseven\b/i } }, then: 7 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\beight\b/i } }, then: 8 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\bnine\b/i } }, then: 9 },
+              { case: { $regexMatch: { input: '$grade.gradeName', regex: /\bten\b/i } }, then: 10 }
+            ],
+            default: 999
+          }
+        }
+      } },
+      { $sort: { 'academicYear.yearName': 1, gradeOrder: 1 } },
       { $project: {
           academicYear: { _id: '$academicYear._id', yearName: '$academicYear.yearName' },
           gradeSection: { _id: '$gradeSection._id', section: '$gradeSection.section' },

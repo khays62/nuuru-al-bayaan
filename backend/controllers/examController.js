@@ -184,7 +184,7 @@ export const upsertScore = async (req, res) => {
 // Basic subject summary (rank per subject). Overall summary will be expanded on the Result page.
 export const getSummary = async (req, res) => {
   try {
-    const { academicYearId, gradeSectionId } = req.query;
+    const { academicYearId, gradeSectionId, enrollmentStatus, cohortId } = req.query;
     if (!isId(academicYearId) || !isId(gradeSectionId)) {
       return res.status(400).json({ message: 'academicYearId and gradeSectionId are required' });
     }
@@ -195,12 +195,21 @@ export const getSummary = async (req, res) => {
     const topN = req.query.topN ? Math.max(parseInt(req.query.topN) || 0, 0) : 0;
     const bottomN = req.query.bottomN ? Math.max(parseInt(req.query.bottomN) || 0, 0) : 0;
 
-    // Common set: exams, students
+    // Common set: exams
     const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId }).select('_id examType').lean();
     const examIds = exams.map(e => e._id);
     if (!examIds.length) return res.json({ results: [], classAverage: 0 });
 
-    const enrolls = await Enrollment.find({ academicYear: academicYearId, gradeSection: gradeSectionId, status: 'active' }).select('student').lean();
+    // Determine statuses (default active)
+    let statusFilter = ['active'];
+    if (enrollmentStatus === 'all') {
+      statusFilter = ['active','inactive','promoted','graduated','transferred','withdrawn'];
+    } else if (enrollmentStatus && ['active','inactive','promoted','graduated','transferred','withdrawn'].includes(enrollmentStatus)) {
+      statusFilter = [enrollmentStatus];
+    }
+    const enrollQuery = { academicYear: academicYearId, gradeSection: gradeSectionId, status: { $in: statusFilter } };
+    if (cohortId && isId(cohortId)) enrollQuery.cohort = cohortId;
+    const enrolls = await Enrollment.find(enrollQuery).select('student').lean();
     const studentIds = [...new Set(enrolls.map(e => String(e.student)))];
     if (!studentIds.length) return res.json({ results: [], classAverage: 0 });
 

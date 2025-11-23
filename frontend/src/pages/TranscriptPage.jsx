@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getAcademicYears, getGrades, getShifts, listStudents, getFullTranscript } from '../api';
+import { getAcademicYears, listStudents, getFullTranscript, getCohortTimeline, getGrades } from '../api';
+import CohortSelect from '../components/lookups/CohortSelect';
+import EnrollmentStatusSelect from '../components/lookups/EnrollmentStatusSelect';
 import { useCascadingFilters } from '../hooks/useCascadingFilters';
 import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
-import GradeSelect from '../components/lookups/GradeSelect';
-import ShiftSelect from '../components/lookups/ShiftSelect';
-import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
 import ActionButton from '../components/common/ActionButton';
 import { Printer, RotateCcw } from 'lucide-react';
 import TableShell from '../components/common/table/TableShell';
@@ -15,8 +14,13 @@ import PrintFooter from '../components/print/PrintFooter';
 export default function TranscriptPage() {
   // Lookups (for labels only)
   const [years, setYears] = useState([]);
-  const [grades, setGrades] = useState([]);
-  const [shifts, setShifts] = useState([]);
+  // Grade/Shift data no longer displayed; timeline covers progression
+  const [grades, setGrades] = useState([]); // grade levels list
+  const [shifts, setShifts] = useState([]); // legacy (hidden)
+  const [timeline, setTimeline] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const applyingTimelineRef = useRef(false);
+  const [activeTimelineIndex, setActiveTimelineIndex] = useState(-1); // user must choose one when timeline exists
 
   // Multi-student selection
   const [search, setSearch] = useState('');
@@ -26,12 +30,20 @@ export default function TranscriptPage() {
   const [dropdownSearch, setDropdownSearch] = useState('');
   const pickerRef = useRef(null);
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const hasAutoOpenedRef = useRef(false); // controls one-time auto-open for class picker
 
   // Controls
-  const [mode, setMode] = useState('full'); // full | latest | filter
+  const [mode, setMode] = useState('latest'); // full | latest (default latest per request)
+  const [showFilters, setShowFilters] = useState(false);
+  const [enrollmentStatus, setEnrollmentStatus] = useState('');
+  const [cohortId, setCohortId] = useState('');
+  const [levelsOpen, setLevelsOpen] = useState(false);
+  const [selectedLevels, setSelectedLevels] = useState([]); // grade ids
+  const levelsRef = useRef(null);
   const {
     academicYearId,
     setAcademicYearId,
+    // The following from cascading filters are retained but UI removed
     gradeId,
     setGradeId,
     shiftId,
@@ -46,47 +58,120 @@ export default function TranscriptPage() {
   const [loading, setLoading] = useState(false);
   const [transcripts, setTranscripts] = useState({}); // { [studentId]: { ok, data, error } }
 
-  // Load lookups once for labels
+  // Load lookups once for labels + levels
   useEffect(() => {
     (async () => {
       try {
-        const [ys, gs, ss] = await Promise.all([getAcademicYears(), getGrades(), getShifts()]);
+        const ys = await getAcademicYears();
         setYears(Array.isArray(ys) ? ys : (ys?.data || []));
-        setGrades(Array.isArray(gs) ? gs : (gs?.data || []));
-        setShifts(Array.isArray(ss) ? ss : (ss?.data || []));
+        const gRes = await getGrades?.();
+        if (gRes) {
+          const gData = Array.isArray(gRes?.data) ? gRes.data : (gRes?.data || gRes || []);
+          setGrades(gData);
+        }
       } catch {
         toast.error('Failed to load lookups');
       }
     })();
   }, []);
 
-  // Suggest students based on search and optional filters
+  // Load cohort timeline when cohort selected
+  useEffect(() => {
+    (async () => {
+      if (!cohortId) { setTimeline([]); return; }
+      setTimelineLoading(true);
+      const { data } = await getCohortTimeline(cohortId);
+      setTimelineLoading(false);
+      setTimeline(data || []);
+    })();
+  }, [cohortId]);
+
+  // Suggest students based on search once all required filters completed
   const suggTimer = useRef(null);
+  const lastFilterKeyRef = useRef('');
+  const lastEmptyTimelineIndexRef = useRef(null); // track which timeline index already announced empty
   useEffect(() => {
     if (suggTimer.current) clearTimeout(suggTimer.current);
     suggTimer.current = setTimeout(async () => {
       try {
-        const params = { page: 1, limit: mode === 'filter' ? 200 : 50 };
-        if (search) params.search = search;
-        if (mode === 'filter') {
-          if (academicYearId) params.academicYear = academicYearId;
-          if (gradeId) params.grade = gradeId;
-          if (shiftId) params.shift = shiftId;
-          if (gradeSectionId) params.gradeSectionId = gradeSectionId;
+        const filtersComplete = Boolean(
+          academicYearId && cohortId && enrollmentStatus && ((timeline.length === 0) || activeTimelineIndex >= 0)
+        );
+        // Build a key representing current filter combo to allow re-auto-open when any changes
+        const filterKey = [academicYearId, cohortId, enrollmentStatus, activeTimelineIndex].join('|');
+        if (filterKey !== lastFilterKeyRef.current) {
+          // allow auto-open again when any upstream filter changes (including timeline segment)
+          hasAutoOpenedRef.current = false;
+          lastFilterKeyRef.current = filterKey;
         }
-        const shouldFetch = Boolean(search) || (mode === 'filter' && Boolean(academicYearId || gradeId || shiftId || gradeSectionId));
-        if (!shouldFetch) { setSuggestions([]); return; }
-        const res = await listStudents(params);
-        const list = res?.data || [];
+        // Allow searching by name/ID even if filters not complete; but require filtersComplete for class auto list
+        if (!filtersComplete && !search) { setSuggestions([]); setShowSuggestions(false); return; }
+        const params = { page: 1, limit: 200 };
+        // If a timeline segment is chosen and its AY differs from selected AY, use segment AY for suggestions (override)
+        let segmentAcademicYearId = null;
+        if (activeTimelineIndex >= 0 && timeline[activeTimelineIndex]?.academicYear?._id) {
+          segmentAcademicYearId = String(timeline[activeTimelineIndex].academicYear._id);
+        }
+        const effectiveAcademicYearId = segmentAcademicYearId || academicYearId;
+        if (effectiveAcademicYearId) params.academicYear = effectiveAcademicYearId;
+        if (cohortId) params.cohort = cohortId;
+        if (enrollmentStatus) params.enrollmentStatus = enrollmentStatus;
+        if (search) params.search = search;
+        // If a timeline segment is selected, narrow by its gradeSection (and optionally grade/shift)
+        if (activeTimelineIndex >= 0 && timeline[activeTimelineIndex]) {
+          const seg = timeline[activeTimelineIndex];
+          const gsId = seg?.gradeSection?._id;
+          if (gsId) params.gradeSectionId = gsId;
+          const gradeIdSeg = seg?.grade?._id;
+          if (gradeIdSeg) params.grade = gradeIdSeg;
+          const shiftIdSeg = seg?.shift?._id;
+          if (shiftIdSeg) params.shift = shiftIdSeg;
+        }
+        // After filters complete, we always fetch suggestions (even without search) to allow immediate class selection
+        let res = await listStudents(params);
+        let list = res?.data || [];
+        const timelineChosen = activeTimelineIndex >= 0;
+        const timelineHasSection = (timelineChosen && params.gradeSectionId);
+        const initialEmpty = timelineChosen && list.length === 0;
+        if (initialEmpty && lastEmptyTimelineIndexRef.current !== activeTimelineIndex) {
+          toast.info('No students in selected timeline segment (Arday kuma jirto segment-kan)');
+          lastEmptyTimelineIndexRef.current = activeTimelineIndex;
+        }
+        // Fallback 1: remove gradeSection only
+        if (filtersComplete && timelineHasSection && list.length === 0) {
+          const retryParams = { ...params };
+          delete retryParams.gradeSectionId;
+          res = await listStudents(retryParams);
+          list = res?.data || [];
+        }
+        // Fallback 2: still empty – broaden fully (remove grade/shift narrowing) so segment beyond first years also shows cohort students
+        if (filtersComplete && timelineChosen && list.length === 0) {
+          const broadParams = { page: 1, limit: 200 };
+          // Use segment AY if present, else selected AY
+          if (effectiveAcademicYearId) broadParams.academicYear = effectiveAcademicYearId;
+          if (cohortId) broadParams.cohort = cohortId;
+          if (enrollmentStatus) broadParams.enrollmentStatus = enrollmentStatus;
+          if (search) broadParams.search = search;
+          res = await listStudents(broadParams);
+          list = res?.data || [];
+          if (list.length > 0) toast.success('Showing cohort students (Arday guud ee dufcada)');
+        }
         setSuggestions(list);
-        setShowSuggestions(list.length > 0 && (Boolean(search) || mode === 'filter'));
+        const shouldShow = list.length > 0 && (isPickerOpen || Boolean(search));
+        setShowSuggestions(shouldShow);
+        // Auto-open picker ONLY once per filter completion cycle
+        if (!hasAutoOpenedRef.current && filtersComplete && list.length > 0 && !isPickerOpen) {
+          setIsPickerOpen(true);
+          setShowSuggestions(true);
+          hasAutoOpenedRef.current = true;
+        }
       } catch {
         setSuggestions([]);
         setShowSuggestions(false);
       }
     }, 250);
     return () => { if (suggTimer.current) clearTimeout(suggTimer.current); };
-  }, [search, mode, academicYearId, gradeId, shiftId, gradeSectionId]);
+  }, [search, academicYearId, enrollmentStatus, cohortId, timeline, activeTimelineIndex, isPickerOpen]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -127,55 +212,27 @@ export default function TranscriptPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedStudents]);
 
+  // (Top/Bottom removed)
+
   const getFilteredEnrollments = (dataObj) => {
     if (!dataObj?.enrollments) return [];
     const list = dataObj.enrollments;
-    if (mode === 'latest') return list.length ? [list[list.length - 1]] : [];
-    if (mode === 'filter') {
-      const eq = (a, b) => (a != null && b != null) && String(a) === String(b);
-      const eqText = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
-
-      const selYear = years.find(y => String(y._id) === String(academicYearId));
-      const selGrade = grades.find(g => String(g._id) === String(gradeId));
-      const selShift = shifts.find(s => String(s._id) === String(shiftId));
-      const selSection = sections.find(sc => String(sc._id) === String(gradeSectionId));
-
-      return list.filter(en => {
-        let ayOk = true;
-        if (academicYearId) {
-          const enAY = en.academicYear;
-          ayOk = eq(enAY?._id, academicYearId) || eq(enAY, academicYearId) ||
-                 eqText(enAY?.yearName, selYear?.yearName) || eqText(enAY, selYear?.yearName);
-        }
-        let gsOk = true;
-        if (gradeSectionId) {
-          const enGS = en.gradeSection;
-          gsOk = eq(enGS?._id, gradeSectionId) || eq(enGS, gradeSectionId) ||
-                 eqText(enGS?.section, selSection?.section) || eqText(enGS, selSection?.section);
-        }
-        let gOk = true;
-        if (gradeId) {
-          const enG = en.gradeSection?.grade ?? en.grade;
-          gOk = eq(enG?._id, gradeId) || eq(enG, gradeId) ||
-                eqText(enG?.gradeName, selGrade?.gradeName) || eqText(enG, selGrade?.gradeName);
-        }
-        let shOk = true;
-        if (shiftId) {
-          const enSh = en.gradeSection?.shift ?? en.shift;
-          shOk = eq(enSh?._id, shiftId) || eq(enSh, shiftId) ||
-                 eqText(enSh?.shiftName, selShift?.shiftName) || eqText(enSh, selShift?.shiftName);
-        }
-        return ayOk && gsOk && gOk && shOk;
-      });
+    if (mode === 'latest') {
+      return list.length ? [list[list.length - 1]] : [];
     }
-    return list; // full
+    // 'full' and 'levels' modes return all enrollments (levels filtered later)
+    return list;
   };
+
+  const manualSelectionRef = useRef(false);
 
   const addStudent = (s) => {
     if (!s?._id) return;
+    manualSelectionRef.current = true;
     setSelectedStudents(prev => prev.some(x => x._id === s._id) ? prev : [...prev, { _id: s._id, fullName: s.fullName, studentId: s.studentId }]);
   };
   const removeStudent = (id) => {
+    manualSelectionRef.current = true;
     setSelectedStudents(prev => prev.filter(x => x._id !== id));
     setTranscripts(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
@@ -189,12 +246,32 @@ export default function TranscriptPage() {
     setShowSuggestions(false);
     setIsPickerOpen(false);
     setTranscripts({});
-    setMode('full');
+    setMode('latest');
     setAcademicYearId('');
     setGradeId('');
     setShiftId('');
     setGradeSectionId('');
+    setEnrollmentStatus('');
+    setCohortId('');
+    setShowFilters(false);
+    setTimeline([]);
+    setActiveTimelineIndex(-1);
+    manualSelectionRef.current = false;
+    hasAutoOpenedRef.current = false;
+    setSelectedLevels([]);
+    setLevelsOpen(false);
   };
+
+  // Close levels dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (!levelsOpen) return;
+      if (!levelsRef.current) return;
+      if (!levelsRef.current.contains(e.target)) setLevelsOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [levelsOpen]);
 
   return (
     <div className="space-y-6 with-print-footer">
@@ -202,8 +279,9 @@ export default function TranscriptPage() {
 
       <div className="bg-white p-4 rounded-lg shadow no-print">
         <h1 className="text-lg font-semibold mb-3">Transcript Builder</h1>
-        <div className="flex flex-row flex-wrap gap-3 items-start">
-          <div className="col-span-1 md:col-span-2" ref={pickerRef}>
+        {/* Row 1: Search + Select from class + Modes + Filters toggle */}
+        <div className="flex flex-row flex-wrap items-end w-full gap-3">
+          <div className="flex-1 min-w-[320px]" ref={pickerRef}>
             <label htmlFor="transcript-search" className="text-xs text-gray-500">Search Student</label>
             <div className="relative">
               <input
@@ -213,19 +291,17 @@ export default function TranscriptPage() {
                 onChange={e=>{ setSearch(e.target.value); setShowSuggestions(true); }}
                 onFocus={()=> setShowSuggestions(true)}
                 placeholder="Search by name or ID"
-	                className="mt-1 w-full pr-20 px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="mt-1 w-full pr-20 px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <div className="absolute right-1 top-1.5 flex gap-1">
-                {mode === 'filter' && (
-                  <button
-                    type="button"
-                    onClick={() => { setIsPickerOpen(v=>!v); setShowSuggestions(true); }}
-                    className="px-2 py-1 text-xs border rounded bg-gray-50 hover:bg-gray-100"
-                    title="Open class list"
-                  >
-                    Select from class ▾
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => { setIsPickerOpen(v=>!v); setShowSuggestions(true); }}
+                  className="px-2 py-1 text-xs border rounded bg-gray-50 hover:bg-gray-100"
+                  title="Open class list"
+                >
+                  Select from class ▾
+                </button>
               </div>
               {(isPickerOpen || (showSuggestions && suggestions.length > 0)) && (
                 <div className="absolute left-0 right-0 top-full mt-1 border rounded shadow-lg bg-white z-50 max-h-72 overflow-auto">
@@ -269,42 +345,111 @@ export default function TranscriptPage() {
               ))}
             </div>
           </div>
-          <div>
-            <label htmlFor="transcript-mode" className="text-xs text-gray-500">Mode</label>
-            <select id="transcript-mode" name="transcript-mode" value={mode} onChange={e=>setMode(e.target.value)} className="mt-1 w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              <option value="full">Full Transcript (All Years)</option>
-              <option value="latest">Latest Enrollment Only</option>
-              <option value="filter">Filtered Transcript</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-2 min-w-[220px]">
-            {mode === 'filter' && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div>
-                    <label htmlFor="transcript-ay" className="text-xs text-gray-500">Academic Year</label>
-                    <AcademicYearSelect id="transcript-ay" name="academicYearId" value={academicYearId} onChange={(v)=>{ setAcademicYearId(v); resetLower('ay'); }} className="mt-1 w-full" placeholder="Any" />
-                  </div>
-                  <div>
-                    <label htmlFor="transcript-grade" className="text-xs text-gray-500">Grade</label>
-                    <GradeSelect id="transcript-grade" name="gradeId" value={gradeId} onChange={(v)=>{ setGradeId(v); resetLower('grade'); }} className="mt-1 w-full" placeholder="Any" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <div>
-                    <label htmlFor="transcript-shift" className="text-xs text-gray-500">Shift</label>
-                    <ShiftSelect id="transcript-shift" name="shiftId" value={shiftId} onChange={(v)=>{ setShiftId(v); resetLower('shift'); }} className="mt-1 w-full" placeholder="Any" />
-                  </div>
-                  <div>
-                    <label htmlFor="transcript-section" className="text-xs text-gray-500">Section</label>
-                    <GradeSectionSelect id="transcript-section" name="gradeSectionId" academicYearId={academicYearId} gradeId={gradeId} shiftId={shiftId} value={gradeSectionId} onChange={setGradeSectionId} className="mt-1 w-full" placeholder="Any" />
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500">When you set filters, the list above shows matching students. Select multiple students to print their transcripts at once.</p>
-              </>
-            )}
-          </div>
         </div>
+        {/* Inline modes + filter toggle */}
+        <div className="flex flex-row flex-wrap items-end gap-4 w-full">
+          <div className="flex flex-row flex-wrap items-center gap-4 text-sm">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="transcript-mode" checked={mode==='full'} onChange={()=> setMode('full')} />
+              <span>Full Transcript</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="transcript-mode" checked={mode==='latest'} onChange={()=> setMode('latest')} />
+              <span>Last Enrollment</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="transcript-mode" checked={mode==='levels'} onChange={()=> setMode('levels')} />
+              <span>Levels</span>
+            </label>
+            <div className="relative flex items-center gap-2" ref={levelsRef}>
+              <button
+                type="button"
+                disabled={mode!=='levels'}
+                onClick={()=> mode==='levels' && setLevelsOpen(o=>!o)}
+                className={`px-2 py-1 border rounded text-xs flex items-center gap-1 ${mode==='levels' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+              >
+                Levels ▾ {selectedLevels.length ? <span className="text-indigo-600">({selectedLevels.length})</span> : null}
+              </button>
+              {levelsOpen && mode==='levels' && (
+                <div className="absolute z-40 mt-1 w-48 max-h-64 overflow-auto bg-white border rounded shadow">
+                  <div className="sticky top-0 bg-white border-b px-2 py-1 text-xs font-medium">Select Levels</div>
+                  {(!grades || grades.length===0) && <div className="px-3 py-2 text-xs text-gray-500">No grades</div>}
+                  {grades && [...grades]
+                    // Use same logic as GradeSelect: sort by createdAt to preserve DB insertion (level one → level two ...)
+                    .sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt))
+                    .map(g => {
+                    const id = String(g._id || g.id);
+                    const checked = selectedLevels.includes(id);
+                    return (
+                      <label key={id} className="flex items-center gap-2 px-3 py-1 text-xs hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={()=> setSelectedLevels(prev => checked ? prev.filter(x => x!==id) : [...prev, id])}
+                        />
+                        <span>{g.gradeName || g.name || 'Grade'}</span>
+                      </label>
+                    );
+                  })}
+                  {selectedLevels.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={()=> setSelectedLevels([])}
+                      className="m-2 mt-1 px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 w-[calc(100%-1rem)]"
+                    >Clear</button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <label className="ml-auto flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
+            <input type="checkbox" checked={showFilters} onChange={e=> setShowFilters(e.target.checked)} />
+            <span>Filters: AY → Cohort / Status / Timeline</span>
+          </label>
+        </div>
+        {showFilters && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+              <div>
+                <label htmlFor="transcript-ay" className="text-xs text-gray-500">Academic Year</label>
+                <AcademicYearSelect id="transcript-ay" name="academicYearId" value={academicYearId} onChange={(v)=>{ setAcademicYearId(v); resetLower('ay'); setCohortId(''); setActiveTimelineIndex(-1); }} className="mt-1 w-full" placeholder="Select year" />
+              </div>
+              <div>
+                <label htmlFor="transcript-cohort" className="text-xs text-gray-500">Cohort</label>
+                <CohortSelect id="transcript-cohort" value={cohortId} onChange={(v)=>{ setCohortId(v); setActiveTimelineIndex(-1); }} mode="context" academicYear={academicYearId} disabled={!academicYearId} className="mt-1 w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Select cohort" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="transcript-status" className="text-xs text-gray-500">Enrollment Status</label>
+                <EnrollmentStatusSelect id="transcript-status" value={enrollmentStatus} onChange={(v)=>{ setEnrollmentStatus(v); }} className="mt-1 w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Select status" />
+              </div>
+              <div>
+                <label htmlFor="transcript-timeline" className="text-xs text-gray-500">Timeline Segment</label>
+                <select
+                  id="transcript-timeline"
+                  value={timelineLoading ? -2 : activeTimelineIndex}
+                  onChange={e=> setActiveTimelineIndex(Number(e.target.value))}
+                  disabled={timelineLoading || (!timeline.length && activeTimelineIndex === -1)}
+                  className="mt-1 w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                >
+                  <option value={-1}>Dooro segment</option>
+                  {timelineLoading && <option value={-2}>Loading…</option>}
+                  {!timelineLoading && timeline.length === 0 && <option value={-3}>No timeline data</option>}
+                  {!timelineLoading && timeline.map((seg, idx) => {
+                    const gradeName = seg.grade?.gradeName || '';
+                    const section = seg.gradeSection?.section || '';
+                    const shiftName = seg.shift?.shiftName || '';
+                    const ayName = seg.academicYear?.yearName || '';
+                    const labelCore = [gradeName, section, shiftName].filter(Boolean).join(' - ');
+                    const label = [ayName, labelCore].filter(Boolean).join(' | ');
+                    return <option key={idx} value={idx}>{label || `Segment ${idx+1}`}</option>;
+                  })}
+                </select>
+              </div>
+            </div>
+          </>
+        )}
         <div className="mt-3 flex flex-row flex-wrap gap-2 items-center">
           <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
           <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
@@ -315,21 +460,38 @@ export default function TranscriptPage() {
         {loading && <div>Loading…</div>}
         {!loading && selectedStudents.length > 0 && (
           <div className="space-y-8 print-two" style={{ breakInside: 'auto' }}>
-            {selectedStudents.map((sel) => {
+            {(() => {
+              return selectedStudents.map((sel) => {
               const t = transcripts[sel._id];
               const ok = t?.ok && t?.data;
               const dataObj = ok ? t.data : null;
               const enrolls = getFilteredEnrollments(dataObj);
+              const filteredEnrolls = (mode==='levels' && selectedLevels.length) ? enrolls.filter(en => {
+                // Collect possible grade identifiers from enrollment
+                const directGrade = en.grade?._id || en.grade; // enrollment.grade can be object or id
+                const gsGradeObj = en.gradeSection?.grade?._id || en.gradeSection?.grade; // may be object or name/id
+                const gsGradeIdField = en.gradeSection?.gradeId; // explicit id if present
+                const gsGradeNameField = en.gradeSection?.grade; // often a plain name (e.g. "level one")
+                const candidates = [directGrade, gsGradeObj, gsGradeIdField, gsGradeNameField]
+                  .filter(Boolean)
+                  .map(x => String(x));
+                // Build allowed names for selected level IDs
+                const allowedNames = grades
+                  .filter(g => selectedLevels.includes(String(g._id || g.id)))
+                  .map(g => String(g.gradeName || g.name))
+                  .filter(Boolean);
+                return candidates.some(c => selectedLevels.includes(c) || allowedNames.includes(c));
+              }) : enrolls;
               return (
                 <div key={sel._id} className="space-y-3 student-block avoid-break">
                   <div className="print:text-center">
                     <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
                     <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
                   </div>
-                  {(!ok || enrolls.length === 0) && (
+                  {(!ok || filteredEnrolls.length === 0) && (
                     <div className="text-sm text-gray-500">No transcript data for the selected mode/filters.</div>
                   )}
-                  {ok && enrolls.map((en, idx) => (
+                  {ok && filteredEnrolls.map((en, idx) => (
                     <section key={en.enrollmentId || idx} className="p-3 avoid-break">
                       <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
                         <span><span className="font-medium">Academic Year:</span> {en.academicYear?.yearName || '-'}</span>
@@ -402,7 +564,8 @@ export default function TranscriptPage() {
                   {/* Removed extra summary footer under table per request */}
                 </div>
               );
-            })}
+              });
+            })()}
           </div>
         )}
       </div>
