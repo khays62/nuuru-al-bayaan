@@ -14,6 +14,7 @@ import SubjectPage from './pages/SubjectPage';
 import ExamManagementPage from './pages/ExamManagementPage';
 import ResultPage from './pages/ResultPage';
 import TranscriptPage from './pages/TranscriptPage';
+import TransfersPage from './pages/TransfersPage';
 import UserManagementPage from './pages/UserManagementPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PromotionPage from './pages/PromotionPage';
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
   { path: 'promotions', element: <PromotionPage /> },
   { path: 'cohorts', element: <CohortsPage /> },
       { path: 'results', element: <ResultPage /> },
+        { path: 'transfers', element: <TransfersPage /> },
   { path: 'transcripts', element: <TranscriptPage /> },
       { path: 'users', element: <UserManagementPage /> },
   // In-app wildcard: redirect to top-level 404 so layout (Sidebar/Navbar) is not rendered

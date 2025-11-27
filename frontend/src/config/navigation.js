@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Layers3, BookOpenCheck, BarChart2, UserCog, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Users, Layers3, BookOpenCheck, BarChart2, UserCog, TrendingUp, Repeat } from 'lucide-react';
 
 // This file centralizes the navigation configuration for the entire application.
 // It is imported by both Sidebar.jsx and App.jsx to ensure consistency.
@@ -13,5 +13,6 @@ export const navItems = [
     { path: '/exams', label: 'Exam Management', icon: BarChart2 },
     { path: '/results', label: 'Results', icon: BarChart2 }, // Using the same icon for now
     { path: '/transcripts', label: 'Transcripts', icon: BookOpenCheck },
+    { path: '/transfers', label: 'Transfers', icon: Repeat },
     { path: '/users', label: 'User Management', icon: UserCog },
 ];

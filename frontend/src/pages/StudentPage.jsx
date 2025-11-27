@@ -6,7 +6,7 @@ import Modal from '../components/common/Modal';
 import PaginationControls from '../components/common/Pagination/PaginationControls';
 import { useEntityList } from '../hooks/useEntityList';
 import toast from 'react-hot-toast';
-import { listStudents, createStudent, updateStudent as updateStudentApi, getStudentProfile as fetchStudentProfile, getAcademicYears, getGrades, getShifts, listGradeSections, transferEnrollmentApi } from '../api';
+import { listStudents, createStudent, updateStudent as updateStudentApi, getStudentProfile as fetchStudentProfile, getAcademicYears, getGrades, getShifts, listGradeSections } from '../api';
 import { on as onEvent, off as offEvent, EVENTS, emitStudentsChanged } from '../utils/events';
 import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
@@ -35,10 +35,6 @@ export default function StudentPage() {
     const [gradeFilter, setGradeFilter] = useState('');
     const [shiftFilter, setShiftFilter] = useState('');
     // removed: legacy filterSections state (using GradeSectionSelect which loads itself)
-    // Transfer modal state (row action)
-    const [isTransferOpen, setIsTransferOpen] = useState(false);
-    const [transferStudent, setTransferStudent] = useState(null);
-    const [transferBusy, setTransferBusy] = useState(false);
     // Cascading lookups
     const [years, setYears] = useState([]);
     const [grades, setGrades] = useState([]);
@@ -283,69 +279,12 @@ export default function StudentPage() {
 
     // Removed updateSections; GradeSectionSelect handles loading its options
 
-    const openTransferModalFromRow = async (st) => {
-        try {
-            setTransferStudent(st);
-            setIsTransferOpen(true);
-            setSelYear(''); setSelGrade(''); setSelShift(''); setSelSection('');
-            await ensureLookupsLoaded();
-            // Fetch full profile to prefill selections
-            const profile = await fetchStudentProfile(st._id);
-            const latest = profile?.latestEnrollment;
-            if (latest) {
-                const ay = latest.academicYear?._id || '';
-                const gr = latest.gradeSection?.grade?._id || latest.grade?._id || '';
-                const sh = latest.gradeSection?.shift?._id || latest.shift?._id || '';
-                setSelYear(ay);
-                setSelGrade(gr);
-                setSelShift(sh);
-                // Load candidate sections for these filters
-                // options are loaded within GradeSectionSelect
-                // Do not preselect current section, force explicit choice
-            }
-        } catch {
-            console.error('Open transfer failed');
-        }
-    };
+    // Transfer flow removed from Student page; use dedicated Transfers page instead
 
     // React to cascade filter changes
-    useEffect(() => {
-        if (!isTransferOpen) return;
-        // Only fetch when all 3 parents selected
-        if (!selYear || !selGrade || !selShift) {
-            setSelSection('');
-        }
-    }, [selYear, selGrade, selShift, isTransferOpen]);
+    // No transfer modal state anymore
 
-    const handleTransferSubmit = async () => {
-        if (!transferStudent || !selSection) return;
-        try {
-            setTransferBusy(true);
-            const { ok, data, status } = await transferEnrollmentApi(transferStudent._id, { gradeSectionId: selSection });
-            if (!ok) {
-                toast.error(data?.message || `Failed to transfer (status ${status})`);
-                return;
-            }
-            const msg = (data?.message || '').toString();
-            if (/no\s+changes/i.test(msg)) {
-                // No-op: already in this section
-                toast.success('No changes: already in this section');
-            } else {
-                toast.success('Enrollment transferred');
-            }
-            setIsTransferOpen(false);
-            setTransferStudent(null);
-            setSelYear(''); setSelGrade(''); setSelShift(''); setSelSection('');
-            // Refresh table then notify listeners
-            await refresh();
-            emitStudentsChanged();
-        } catch (e) {
-            console.error(e);
-            toast.error('Network or server error');
-        } finally {
-            setTransferBusy(false);
-        }
-    };
+    // No transfer submit; handled by Transfers page
 
     return (
         <div className="space-y-6">
@@ -429,7 +368,7 @@ export default function StudentPage() {
             ) : students.length === 0 ? (
                 <EmptyState title="No students found" description="Try adjusting filters or add a new student." actionLabel="Add Student" onAction={handleAddNew} />
             ) : (
-                <StudentTable students={students} onEdit={handleEdit} onTransfer={openTransferModalFromRow} />
+                <StudentTable students={students} onEdit={handleEdit} />
             )}
 
             <PaginationControls
@@ -451,35 +390,7 @@ export default function StudentPage() {
                 </div>
             </Modal>
 
-            {/* Transfer Section Modal (row action) */}
-            <Modal isOpen={isTransferOpen} onClose={() => setIsTransferOpen(false)} title={`Transfer Section${transferStudent ? `: ${transferStudent.fullName}` : ''}`}>
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Academic Year</label>
-                            <AcademicYearSelect placeholder="-- Select Academic Year --" value={selYear} onChange={(v)=> { setSelYear(v); setSelSection(''); }} className="w-full" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Grade</label>
-                            <GradeSelect placeholder="-- Select Grade --" value={selGrade} onChange={(v)=> { setSelGrade(v); setSelSection(''); }} className="w-full" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Shift</label>
-                            <ShiftSelect placeholder="-- Select Shift --" value={selShift} onChange={(v)=> { setSelShift(v); setSelSection(''); }} className="w-full" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Section</label>
-                            <GradeSectionSelect gradeId={selGrade} shiftId={selShift} value={selSection} onChange={(v)=> setSelSection(v)} className="w-full" />
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <button onClick={()=> setIsTransferOpen(false)} className="px-3 py-2 text-sm rounded border">Cancel</button>
-                        <button disabled={transferBusy || !selSection} onClick={handleTransferSubmit} className="px-3 py-2 text-sm rounded bg-blue-600 text-white disabled:opacity-50">
-                            {transferBusy ? 'Transferring...' : 'Confirm Transfer'}
-                        </button>
-                    </div>
-                </div>
-            </Modal>
+            {/* Transfer flow removed from Student page; use Transfers page */}
         </div>
     );
 }

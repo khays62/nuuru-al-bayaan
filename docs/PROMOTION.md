@@ -1,13 +1,13 @@
 
 # Dalacsiinta Ardayda (Student Promotion) — Kooban
 
-Last updated: 22 Oct 2025
+Last updated: 27 Nov 2025
 
 ---
 
 ## Dulmar
-- Dalacsiinta waxay u wareejisaa ardayga Grade-ka xiga iyadoo la ilaalinayo Section iyo Shift.
-- Curriculum (maadooyin) waxa lagu qeexaa heerka Grade-ka (Associated Grades), ee ma aha in GS walba gacanta lagu buuxiyo.
+- Dalacsiinta waxay u wareejisaa ardayga Grade-ka xiga iyadoo la ilaalinayo Section iyo Shift (Cohort preserve policy).
+- Curriculum (maadooyin) waxa lagu qeexaa heerka Grade-ka (Associated Subjects), ee ma aha in GS walba gacanta lagu buuxiyo.
 - Haddii Target GradeSection (GS) maqan yahay xilliga promotion, server-ku wuu abuuri karaa otomaatig ahaan GS-ka saxda ah (auto-create) isagoo isticmaalaya curriculum-ka Grade-ka la beegsanayo.
 
 ---
@@ -22,17 +22,15 @@ Last updated: 22 Oct 2025
 ---
 
 ## Xeerarka Promotion-ka
-- Invariants: Section iyo Shift isma beddelaan; 1 active enrollment had iyo jeer.
+- Invariants: Section iyo Shift isma beddelaan; 1 active enrollment had iyo jeer; Cohort preserve.
 - Mid-Year (seq 1 → seq 2):
   - Grade → ++ (tusaale: Level 1 → Level 2) isla AcademicYear.
-  - Close old enrollment → Create new enrollment to Target GS (AY: isla sanadka, Section/Shift sidii).
-  - Cohort: ISMA beddelo (waa inuu la mid noqdaa cohort-kii ardayga ama noqdaa cohort-less).
+  - Close old enrollment → Create new enrollment to Target GS (AY: isla sanadka, Section/Shift/Cohort sidii).
 - Year-End (non-terminal):
-  - Grade → ++, AcademicYear → AY+1; Section/Shift sidii.
+  - Grade → ++, AcademicYear → AY+1; Section/Shift/Cohort sidii.
   - Close old → Create new enrollment to Target GS.
-  - Cohort: ISMA beddelo (waa inuu la mid noqdaa cohort-kii ardayga ama cohort-less).
 - Year-End (terminal grade, tusaale Level 10):
-  - Graduation: Close enrollment; Student.status = Graduated; TransferLog(type='GRADUATION', cohortId).
+  - Graduation: Close enrollment (status='graduated'). Student.status policy waxay ku xirnaan kartaa deployment-ka (haddii la doonayo in si toos ah loo dhigo “Graduated”).
   - Ma abuurayo enrollment cusub.
 
 Xusuusin: Inkastoo Section/Shift/Cohort aysan isbeddelayn, promotion-ku had iyo jeer wuxuu tilmaamayaa GS KALE (sababtoo ah Grade/AY ayaa isbeddelaya). Taasi waa sababta aan u xirno enrollment-kii hore una abuurno enrollment cusub.
@@ -56,7 +54,7 @@ Admin Flow kooban (intake → safar):
 
 ## Cohort (Dufcad) — Iswaafajin
 - Promotion: Cohort ISMA beddelo; target GS waa inuu leeyahay isla cohort (ama cohort-less).
-- Transfer: Cohort-ka waxa go'aamiya target GS (overwrite) — ardaygu toos ayuu u qaataa cohort-ka GS-ka cusub.
+- Transfer: Waxaa go'aamiya target GS (overwrite) — ardaygu toos ayuu u qaataa cohort-ka GS-ka cusub (ku saabsan Transfer, eeg `TRANSFER.md`).
 - Admin Update: Haddii cohortId laga beddelo GS oo arday active jiraan, samee resync si `Enrollment.cohort` loogu waafajiyo cohort-ka GS.
 
 ---
@@ -126,7 +124,7 @@ Admin Flow kooban (intake → safar):
 - GET /api/grade-sections?ay=&grade=&shift=&section=&cohort=
   - For client-side discovery of potential targets (optional)
 
-### Promotion (bulk) — Endpoints cusub
+### Promotion (bulk)
 - GET /api/promotions/preview
   - Query: ay, grade, shift, section, cohort, q (search), timing, studentIds[] (optional)
   - Returns: {
@@ -145,6 +143,12 @@ Admin Flow kooban (intake → safar):
   - Returns: { successes: [...], failures: [{ studentId, code, message }] }
 
 RBAC (talo): Admin | AcademicOfficer → can preview/execute promotions.
+
+---
+
+## La Xiriir — Transfer vs Promotion
+- Haddii ujeeddadu tahay in la beddelo Section/Shift (AY isku mid), isticmaal Transfer (eeg `TRANSFER.md`).
+- Haddii loo baahan yahay in la boodo AY mustaqbalka sababo jadwal (non-promotion), isticmaal Cross-AY Transfer (scores lama wareejiyo). Promotion Year-End waxa kaliya oo ay u booddaa AY+1 iyadoo Grade → ++ isla Section/Shift/Cohort.
 
 ## UI faahfaahin (Frontend) — Promotion Page (Standalone)
 - Path: `/promotions` (sidebar item: “Promotions”)

@@ -14,6 +14,7 @@ import gradeSectionRoutes from './routes/gradeSectionRoutes.js';
 import examRoutes from './routes/examRoutes.js';
 import cohortRoutes from './routes/cohortRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
+import transferRoutes from './routes/transferRoutes.js';
 
 
 dotenv.config();
@@ -40,6 +41,7 @@ const startServer = async () => {
     app.use('/api/exams', examRoutes);
     app.use('/api/cohorts', cohortRoutes);
     app.use('/api/promotions', promotionRoutes);
+    app.use('/api/transfers', transferRoutes);
 
 
     const PORT = process.env.PORT || 7000;

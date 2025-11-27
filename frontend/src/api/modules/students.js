@@ -42,11 +42,7 @@ export async function reactivateStudentApi(id) {
   return { ok: res.ok, status: res.status, data };
 }
 
-export async function transferEnrollmentApi(id, payload) {
-  const res = await fetch(apiUrl(`/students/${id}/enrollment/transfer`), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
-}
+// Transfer endpoint removed from student API; use modules/transfers.performTransfer instead
 
 export async function getStudentProfile(id) {
   try {

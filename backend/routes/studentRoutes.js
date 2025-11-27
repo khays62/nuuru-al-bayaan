@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStudents, addStudent, getStudentProfile, getStudentHistory, getStudentTransfers, deactivateStudent, reactivateStudent, updateStudent, transferEnrollment, getFullTranscript, getLatestTransfer, setEnrollmentActiveFlag } from '../controllers/studentController.js';
+import { getStudents, addStudent, getStudentProfile, getStudentHistory, getStudentTransfers, deactivateStudent, reactivateStudent, updateStudent, getFullTranscript, getLatestTransfer, setEnrollmentActiveFlag } from '../controllers/studentController.js';
 
 const router = express.Router();
 
@@ -18,11 +18,11 @@ router.get('/:id/full-transcript', getFullTranscript); // GET /api/students/:id/
 router.patch('/:id/deactivate', deactivateStudent); // PATCH /api/students/:id/deactivate
 router.patch('/:id/reactivate', reactivateStudent); // PATCH /api/students/:id/reactivate
 // New transfer endpoint
-router.patch('/:id/enrollment/transfer', transferEnrollment); // PATCH /api/students/:id/enrollment/transfer
+// Transfer routes moved to /api/transfers
 // Toggle latest enrollment active/inactive (temporary lock)
 router.patch('/:id/enrollment/active', setEnrollmentActiveFlag);
 // Backward compatibility: temporarily support old path by calling transfer handler
-router.patch('/:id/enrollment/reassign', transferEnrollment);
+// Legacy reassign route removed
 
 export default router;
 

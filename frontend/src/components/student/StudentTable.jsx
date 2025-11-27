@@ -9,7 +9,7 @@ import { deactivateStudentApi, reactivateStudentApi } from '../../api';
 import { emitStudentsChanged } from '../../utils/events';
 
 // Displays students returned by backend list endpoint
-const StudentTable = ({ students, onEdit, onTransfer }) => (
+const StudentTable = ({ students, onEdit }) => (
     <TableShell>
             <thead className="bg-gray-800">
                 <tr>
@@ -40,9 +40,7 @@ const StudentTable = ({ students, onEdit, onTransfer }) => (
                             <ActionButton variant="neutral" title="Edit Student" onClick={() => onEdit(st)} icon={<Pencil size={16} />}>
                                 <span className="hidden sm:inline">Edit</span>
                             </ActionButton>
-                            <ActionButton variant="info" title="Transfer Section" onClick={() => onTransfer && onTransfer(st)} icon={<Repeat size={16} />}>
-                                <span className="hidden sm:inline">Transfer</span>
-                            </ActionButton>
+                            {/* Transfer button removed; use dedicated Transfers page */}
                             {st.status === 'Active' ? (
                                 <ActionButton
                                     variant="danger"
