@@ -1,5 +1,6 @@
 import express from 'express';
-import { getStudents, addStudent, getStudentProfile, getStudentHistory, getStudentTransfers, deactivateStudent, reactivateStudent, updateStudent, getFullTranscript, getLatestTransfer, setEnrollmentActiveFlag } from '../controllers/studentController.js';
+import { getStudents, addStudent, getStudentProfile, getStudentHistory, getStudentTransfers, deactivateStudent, reactivateStudent, updateStudent, getLatestTransfer, setEnrollmentActiveFlag } from '../controllers/studentController.js';
+import { getFullTranscript } from '../controllers/transcriptController.js';
 
 const router = express.Router();
 

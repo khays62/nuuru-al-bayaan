@@ -9,6 +9,12 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage'; 
 import StudentPage from './pages/StudentPage';
 import StudentProfilePage from './pages/StudentProfilePage';
+import StudentDashboardPage from './pages/StudentDashboardPage';
+import ProfileTab from './components/student/dashboard/ProfileTab';
+import EnrollmentsTab from './components/student/dashboard/EnrollmentsTab';
+import TranscriptTab from './components/student/dashboard/TranscriptTab';
+import AttendanceTab from './components/student/dashboard/AttendanceTab';
+import LibraryTab from './components/student/dashboard/LibraryTab';
 import GradePage from './pages/GradePage';
 import SubjectPage from './pages/SubjectPage';
 import ExamManagementPage from './pages/ExamManagementPage';
@@ -34,7 +40,19 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'students', element: <StudentPage /> },
-      { path: 'students/:studentId', element: <StudentProfilePage /> },
+      // New Student Dashboard with nested tabs; keep old profile route for now
+      {
+        path: 'students/:studentId',
+        element: <StudentDashboardPage />,
+        children: [
+          { index: true, element: <ProfileTab /> },
+          { path: 'profile', element: <ProfileTab /> },
+          { path: 'enrollments', element: <EnrollmentsTab /> },
+          { path: 'transcript', element: <TranscriptTab /> },
+          { path: 'attendance', element: <AttendanceTab /> },
+          { path: 'library', element: <LibraryTab /> },
+        ],
+      },
       // Make this absolute to avoid any edge matching issues when deep-linking
       { path: '/grades', element: <GradePage /> },
       { path: 'subjects', element: <SubjectPage /> },
