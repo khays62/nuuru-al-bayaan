@@ -38,7 +38,8 @@ export default function DataToolbar({
           {sortSlot && <div className="flex items-center gap-2">{sortSlot}</div>}
         </div>
         {(filtersSlot || searchSlot || actionsSlot) && (
-          <div className="md:ml-auto md:self-start self-stretch flex flex-row flex-wrap justify-end gap-2">
+          <div className="md:ml-auto md:self-start self-stretch flex flex-row flex-wrap justify-end gap-2 items-center">
+            {actionsSlot}
             {showReset && (filtersSlot || searchSlot) && (
               <ActionButton
                 variant="neutral"
@@ -49,7 +50,6 @@ export default function DataToolbar({
                 Reset
               </ActionButton>
             )}
-            {actionsSlot}
           </div>
         )}
       </div>

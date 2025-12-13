@@ -25,6 +25,10 @@ import UserManagementPage from './pages/UserManagementPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PromotionPage from './pages/PromotionPage';
 import CohortsPage from './pages/CohortsPage';
+import AttendancePage from './pages/AttendancePage';
+import AttendanceReportsPage from './pages/AttendanceReportsPage';
+import TeachersPage from './pages/TeachersPage';
+import TimetablePage from './pages/TimetablePage';
 import { AuthProvider } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 
@@ -56,6 +60,9 @@ const router = createBrowserRouter([
       // Make this absolute to avoid any edge matching issues when deep-linking
       { path: '/grades', element: <GradePage /> },
       { path: 'subjects', element: <SubjectPage /> },
+      { path: 'attendance', element: <AttendancePage /> },
+      { path: 'attendance-reports', element: <AttendanceReportsPage /> },
+      { path: 'timetable', element: <TimetablePage /> },
       { path: 'exams', element: <ExamManagementPage /> },
   { path: 'promotions', element: <PromotionPage /> },
   { path: 'cohorts', element: <CohortsPage /> },
@@ -63,6 +70,8 @@ const router = createBrowserRouter([
         { path: 'transfers', element: <TransfersPage /> },
   { path: 'transcripts', element: <TranscriptPage /> },
       { path: 'users', element: <UserManagementPage /> },
+      // Teacher routes removed
+      { path: 'admin/teachers', element: <TeachersPage /> },
   // In-app wildcard: redirect to top-level 404 so layout (Sidebar/Navbar) is not rendered
   { path: '*', element: <Navigate to="/404" replace /> },
     ],
