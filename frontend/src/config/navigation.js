@@ -1,4 +1,4 @@
-// import { LayoutDashboard, Users, Layers3, BookOpenCheck, BarChart2, UserCog, TrendingUp, Repeat } from 'lucide-react';
+// import { LayoutDashboard, Users, Layers3, BookOpenCheck, BarChart2, UserCog, TrendingUp, Repeat, School, CalendarDays, ClipboardList } from 'lucide-react';
 
 // // This file centralizes the navigation configuration for the entire application.
 // // It is imported by both Sidebar.jsx and App.jsx to ensure consistency.
@@ -48,10 +48,13 @@ import {
   } from "lucide-react";
   
   export const navItems = [
+    { path: '/timetable', label: 'Timetable', icon: CalendarDays },
     { path: "/dashboard", label: "Dashboard", roles: ["admin"], icon: LayoutDashboard },
     { path: "/students", label: "Students", roles: ["admin", "staff"], icon: Users },
     { path: "/teachers", label: "Teachers", roles: ["admin", "staff"], icon: Users },
     { path: "/subjects", label: "Subjects", roles: ["admin", "staff"], icon: BookOpenCheck },
+    { path: '/attendance', label: 'Attendance', icon: ClipboardList },
+    { path: '/attendance-reports', label: 'Attendance Reports', icon: BarChart2 },
     { path: "/grades", label: "Grades", roles: ["admin", "staff", "teacher"], icon: Layers3 },
     { path: "/exams", label: "Exam Management", roles: ["admin", "staff"], icon: BarChart2 },
     { path: "/results", label: "Results", roles: ["admin", "staff", "teacher", ], icon: BarChart2 },
@@ -71,4 +74,6 @@ import {
     { path: "/student-attendance", label: "Attendance", roles: ["student"], icon: BookOpenCheck },
     // { path: "/student-announcements", label: "Announcements", roles: ["student"], icon: Megaphone },
     { path: "/student-settings", label: "Settings", roles: ["student"], icon: UserCog },
+    // Admin management
+    { path: '/admin/teachers', label: 'Teachers', icon: Users },
   ];

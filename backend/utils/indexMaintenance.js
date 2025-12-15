@@ -1,6 +1,7 @@
 import GradeSection from '../models/GradeSection.js';
 import Enrollment from '../models/Enrollment.js';
 import Student from '../models/Student.js';
+import Timetable from '../models/Timetable.js';
 
 export async function ensureClassIndexes() {
   try {
@@ -33,9 +34,30 @@ export async function ensureEnrollmentIndexes() {
   }
 }
 
+export async function ensureTimetableIndexes() {
+  try {
+    const indexes = await Timetable.collection.indexes();
+    // Drop any legacy index that includes academicYear on Timetable
+    const legacyWithAY = indexes.filter(ix => Object.keys(ix.key || {}).includes('academicYear'));
+    for (const ix of legacyWithAY) {
+      try {
+        await Timetable.collection.dropIndex(ix.name);
+        console.log(`[indexes] Dropped legacy Timetable index ${ix.name} (contained academicYear)`);
+      } catch (e) {
+        console.warn('[indexes] Failed to drop legacy Timetable index:', ix.name, e.message);
+      }
+    }
+    await Timetable.syncIndexes();
+    console.log('[indexes] Timetable indexes synchronized');
+  } catch (e) {
+    console.warn('[indexes] Could not sync Timetable indexes:', e.message);
+  }
+}
+
 export async function ensureIndexes() {
   await ensureClassIndexes();
   await ensureEnrollmentIndexes();
+  await ensureTimetableIndexes();
   // Ensure Student indexes and fix legacy unique studentId index without partial filter
   try {
     const indexes = await Student.collection.indexes();

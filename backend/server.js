@@ -16,6 +16,9 @@
 // import promotionRoutes from './routes/promotionRoutes.js';
 // import transferRoutes from './routes/transferRoutes.js';
 // import transcriptRoutes from './routes/transcriptRoutes.js';
+import teacherRoutes from './routes/teacherRoutes.js';
+import attendanceRoutes from './routes/attendanceRoutes.js';
+import timetableRoutes from './routes/timetableRoutes.js';
 
 
 // dotenv.config();
@@ -109,6 +112,9 @@ const startServer = async () => {
   // app.use("/api/users", auditRoutes);
   app.use('/api/promotions', promotionRoutes);
   app.use('/api/transcripts', transcriptRoutes);
+    app.use('/api/teachers', teacherRoutes);
+    app.use('/api/attendance', attendanceRoutes);
+    app.use('/api/timetable', timetableRoutes);
 
 
 
