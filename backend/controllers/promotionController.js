@@ -11,6 +11,55 @@ import AcademicYear from '../models/AcademicYear.js';
 import Subject from '../models/Subject.js';
 import { computeOverallAverages, getMinAvgThreshold } from '../services/promotionEvaluation.js';
 
+
+// controllers/promotionController.js (inside your promotion logic where enrollment is updated)
+import Payment from '../models/Payment.js';
+
+// example snippet used when moving enrollment to newGradeSectionId
+async function handlePromotionFinance (enrollmentId, newGradeSectionId, performedBy) {
+  const enroll = await Enrollment.findById(enrollmentId);
+  if (!enroll) throw new Error('Enrollment not found');
+
+  const oldFee = Number(enroll.fee || 0);
+  const newGs = await GradeSection.findById(newGradeSectionId).lean();
+  if (!newGs) throw new Error('Target GradeSection not found');
+
+  const newFee = Number(newGs.fee || 0);
+
+  // If fees changed, update enrollment.fee and balance
+  if (newFee !== oldFee) {
+    // compute new feePaid stays same, new balance = old balance + (newFee - oldFee)
+    const prevPaid = Number(enroll.feePaid || 0);
+    const prevBalance = Number(enroll.balance || (oldFee - prevPaid));
+    const delta = newFee - oldFee;
+    const newBalance = Math.max(0, prevBalance + delta);
+
+    enroll.gradeSection = newGradeSectionId;
+    enroll.grade = newGs.grade || enroll.grade;
+    enroll.fee = newFee;
+    enroll.balance = newBalance;
+    // feePaid unchanged
+    await enroll.save();
+
+    // optional: push a note to paymentRecords explaining fee change
+    enroll.paymentRecords = enroll.paymentRecords || [];
+    enroll.paymentRecords.push({
+      amount: 0,
+      method: 'system',
+      note: `Fee adjusted from ${oldFee} to ${newFee} on promotion`,
+      recordedBy: performedBy
+    });
+    await enroll.save();
+  } else {
+    // no fee change, just move gradeSection
+    enroll.gradeSection = newGradeSectionId;
+    enroll.grade = newGs.grade || enroll.grade;
+    await enroll.save();
+  }
+
+  return enroll;
+};
+
 // Helper: get next grade and AY
 // Helper: derive an ordering for grade names like "level one", "level 2", etc.
 function gradeRank(name = '') {
@@ -475,6 +524,8 @@ export async function executePromotion(req, res) {
       shift: shiftId,
       section: enrollmentSession.gradeSection.section,
       capacity: enrollmentSession.gradeSection?.capacity ?? undefined,
+      // fee: enrollmentSession.gradeSection?.fee ?? 0, // <-- copy old GS fee
+      fee: nextGrade.fee ?? 0,  // ✅ set correct level fee here
       subjects: subjectIds
     }], { session });
     const createdGS = gsDocs[0].toObject();
@@ -611,6 +662,8 @@ export async function executePromotion(req, res) {
 
         // Close old enrollment and create new one atomically
         await Enrollment.updateOne({ _id: enrollmentSession._id }, { status: 'promoted', leftAt: new Date() }).session(session);
+
+        
         const created = await Enrollment.create([{
           student: student._id,
           gradeSection: toGS._id,
@@ -618,6 +671,9 @@ export async function executePromotion(req, res) {
           grade: nextGrade._id,
           shift: toGS.shift,
           cohort: enrollmentSession.cohort,
+          fee: toGS.fee || 0,         // ✅ copy fee from GradeSection
+          feePaid: 0,                 // or carry over old payment if needed
+          balance: toGS.fee || 0,
           sequenceInYear: timing === 'mid-year' ? 2 : 1,
           status: 'active',
           joinedAt: new Date()

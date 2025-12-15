@@ -1,10 +1,7 @@
 import mongoose from 'mongoose';
 import Cohort from '../models/Cohort.js';
-import Enrollment from '../models/Enrollment.js';
 import GradeSection from '../models/GradeSection.js';
-
-// Policy: Maximum number of cohorts allowed per Academic Year
-const MAX_COHORTS_PER_ACADEMIC_YEAR = 2; // Mid-year + Year-end intakes
+import Enrollment from '../models/Enrollment.js';
 
 function parseSort(req) {
   const { sort, sortBy = 'createdAt', sortDir = 'desc' } = req.query || {};
@@ -107,15 +104,6 @@ export const createCohort = async (req, res) => {
     const payload = { name, status };
     if (!mongoose.isValidObjectId(startAcademicYear)) return res.status(400).json({ message: 'Invalid startAcademicYear' });
     payload.startAcademicYear = startAcademicYear;
-
-    // Enforce cohort count limit per academic year
-    const existingCount = await Cohort.countDocuments({ startAcademicYear });
-    if (existingCount >= MAX_COHORTS_PER_ACADEMIC_YEAR) {
-      return res.status(409).json({
-        message: `Maximum cohorts (${MAX_COHORTS_PER_ACADEMIC_YEAR}) already created for this Academic Year.`,
-        code: 'COHORT_LIMIT_REACHED'
-      });
-    }
     let created;
     try {
       created = await Cohort.create(payload);
@@ -140,14 +128,7 @@ export const updateCohort = async (req, res) => {
     const doc = await Cohort.findById(id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
 
-    // If cohort already has enrollments, lock name & academic year (only status can change)
-    const inUse = await Enrollment.countDocuments({ cohort: id });
-    const locked = inUse > 0;
-
     if (name !== undefined) {
-      if (locked && name !== doc.name) {
-        return res.status(409).json({ message: 'Cannot change name; cohort already has enrollments.', code: 'COHORT_LOCKED_NAME' });
-      }
       const trimmed = String(name).trim();
       if (!trimmed) return res.status(400).json({ message: 'name cannot be empty' });
       // check duplicate
@@ -156,9 +137,6 @@ export const updateCohort = async (req, res) => {
       doc.name = trimmed;
     }
     if (startAcademicYear !== undefined) {
-      if (locked && String(startAcademicYear) !== String(doc.startAcademicYear)) {
-        return res.status(409).json({ message: 'Cannot change academic year; cohort already has enrollments.', code: 'COHORT_LOCKED_YEAR' });
-      }
       // do not allow clearing; it is required
       if (!startAcademicYear) return res.status(400).json({ message: 'startAcademicYear is required' });
       if (!mongoose.isValidObjectId(startAcademicYear)) return res.status(400).json({ message: 'Invalid startAcademicYear' });
@@ -185,12 +163,15 @@ export const deleteCohort = async (req, res) => {
     const doc = await Cohort.findById(id);
     if (!doc) return res.status(404).json({ message: 'Not found' });
 
-    const enrCount = await Enrollment.countDocuments({ cohort: id });
-    if (enrCount > 0) {
+    const [gsCount, enrCount] = await Promise.all([
+      GradeSection.countDocuments({ cohort: id }),
+      Enrollment.countDocuments({ cohort: id })
+    ]);
+    if (gsCount > 0 || enrCount > 0) {
       return res.status(409).json({
-        message: 'Cohort is in use by enrollments; cannot delete',
+        message: 'Cohort is in use by classes or enrollments; cannot delete',
         code: 'COHORT_IN_USE',
-        usage: { gradeSections: 0, enrollments: enrCount }
+        usage: { gradeSections: gsCount, enrollments: enrCount }
       });
     }
 
@@ -202,13 +183,7 @@ export const deleteCohort = async (req, res) => {
   }
 };
 
-// GET /api/cohorts/available
-// Return cohorts that have at least one enrollment in the specified Academic Year + GradeSection
-// or (Grade, Shift, Section) triple (fallback when gradeSectionId not supplied).
-// Query params:
-//   academicYear (required) ObjectId
-//   gradeSectionId (preferred) OR grade + shift + section
-//   status (optional) filter cohort.status
+
 export const getAvailableCohortsForPromotion = async (req, res) => {
   try {
     const { academicYear, gradeSectionId, grade, shift, section, status } = req.query;

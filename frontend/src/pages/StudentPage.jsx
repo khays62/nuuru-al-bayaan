@@ -18,6 +18,9 @@ import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
 import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
+import { useAuth } from "../contexts/AuthContext";
+import ActionButton from '../components/common/ActionButton';
+
 
 // Student listing page using reusable entity list hook + pagination controls
 export default function StudentPage() {
@@ -286,6 +289,9 @@ export default function StudentPage() {
 
     // No transfer submit; handled by Transfers page
 
+    const { auth, hasPermission } = useAuth();
+
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -293,9 +299,44 @@ export default function StudentPage() {
                     <h1 className="text-2xl font-bold text-gray-800">Student Management</h1>
                     <p className="mt-1 text-sm text-gray-600">Manage all student records in the system.</p>
                 </div>
-                <button onClick={handleAddNew} className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">
+                {/* <button onClick={handleAddNew} className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">
                     <Plus size={20} className="mr-2" />Add New Student
-                </button>
+                </button> */}
+
+{/* {hasPermission("students", "add") && (
+  <button
+    onClick={handleAddNew}
+    className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700"
+  >
+    <Plus size={20} className="mr-2" />
+    Add New Student
+  </button>
+)} */}
+
+<button
+  onClick={handleAddNew}
+  disabled={!hasPermission("students", "add")}
+  className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
+    ${hasPermission("students", "add")
+      ? "bg-blue-600 hover:bg-blue-700 text-white"
+      : "bg-gray-300 text-gray-500 cursor-not-allowed"}
+  `}
+>
+  <Plus size={20} className="mr-2" />
+  Add New Student
+</button>
+
+
+
+        {/* <ActionButton
+  variant="neutral"
+  onClick={handleAddNew}
+  title="Add New Student"
+  icon={<Plus size={16} className="mr-2"  />}
+  disabled={!hasPermission("students", "add")} // disable if user lacks download permission
+>
+Add New Student
+ </ActionButton> */}
             </div>
 
             <DataToolbar
@@ -338,13 +379,23 @@ export default function StudentPage() {
                                 { field: 'studentId', label: 'Student ID' },
                             ]}
                         />
-                        <button
+                        {/* <button
                             type="button"
                             onClick={() => exportCsv(students)}
                             className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center"
                         >
                             <Download size={16} className="mr-1"/>CSV
-                        </button>
+                        </button> */}
+
+                     <ActionButton
+  variant="neutral"
+  onClick={() => exportCsv(students)}
+  title="Export CSV"
+  icon={<Download size={16} />}
+  disabled={!hasPermission("students", "download")} // disable if user lacks download permission
+>
+  CSV
+</ActionButton>
                         <button
                             type="button"
                             onClick={() => {
@@ -368,7 +419,16 @@ export default function StudentPage() {
             ) : students.length === 0 ? (
                 <EmptyState title="No students found" description="Try adjusting filters or add a new student." actionLabel="Add Student" onAction={handleAddNew} />
             ) : (
-                <StudentTable students={students} onEdit={handleEdit} />
+                <StudentTable
+  students={students}
+  onEdit={handleEdit}
+  canView={hasPermission("students", "view")}
+  canEdit={hasPermission("students", "edit")}
+  canDeactivate={hasPermission("students", "deactivate")}
+  canReactivate={hasPermission("students", "reactivate")}
+/>
+                // <StudentTable students={students}   onEdit={hasPermission("students", "edit") ? handleEdit : null}
+                // />
             )}
 
             <PaginationControls

@@ -14,6 +14,8 @@ import { getAcademicYears } from '../api';
 import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
 import TableShell from '../components/common/table/TableShell';
+import { useAuth } from '../contexts/AuthContext';
+
 
 function CohortForm({ initial = {}, onSubmit, onCancel }) {
   const [name, setName] = useState(initial.name || '');
@@ -47,6 +49,8 @@ function CohortForm({ initial = {}, onSubmit, onCancel }) {
       setSubmitting(false);
     }
   };
+
+
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
@@ -133,6 +137,11 @@ export default function CohortsPage() {
 
   const statuses = useMemo(() => ([{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }]), []);
 
+  const { auth, hasPermission } = useAuth();
+  const canViewCohort	 = hasPermission("cohorts", "view");
+  const canDelete = hasPermission("cohorts", "delete");
+  const canEdit = hasPermission("cohorts", "edit");
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -141,93 +150,213 @@ export default function CohortsPage() {
           <p className="mt-1 text-sm text-gray-600">Manage student cohorts (dufcado) by start academic year and status.</p>
         </div>
         <div>
-          <button
+
+        <button
+  onClick={handleCreate}
+  disabled={!hasPermission("cohorts", "add")}
+  className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
+    ${hasPermission("cohorts", "add")
+      ? "bg-blue-600 hover:bg-blue-700 text-white"
+      : "bg-gray-300 text-gray-500 cursor-not-allowed"}
+  `}
+>
+  <Plus size={20} className="mr-2" />
+  Add Cohort
+</button>
+          {/* <button
             onClick={()=>{ setEditing(null); setShowModal(true); }}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
           >
             <Plus className="w-4 h-4 mr-2" /> Add Cohort
-          </button>
+          </button> */}
         </div>
       </div>
 
-      <DataToolbar
-        showReset={false}
-        searchSlot={<SearchInput value={searchTerm} onChange={setSearch} placeholder="Search cohorts..." />}
-        filtersSlot={<div className="flex flex-row flex-wrap gap-2 w-full items-center">
-          <FilterSelect value={statusFilter} onChange={(v)=>{ setStatusFilter(v); setFilter('status', v || undefined); }} options={statuses} placeholder="Status" className="flex-1 min-w-[130px]" />
-          <FilterSelect value={ayFilter} onChange={(v)=>{ setAyFilter(v); setFilter('startAcademicYear', v || undefined); }} options={ayOptions} placeholder="Start AY" className="flex-1 min-w-[150px]" />
+      {canViewCohort && (
+  <>
+    <DataToolbar
+      showReset={false}
+      searchSlot={
+        <SearchInput
+          value={searchTerm}
+          onChange={setSearch}
+          placeholder="Search cohorts..."
+        />
+      }
+      filtersSlot={
+        <div className="flex flex-row flex-wrap gap-2 w-full items-center">
+          <FilterSelect
+            value={statusFilter}
+            onChange={(v) => {
+              setStatusFilter(v);
+              setFilter('status', v || undefined);
+            }}
+            options={statuses}
+            placeholder="Status"
+            className="flex-1 min-w-[130px]"
+          />
+
+          <FilterSelect
+            value={ayFilter}
+            onChange={(v) => {
+              setAyFilter(v);
+              setFilter('startAcademicYear', v || undefined);
+            }}
+            options={ayOptions}
+            placeholder="Start AY"
+            className="flex-1 min-w-[150px]"
+          />
+
           <div className="flex items-center gap-2 ml-auto flex-wrap">
-            <SortControls currentField={meta.sortBy} currentDir={meta.sortDir} onSort={toggleSort} fields={[{ field: 'createdAt', label: 'Created' }, { field: 'startAcademicYear', label: 'Start AY' }]} />
+            <SortControls
+              currentField={meta.sortBy}
+              currentDir={meta.sortDir}
+              onSort={toggleSort}
+              fields={[
+                { field: 'createdAt', label: 'Created' },
+                { field: 'startAcademicYear', label: 'Start AY' },
+              ]}
+            />
             <button
               type="button"
-              onClick={() => { setStatusFilter(''); setAyFilter(''); resetAndReload({ filters: { status: undefined, startAcademicYear: undefined }, search: '' }); }}
+              onClick={() => {
+                setStatusFilter('');
+                setAyFilter('');
+                resetAndReload({
+                  filters: { status: undefined, startAcademicYear: undefined },
+                  search: '',
+                });
+              }}
               className="px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-md border text-sm"
-            >Reset</button>
+            >
+              Reset
+            </button>
           </div>
-        </div>}
-      />
-
-      {isLoading ? (
-        <LoadingState variant="table" message="Loading..." rows={6} columns={5} />
-      ) : error ? (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded">
-          {error} <button onClick={refresh} className="underline ml-2">Retry</button>
         </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          title="No cohorts found"
-          description="Try adjusting filters or create a new cohort."
-          actionLabel="Add Cohort"
-          onAction={()=>{ setEditing(null); setShowModal(true); }}
-        />
-      ) : (
-        <>
-          <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
-            <div>
-              Page {meta.page} of {meta.totalPages || meta.pages || 1} — {meta.total} total
-            </div>
+      }
+    />
+
+    {isLoading ? (
+      <LoadingState variant="table" message="Loading..." rows={6} columns={5} />
+    ) : error ? (
+      <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded">
+        {error}
+        <button onClick={refresh} className="underline ml-2">
+          Retry
+        </button>
+      </div>
+    ) : items.length === 0 ? (
+      <EmptyState
+        title="No cohorts found"
+        description="Try adjusting filters or create a new cohort."
+        actionLabel="Add Cohort"
+        onAction={() => {
+          setEditing(null);
+          setShowModal(true);
+        }}
+      />
+    ) : (
+      <>
+        <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
+          <div>
+            Page {meta.page} of {meta.totalPages || meta.pages || 1} — {meta.total} total
           </div>
-          <TableShell>
-            <thead className="bg-gray-800">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">AY (Start)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Created</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Actions</th>
+        </div>
+
+        <TableShell>
+          <thead className="bg-gray-800">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">AY (Start)</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Created</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-gray-200">
+            {items.map((row) => (
+              <tr key={row._id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200 font-medium">
+                  {row.name}
+                </td>
+
+                <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">
+                  <span
+                    className={`text-xs px-2 py-1 rounded ${
+                      row.status === 'active'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    {row.status}
+                  </span>
+                </td>
+
+                <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">
+                  {row.startAcademicYear?.yearName || row.startAcademicYearName || '-'}
+                </td>
+
+                <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">
+                  {row.createdAt
+                    ? new Date(row.createdAt).toLocaleDateString()
+                    : '-'}
+                </td>
+
+                <td className="px-4 py-3 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200">
+                  {canEdit && (
+                    <ActionButton
+                      title="Edit"
+                      icon={<Edit size={16} />}
+                      onClick={() => {
+                        setEditing(row);
+                        setShowModal(true);
+                      }}
+                    />
+                  )}
+
+                  {row.status === 'active' ? (
+                    <ActionButton
+                      title="Archive"
+                      icon={<Archive size={16} />}
+                      onClick={() => handleArchive(row._id)}
+                    />
+                  ) : (
+                    <ActionButton
+                      title="Activate"
+                      icon={<ArchiveRestore size={16} />}
+                      onClick={() => handleActivate(row._id)}
+                    />
+                  )}
+
+                  {canDelete && (
+                    <ActionButton
+                      variant="danger"
+                      title="Delete"
+                      icon={<Trash2 size={16} />}
+                      onClick={() => handleDelete(row._id)}
+                    />
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {items.map(row => (
-                <tr key={row._id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200 font-medium">{row.name}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">
-                    <span className={`text-xs px-2 py-1 rounded ${row.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{row.status}</span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{row.startAcademicYear?.yearName || row.startAcademicYearName || '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200">
-                    <ActionButton title="Edit" icon={<Edit size={16}/>} onClick={()=>{ setEditing(row); setShowModal(true); }} />
-                    {row.status === 'active' ? (
-                      <ActionButton title="Archive" icon={<Archive size={16}/>} onClick={()=>handleArchive(row._id)} />
-                    ) : (
-                      <ActionButton title="Activate" icon={<ArchiveRestore size={16}/>} onClick={()=>handleActivate(row._id)} />
-                    )}
-                    <ActionButton variant="danger" title="Delete" icon={<Trash2 size={16}/>} onClick={()=>handleDelete(row._id)} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </TableShell>
-          <PaginationControls
-            page={meta.page}
-            totalPages={meta.totalPages || meta.pages || 1}
-            limit={meta.limit}
-            onPage={setPage}
-            onLimit={setLimit}
-          />
-        </>
-      )}
+            ))}
+          </tbody>
+        </TableShell>
+
+        <PaginationControls
+          page={meta.page}
+          totalPages={meta.totalPages || meta.pages || 1}
+          limit={meta.limit}
+          onPage={setPage}
+          onLimit={setLimit}
+        />
+      </>
+    )}
+  </>
+)}
+
+
+
 
       <Modal isOpen={showModal} onClose={()=>{ setShowModal(false); setEditing(null); }} title={editing ? 'Edit Cohort' : 'Add Cohort'}>
         <CohortForm

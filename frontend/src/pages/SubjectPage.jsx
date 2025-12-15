@@ -15,6 +15,7 @@ import SortControls from '../components/common/DataToolbar/SortControls';
 import PaginationControls from '../components/common/Pagination/PaginationControls';
 import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
+import { useAuth } from "../contexts/AuthContext";
 
 // API services (existing ones for now)
 import { getSubjects, addSubject, getGrades, updateSubject, deleteSubject } from '../api';
@@ -165,6 +166,9 @@ export default function SubjectPage() {
     />
   );
 
+  const { auth, hasPermission } = useAuth();
+
+  const canViewSubject = hasPermission("subjects","view")
   // Button hadda waxa aan u raraynaa header-ka sare (title row) si ay uga ekaato Classes page
 
   return (
@@ -175,14 +179,28 @@ export default function SubjectPage() {
           <p className="mt-1 text-sm text-gray-600">Manage all subjects and assign them to grades.</p>
         </div>
         <div className="sm:self-auto">
-          <button
+          {/* <button
             onClick={handleAddNew}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
           >
             <Plus className="w-4 h-4 mr-2" /> Add New Subject
-          </button>
+          </button> */}
+          <button
+  onClick={handleAddNew}
+  disabled={!hasPermission("subjects", "add")}
+  className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
+    ${hasPermission("subjects", "add")
+      ? "bg-blue-600 hover:bg-blue-700 text-white"
+      : "bg-gray-300 text-gray-500 cursor-not-allowed"}
+  `}
+>
+  <Plus size={20} className="mr-2" />
+  Add New Subject
+</button>
         </div>
       </div>
+
+      {/* {canViewSubject && (
 
       <DataToolbar
         showReset={false}
@@ -223,21 +241,111 @@ export default function SubjectPage() {
         />
       ) : (
         <>
-          <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
-            <div>
-              Page {meta.page} of {meta.totalPages} — {meta.total} total
-            </div>
-          </div>
-          <SubjectTable subjects={subjects} onEdit={handleEdit} onDelete={handleDelete} />
-          <PaginationControls
-            page={meta.page}
-            totalPages={meta.totalPages}
-            limit={meta.limit}
-            onPage={(p) => setPage(p)}
-            onLimit={(l) => setLimit(l)}
-          />
+    
+
+
+      
+
+          <><div className="flex justify-between items-center mb-2 text-sm text-gray-600">
+                    <div>
+                      Page {meta.page} of {meta.totalPages} — {meta.total} total
+                    </div>
+                  </div><SubjectTable
+                      subjects={subjects}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      canEdit={hasPermission("subject", "edit")}
+                      canDelete={hasPermission("subject", "delete")} /><PaginationControls
+                      page={meta.page}
+                      totalPages={meta.totalPages}
+                      limit={meta.limit}
+                      onPage={(p) => setPage(p)}
+                      onLimit={(l) => setLimit(l)} /></>
+
+          )}
         </>
-      )}
+      )} */}
+
+{canViewSubject && (
+  <>
+    <DataToolbar
+      showReset={false}
+      searchSlot={searchSlot}
+      filtersSlot={
+        <div className="flex flex-row flex-wrap gap-2 w-full items-center">
+          <GradeSelect
+            id="subjects-grade-filter"
+            name="subjects-grade-filter"
+            aria-label="Grade"
+            value={gradeFilter}
+            onChange={(v) => {
+              setGradeFilter(v);
+              setPage(1);
+            }}
+            className="flex-1 min-w-[140px]"
+            placeholder="Grade"
+          />
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            {sortSlot}
+            <button
+              type="button"
+              onClick={() => {
+                setGradeFilter('');
+                resetAndReload({ filters: {}, search: '' });
+              }}
+              className="px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-md border text-sm"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      }
+    />
+
+    {isLoading ? (
+      <LoadingState variant="table" message="Loading subjects..." rows={6} columns={5} />
+    ) : error ? (
+      <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded">
+        {error}{' '}
+        <button onClick={refresh} className="underline ml-2">
+          Retry
+        </button>
+      </div>
+    ) : subjects.length === 0 ? (
+      <EmptyState
+        title="No subjects found"
+        description="Try adjusting search or add a new subject."
+        actionLabel="Add Subject"
+        onAction={handleAddNew}
+      />
+    ) : (
+      <>
+        <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
+          <div>
+            Page {meta.page} of {meta.totalPages} — {meta.total} total
+          </div>
+        </div>
+
+        <SubjectTable
+          subjects={subjects}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          canEdit={hasPermission('subject', 'edit')}
+          canDelete={hasPermission('subject', 'delete')}
+        />
+
+        <PaginationControls
+          page={meta.page}
+          totalPages={meta.totalPages}
+          limit={meta.limit}
+          onPage={(p) => setPage(p)}
+          onLimit={(l) => setLimit(l)}
+        />
+      </>
+    )}
+  </>
+)}
+
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingSubject ? 'Edit Subject' : 'Add New Subject'}>
         {formError && <div className="mb-3 text-red-600 text-sm">{formError}</div>}

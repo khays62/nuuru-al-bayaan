@@ -96,58 +96,148 @@ export const ensureExams = async (req, res) => {
   }
 };
 
+
+// export const getExamGrid = async (req, res) => {
+//   try {
+//     const { academicYearId, gradeSectionId, subjectId } = req.query;
+//     if (!isId(academicYearId) || !isId(gradeSectionId) || !isId(subjectId)) {
+//       return res.status(400).json({ message: 'academicYearId, gradeSectionId and subjectId are required' });
+//     }
+
+//     // Ensure exams exist for the given AY + section
+//     const types = await ExamType.find({}).sort({ typeName: 1 }).lean();
+//     const ensureOps = types.map((t) => (
+//       Exam.updateOne(
+//         { examType: t._id, academicYear: academicYearId, gradeSection: gradeSectionId },
+//         { $setOnInsert: { examType: t._id, academicYear: academicYearId, gradeSection: gradeSectionId } },
+//         { upsert: true }
+//       )
+//     ));
+//     await Promise.all(ensureOps);
+
+//     const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId })
+//       .populate('examType', 'typeName')
+//       .lean();
+//     const columns = exams
+//       .map(e => ({ examId: e._id, examTypeId: e.examType?._id || e.examType, typeName: e.examType?.typeName }))
+//       .sort((a, b) => a.typeName.localeCompare(b.typeName));
+
+//     // Active students in this section and academic year
+//     const enrolls = await Enrollment.find({ academicYear: academicYearId, gradeSection: gradeSectionId, status: 'active' }).select('student').lean();
+//     const studentIds = [...new Set(enrolls.map(e => String(e.student)))];
+//     const studentsDocs = await Student.find({ _id: { $in: studentIds } }).select('fullName').lean();
+//     const students = studentsDocs
+//       .map(s => ({ studentId: s._id, fullName: s.fullName }))
+//       .sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+//     const examIds = exams.map(e => e._id);
+//     const scores = await ExamScore.find({ subject: subjectId, exam: { $in: examIds }, student: { $in: studentIds } })
+//       .select('student exam subject scoreObtained')
+//       .lean();
+
+//     res.json({ students, columns, scores });
+//   } catch (err) {
+//     console.error('getExamGrid error', err);
+//     res.status(500).json({ message: 'Server Error' });
+//   }
+// };
+
+
 export const getExamGrid = async (req, res) => {
   try {
-    const { academicYearId, gradeSectionId, subjectId, enrollmentStatus, cohortId } = req.query;
+    const { academicYearId, gradeSectionId, subjectId } = req.query;
+
+    // Basic validation
     if (!isId(academicYearId) || !isId(gradeSectionId) || !isId(subjectId)) {
       return res.status(400).json({ message: 'academicYearId, gradeSectionId and subjectId are required' });
     }
 
-    // Ensure exams exist for the given AY + section
+    // Debugging trace (remove or lower verbosity in production)
+    console.debug('getExamGrid params:', { academicYearId, gradeSectionId, subjectId });
+
+    // Ensure standard exam rows exist for this AY + section
     const types = await ExamType.find({}).sort({ typeName: 1 }).lean();
-    const ensureOps = types.map((t) => (
+    const ensureOps = types.map((t) =>
       Exam.updateOne(
         { examType: t._id, academicYear: academicYearId, gradeSection: gradeSectionId },
         { $setOnInsert: { examType: t._id, academicYear: academicYearId, gradeSection: gradeSectionId } },
         { upsert: true }
       )
-    ));
+    );
     await Promise.all(ensureOps);
 
+    // Load exams (with examType populated where possible)
     const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId })
       .populate('examType', 'typeName')
       .lean();
-    const columns = exams
-      .map(e => ({ examId: e._id, examTypeId: e.examType?._id || e.examType, typeName: e.examType?.typeName }))
-      .sort((a, b) => a.typeName.localeCompare(b.typeName));
 
-    // Determine statuses to include based on filter (default active only)
-    let statusFilter = ['active'];
-    if (enrollmentStatus === 'all') {
-      statusFilter = ['active','inactive','promoted','graduated','transferred','withdrawn'];
-    } else if (enrollmentStatus && ['active','inactive','promoted','graduated','transferred','withdrawn'].includes(enrollmentStatus)) {
-      statusFilter = [enrollmentStatus];
+    // Build columns defensively: ensure typeName never undefined for sorting
+    const columns = exams
+      .map(e => ({
+        examId: String(e._id),
+        examTypeId: e.examType?._id ? String(e.examType._id) : String(e.examType || ''),
+        typeName: (e.examType && e.examType.typeName) ? String(e.examType.typeName) : ''
+      }))
+      .sort((a, b) => (a.typeName || '').localeCompare(b.typeName || ''));
+
+    // Active enrollments -> students
+    const enrolls = await Enrollment.find({
+      academicYear: academicYearId,
+      gradeSection: gradeSectionId,
+      status: 'active'
+    }).select('student').lean();
+
+    const studentIds = [...new Set(enrolls.map(e => String(e.student)).filter(Boolean))];
+
+    // If no students, respond early but return columns so front-end can render headers
+    if (!studentIds.length) {
+      return res.json({ students: [], columns, scores: [] });
     }
-    const enrQuery = { academicYear: academicYearId, gradeSection: gradeSectionId, status: { $in: statusFilter } };
-    if (cohortId && isId(cohortId)) enrQuery.cohort = cohortId;
-    const enrolls = await Enrollment.find(enrQuery).select('student').lean();
-    const studentIds = [...new Set(enrolls.map(e => String(e.student)))];
+
+    // Fetch student docs and sort by fullName defensively
     const studentsDocs = await Student.find({ _id: { $in: studentIds } }).select('fullName').lean();
     const students = studentsDocs
-      .map(s => ({ studentId: s._id, fullName: s.fullName }))
-      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+      .map(s => ({ studentId: String(s._id), fullName: (s.fullName || '') }))
+      .sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
 
-    const examIds = exams.map(e => e._id);
-    const scores = await ExamScore.find({ subject: subjectId, exam: { $in: examIds }, student: { $in: studentIds } })
+    // If no exams exist, return empty scores but still return students/columns
+    if (!exams.length) {
+      return res.json({ students, columns: [], scores: [] });
+    }
+
+    // Prepare ObjectId arrays for the query
+    const examObjectIds = exams.map(e => new mongoose.Types.ObjectId(e._id));
+    const studentObjectIds = studentIds.map(id => new mongoose.Types.ObjectId(id));
+    const subjectObjectId = new mongoose.Types.ObjectId(subjectId);
+
+    // Query scores
+    const scores = await ExamScore.find({
+      subject: subjectObjectId,
+      exam: { $in: examObjectIds },
+      student: { $in: studentObjectIds }
+    })
       .select('student exam subject scoreObtained')
       .lean();
 
-    res.json({ students, columns, scores });
+    // Normalize scores' ids to strings so frontend doesn't need to handle ObjectIds
+    const normalizedScores = scores.map(s => ({
+      student: String(s.student),
+      exam: String(s.exam),
+      subject: String(s.subject),
+      scoreObtained: s.scoreObtained
+    }));
+
+    return res.json({ students, columns, scores: normalizedScores });
   } catch (err) {
     console.error('getExamGrid error', err);
-    res.status(500).json({ message: 'Server Error' });
+    // Provide a hint in dev logs if it's a common localeCompare issue
+    if (err instanceof TypeError && /localeCompare/.test(err.message)) {
+      console.error('Likely undefined typeName or fullName when sorting in getExamGrid');
+    }
+    return res.status(500).json({ message: 'Server Error' });
   }
 };
+
 
 export const upsertScore = async (req, res) => {
   try {
@@ -163,9 +253,9 @@ export const upsertScore = async (req, res) => {
     const exam = await Exam.findById(examId).lean();
     if (!exam) return res.status(404).json({ message: 'Exam not found' });
 
-    // coherence: student must have an enrollment (any status) in same AY + section
-    const enrollment = await Enrollment.findOne({ student: studentId, academicYear: exam.academicYear, gradeSection: exam.gradeSection }).lean();
-    if (!enrollment) return res.status(409).json({ message: 'Student has no enrollment for this section/year' });
+    // coherence: student must be actively enrolled in same AY + section
+    const active = await Enrollment.findOne({ student: studentId, academicYear: exam.academicYear, gradeSection: exam.gradeSection, status: 'active' }).lean();
+    if (!active) return res.status(409).json({ message: 'Student is not active in this section/year' });
 
     const updated = await ExamScore.findOneAndUpdate(
       { student: studentId, exam: examId, subject: subjectId },
@@ -184,7 +274,7 @@ export const upsertScore = async (req, res) => {
 // Basic subject summary (rank per subject). Overall summary will be expanded on the Result page.
 export const getSummary = async (req, res) => {
   try {
-    const { academicYearId, gradeSectionId, enrollmentStatus, cohortId } = req.query;
+    const { academicYearId, gradeSectionId } = req.query;
     if (!isId(academicYearId) || !isId(gradeSectionId)) {
       return res.status(400).json({ message: 'academicYearId and gradeSectionId are required' });
     }
@@ -195,21 +285,12 @@ export const getSummary = async (req, res) => {
     const topN = req.query.topN ? Math.max(parseInt(req.query.topN) || 0, 0) : 0;
     const bottomN = req.query.bottomN ? Math.max(parseInt(req.query.bottomN) || 0, 0) : 0;
 
-    // Common set: exams
+    // Common set: exams, students
     const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId }).select('_id examType').lean();
     const examIds = exams.map(e => e._id);
     if (!examIds.length) return res.json({ results: [], classAverage: 0 });
 
-    // Determine statuses (default active)
-    let statusFilter = ['active'];
-    if (enrollmentStatus === 'all') {
-      statusFilter = ['active','inactive','promoted','graduated','transferred','withdrawn'];
-    } else if (enrollmentStatus && ['active','inactive','promoted','graduated','transferred','withdrawn'].includes(enrollmentStatus)) {
-      statusFilter = [enrollmentStatus];
-    }
-    const enrollQuery = { academicYear: academicYearId, gradeSection: gradeSectionId, status: { $in: statusFilter } };
-    if (cohortId && isId(cohortId)) enrollQuery.cohort = cohortId;
-    const enrolls = await Enrollment.find(enrollQuery).select('student').lean();
+    const enrolls = await Enrollment.find({ academicYear: academicYearId, gradeSection: gradeSectionId, status: 'active' }).select('student').lean();
     const studentIds = [...new Set(enrolls.map(e => String(e.student)))];
     if (!studentIds.length) return res.json({ results: [], classAverage: 0 });
 
@@ -402,7 +483,154 @@ export const getSummary = async (req, res) => {
   }
 };
 
-// Transcript: per-student, per-subject scores across exam types for a given AY + GradeSection
+
+
+
+// Transcript: per-student, per-subject scores across exam types
+// export const getTranscript = async (req, res) => {
+//   try {
+//     const { academicYearId, gradeSectionId, studentId } = req.query;
+
+//     if (!isId(academicYearId) || !isId(gradeSectionId) || !isId(studentId)) {
+//       return res.status(400).json({
+//         message: "academicYearId, gradeSectionId and studentId are required",
+//       });
+//     }
+
+//     // Student
+//     const student = await Student.findById(studentId)
+//       .select("fullName studentId")
+//       .lean();
+//     if (!student) return res.status(404).json({ message: "Student not found" });
+
+//     // Exams
+//     const exams = await Exam.find({
+//       academicYear: academicYearId,
+//       gradeSection: gradeSectionId,
+//     })
+//       .select("_id examType")
+//       .lean();
+
+//     if (!exams.length) {
+//       return res.json({
+//         student,
+//         examTypes: [],
+//         subjects: [],
+//         rows: [],
+//         overall: { total: 0, average: 0 }
+//       });
+//     }
+
+//     // Exam types
+//     const examTypeIds = [...new Set(exams.map((e) => String(e.examType)))];
+
+//     const examTypesDocs = await ExamType.find({
+//       _id: { $in: examTypeIds },
+//     })
+//       .select("typeName")
+//       .lean();
+
+//     const examTypeNameMap = Object.fromEntries(
+//       examTypesDocs.map((t) => [String(t._id), t.typeName])
+//     );
+
+//     const examTypes = examTypeIds
+//       .map((id) => ({
+//         _id: String(id),
+//         typeName: examTypeNameMap[id] || "Exam",
+//       }))
+//       .sort((a, b) => a.typeName.localeCompare(b.typeName));
+
+//     const examIds = exams.map((e) => e._id);
+
+//     // Subjects
+//     const gs = await GradeSection.findById(gradeSectionId)
+//       .select("subjects")
+//       .lean();
+
+//     const subjectIds = (gs?.subjects || []).map((id) =>
+//       new mongoose.Types.ObjectId(id)
+//     );
+
+//     if (!subjectIds.length) {
+//       return res.json({
+//         student,
+//         examTypes,
+//         subjects: [],
+//         rows: [],
+//         overall: { total: 0, average: 0 }
+//       });
+//     }
+
+//     const subjectDocs = await Subject.find({
+//       _id: { $in: subjectIds },
+//     })
+//       .select("subjectName")
+//       .lean();
+
+//     const subjects = subjectIds.map((id) => ({
+//       _id: String(id),
+//       subjectName:
+//         subjectDocs.find((s) => String(s._id) === String(id))?.subjectName ||
+//         "Subject",
+//     }));
+
+//     // Scores
+//     const scores = await ExamScore.find({
+//       student: studentId,
+//       exam: { $in: examIds },
+//       subject: { $in: subjectIds },
+//     })
+//       .select("exam subject scoreObtained")
+//       .lean();
+
+//     // Build rows
+//     const rows = subjects.map((sub) => {
+//       const row = {
+//         subjectId: sub._id,
+//         subjectName: sub.subjectName,
+//         exams: {},
+//       };
+
+//       examTypes.forEach((t) => {
+//         const exam = exams.find(
+//           (e) => String(e.examType) === String(t._id)
+//         );
+
+//         if (exam) {
+//           const sc = scores.find(
+//             (s) =>
+//               String(s.exam) === String(exam._id) &&
+//               String(s.subject) === String(sub._id)
+//           );
+
+//           row.exams[t._id] = sc?.scoreObtained ?? null;
+//         } else {
+//           row.exams[t._id] = null;
+//         }
+//       });
+
+//       return row;
+//     });
+
+//     // Overall totals
+//     const numericScores = scores.map((s) => Number(s.scoreObtained) || 0);
+//     const total = numericScores.reduce((a, b) => a + b, 0);
+//     const average = numericScores.length ? total / numericScores.length : 0;
+
+//     res.json({
+//       student,
+//       examTypes,
+//       subjects,
+//       rows,
+//       overall: { total, average },
+//     });
+//   } catch (err) {
+//     console.error("getTranscript error", err);
+//     res.status(500).json({ message: "Server Error" });
+//   }
+// };
+
 export const getTranscript = async (req, res) => {
   try {
     const { academicYearId, gradeSectionId, studentId } = req.query;

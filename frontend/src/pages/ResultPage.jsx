@@ -13,8 +13,16 @@ import { RotateCcw, Printer, Download } from 'lucide-react';
 import TableShell from '../components/common/table/TableShell';
 import PrintHeader from '../components/print/PrintHeader';
 import PrintFooter from '../components/print/PrintFooter';
+import { useAuth } from "../contexts/AuthContext";
 
 export default function ResultPage() {
+    const { auth, hasPermission } = useAuth();
+
+
+    const canViewGrid = hasPermission("results", "view");
+    const canExport = hasPermission("results", "export");
+    const canPrint = hasPermission("results", "print");
+
     // Persist filters in sessionStorage (not URL)
     const SESSION_KEY = 'results:filters:v1';
     const saved = (() => {
@@ -227,304 +235,200 @@ export default function ResultPage() {
                 <p className="mt-1 text-sm text-gray-600">Pick filters to load class results and rankings automatically. Totals are normalized to 100.</p>
             </div>
 
-            <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap items-center gap-3 no-print">
-                <AcademicYearSelect
-                    value={academicYearId}
-                    onChange={(v)=>{ setAcademicYearId(v); if (!applyingTimelineRef.current) { resetLower('ay'); setCohortId(''); setTimeline([]); } else { applyingTimelineRef.current = false; } }}
-                    placeholder="Academic Year"
-                />
-                <CohortSelect value={cohortId} onChange={setCohortId} mode="context" academicYear={academicYearId} disabled={!academicYearId} className="border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Cohort" />
-                <EnrollmentStatusSelect value={enrollmentStatus} onChange={setEnrollmentStatus} className="border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enrollment Status" />
-                <GradeSelect
-                    value={gradeId}
-                    onChange={(v)=>{ setGradeId(v); if (!applyingTimelineRef.current) { resetLower('grade'); } else { applyingTimelineRef.current = false; } }}
-                    placeholder="Grade"
-                />
-                <ShiftSelect
-                    value={shiftId}
-                    onChange={(v)=>{ setShiftId(v); if (!applyingTimelineRef.current) { resetLower('shift'); } else { applyingTimelineRef.current = false; } }}
-                    placeholder="Shift"
-                />
-                <GradeSectionSelect
-                    gradeId={gradeId}
-                    shiftId={shiftId}
-                    value={gradeSectionId}
-                    onChange={setGradeSectionId}
-                    placeholder="Section"
-                />
-                <select
-                    className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    value={mode}
-                    onChange={(e)=> setMode(e.target.value)}
-                >
-                    <option value="subject">Subject</option>
-                    <option value="overall">Overall</option>
-                    <option value="examType">Exam Type</option>
-                    <option value="top">Top N</option>
-                    <option value="bottom">Bottom N</option>
-                    <option value="trend">Trend (Mid vs Final)</option>
-                    <option value="difficulty">Subject Difficulty</option>
-                </select>
-                {mode === 'subject' && (
-                    <select
-                    className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        value={subjectId}
-                        onChange={(e)=> setSubjectId(e.target.value)}
-                        disabled={!gradeSectionId}
-                    >
-                        <option value="">Subject</option>
-                        {(subjects||[]).map(su => (
-                            <option key={su._id} value={su._id}>{su.subjectName}</option>
-                        ))}
-                    </select>
-                )}
-                {mode === 'examType' && (
-                    <select
-                        className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        value={examTypeId}
-                        onChange={(e)=> setExamTypeId(e.target.value)}
-                        disabled={!gradeSectionId}
-                    >
-                        <option value="">Exam Type</option>
-                        {(examTypes||[]).map(et => (
-                            <option key={et._id} value={et._id}>{et.typeName}</option>
-                        ))}
-                    </select>
-                )}
-                {(mode === 'top' || mode === 'bottom') && (
-                    <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-600">N</label>
-                        <input className="w-20 border rounded px-2 py-1" type="number" min={1} max={100} value={mode==='top'?topN:bottomN} onChange={e=> (mode==='top'? setTopN(Number(e.target.value)||0): setBottomN(Number(e.target.value)||0))} />
-                        {/* Number input styled separately for consistency */}
-                    </div>
-                )}
-                <div className="flex items-center gap-2 ml-auto flex-wrap">
-                    <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
-                    <ActionButton
-                        variant="neutral"
-                        onClick={handleExportCsv}
-                        title="Export CSV"
-                        icon={<Download size={16} />}
-                        disabled={loading || !academicYearId || !gradeSectionId || mode==='trend' || mode==='difficulty' || results.length===0}
-                    >CSV</ActionButton>
-                    <ActionButton
-                        variant="neutral"
-                        onClick={handlePrint}
-                        title="Print"
-                        icon={<Printer size={16} />}
-                    >Print</ActionButton>
-                </div>
-            </div>
+            {canViewGrid && (
+  <>
+    <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap items-center gap-3 no-print">
+      <AcademicYearSelect
+        value={academicYearId}
+        onChange={(v) => {
+          setAcademicYearId(v);
+          if (!applyingTimelineRef.current) {
+            resetLower('ay');
+            setCohortId('');
+            setTimeline([]);
+          } else {
+            applyingTimelineRef.current = false;
+          }
+        }}
+        placeholder="Academic Year"
+      />
+      <CohortSelect
+        value={cohortId}
+        onChange={setCohortId}
+        mode="context"
+        academicYear={academicYearId}
+        disabled={!academicYearId}
+        className="border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        placeholder="Cohort"
+      />
+      <EnrollmentStatusSelect
+        value={enrollmentStatus}
+        onChange={setEnrollmentStatus}
+        className="border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        placeholder="Enrollment Status"
+      />
+      <GradeSelect
+        value={gradeId}
+        onChange={(v) => {
+          setGradeId(v);
+          if (!applyingTimelineRef.current) resetLower('grade');
+          else applyingTimelineRef.current = false;
+        }}
+        placeholder="Grade"
+      />
+      <ShiftSelect
+        value={shiftId}
+        onChange={(v) => {
+          setShiftId(v);
+          if (!applyingTimelineRef.current) resetLower('shift');
+          else applyingTimelineRef.current = false;
+        }}
+        placeholder="Shift"
+      />
+      <GradeSectionSelect
+        gradeId={gradeId}
+        shiftId={shiftId}
+        value={gradeSectionId}
+        onChange={setGradeSectionId}
+        placeholder="Section"
+      />
+      <select
+        className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        value={mode}
+        onChange={(e) => setMode(e.target.value)}
+      >
+        <option value="subject">Subject</option>
+        <option value="overall">Overall</option>
+        <option value="examType">Exam Type</option>
+        <option value="top">Top N</option>
+        <option value="bottom">Bottom N</option>
+        <option value="trend">Trend (Mid vs Final)</option>
+        <option value="difficulty">Subject Difficulty</option>
+      </select>
 
-            {cohortId && timeline.length > 0 && (
-                <div className="bg-white p-3 rounded-lg shadow flex flex-row flex-wrap gap-2 items-center no-print">
-                    <div className="text-sm font-medium text-gray-600 mr-2">Cohort Timeline:</div>
-                    {timelineLoading && <div className="text-xs text-gray-500">Loading…</div>}
-                    {!timelineLoading && timeline.map(entry => {
-                        const active = academicYearId === String(entry.academicYear._id) && gradeSectionId === String(entry.gradeSection._id);
-                        return (
-                            <button
-                                key={String(entry.academicYear._id)+String(entry.gradeSection._id)}
-                                type="button"
-                                onClick={() => {
-                                    applyingTimelineRef.current = true;
-                                    setAcademicYearId(String(entry.academicYear._id));
-                                    setGradeId(String(entry.grade._id));
-                                    setShiftId(String(entry.shift._id));
-                                    setGradeSectionId(String(entry.gradeSection._id));
-                                    setSubjectId('');
-                                    queueMicrotask(() => { applyingTimelineRef.current = false; });
-                                }}
-                                className={`text-xs px-2 py-1 rounded border ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
-                            >
-                                {entry.academicYear.yearName} / {entry.grade.gradeName}{entry.gradeSection.section ? ` Sec ${entry.gradeSection.section}` : ''}
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
+      {mode === 'subject' && (
+        <select
+          className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={subjectId}
+          onChange={(e) => setSubjectId(e.target.value)}
+          disabled={!gradeSectionId}
+        >
+          <option value="">Subject</option>
+          {(subjects || []).map((su) => (
+            <option key={su._id} value={su._id}>
+              {su.subjectName}
+            </option>
+          ))}
+        </select>
+      )}
 
-            <div className="bg-white p-4 rounded-lg shadow overflow-auto results-print">
-                {(!academicYearId || !gradeSectionId) ? (
-                    <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift, and Section to view results.</p>
-                ) : (mode === 'subject' && !subjectId) ? (
-                    <p className="text-sm text-gray-500">Choose a Subject to view results.</p>
-                ) : (mode === 'examType' && !examTypeId) ? (
-                    <p className="text-sm text-gray-500">Choose an Exam Type to view results.</p>
-                ) : loading ? (
-                    <p className="text-sm text-gray-500">Loading results…</p>
-                                ) : (mode === 'trend') ? (
-                                        <>
-                                            {/* Removed duplicate Print action (toolbar already provides it) */}
-                                            {academicYearId && gradeSectionId && (
-                                                <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
-                                                    {(() => {
-                                                        const selSec = (sections||[]).find(s => String(s._id) === String(gradeSectionId));
-                                                        const ayName = (years||[]).find(y => String(y._id)===String(academicYearId))?.yearName || selSec?.academicYear?.yearName || '-';
-                                                        const gName = (grades||[]).find(g => String(g._id)===String(gradeId))?.gradeName || selSec?.grade?.gradeName || '-';
-                                                        const shName = (shifts||[]).find(s => String(s._id)===String(shiftId))?.shiftName || selSec?.shift?.shiftName || '-';
-                                                        const secName = selSec?.section || '-';
-                                                        return (
-                                                            <>
-                                                                <span><span className="font-medium">Academic Year:</span> {ayName}</span>
-                                                                <span><span className="font-medium">Grade:</span> {gName}</span>
-                                                                <span><span className="font-medium">Section:</span> {secName}</span>
-                                                                <span><span className="font-medium">Shift:</span> {shName}</span>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            )}
-                                            <TableShell>
-                                                <thead className="bg-gray-800">
-                                                    <tr>
-                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Rank</th>
-                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Mid-term</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Final</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Delta</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-700">
-                                                    {results.map(r => (
-                                                        <tr key={r.studentId} className="odd:bg-white even:bg-gray-50">
-                                                            <td className="px-4 py-3 text-right border-x border-gray-700">{r.rank}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap border-x border-gray-700">{r.fullName}</td>
-                                                            <td className="px-4 py-3 text-right border-x border-gray-700">{Number((r.mid ?? 0).toFixed?.(2))}</td>
-                                                            <td className="px-4 py-3 text-right border-x border-gray-700">{Number((r.final ?? 0).toFixed?.(2))}</td>
-                                                            <td className="px-4 py-3 text-right font-semibold border-x border-gray-700">{Number((r.delta ?? 0).toFixed?.(2))}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                                <tfoot className="border-t-2 border-gray-700">
-                                                    <tr className="font-medium">
-                                                        <td className="px-4 py-3 text-gray-700 border-b border-gray-700" colSpan={4}>Class Avg Delta</td>
-                                                        <td className="px-4 py-3 text-right font-semibold border-b border-gray-700">{Number((summary.classAverage ?? 0).toFixed?.(2))}</td>
-                                                    </tr>
-                                                </tfoot>
-                                            </TableShell>
-                                        </>
-                                ) : (mode === 'difficulty') ? (
-                                        <>
-                                            {/* Removed duplicate Print action (toolbar already provides it) */}
-                                            {academicYearId && gradeSectionId && (
-                                                <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
-                                                    {(() => {
-                                                        const selSec = (sections||[]).find(s => String(s._id) === String(gradeSectionId));
-                                                        const ayName = (years||[]).find(y => String(y._id)===String(academicYearId))?.yearName || selSec?.academicYear?.yearName || '-';
-                                                        const gName = (grades||[]).find(g => String(g._id)===String(gradeId))?.gradeName || selSec?.grade?.gradeName || '-';
-                                                        const shName = (shifts||[]).find(s => String(s._id)===String(shiftId))?.shiftName || selSec?.shift?.shiftName || '-';
-                                                        const secName = selSec?.section || '-';
-                                                        return (
-                                                            <>
-                                                                <span><span className="font-medium">Academic Year:</span> {ayName}</span>
-                                                                <span><span className="font-medium">Grade:</span> {gName}</span>
-                                                                <span><span className="font-medium">Section:</span> {secName}</span>
-                                                                <span><span className="font-medium">Shift:</span> {shName}</span>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            )}
-                                            <TableShell>
-                                                <thead className="bg-gray-800">
-                                                    <tr>
-                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Subject</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Avg</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Students</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-700">
-                                                    {(summary?.subjects || []).map(sc => (
-                                                        <tr key={String(sc._id)} className="odd:bg-white even:bg-gray-50">
-                                                            <td className="px-4 py-3 whitespace-nowrap border-x border-gray-700">{sc.subjectName}</td>
-                                                            <td className="px-4 py-3 text-right border-x border-gray-700">{Number((sc.average ?? 0).toFixed?.(2))}</td>
-                                                            <td className="px-4 py-3 text-right text-gray-700 border-x border-gray-700">{sc.count ?? '—'}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                                <tfoot className="border-t-2 border-gray-700">
-                                                    <tr className="font-medium">
-                                                        <td className="px-4 py-3 text-gray-700 border-b border-gray-700">Class Avg (subjects)</td>
-                                                        <td className="px-4 py-3 text-right font-semibold border-b border-gray-700">{Number((summary.classAverage ?? 0).toFixed?.(2))}</td>
-                                                        <td className="px-4 py-3 text-right text-gray-500 border-b border-gray-700">—</td>
-                                                    </tr>
-                                                </tfoot>
-                                            </TableShell>
-                                        </>
-                                ) : (results.length === 0) ? (
-                    <p className="text-sm text-gray-500">No results found for the selected filters.</p>
-                ) : (
-                    <>
-                    {/* Removed duplicate CSV/Print actions (toolbar already provides them) */}
-                                        {/* Info block like Transcript (AY/Grade/Section/Shift) */}
-                                        {academicYearId && gradeSectionId && (
-                                            <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
-                                                {(() => {
-                                                    const selSec = (sections||[]).find(s => String(s._id) === String(gradeSectionId));
-                                                    const ayName = (years||[]).find(y => String(y._id)===String(academicYearId))?.yearName || selSec?.academicYear?.yearName || '-';
-                                                    const gName = (grades||[]).find(g => String(g._id)===String(gradeId))?.gradeName || selSec?.grade?.gradeName || '-';
-                                                    const shName = (shifts||[]).find(s => String(s._id)===String(shiftId))?.shiftName || selSec?.shift?.shiftName || '-';
-                                                    const secName = selSec?.section || '-';
-                                                    return (
-                                                        <>
-                                                            <span><span className="font-medium">Academic Year:</span> {ayName}</span>
-                                                            <span><span className="font-medium">Grade:</span> {gName}</span>
-                                                            <span><span className="font-medium">Section:</span> {secName}</span>
-                                                            <span><span className="font-medium">Shift:</span> {shName}</span>
-                                                        </>
-                                                    );
-                                                })()}
-                                            </div>
-                                        )}
-                                        <TableShell>
-                            <thead className="bg-gray-800">
-                            <tr>
-                                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Rank</th>
-                                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
-                                    {subjectCols.map(sc => (
-                                        <th key={String(sc._id)} className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{sc.subjectName}</th>
-                                ))}
-                                    <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total (100)</th>
-                                    <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Average</th>
-                            </tr>
-                        </thead>
-                                                <tbody className="divide-y divide-gray-700">
-                            {results.map(r => (
-                                                                <tr key={r.studentId} className="odd:bg-white even:bg-gray-50">
-                                                                        <td className="px-4 py-3 text-right border-x border-gray-700">{r.rank}</td>
-                                                                        <td className="px-4 py-3 whitespace-nowrap border-x border-gray-700">{r.fullName}</td>
-                                    {subjectCols.map(sc => {
-                                        const found = (r.subjectScores || []).find(s => String(s.subjectId) === String(sc._id));
-                                                                                return <td key={String(sc._id)} className="px-4 py-3 text-right border-x border-gray-700">{Number((found?.total ?? 0).toFixed?.(2) || (found?.total ?? 0))}</td>;
-                                    })}
-                                                                        <td className="px-4 py-3 text-right font-semibold border-x border-gray-700">{Number(r.total?.toFixed?.(2) ?? r.total)}</td>
-                                                                        <td className="px-4 py-3 text-right border-x border-gray-700">{Number((r.average ?? 0).toFixed?.(2))}</td>
-                                                                        
-                                </tr>
-                            ))}
-                        </tbody>
-                                                <tfoot className="border-t-2 border-gray-700">
-                                                        <tr className="font-medium">
-                                                                <td className="px-4 py-3 text-gray-700 text-right border-b border-gray-700" colSpan={2}>Class Average</td>
-                                                                {subjectCols.map(sc => {
-                                                                    let sum = 0; let count = 0;
-                                                                    for (const r of results) {
-                                                                        const found = (r.subjectScores || []).find(s => String(s.subjectId) === String(sc._id));
-                                                                        if (typeof found?.total === 'number') { sum += found.total; count += 1; }
-                                                                    }
-                                                                    const avg = count ? fmt2(sum / count) : 0;
-                                                                    return <td key={String(sc._id)} className="px-4 py-3 text-right font-medium border-b border-gray-700">{avg}</td>;
-                                                                })}
-                                                                <td className="px-4 py-3 text-right font-semibold border-b border-gray-700" colSpan={1}>{fmt2(summary.classAverage ?? 0)}</td>
-                                                                <td className="px-4 py-3 text-right text-gray-500 border-b border-gray-700">—</td>
-                                                        </tr>
-                                                </tfoot>
-                    </TableShell>
-                    </>
-                )}
-            </div>
-            
+      {mode === 'examType' && (
+        <select
+          className="px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          value={examTypeId}
+          onChange={(e) => setExamTypeId(e.target.value)}
+          disabled={!gradeSectionId}
+        >
+          <option value="">Exam Type</option>
+          {(examTypes || []).map((et) => (
+            <option key={et._id} value={et._id}>
+              {et.typeName}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {(mode === 'top' || mode === 'bottom') && (
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">N</label>
+          <input
+            className="w-20 border rounded px-2 py-1"
+            type="number"
+            min={1}
+            max={100}
+            value={mode === 'top' ? topN : bottomN}
+            onChange={(e) =>
+              mode === 'top'
+                ? setTopN(Number(e.target.value) || 0)
+                : setBottomN(Number(e.target.value) || 0)
+            }
+          />
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 ml-auto flex-wrap">
+        <ActionButton
+          variant="neutral"
+          onClick={handleReset}
+          title="Reset filters"
+          icon={<RotateCcw size={16} />}
+        >
+          Reset
+        </ActionButton>
+
+        {canExport && (
+          <ActionButton
+            variant="neutral"
+            onClick={handleExportCsv}
+            title="Export CSV"
+            icon={<Download size={16} />}
+            disabled={
+              loading || !academicYearId || !gradeSectionId || mode === 'trend' || mode === 'difficulty' || results.length === 0
+            }
+          >
+            CSV
+          </ActionButton>
+        )}
+
+        {canPrint && (
+          <ActionButton
+            variant="neutral"
+            onClick={handlePrint}
+            title="Print"
+            icon={<Printer size={16} />}
+          >
+            Print
+          </ActionButton>
+        )}
+      </div>
+    </div>
+
+    {cohortId && timeline.length > 0 && (
+      <div className="bg-white p-3 rounded-lg shadow flex flex-row flex-wrap gap-2 items-center no-print">
+        <div className="text-sm font-medium text-gray-600 mr-2">Cohort Timeline:</div>
+        {timelineLoading && <div className="text-xs text-gray-500">Loading…</div>}
+        {!timelineLoading &&
+          timeline.map((entry) => {
+            const active =
+              academicYearId === String(entry.academicYear._id) && gradeSectionId === String(entry.gradeSection._id);
+            return (
+              <button
+                key={String(entry.academicYear._id) + String(entry.gradeSection._id)}
+                type="button"
+                onClick={() => {
+                  applyingTimelineRef.current = true;
+                  setAcademicYearId(String(entry.academicYear._id));
+                  setGradeId(String(entry.grade._id));
+                  setShiftId(String(entry.shift._id));
+                  setGradeSectionId(String(entry.gradeSection._id));
+                  setSubjectId('');
+                  queueMicrotask(() => {
+                    applyingTimelineRef.current = false;
+                  });
+                }}
+                className={`text-xs px-2 py-1 rounded border ${
+                  active ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'
+                }`}
+              >
+                {entry.academicYear.yearName} / {entry.grade.gradeName}
+                {entry.gradeSection.section ? ` Sec ${entry.gradeSection.section}` : ''}
+              </button>
+            );
+          })}
+      </div>
+    )}
+  </>
+)}          
         </div>
     );
 }
