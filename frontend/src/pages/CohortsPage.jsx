@@ -151,7 +151,7 @@ export default function CohortsPage() {
         </div>
         <div>
 
-        <button
+        {/* <button
   onClick={handleCreate}
   disabled={!hasPermission("cohorts", "add")}
   className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
@@ -162,7 +162,25 @@ export default function CohortsPage() {
 >
   <Plus size={20} className="mr-2" />
   Add Cohort
+</button> */}
+
+<button
+  onClick={() => {
+    setEditing(null);
+    setShowModal(true);
+  }}
+  disabled={!hasPermission("cohorts", "add")}
+  className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
+    ${hasPermission("cohorts", "add")
+      ? "bg-blue-600 hover:bg-blue-700 text-white"
+      : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
+>
+  <Plus size={20} className="mr-2" />
+  Add Cohort
 </button>
+
+
+
           {/* <button
             onClick={()=>{ setEditing(null); setShowModal(true); }}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
