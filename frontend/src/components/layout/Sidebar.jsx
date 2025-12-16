@@ -126,7 +126,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
 }))} */}
 
 
-{navItems
+{/* {navItems
   .filter(item => item.roles.includes(role))
   .map(item => {
     const Icon = item.icon;
@@ -141,7 +141,31 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         {!isCollapsed && <span className="ml-4 whitespace-nowrap">{item.label}</span>}
       </NavLink>
     );
+})} */}
+
+{navItems
+  .filter(
+    (item) =>
+      item &&                    // make sure item exists
+      Array.isArray(item.roles) && // check roles is an array
+      typeof role === "string" &&  // check role is defined
+      item.roles.includes(role)    // finally check includes
+  )
+  .map((item) => {
+    const Icon = item.icon;
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        className={navLinkClasses}
+        title={isCollapsed ? item.label : ''}
+      >
+        <Icon size={22} className="flex-shrink-0" />
+        {!isCollapsed && <span className="ml-4 whitespace-nowrap">{item.label}</span>}
+      </NavLink>
+    );
 })}
+
 
                 </nav>
             </aside>

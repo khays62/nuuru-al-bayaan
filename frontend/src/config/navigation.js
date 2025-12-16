@@ -44,17 +44,19 @@ import {
     BarChart2,
     UserCog,
     Megaphone,
-    TrendingUp
+    TrendingUp,
+    CalendarDays,
+    ClipboardList
   } from "lucide-react";
   
   export const navItems = [
-    { path: '/timetable', label: 'Timetable', icon: CalendarDays },
     { path: "/dashboard", label: "Dashboard", roles: ["admin"], icon: LayoutDashboard },
+    { path: '/timetable', label: 'Timetable', icon: CalendarDays , roles: ["admin", "staff"],},
     { path: "/students", label: "Students", roles: ["admin", "staff"], icon: Users },
     { path: "/teachers", label: "Teachers", roles: ["admin", "staff"], icon: Users },
     { path: "/subjects", label: "Subjects", roles: ["admin", "staff"], icon: BookOpenCheck },
-    { path: '/attendance', label: 'Attendance', icon: ClipboardList },
-    { path: '/attendance-reports', label: 'Attendance Reports', icon: BarChart2 },
+    { path: '/attendance', label: 'Attendance', icon: ClipboardList, roles: ["admin", "staff"], },
+    { path: '/attendance-reports', label: 'Attendance Reports', icon: BarChart2, roles: ["admin", "staff"], },
     { path: "/grades", label: "Grades", roles: ["admin", "staff", "teacher"], icon: Layers3 },
     { path: "/exams", label: "Exam Management", roles: ["admin", "staff"], icon: BarChart2 },
     { path: "/results", label: "Results", roles: ["admin", "staff", "teacher", ], icon: BarChart2 },
