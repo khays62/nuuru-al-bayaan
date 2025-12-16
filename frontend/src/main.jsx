@@ -424,6 +424,8 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+
+    
       
 
       // Fallback for unknown routes

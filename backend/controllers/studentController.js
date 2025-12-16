@@ -1,17 +1,121 @@
 // This controller manages all core CRUD operations for students in the database.
 import mongoose from 'mongoose';
-import Student from '../models/Student.js';
+import Student from '../models/sssssss.js';
 import Enrollment from '../models/Enrollment.js';
 import GradeSection from '../models/GradeSection.js';
 import Counter from '../models/Counter.js';
 import Subject from "../models/Subject.js";
 import ExamScore from "../models/ExamScore.js";
-import Payment from '../models/Payment.js'; // optional
-
 // import GradeSection from '../models/GradeSection.js';
 import Grade from '../models/Grade.js';
 import { Parser } from "json2csv";
 
+// export const getMyResults = async (req, res) => {
+//     try {
+//       const studentId = req.user._id;
+  
+//       // 1️⃣ Get all scores for this student
+//       const scores = await ExamScore.find({ student: studentId })
+//         .populate({
+//           path: "exam",
+//           populate: { path: "examType", select: "typeName" },
+//         })
+//         .populate("subject", "subjectName");
+  
+//       if (!scores.length)
+//         return res.json({ success: true, results: {}, average: 0, rank: null });
+  
+//       const results = {};
+//       let totalAllSubjects = 0;
+//       let subjectCount = 0;
+  
+//       // 2️⃣ Build subject-wise results
+//       for (const score of scores) {
+//         const subjectName = score.subject?.subjectName || "Unknown Subject";
+//         const examType = score.exam?.examType?.typeName?.toLowerCase() || "";
+  
+//         if (!results[subjectName]) {
+//           results[subjectName] = { midterm: 0, final: 0, total: 0 };
+//         }
+  
+//         if (examType.includes("mid")) {
+//           results[subjectName].midterm = score.scoreObtained;
+//         } else if (examType.includes("final")) {
+//           results[subjectName].final = score.scoreObtained;
+//         }
+  
+//         results[subjectName].total =
+//           (results[subjectName].midterm || 0) + (results[subjectName].final || 0);
+//       }
+  
+//       // 3️⃣ Calculate average
+//       for (const s of Object.values(results)) {
+//         totalAllSubjects += s.total;
+//         subjectCount++;
+//       }
+//       const average = subjectCount > 0 ? (totalAllSubjects / subjectCount).toFixed(2) : 0;
+  
+//       // 4️⃣ Calculate class rank (based on total scores)
+//       const sampleExam = scores[0].exam;
+//       const gradeSectionId = sampleExam.gradeSection;
+  
+//       const allStudentsScores = await ExamScore.find({
+//         "exam.gradeSection": gradeSectionId,
+//       })
+//         .populate({
+//           path: "exam",
+//           populate: { path: "examType", select: "typeName" },
+//         })
+//         .populate("subject");
+  
+//       // Map studentId -> total score
+//       const totalsByStudent = {};
+  
+//       for (const s of allStudentsScores) {
+//         const sid = s.student.toString();
+//         const etype = s.exam?.examType?.typeName?.toLowerCase() || "";
+//         if (!totalsByStudent[sid]) totalsByStudent[sid] = {};
+  
+//         if (!totalsByStudent[sid][s.subject]) totalsByStudent[sid][s.subject] = { midterm: 0, final: 0 };
+  
+//         if (etype.includes("mid")) totalsByStudent[sid][s.subject].midterm = s.scoreObtained;
+//         else if (etype.includes("final")) totalsByStudent[sid][s.subject].final = s.scoreObtained;
+//       }
+  
+//       // Compute total per student
+//       const rankList = Object.entries(totalsByStudent).map(([sid, subs]) => {
+//         const total = Object.values(subs).reduce(
+//           (sum, subj) => sum + (subj.midterm + subj.final),
+//           0
+//         );
+//         return { student: sid, total };
+//       });
+  
+//       // Sort by total (descending)
+//       rankList.sort((a, b) => b.total - a.total);
+  
+//       // Find my rank
+//       const myRank = rankList.findIndex((r) => r.student === studentId.toString()) + 1;
+  
+//       res.json({
+//         success: true,
+//         results,
+//         average,
+//         rank: myRank || null,
+//       });
+//     } catch (error) {
+//       console.error("❌ Error fetching results:", error);
+//       res.status(500).json({ message: "Failed to load results" });
+//     }
+//   };
+
+
+// @desc    List students including details of their current section
+// @route   GET /api/students
+// @access  Private (mustaqbalka)
+
+// import Student from "../models/Student.js";
+// import ExamScore from "../models/ExamScore.js";
 
 export const getMyResults = async (req, res) => {
   try {
@@ -85,59 +189,9 @@ export const getMyResults = async (req, res) => {
   }
 };
 
-// POST /api/enrollments/:id/payments  (record a payment against enrollment)
-export const recordEnrollmentPayment = async (req, res) => {
-    try {
-      const { id } = req.params; // enrollment id
-      const { amount, method, note, recordedBy } = req.body;
-      if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid enrollment id' });
-      const amt = Number(amount || 0);
-      if (amt <= 0) return res.status(400).json({ message: 'Invalid amount' });
+
+
   
-      const enroll = await Enrollment.findById(id);
-      if (!enroll) return res.status(404).json({ message: 'Enrollment not found' });
-  
-      // Append payment record to enrollment
-      enroll.paymentRecords = enroll.paymentRecords || [];
-      enroll.paymentRecords.push({ amount: amt, method, note, recordedBy });
-      enroll.feePaid = Number(enroll.feePaid || 0) + amt;
-      enroll.balance = Math.max(0, Number(enroll.fee || 0) - enroll.feePaid);
-  
-      await enroll.save();
-  
-      // Optionally persist a Payment doc (for standalone ledger)
-      try {
-        await Payment.create({
-          student: enroll.student,
-          enrollment: enroll._id,
-          amount: amt,
-          method,
-          note,
-          recordedBy
-        });
-      } catch (e) { console.warn('Payment create failed', e); }
-  
-      res.json({ ok: true, data: enroll });
-    } catch (err) {
-      console.error('recordEnrollmentPayment error', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  };
-  
-  // GET /api/students/:id/balance  (student balance summary)
-  export const getStudentBalance = async (req, res) => {
-    try {
-      const { id } = req.params;
-      if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid id' });
-  
-      const enrolls = await Enrollment.find({ student: id }).select('fee feePaid balance gradeSection academicYear status').lean();
-      const totalOwed = enrolls.reduce((s, e) => s + (Number(e.fee || 0) - Number(e.feePaid || 0)), 0);
-      res.json({ ok: true, data: { enrollments: enrolls, totalOwed } });
-    } catch (err) {
-      console.error('getStudentBalance error', err);
-      res.status(500).json({ message: 'Server error' });
-    }
-  };
 
 
 export const getStudents = async (req, res) => {
@@ -304,14 +358,13 @@ export const getStudents = async (req, res) => {
 // @route   POST /api/students
 // @access  Private (mustaqbalka)
 export const addStudent = async (req, res) => {
-    const { gradeSectionId, fullName, gender, dob, guardianName, contactNumber, address, admissionDate, fee } = req.body;
+    const { gradeSectionId, fullName, gender, dob, guardianName, contactNumber, address, admissionDate } = req.body;
     if (!gradeSectionId || !fullName || !gender || !dob || !guardianName || !contactNumber || !admissionDate) {
     return res.status(400).json({ message: 'Please fill in all required fields.' });
     }
 
     try {
         const cls = await GradeSection.findById(gradeSectionId).populate(['academicYear', 'grade', 'shift']);
-
     if (!cls) return res.status(404).json({ message: 'Section not found.' });
         if (!cls.cohort) {
             return res.status(400).json({ message: 'Grade Section must have a Cohort before enrolling students.' });
@@ -348,8 +401,6 @@ export const addStudent = async (req, res) => {
                 return res.status(409).json({ message: 'This student is already enrolled for the selected academic year.' });
             }
 
-            
-
             const enrollment = await Enrollment.create([{
                 student: studentDoc._id,
                 gradeSection: cls._id,
@@ -357,9 +408,6 @@ export const addStudent = async (req, res) => {
                 grade: cls.grade._id,
                 shift: cls.shift._id,
                 cohort: cls.cohort || undefined,
-                fee: cls.fee || 0,
-                feePaid: 0,
-                balance: cls.fee || 0,
                 status: 'active',
                 joinedAt: admissionDate
             }], { session });
@@ -955,6 +1003,43 @@ export const getLatestTransfer = async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 };
+
+
+
+
+// export const exportStudentsCsvController = async (req, res) => {
+//   try {
+//     const students = await Student.find().lean();
+
+//     if (!students.length) {
+//       return res.status(404).json({ message: "No students found" });
+//     }
+
+//     const fields = [
+//       "studentId",
+//       "fullName",
+//       "gender",
+//       "status",
+//       "gradeDisplay",
+//       "academicYear",
+//       "shift",
+//       "contactNumber",
+      
+//     ];
+
+//     const parser = new Parser({ fields });
+//     const csv = parser.parse(students);
+
+//     res.header("Content-Type", "text/csv");
+//     res.attachment("students_export.csv");
+//     return res.send(csv);
+//   } catch (error) {
+//     console.log("Export CSV Error:", error);
+//     res.status(500).json({ message: "Failed to export CSV" });
+//   }
+// };
+
+
 
 export const exportStudentsCsvController = async (req, res) => {
   try {
