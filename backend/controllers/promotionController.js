@@ -13,49 +13,46 @@ import { computeOverallAverages, getMinAvgThreshold } from '../services/promotio
 
 
 // controllers/promotionController.js (inside your promotion logic where enrollment is updated)
-import Payment from '../models/Payment.js';
 
 // example snippet used when moving enrollment to newGradeSectionId
 async function handlePromotionFinance (enrollmentId, newGradeSectionId, performedBy) {
   const enroll = await Enrollment.findById(enrollmentId);
   if (!enroll) throw new Error('Enrollment not found');
 
-  const oldFee = Number(enroll.fee || 0);
   const newGs = await GradeSection.findById(newGradeSectionId).lean();
   if (!newGs) throw new Error('Target GradeSection not found');
 
-  const newFee = Number(newGs.fee || 0);
 
   // If fees changed, update enrollment.fee and balance
-  if (newFee !== oldFee) {
-    // compute new feePaid stays same, new balance = old balance + (newFee - oldFee)
-    const prevPaid = Number(enroll.feePaid || 0);
-    const prevBalance = Number(enroll.balance || (oldFee - prevPaid));
-    const delta = newFee - oldFee;
-    const newBalance = Math.max(0, prevBalance + delta);
+  // if (newFee !== oldFee) {
+  //   // compute new feePaid stays same, new balance = old balance + (newFee - oldFee)
+  //   const prevPaid = Number(enroll.feePaid || 0);
+  //   const prevBalance = Number(enroll.balance || (oldFee - prevPaid));
+  //   const delta = newFee - oldFee;
+  //   const newBalance = Math.max(0, prevBalance + delta);
 
-    enroll.gradeSection = newGradeSectionId;
-    enroll.grade = newGs.grade || enroll.grade;
-    enroll.fee = newFee;
-    enroll.balance = newBalance;
-    // feePaid unchanged
-    await enroll.save();
+  //   enroll.gradeSection = newGradeSectionId;
+  //   enroll.grade = newGs.grade || enroll.grade;
+  //   enroll.fee = newFee;
+  //   enroll.balance = newBalance;
+  //   // feePaid unchanged
+  //   await enroll.save();
 
-    // optional: push a note to paymentRecords explaining fee change
-    enroll.paymentRecords = enroll.paymentRecords || [];
-    enroll.paymentRecords.push({
-      amount: 0,
-      method: 'system',
-      note: `Fee adjusted from ${oldFee} to ${newFee} on promotion`,
-      recordedBy: performedBy
-    });
-    await enroll.save();
-  } else {
-    // no fee change, just move gradeSection
-    enroll.gradeSection = newGradeSectionId;
-    enroll.grade = newGs.grade || enroll.grade;
-    await enroll.save();
-  }
+  //   // optional: push a note to paymentRecords explaining fee change
+  //   enroll.paymentRecords = enroll.paymentRecords || [];
+  //   enroll.paymentRecords.push({
+  //     amount: 0,
+  //     method: 'system',
+  //     note: `Fee adjusted from ${oldFee} to ${newFee} on promotion`,
+  //     recordedBy: performedBy
+  //   });
+  //   await enroll.save();
+  // } else {
+  //   // no fee change, just move gradeSection
+  //   enroll.gradeSection = newGradeSectionId;
+  //   enroll.grade = newGs.grade || enroll.grade;
+  //   await enroll.save();
+  // }
 
   return enroll;
 };
@@ -392,348 +389,689 @@ export async function previewPromotion(req, res) {
   res.json({ ok: true, items, summary, warnings, allNoScores });
 }
 // POST /api/promotions/execute
-export async function executePromotion(req, res) {
-  // Input: timing, studentIds, autoCreate
-  const { timing = 'mid-year', studentIds = [], autoCreate = true } = req.body;
-  if (!Array.isArray(studentIds) || studentIds.length === 0) {
-    return res.status(400).json({ ok: false, error: 'No students selected' });
-  }
-  // Fallback mapping identical to preview: permit studentId codes instead of ObjectIds.
-  const rawIds = studentIds.map(String);
-  const objectIds = rawIds.filter(id => mongoose.isValidObjectId(id));
-  const codeIds = rawIds.filter(id => !mongoose.isValidObjectId(id));
-  let codeMap = new Map();
-  if (codeIds.length) {
-    const codeDocs = await Student.find({ studentId: { $in: codeIds } }).select('_id studentId').lean();
-    codeMap = new Map(codeDocs.map(d => [String(d.studentId), String(d._id)]));
-  }
-  const normalizedIds = [ ...objectIds, ...Array.from(codeMap.values()) ];
-  const unknownCodes = codeIds.filter(c => !codeMap.has(c));
-  if (unknownCodes.length && normalizedIds.length === 0) {
-    return res.status(404).json({ ok: false, error: 'Student codes not found', codes: unknownCodes });
-  }
-  const effectiveIds = normalizedIds;
+// export async function executePromotion(req, res) {
+//   // Input: timing, studentIds, autoCreate
+//   const { timing = 'mid-year', studentIds = [], autoCreate = true } = req.body;
+//   if (!Array.isArray(studentIds) || studentIds.length === 0) {
+//     return res.status(400).json({ ok: false, error: 'No students selected' });
+//   }
+//   // Fallback mapping identical to preview: permit studentId codes instead of ObjectIds.
+//   const rawIds = studentIds.map(String);
+//   const objectIds = rawIds.filter(id => mongoose.isValidObjectId(id));
+//   const codeIds = rawIds.filter(id => !mongoose.isValidObjectId(id));
+//   let codeMap = new Map();
+//   if (codeIds.length) {
+//     const codeDocs = await Student.find({ studentId: { $in: codeIds } }).select('_id studentId').lean();
+//     codeMap = new Map(codeDocs.map(d => [String(d.studentId), String(d._id)]));
+//   }
+//   const normalizedIds = [ ...objectIds, ...Array.from(codeMap.values()) ];
+//   const unknownCodes = codeIds.filter(c => !codeMap.has(c));
+//   if (unknownCodes.length && normalizedIds.length === 0) {
+//     return res.status(404).json({ ok: false, error: 'Student codes not found', codes: unknownCodes });
+//   }
+//   const effectiveIds = normalizedIds;
 
-  const grades = await Grade.find({}).lean();
-  const academicYears = await AcademicYear.find({}).lean();
-  const students = await Student.find({ _id: { $in: effectiveIds } }).lean();
-  // Track any AcademicYear docs created during this execute call so frontend
-  // can be informed and auto-select the new AY.
-  const createdAcademicYearIds = new Set();
-  // load enrollments (active) for the selected students
-  const enrollments = await Enrollment.find({ student: { $in: effectiveIds }, status: 'active' })
-    .populate({
-      path: 'gradeSection',
-      populate: [
-        { path: 'grade', select: 'gradeName' },
-        { path: 'shift', select: 'shiftName' }
-      ]
-    })
-    .lean();
+//   const grades = await Grade.find({}).lean();
+//   const academicYears = await AcademicYear.find({}).lean();
+//   const students = await Student.find({ _id: { $in: effectiveIds } }).lean();
+//   // Track any AcademicYear docs created during this execute call so frontend
+//   // can be informed and auto-select the new AY.
+//   const createdAcademicYearIds = new Set();
+//   // load enrollments (active) for the selected students
+//   const enrollments = await Enrollment.find({ student: { $in: effectiveIds }, status: 'active' })
+//     .populate({
+//       path: 'gradeSection',
+//       populate: [
+//         { path: 'grade', select: 'gradeName' },
+//         { path: 'shift', select: 'shiftName' }
+//       ]
+//     })
+//     .lean();
 
-  // Academic performance gate: precompute averages
-  const averagesMap = await computeOverallAverages(enrollments);
-  const minAvg = getMinAvgThreshold();
-  // Removed evaluationDebug instrumentation.
+//   // Academic performance gate: precompute averages
+//   const averagesMap = await computeOverallAverages(enrollments);
+//   const minAvg = getMinAvgThreshold();
+//   // Removed evaluationDebug instrumentation.
 
-  // ---------------------------------------------------------------------------
-  // Batch pre-compute data to reduce per-student queries (optimization):
-  // - nextGrade/nextAY per enrollment
-  // - target GradeSections map (existing)
-  // - subjects per next grade (for auto-create)
-  // - capacity counts per target GS (active enrollments)
-  // ---------------------------------------------------------------------------
-  const enrollmentByStudent = new Map();
-  for (const e of enrollments) enrollmentByStudent.set(String(e.student), e);
+//   // ---------------------------------------------------------------------------
+//   // Batch pre-compute data to reduce per-student queries (optimization):
+//   // - nextGrade/nextAY per enrollment
+//   // - target GradeSections map (existing)
+//   // - subjects per next grade (for auto-create)
+//   // - capacity counts per target GS (active enrollments)
+//   // ---------------------------------------------------------------------------
+//   const enrollmentByStudent = new Map();
+//   for (const e of enrollments) enrollmentByStudent.set(String(e.student), e);
 
-  // Pre-compute next grade & AY
-  const nextInfoByStudent = new Map();
-  const allNextGradeIds = new Set();
-  const targetTriples = []; // { grade, shift, section }
-  const tripleKeySet = new Set();
-  for (const student of students) {
-    const enr = enrollmentByStudent.get(String(student._id));
-    if (!enr) continue;
-    const info = getNextGradeAndAY(enr, timing, grades, academicYears) || null;
-    nextInfoByStudent.set(String(student._id), info);
-    if (!info) continue;
-    const { nextGrade } = info;
-    if (nextGrade && nextGrade._id) {
-      allNextGradeIds.add(String(nextGrade._id));
-      // Collect target GS triple only if enrollment has a section
-      if (enr.gradeSection && enr.gradeSection.section) {
-        const shiftId = enr.shift || enr.gradeSection.shift; // prefer direct shift if present
-        if (shiftId) {
-          const key = `${nextGrade._id}|${shiftId}|${enr.gradeSection.section}`;
-          if (!tripleKeySet.has(key)) {
-            tripleKeySet.add(key);
-            targetTriples.push({ grade: nextGrade._id, shift: shiftId, section: enr.gradeSection.section });
-          }
-        }
-      }
-    }
-  }
+//   // Pre-compute next grade & AY
+//   const nextInfoByStudent = new Map();
+//   const allNextGradeIds = new Set();
+//   const targetTriples = []; // { grade, shift, section }
+//   const tripleKeySet = new Set();
+//   for (const student of students) {
+//     const enr = enrollmentByStudent.get(String(student._id));
+//     if (!enr) continue;
+//     const info = getNextGradeAndAY(enr, timing, grades, academicYears) || null;
+//     nextInfoByStudent.set(String(student._id), info);
+//     if (!info) continue;
+//     const { nextGrade } = info;
+//     if (nextGrade && nextGrade._id) {
+//       allNextGradeIds.add(String(nextGrade._id));
+//       // Collect target GS triple only if enrollment has a section
+//       if (enr.gradeSection && enr.gradeSection.section) {
+//         const shiftId = enr.shift || enr.gradeSection.shift; // prefer direct shift if present
+//         if (shiftId) {
+//           const key = `${nextGrade._id}|${shiftId}|${enr.gradeSection.section}`;
+//           if (!tripleKeySet.has(key)) {
+//             tripleKeySet.add(key);
+//             targetTriples.push({ grade: nextGrade._id, shift: shiftId, section: enr.gradeSection.section });
+//           }
+//         }
+//       }
+//     }
+//   }
 
-  // Existing target GradeSections batch fetch
-  let targetGSMap = new Map();
-  if (targetTriples.length > 0) {
-    const orConditions = targetTriples.map(t => ({ grade: t.grade, shift: t.shift, section: t.section }));
-    const existingGS = await GradeSection.find({ $or: orConditions }).lean();
-    targetGSMap = new Map(existingGS.map(gs => [`${gs.grade}|${gs.shift}|${gs.section}`, gs]));
-  }
+//   // Existing target GradeSections batch fetch
+//   let targetGSMap = new Map();
+//   if (targetTriples.length > 0) {
+//     const orConditions = targetTriples.map(t => ({ grade: t.grade, shift: t.shift, section: t.section }));
+//     const existingGS = await GradeSection.find({ $or: orConditions }).lean();
+//     targetGSMap = new Map(existingGS.map(gs => [`${gs.grade}|${gs.shift}|${gs.section}`, gs]));
+//   }
 
-  // Subjects per next grade (for auto-create GS) batch fetch
-  let subjectsByGrade = new Map();
-  if (allNextGradeIds.size > 0) {
-    const subjDocs = await Subject.find({ grades: { $in: Array.from(allNextGradeIds) } }).lean();
-    // Subject has array 'grades'; map subject to each grade it belongs to
-    for (const s of subjDocs) {
-      for (const g of (s.grades || [])) {
-        const gId = String(g);
-        if (!subjectsByGrade.has(gId)) subjectsByGrade.set(gId, []);
-        subjectsByGrade.get(gId).push(s._id);
-      }
-    }
-  }
+//   // Subjects per next grade (for auto-create GS) batch fetch
+//   let subjectsByGrade = new Map();
+//   if (allNextGradeIds.size > 0) {
+//     const subjDocs = await Subject.find({ grades: { $in: Array.from(allNextGradeIds) } }).lean();
+//     // Subject has array 'grades'; map subject to each grade it belongs to
+//     for (const s of subjDocs) {
+//       for (const g of (s.grades || [])) {
+//         const gId = String(g);
+//         if (!subjectsByGrade.has(gId)) subjectsByGrade.set(gId, []);
+//         subjectsByGrade.get(gId).push(s._id);
+//       }
+//     }
+//   }
 
-  // Capacity counts for existing target GS (single aggregate)
-  let capacityCountMap = new Map();
-  const existingTargetIds = Array.from(new Set(Array.from(targetGSMap.values()).map(v => v._id)));
-  if (existingTargetIds.length > 0) {
-    const agg = await Enrollment.aggregate([
-      { $match: { status: 'active', gradeSection: { $in: existingTargetIds } } },
-      { $group: { _id: '$gradeSection', count: { $sum: 1 } } }
-    ]);
-    capacityCountMap = new Map(agg.map(r => [String(r._id), r.count]));
-  }
+//   // Capacity counts for existing target GS (single aggregate)
+//   let capacityCountMap = new Map();
+//   const existingTargetIds = Array.from(new Set(Array.from(targetGSMap.values()).map(v => v._id)));
+//   if (existingTargetIds.length > 0) {
+//     const agg = await Enrollment.aggregate([
+//       { $match: { status: 'active', gradeSection: { $in: existingTargetIds } } },
+//       { $group: { _id: '$gradeSection', count: { $sum: 1 } } }
+//     ]);
+//     capacityCountMap = new Map(agg.map(r => [String(r._id), r.count]));
+//   }
 
-  // Helper to lookup or create target GS inside a session (only when needed)
-  async function ensureTargetGS(enrollmentSession, nextGrade, session) {
-    if (!nextGrade || !nextGrade._id) return null;
-    if (!enrollmentSession.gradeSection || !enrollmentSession.gradeSection.section) return null;
-    const shiftId = enrollmentSession.shift || enrollmentSession.gradeSection.shift;
-    if (!shiftId) return null;
-    const key = `${nextGrade._id}|${shiftId}|${enrollmentSession.gradeSection.section}`;
-    let gs = targetGSMap.get(key) || null;
-    if (gs) return gs; // already exists
-    // autoCreate logic uses subjectsByGrade
-    const subjectIds = subjectsByGrade.get(String(nextGrade._id)) || [];
-    if (subjectIds.length === 0) return { _error: 'CURRICULUM_MISSING_FOR_GRADE' }; // signal error
-    const gsDocs = await GradeSection.create([{
-      grade: nextGrade._id,
-      shift: shiftId,
-      section: enrollmentSession.gradeSection.section,
-      capacity: enrollmentSession.gradeSection?.capacity ?? undefined,
-      // fee: enrollmentSession.gradeSection?.fee ?? 0, // <-- copy old GS fee
-      fee: nextGrade.fee ?? 0,  // ✅ set correct level fee here
-      subjects: subjectIds
-    }], { session });
-    const createdGS = gsDocs[0].toObject();
-    targetGSMap.set(key, createdGS);
-    capacityCountMap.set(String(createdGS._id), 0); // initial count
-    return createdGS;
-  }
+//   // Helper to lookup or create target GS inside a session (only when needed)
+//   async function ensureTargetGS(enrollmentSession, nextGrade, session) {
+//     if (!nextGrade || !nextGrade._id) return null;
+//     if (!enrollmentSession.gradeSection || !enrollmentSession.gradeSection.section) return null;
+//     const shiftId = enrollmentSession.shift || enrollmentSession.gradeSection.shift;
+//     if (!shiftId) return null;
+//     const key = `${nextGrade._id}|${shiftId}|${enrollmentSession.gradeSection.section}`;
+//     let gs = targetGSMap.get(key) || null;
+//     if (gs) return gs; // already exists
+//     // autoCreate logic uses subjectsByGrade
+//     const subjectIds = subjectsByGrade.get(String(nextGrade._id)) || [];
+//     if (subjectIds.length === 0) return { _error: 'CURRICULUM_MISSING_FOR_GRADE' }; // signal error
+//     const gsDocs = await GradeSection.create([{
+//       grade: nextGrade._id,
+//       shift: shiftId,
+//       section: enrollmentSession.gradeSection.section,
+//       capacity: enrollmentSession.gradeSection?.capacity ?? undefined,
+//       // fee: enrollmentSession.gradeSection?.fee ?? 0, // <-- copy old GS fee
+//       subjects: subjectIds
+//     }], { session });
+//     const createdGS = gsDocs[0].toObject();
+//     targetGSMap.set(key, createdGS);
+//     capacityCountMap.set(String(createdGS._id), 0); // initial count
+//     return createdGS;
+//   }
 
-  const results = [];
-  let promotable = 0, graduates = 0, missingTargets = 0, capacityIssues = 0;
+//   const results = [];
+//   let promotable = 0, graduates = 0, missingTargets = 0, capacityIssues = 0;
 
-  // Pre-check: duplicate mid-year promotions
-  if (timing === 'mid-year') {
-    const duplicatePromotions = [];
-    for (const student of students) {
-      const enrollment = enrollments.find(e => String(e.student) === String(student._id));
-      if (!enrollment) continue;
-      const exists = await Enrollment.findOne({
-        student: student._id,
-        academicYear: enrollment.academicYear,
-        gradeSection: enrollment.gradeSection._id,
-        sequenceInYear: 2
-      }).lean();
-      if (exists) {
-        duplicatePromotions.push({ studentId: student._id, fullName: student.fullName, error: 'Mid-year promotion already done' });
-      }
-    }
-    if (duplicatePromotions.length > 0) {
-      return res.status(400).json({ ok: false, error: 'Mid-year promotion already done for some students.', details: duplicatePromotions });
-    }
-  }
+//   // Pre-check: duplicate mid-year promotions
+//   if (timing === 'mid-year') {
+//     const duplicatePromotions = [];
+//     for (const student of students) {
+//       const enrollment = enrollments.find(e => String(e.student) === String(student._id));
+//       if (!enrollment) continue;
+//       const exists = await Enrollment.findOne({
+//         student: student._id,
+//         academicYear: enrollment.academicYear,
+//         gradeSection: enrollment.gradeSection._id,
+//         sequenceInYear: 2
+//       }).lean();
+//       if (exists) {
+//         duplicatePromotions.push({ studentId: student._id, fullName: student.fullName, error: 'Mid-year promotion already done' });
+//       }
+//     }
+//     if (duplicatePromotions.length > 0) {
+//       return res.status(400).json({ ok: false, error: 'Mid-year promotion already done for some students.', details: duplicatePromotions });
+//     }
+//   }
 
-  // Process students one-by-one inside per-student transaction (atomic) using precomputed maps
-  for (const student of students) {
-    const enrollment = enrollmentByStudent.get(String(student._id));
-    if (!enrollment) {
-      results.push({ studentId: student._id, errors: ['ACTIVE_ENROLLMENT_MISSING'] });
-      continue;
-    }
+//   // Process students one-by-one inside per-student transaction (atomic) using precomputed maps
+//   for (const student of students) {
+//     const enrollment = enrollmentByStudent.get(String(student._id));
+//     if (!enrollment) {
+//       results.push({ studentId: student._id, errors: ['ACTIVE_ENROLLMENT_MISSING'] });
+//       continue;
+//     }
 
-    // Use a session per student to keep operations atomic for that student
-    const session = await mongoose.startSession();
-    try {
-      let actionResult = null;
-      await session.withTransaction(async () => {
-        // Re-fetch enrollment inside the session to ensure latest and populate gradeSection
-        const enrollmentSession = await Enrollment.findOne({ _id: enrollment._id })
-          .populate({
-            path: 'gradeSection',
-            populate: [
-              { path: 'grade', select: 'gradeName' },
-              { path: 'shift', select: 'shiftName' }
-            ]
-          })
-          .session(session)
-          .lean();
-        if (!enrollmentSession) {
-          actionResult = { error: 'ACTIVE_ENROLLMENT_MISSING' };
-          return;
-        }
+//     // Use a session per student to keep operations atomic for that student
+//     const session = await mongoose.startSession();
+//     try {
+//       let actionResult = null;
+//       await session.withTransaction(async () => {
+//         // Re-fetch enrollment inside the session to ensure latest and populate gradeSection
+//         const enrollmentSession = await Enrollment.findOne({ _id: enrollment._id })
+//           .populate({
+//             path: 'gradeSection',
+//             populate: [
+//               { path: 'grade', select: 'gradeName' },
+//               { path: 'shift', select: 'shiftName' }
+//             ]
+//           })
+//           .session(session)
+//           .lean();
+//         if (!enrollmentSession) {
+//           actionResult = { error: 'ACTIVE_ENROLLMENT_MISSING' };
+//           return;
+//         }
 
-        const preInfo = nextInfoByStudent.get(String(student._id)) || {};
-        const { nextGrade, nextAY } = preInfo;
-        if (!nextGrade && timing === 'year-end') {
-          // Graduation
-          await Enrollment.updateOne({ _id: enrollmentSession._id }, { status: 'graduated', leftAt: new Date() }).session(session);
-          await Student.updateOne({ _id: student._id }, { status: 'Inactive' }).session(session);
-          await TransferLog.create([{ student: student._id, fromGradeSection: enrollmentSession.gradeSection, toGradeSection: null, reason: 'Graduation', notes: '', reverted: false }], { session });
-          actionResult = { action: 'graduate' };
-          graduates++;
-          return;
-        }
+//         const preInfo = nextInfoByStudent.get(String(student._id)) || {};
+//         const { nextGrade, nextAY } = preInfo;
+//         if (!nextGrade && timing === 'year-end') {
+//           // Graduation
+//           await Enrollment.updateOne({ _id: enrollmentSession._id }, { status: 'graduated', leftAt: new Date() }).session(session);
+//           await Student.updateOne({ _id: student._id }, { status: 'Inactive' }).session(session);
+//           await TransferLog.create([{ student: student._id, fromGradeSection: enrollmentSession.gradeSection, toGradeSection: null, reason: 'Graduation', notes: '', reverted: false }], { session });
+//           actionResult = { action: 'graduate' };
+//           graduates++;
+//           return;
+//         }
 
-        // Academic performance gate: only when moving to a next grade (not for graduation)
-        const evalInfo = averagesMap.get(String(student._id));
-        if (nextGrade && evalInfo && typeof evalInfo.overallAvg === 'number' && evalInfo.overallAvg < minAvg) {
-          actionResult = { error: 'BELOW_MIN_AVG' };
-          return;
-        }
+//         // Academic performance gate: only when moving to a next grade (not for graduation)
+//         const evalInfo = averagesMap.get(String(student._id));
+//         if (nextGrade && evalInfo && typeof evalInfo.overallAvg === 'number' && evalInfo.overallAvg < minAvg) {
+//           actionResult = { error: 'BELOW_MIN_AVG' };
+//           return;
+//         }
 
-        if (!enrollmentSession.gradeSection || !enrollmentSession.gradeSection.section) {
-          actionResult = { error: 'GRADESECTION_MISSING' };
-          missingTargets++;
-          return;
-        }
+//         if (!enrollmentSession.gradeSection || !enrollmentSession.gradeSection.section) {
+//           actionResult = { error: 'GRADESECTION_MISSING' };
+//           missingTargets++;
+//           return;
+//         }
 
-        // Ensure academicYear exists (create if needed)
-        let academicYearId = nextAY?._id;
-        if (!academicYearId && nextAY && nextAY.yearName) {
-          let ayDoc = await AcademicYear.findOne({ yearName: nextAY.yearName }).session(session);
-          if (!ayDoc) {
-            ayDoc = await AcademicYear.create([{ yearName: nextAY.yearName }], { session });
-            ayDoc = ayDoc[0];
-            // remember that we created this AY so we can report it back to caller
-            try { createdAcademicYearIds.add(String(ayDoc._id)); } catch (e) { /* ignore */ }
-          }
-          academicYearId = ayDoc._id;
-          nextAY._id = academicYearId;
-        }
+//         // Ensure academicYear exists (create if needed)
+//         let academicYearId = nextAY?._id;
+//         if (!academicYearId && nextAY && nextAY.yearName) {
+//           let ayDoc = await AcademicYear.findOne({ yearName: nextAY.yearName }).session(session);
+//           if (!ayDoc) {
+//             ayDoc = await AcademicYear.create([{ yearName: nextAY.yearName }], { session });
+//             ayDoc = ayDoc[0];
+//             // remember that we created this AY so we can report it back to caller
+//             try { createdAcademicYearIds.add(String(ayDoc._id)); } catch (e) { /* ignore */ }
+//           }
+//           academicYearId = ayDoc._id;
+//           nextAY._id = academicYearId;
+//         }
 
-        // Find or create target GradeSection using pre-fetched maps
-        let toGS = null;
-        if (nextGrade && nextGrade._id) {
-          const shiftId = enrollmentSession.shift || enrollmentSession.gradeSection.shift;
-          const key = `${nextGrade._id}|${shiftId}|${enrollmentSession.gradeSection.section}`;
-          toGS = targetGSMap.get(key) || null;
-          if (!toGS && autoCreate && nextAY) {
-            const createdOrErr = await ensureTargetGS(enrollmentSession, nextGrade, session);
-            if (createdOrErr && createdOrErr._error) {
-              actionResult = { error: createdOrErr._error };
-              missingTargets++;
-              return;
-            }
-            toGS = createdOrErr;
-            if (toGS) missingTargets++; // counts as missing target resolved
-          }
-        }
+//         // Find or create target GradeSection using pre-fetched maps
+//         let toGS = null;
+//         if (nextGrade && nextGrade._id) {
+//           const shiftId = enrollmentSession.shift || enrollmentSession.gradeSection.shift;
+//           const key = `${nextGrade._id}|${shiftId}|${enrollmentSession.gradeSection.section}`;
+//           toGS = targetGSMap.get(key) || null;
+//           if (!toGS && autoCreate && nextAY) {
+//             const createdOrErr = await ensureTargetGS(enrollmentSession, nextGrade, session);
+//             if (createdOrErr && createdOrErr._error) {
+//               actionResult = { error: createdOrErr._error };
+//               missingTargets++;
+//               return;
+//             }
+//             toGS = createdOrErr;
+//             if (toGS) missingTargets++; // counts as missing target resolved
+//           }
+//         }
 
-        if (!toGS) {
-          actionResult = { error: 'GRADESECTION_MISSING' };
-          missingTargets++;
-          return;
-        }
+//         if (!toGS) {
+//           actionResult = { error: 'GRADESECTION_MISSING' };
+//           missingTargets++;
+//           return;
+//         }
 
-        // Capacity check using pre-computed counters (update in-memory after promotion)
-        if (toGS && toGS.capacity && toGS.capacity > 0) {
-          const currentCount = capacityCountMap.get(String(toGS._id)) || 0;
-          if (currentCount >= toGS.capacity) {
-            actionResult = { error: 'CAPACITY_FULL' };
-            capacityIssues++;
-            return;
-          }
-        }
+//         // Capacity check using pre-computed counters (update in-memory after promotion)
+//         if (toGS && toGS.capacity && toGS.capacity > 0) {
+//           const currentCount = capacityCountMap.get(String(toGS._id)) || 0;
+//           if (currentCount >= toGS.capacity) {
+//             actionResult = { error: 'CAPACITY_FULL' };
+//             capacityIssues++;
+//             return;
+//           }
+//         }
 
-        // Close old enrollment and create new one atomically
-        await Enrollment.updateOne({ _id: enrollmentSession._id }, { status: 'promoted', leftAt: new Date() }).session(session);
+//         // Close old enrollment and create new one atomically
+//         await Enrollment.updateOne({ _id: enrollmentSession._id }, { status: 'promoted', leftAt: new Date() }).session(session);
 
         
-        const created = await Enrollment.create([{
-          student: student._id,
-          gradeSection: toGS._id,
-          academicYear: academicYearId,
-          grade: nextGrade._id,
-          shift: toGS.shift,
-          cohort: enrollmentSession.cohort,
-          fee: toGS.fee || 0,         // ✅ copy fee from GradeSection
-          feePaid: 0,                 // or carry over old payment if needed
-          balance: toGS.fee || 0,
-          sequenceInYear: timing === 'mid-year' ? 2 : 1,
-          status: 'active',
-          joinedAt: new Date()
-        }], { session });
-        const newEnrollment = created[0];
+//         const created = await Enrollment.create([{
+//           student: student._id,
+//           gradeSection: toGS._id,
+//           academicYear: academicYearId,
+//           grade: nextGrade._id,
+//           shift: toGS.shift,
+//           cohort: enrollmentSession.cohort,
+//           sequenceInYear: timing === 'mid-year' ? 2 : 1,
+//           status: 'active',
+//           joinedAt: new Date()
+//         }], { session });
+//         const newEnrollment = created[0];
 
-        // Transfer log
-        await TransferLog.create([{ student: student._id, fromGradeSection: enrollmentSession.gradeSection, toGradeSection: toGS._id, byUser: req.user?._id || null, date: new Date(), reason: 'Promotion', notes: '', reverted: false }], { session });
+//         // Transfer log
+//         await TransferLog.create([{ student: student._id, fromGradeSection: enrollmentSession.gradeSection, toGradeSection: toGS._id, byUser: req.user?._id || null, date: new Date(), reason: 'Promotion', notes: '', reverted: false }], { session });
 
-        actionResult = { action: 'promote', toGS, enrollment: newEnrollment };
-        // Increment in-memory capacity counter for subsequent students
-        if (toGS && toGS._id) {
-          const idStr = String(toGS._id);
-          const prev = capacityCountMap.get(idStr) || 0;
-            capacityCountMap.set(idStr, prev + 1);
-        }
-        promotable++;
-      }); // end transaction
+//         actionResult = { action: 'promote', toGS, enrollment: newEnrollment };
+//         // Increment in-memory capacity counter for subsequent students
+//         if (toGS && toGS._id) {
+//           const idStr = String(toGS._id);
+//           const prev = capacityCountMap.get(idStr) || 0;
+//             capacityCountMap.set(idStr, prev + 1);
+//         }
+//         promotable++;
+//       }); // end transaction
 
-      const evalInfo = averagesMap.get(String(student._id));
-      const overallAvg = evalInfo?.overallAvg ?? null;
-      const failedSubjects = evalInfo?.failedSubjects ?? null;
-      if (actionResult && actionResult.error) {
-        results.push({ studentId: student._id, errors: [actionResult.error], overallAvg, failedSubjects });
-      } else if (actionResult && actionResult.action === 'graduate') {
-        results.push({ studentId: student._id, action: 'graduate', errors: [], overallAvg, failedSubjects });
-      } else if (actionResult && actionResult.action === 'promote') {
-        results.push({ studentId: student._id, fromGS: enrollment.gradeSection, toGS: actionResult.toGS, action: 'promote', errors: [], overallAvg, failedSubjects });
-      } else {
-        results.push({ studentId: student._id, errors: ['UNKNOWN_ERROR'], overallAvg, failedSubjects });
-      }
-    } catch (err) {
-      console.error('[PROMOTE] per-student transaction error', err);
-      // handle unique index or other DB errors
-      if (err && err.code === 11000) {
-        results.push({ studentId: student._id, errors: ['ALREADY_PROMOTED_OR_DUPLICATE'] });
-      } else {
-        results.push({ studentId: student._id, errors: [err.message || 'Server Error'] });
-      }
-    } finally {
-      session.endSession();
-    }
+//       const evalInfo = averagesMap.get(String(student._id));
+//       const overallAvg = evalInfo?.overallAvg ?? null;
+//       const failedSubjects = evalInfo?.failedSubjects ?? null;
+//       if (actionResult && actionResult.error) {
+//         results.push({ studentId: student._id, errors: [actionResult.error], overallAvg, failedSubjects });
+//       } else if (actionResult && actionResult.action === 'graduate') {
+//         results.push({ studentId: student._id, action: 'graduate', errors: [], overallAvg, failedSubjects });
+//       } else if (actionResult && actionResult.action === 'promote') {
+//         results.push({ studentId: student._id, fromGS: enrollment.gradeSection, toGS: actionResult.toGS, action: 'promote', errors: [], overallAvg, failedSubjects });
+//       } else {
+//         results.push({ studentId: student._id, errors: ['UNKNOWN_ERROR'], overallAvg, failedSubjects });
+//       }
+//     } catch (err) {
+//       console.error('[PROMOTE] per-student transaction error', err);
+//       // handle unique index or other DB errors
+//       if (err && err.code === 11000) {
+//         results.push({ studentId: student._id, errors: ['ALREADY_PROMOTED_OR_DUPLICATE'] });
+//       } else {
+//         results.push({ studentId: student._id, errors: [err.message || 'Server Error'] });
+//       }
+//     } finally {
+//       session.endSession();
+//     }
+//   }
+
+//   const summary = { total: students.length, promotable, graduates, missingTargets, capacityIssues };
+//   // If we created any academic years, include their ids and objects in response
+//   const createdAcademicYearIdsArr = Array.from(createdAcademicYearIds);
+//   const extra = {};
+//   if (createdAcademicYearIdsArr.length > 0) {
+//     extra.createdAcademicYearIds = createdAcademicYearIdsArr;
+//     if (createdAcademicYearIdsArr.length === 1) extra.createdAcademicYearId = createdAcademicYearIdsArr[0];
+//     try {
+//       const createdAcademicYears = await AcademicYear.find({ _id: { $in: createdAcademicYearIdsArr } }).lean();
+//       extra.createdAcademicYears = createdAcademicYears;
+//     } catch (e) {
+//       // ignore errors fetching created docs; ids are still useful
+//     }
+//   }
+//   res.json({ ok: true, results, summary, ...extra });
+// }
+
+export async function executePromotion(req, res) {
+    // Input: timing, studentIds, autoCreate
+    const { timing = 'mid-year', studentIds = [], autoCreate = true } = req.body;
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({ ok: false, error: 'No students selected' });
+    }
+    // Fallback mapping identical to preview: permit studentId codes instead of ObjectIds.
+    const rawIds = studentIds.map(String);
+    const objectIds = rawIds.filter(id => mongoose.isValidObjectId(id));
+    const codeIds = rawIds.filter(id => !mongoose.isValidObjectId(id));
+    let codeMap = new Map();
+    if (codeIds.length) {
+      const codeDocs = await Student.find({ studentId: { $in: codeIds } }).select('_id studentId').lean();
+      codeMap = new Map(codeDocs.map(d => [String(d.studentId), String(d._id)]));
+    }
+    const normalizedIds = [ ...objectIds, ...Array.from(codeMap.values()) ];
+    const unknownCodes = codeIds.filter(c => !codeMap.has(c));
+    if (unknownCodes.length && normalizedIds.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Student codes not found', codes: unknownCodes });
+    }
+    const effectiveIds = normalizedIds;
+  
+    const grades = await Grade.find({}).lean();
+    const academicYears = await AcademicYear.find({}).lean();
+    const students = await Student.find({ _id: { $in: effectiveIds } }).lean();
+    // Track any AcademicYear docs created during this execute call so frontend
+    // can be informed and auto-select the new AY.
+    const createdAcademicYearIds = new Set();
+    // load enrollments (active) for the selected students
+    const enrollments = await Enrollment.find({ student: { $in: effectiveIds }, status: 'active' })
+      .populate({
+        path: 'gradeSection',
+        populate: [
+          { path: 'grade', select: 'gradeName' },
+          { path: 'shift', select: 'shiftName' }
+        ]
+      })
+      .lean();
+  
+    // Academic performance gate: precompute averages
+    const averagesMap = await computeOverallAverages(enrollments);
+    const minAvg = getMinAvgThreshold();
+    // Removed evaluationDebug instrumentation.
+  
+    // ---------------------------------------------------------------------------
+    // Batch pre-compute data to reduce per-student queries (optimization):
+    // - nextGrade/nextAY per enrollment
+    // - target GradeSections map (existing)
+    // - subjects per next grade (for auto-create)
+    // - capacity counts per target GS (active enrollments)
+    // ---------------------------------------------------------------------------
+    const enrollmentByStudent = new Map();
+    for (const e of enrollments) enrollmentByStudent.set(String(e.student), e);
+  
+    // Pre-compute next grade & AY
+    const nextInfoByStudent = new Map();
+    const allNextGradeIds = new Set();
+    const targetTriples = []; // { grade, shift, section }
+    const tripleKeySet = new Set();
+    for (const student of students) {
+      const enr = enrollmentByStudent.get(String(student._id));
+      if (!enr) continue;
+      const info = getNextGradeAndAY(enr, timing, grades, academicYears) || null;
+      nextInfoByStudent.set(String(student._id), info);
+      if (!info) continue;
+      const { nextGrade } = info;
+      if (nextGrade && nextGrade._id) {
+        allNextGradeIds.add(String(nextGrade._id));
+        // Collect target GS triple only if enrollment has a section
+        if (enr.gradeSection && enr.gradeSection.section) {
+          const shiftId = enr.shift || enr.gradeSection.shift; // prefer direct shift if present
+          if (shiftId) {
+            const key = `${nextGrade._id}|${shiftId}|${enr.gradeSection.section}`;
+            if (!tripleKeySet.has(key)) {
+              tripleKeySet.add(key);
+              targetTriples.push({ grade: nextGrade._id, shift: shiftId, section: enr.gradeSection.section });
+            }
+          }
+        }
+      }
+    }
+  
+    // Existing target GradeSections batch fetch
+    let targetGSMap = new Map();
+    if (targetTriples.length > 0) {
+      const orConditions = targetTriples.map(t => ({ grade: t.grade, shift: t.shift, section: t.section }));
+      const existingGS = await GradeSection.find({ $or: orConditions }).lean();
+      targetGSMap = new Map(existingGS.map(gs => [`${gs.grade}|${gs.shift}|${gs.section}`, gs]));
+    }
+  
+    // Subjects per next grade (for auto-create GS) batch fetch
+    let subjectsByGrade = new Map();
+    if (allNextGradeIds.size > 0) {
+      const subjDocs = await Subject.find({ grades: { $in: Array.from(allNextGradeIds) } }).lean();
+      // Subject has array 'grades'; map subject to each grade it belongs to
+      for (const s of subjDocs) {
+        for (const g of (s.grades || [])) {
+          const gId = String(g);
+          if (!subjectsByGrade.has(gId)) subjectsByGrade.set(gId, []);
+          subjectsByGrade.get(gId).push(s._id);
+        }
+      }
+    }
+  
+    // Capacity counts for existing target GS (single aggregate)
+    let capacityCountMap = new Map();
+    const existingTargetIds = Array.from(new Set(Array.from(targetGSMap.values()).map(v => v._id)));
+    if (existingTargetIds.length > 0) {
+      const agg = await Enrollment.aggregate([
+        { $match: { status: 'active', gradeSection: { $in: existingTargetIds } } },
+        { $group: { _id: '$gradeSection', count: { $sum: 1 } } }
+      ]);
+      capacityCountMap = new Map(agg.map(r => [String(r._id), r.count]));
+    }
+  
+    // Helper to lookup or create target GS inside a session (only when needed)
+    // ----------------- FIX 1: Add academicYearId to function signature -----------------
+    async function ensureTargetGS(enrollmentSession, nextGrade, academicYearId, session) {
+      if (!nextGrade || !nextGrade._id) return null;
+      if (!enrollmentSession.gradeSection || !enrollmentSession.gradeSection.section) return null;
+      const shiftId = enrollmentSession.shift || enrollmentSession.gradeSection.shift;
+      if (!shiftId) return null;
+      const key = `${nextGrade._id}|${shiftId}|${enrollmentSession.gradeSection.section}`;
+      let gs = targetGSMap.get(key) || null;
+      if (gs) return gs; // already exists
+      // autoCreate logic uses subjectsByGrade
+      const subjectIds = subjectsByGrade.get(String(nextGrade._id)) || [];
+      if (subjectIds.length === 0) return { _error: 'CURRICULUM_MISSING_FOR_GRADE' }; // signal error
+      const gsDocs = await GradeSection.create([{
+        grade: nextGrade._id,
+        shift: shiftId,
+        section: enrollmentSession.gradeSection.section,
+          // ----------------- FIX 2: Include the required academicYear field -----------------
+        academicYear: academicYearId,
+          // ----------------------------------------------------------------------------------
+        capacity: enrollmentSession.gradeSection?.capacity ?? undefined,
+        // fee: enrollmentSession.gradeSection?.fee ?? 0, // <-- copy old GS fee
+        subjects: subjectIds
+      }], { session });
+      const createdGS = gsDocs[0].toObject();
+      targetGSMap.set(key, createdGS);
+      capacityCountMap.set(String(createdGS._id), 0); // initial count
+      return createdGS;
+    }
+  
+    const results = [];
+    let promotable = 0, graduates = 0, missingTargets = 0, capacityIssues = 0;
+  
+    // Pre-check: duplicate mid-year promotions
+    if (timing === 'mid-year') {
+      const duplicatePromotions = [];
+      for (const student of students) {
+        const enrollment = enrollments.find(e => String(e.student) === String(student._id));
+        if (!enrollment) continue;
+        const exists = await Enrollment.findOne({
+          student: student._id,
+          academicYear: enrollment.academicYear,
+          gradeSection: enrollment.gradeSection._id,
+          sequenceInYear: 2
+        }).lean();
+        if (exists) {
+          duplicatePromotions.push({ studentId: student._id, fullName: student.fullName, error: 'Mid-year promotion already done' });
+        }
+      }
+      if (duplicatePromotions.length > 0) {
+        return res.status(400).json({ ok: false, error: 'Mid-year promotion already done for some students.', details: duplicatePromotions });
+      }
+    }
+  
+    // Process students one-by-one inside per-student transaction (atomic) using precomputed maps
+    for (const student of students) {
+      const enrollment = enrollmentByStudent.get(String(student._id));
+      if (!enrollment) {
+        results.push({ studentId: student._id, errors: ['ACTIVE_ENROLLMENT_MISSING'] });
+        continue;
+      }
+  
+      // Use a session per student to keep operations atomic for that student
+      const session = await mongoose.startSession();
+      try {
+        let actionResult = null;
+        await session.withTransaction(async () => {
+          // Re-fetch enrollment inside the session to ensure latest and populate gradeSection
+          const enrollmentSession = await Enrollment.findOne({ _id: enrollment._id })
+            .populate({
+              path: 'gradeSection',
+              populate: [
+                { path: 'grade', select: 'gradeName' },
+                { path: 'shift', select: 'shiftName' }
+              ]
+            })
+            .session(session)
+            .lean();
+          if (!enrollmentSession) {
+            actionResult = { error: 'ACTIVE_ENROLLMENT_MISSING' };
+            return;
+          }
+  
+          const preInfo = nextInfoByStudent.get(String(student._id)) || {};
+          const { nextGrade, nextAY } = preInfo;
+          if (!nextGrade && timing === 'year-end') {
+            // Graduation
+            await Enrollment.updateOne({ _id: enrollmentSession._id }, { status: 'graduated', leftAt: new Date() }).session(session);
+            await Student.updateOne({ _id: student._id }, { status: 'Inactive' }).session(session);
+            await TransferLog.create([{ student: student._id, fromGradeSection: enrollmentSession.gradeSection, toGradeSection: null, reason: 'Graduation', notes: '', reverted: false }], { session });
+            actionResult = { action: 'graduate' };
+            graduates++;
+            return;
+          }
+  
+          // Academic performance gate: only when moving to a next grade (not for graduation)
+          const evalInfo = averagesMap.get(String(student._id));
+          if (nextGrade && evalInfo && typeof evalInfo.overallAvg === 'number' && evalInfo.overallAvg < minAvg) {
+            actionResult = { error: 'BELOW_MIN_AVG' };
+            return;
+          }
+  
+          if (!enrollmentSession.gradeSection || !enrollmentSession.gradeSection.section) {
+            actionResult = { error: 'GRADESECTION_MISSING' };
+            missingTargets++;
+            return;
+          }
+  
+          // Ensure academicYear exists (create if needed)
+          let academicYearId = nextAY?._id;
+          if (!academicYearId && nextAY && nextAY.yearName) {
+            let ayDoc = await AcademicYear.findOne({ yearName: nextAY.yearName }).session(session);
+            if (!ayDoc) {
+              ayDoc = await AcademicYear.create([{ yearName: nextAY.yearName }], { session });
+              ayDoc = ayDoc[0];
+              // remember that we created this AY so we can report it back to caller
+              try { createdAcademicYearIds.add(String(ayDoc._id)); } catch (e) { /* ignore */ }
+            }
+            academicYearId = ayDoc._id;
+            nextAY._id = academicYearId;
+          }
+  
+          // Find or create target GradeSection using pre-fetched maps
+          let toGS = null;
+          if (nextGrade && nextGrade._id) {
+            const shiftId = enrollmentSession.shift || enrollmentSession.gradeSection.shift;
+            const key = `${nextGrade._id}|${shiftId}|${enrollmentSession.gradeSection.section}`;
+            toGS = targetGSMap.get(key) || null;
+            if (!toGS && autoCreate && nextAY) {
+                  // ----------------- FIX 3: Pass the academicYearId to the helper function -----------------
+              const createdOrErr = await ensureTargetGS(enrollmentSession, nextGrade, academicYearId, session); 
+                  // -----------------------------------------------------------------------------------------
+              if (createdOrErr && createdOrErr._error) {
+                actionResult = { error: createdOrErr._error };
+                missingTargets++;
+                return;
+              }
+              toGS = createdOrErr;
+              if (toGS) missingTargets++; // counts as missing target resolved
+            }
+          }
+  
+          if (!toGS) {
+            actionResult = { error: 'GRADESECTION_MISSING' };
+            missingTargets++;
+            return;
+          }
+  
+          // Capacity check using pre-computed counters (update in-memory after promotion)
+          if (toGS && toGS.capacity && toGS.capacity > 0) {
+            const currentCount = capacityCountMap.get(String(toGS._id)) || 0;
+            if (currentCount >= toGS.capacity) {
+              actionResult = { error: 'CAPACITY_FULL' };
+              capacityIssues++;
+              return;
+            }
+          }
+  
+          // Close old enrollment and create new one atomically
+          await Enrollment.updateOne({ _id: enrollmentSession._id }, { status: 'promoted', leftAt: new Date() }).session(session);
+  
+          
+          const created = await Enrollment.create([{
+            student: student._id,
+            gradeSection: toGS._id,
+            academicYear: academicYearId,
+            grade: nextGrade._id,
+            shift: toGS.shift,
+            cohort: enrollmentSession.cohort,
+            sequenceInYear: timing === 'mid-year' ? 2 : 1,
+            status: 'active',
+            joinedAt: new Date()
+          }], { session });
+          const newEnrollment = created[0];
+  
+          // Transfer log
+          await TransferLog.create([{ student: student._id, fromGradeSection: enrollmentSession.gradeSection, toGradeSection: toGS._id, byUser: req.user?._id || null, date: new Date(), reason: 'Promotion', notes: '', reverted: false }], { session });
+  
+          actionResult = { action: 'promote', toGS, enrollment: newEnrollment };
+          // Increment in-memory capacity counter for subsequent students
+          if (toGS && toGS._id) {
+            const idStr = String(toGS._id);
+            const prev = capacityCountMap.get(idStr) || 0;
+              capacityCountMap.set(idStr, prev + 1);
+          }
+          promotable++;
+        }); // end transaction
+  
+        const evalInfo = averagesMap.get(String(student._id));
+        const overallAvg = evalInfo?.overallAvg ?? null;
+        const failedSubjects = evalInfo?.failedSubjects ?? null;
+        if (actionResult && actionResult.error) {
+          results.push({ studentId: student._id, errors: [actionResult.error], overallAvg, failedSubjects });
+        } else if (actionResult && actionResult.action === 'graduate') {
+          results.push({ studentId: student._id, action: 'graduate', errors: [], overallAvg, failedSubjects });
+        } else if (actionResult && actionResult.action === 'promote') {
+          results.push({ studentId: student._id, fromGS: enrollment.gradeSection, toGS: actionResult.toGS, action: 'promote', errors: [], overallAvg, failedSubjects });
+        } else {
+          results.push({ studentId: student._id, errors: ['UNKNOWN_ERROR'], overallAvg, failedSubjects });
+        }
+      } catch (err) {
+        console.error('[PROMOTE] per-student transaction error', err);
+        // handle unique index or other DB errors
+        if (err && err.code === 11000) {
+          results.push({ studentId: student._id, errors: ['ALREADY_PROMOTED_OR_DUPLICATE'] });
+        } else {
+          results.push({ studentId: student._id, errors: [err.message || 'Server Error'] });
+        }
+      } finally {
+        session.endSession();
+      }
+    }
+  
+    const summary = { total: students.length, promotable, graduates, missingTargets, capacityIssues };
+    // If we created any academic years, include their ids and objects in response
+    const createdAcademicYearIdsArr = Array.from(createdAcademicYearIds);
+    const extra = {};
+    if (createdAcademicYearIdsArr.length > 0) {
+      extra.createdAcademicYearIds = createdAcademicYearIdsArr;
+      if (createdAcademicYearIdsArr.length === 1) extra.createdAcademicYearId = createdAcademicYearIdsArr[0];
+      try {
+        const createdAcademicYears = await AcademicYear.find({ _id: { $in: createdAcademicYearIdsArr } }).lean();
+        extra.createdAcademicYears = createdAcademicYears;
+      } catch (e) {
+        // ignore errors fetching created docs; ids are still useful
+      }
+    }
+    res.json({ ok: true, results, summary, ...extra });
   }
-
-  const summary = { total: students.length, promotable, graduates, missingTargets, capacityIssues };
-  // If we created any academic years, include their ids and objects in response
-  const createdAcademicYearIdsArr = Array.from(createdAcademicYearIds);
-  const extra = {};
-  if (createdAcademicYearIdsArr.length > 0) {
-    extra.createdAcademicYearIds = createdAcademicYearIdsArr;
-    if (createdAcademicYearIdsArr.length === 1) extra.createdAcademicYearId = createdAcademicYearIdsArr[0];
-    try {
-      const createdAcademicYears = await AcademicYear.find({ _id: { $in: createdAcademicYearIdsArr } }).lean();
-      extra.createdAcademicYears = createdAcademicYears;
-    } catch (e) {
-      // ignore errors fetching created docs; ids are still useful
-    }
-  }
-  res.json({ ok: true, results, summary, ...extra });
-}
 
 // Helper: auto-create GS if missing
 async function autoCreateGradeSection(params) {

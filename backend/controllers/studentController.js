@@ -1,6 +1,6 @@
 // This controller manages all core CRUD operations for students in the database.
 import mongoose from 'mongoose';
-import Student from '../models/sssssss.js';
+import Student from '../models/Student.js';
 import Enrollment from '../models/Enrollment.js';
 import GradeSection from '../models/GradeSection.js';
 import Counter from '../models/Counter.js';

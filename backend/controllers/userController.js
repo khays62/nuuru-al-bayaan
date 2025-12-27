@@ -1,59 +1,6 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 
-// Create user
-// export const createUser = async (req, res) => {
-//   try {
-//     const { fullName, username, email, phone, password, role, permission } = req.body;
-//     const hashedPassword = await bcrypt.hash(password, 10);
-
-//     const user = new User({
-//       fullName,
-//       username,
-//       email,
-//       phone,
-//       password: hashedPassword,
-//       role,
-//       permission,
-//     });
-
-//     await user.save();
-//     res.status(201).json({ message: "User created successfully", user });
-//   } catch (error) {
-//     res.status(500).json({ message: error.message });
-//   }
-// };
-
-// // Update user
-// export const updateUser = async (req, res) => {
-//   try {
-//     console.log("🔵 Update request received:", req.body);
-//     const { id } = req.params;
-//     const { fullName, username, email, phone, role, permissions, password } = req.body;
-
-//     const user = await User.findById(id);
-//     if (!user) return res.status(404).json({ message: "User not found" });
-
-//     user.fullName = fullName;
-//     user.username = username;
-//     user.email = email;
-//     user.phone = phone;
-//     user.role = role;
-//     user.permissions = permissions;
-
-//     if (password && password.trim() !== "") {
-//       user.password = await bcrypt.hash(password, 10);
-//     }
-
-//     await user.save();
-//     res.json({ message: "User updated successfully", user });
-//   } catch (error) {
-//     console.error("❌ Update user error:", error);
-//     res.status(500).json({ message: error.message });
-//   }
-// };
-
-
 // CREATE USER
 export const createUser = async (req, res) => {
   try {

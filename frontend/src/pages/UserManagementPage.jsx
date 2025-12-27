@@ -23,11 +23,13 @@ import FilterSelect from "../components/common/DataToolbar/FilterSelect";
 
 /* ---------------- MODULE -> allowed permissions ---------------- */
 const MODULE_PERMISSIONS = {
-  students: ["view", "add", "edit", "transfer", "deactivate", "reactive", "download", "full"],
-  teachers: ["view", "add", "edit", "transfer", "deactivate", "reactive", "full"],
+  students: ["view", "add", "edit", "transfer", "deactivate", "reactivate", "download", "full"],
+  teachers: ["view", "add", "edit", "transfer", "deactivate", "reactivate", "full"],
   cohorts: ["view", "add", "edit", "delete", "full"],
-  promotions: ["preview", "promote", "view", "full"],
-  transcript: ["print", "download", "full"],
+  // promotions: ["preview", "promote", "view", "full"],
+  promotions: ["view", "preview", "promote", "full"], // ✅ order fixed
+  transcript: ["view", "print", "download", "full"],
+  // transcript: ["print", "download", "full"],
   subjects: ["view", "add", "edit", "delete", "full"],
   grades: ["view", "add", "edit", "delete", "full"],
   exams: ["view", "input", "full"],
@@ -43,8 +45,8 @@ const ROLE_DEFAULTS = {
     ])
   ),
   staff: {
-    students: { view: true, add: true, edit: true, transfer: true, deactivate: true, reactive: true, download: true },
-    teachers: { view: true, add: true, edit: true, transfer: true, deactivate: true, reactive: true },
+    students: { view: true, add: true, edit: true, transfer: true, deactivate: true, reactivate: true, download: true },
+    teachers: { view: true, add: true, edit: true, transfer: true, deactivate: true, reactivate: true },
     cohorts: { view: true, add: true, edit: true, delete: true },
     promotions: {view: true, preview: true, promote: true },
     transcript: { print: true, download: true },
@@ -137,19 +139,6 @@ export default function UserManagementPage() {
     fetchUsers();
   }, [limit, search, roleFilter, statusFilter]);
 
-  /* ---------------- Handle Form Changes ---------------- */
-  // const handleChange = (e) => {
-  //   const { name, value } = e.target;
-  //   if (name === "role") {
-  //     setForm((prev) => ({ ...prev, role: value, permissions: applyRoleDefaults(value), selectedModule: "" }));
-  //     return;
-  //   }
-  //   if (name === "selectedModule") {
-  //     setForm((prev) => ({ ...prev, selectedModule: value }));
-  //     return;
-  //   }
-  //   setForm((prev) => ({ ...prev, [name]: value }));
-  // };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -192,34 +181,37 @@ export default function UserManagementPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
     
-    // if (name === "role") {
-    //   setForm((prev) => ({
-    //     ...prev,
-    //     role: value,
-    //     permissions: applyRoleDefaults(value),
-    //     selectedModule: "", // reset module selection when role changes
-    //   }));
-    //   return;
-    // }
-    // setForm((prev) => ({ ...prev, [name]: value }));
   
-  /* ---------------- Toggle Permission ---------------- */
   const togglePermission = (module, permission) => {
     setForm((prev) => {
-      const permissions = JSON.parse(JSON.stringify(prev.permissions));
+      const permissions = structuredClone(prev.permissions);
+  
+      // ✅ FULL ACCESS clicked
       if (permission === "full") {
-        const newFull = !permissions[module].full;
-        MODULE_PERMISSIONS[module].forEach((p) => permissions[module][p] = newFull);
-        permissions[module].full = newFull;
-      } else {
-        permissions[module][permission] = !permissions[module][permission];
-        const allNonFull = MODULE_PERMISSIONS[module].filter((p) => p !== "full").every((p) => permissions[module][p]);
-        permissions[module].full = allNonFull;
+        const next = !permissions[module].full;
+  
+        MODULE_PERMISSIONS[module].forEach((p) => {
+          permissions[module][p] = next;
+        });
+  
+        return { ...prev, permissions };
       }
+  
+      // ✅ Toggle individual permission
+      permissions[module][permission] = !permissions[module][permission];
+  
+      // ✅ Check if ALL non-full permissions are true
+      const allChecked = MODULE_PERMISSIONS[module]
+        .filter((p) => p !== "full")
+        .every((p) => permissions[module][p]);
+  
+      // ✅ Sync FULL correctly
+      permissions[module].full = allChecked;
+  
       return { ...prev, permissions };
     });
   };
-
+  
   const resetForm = () => {
     setForm({
       fullName: "",
@@ -235,22 +227,6 @@ export default function UserManagementPage() {
     setEditingUser(null);
   };
 
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   if (!editingUser && !form.password) return toast.error("Password required");
-  //   if (form.password && form.password !== form.confirmPassword) return toast.error("Passwords do not match");
-
-  //   const payload = { fullName: form.fullName, username: form.username, email: form.email, phone: form.phone, role: form.role, permissions: form.permissions, ...(form.password && { password: form.password }) };
-
-  //   try {
-  //     setIsLoading(true);
-  //     if (editingUser) { await updateUser(editingUser._id, payload); toast.success("User updated successfully"); }
-  //     else { await createUser(payload); toast.success("User created successfully"); }
-  //     setShowModal(false); resetForm(); fetchUsers();
-  //   } catch (err) {
-  //     console.error(err); toast.error("Failed to save user");
-  //   } finally { setIsLoading(false); }
-  // };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -326,12 +302,39 @@ export default function UserManagementPage() {
   };
 
   const handleEditUser = (user) => {
-    const permissions = JSON.parse(JSON.stringify(emptyPermissions));
+    const permissions = buildEmptyPermissions();
     const userPerms = user.permissions || {};
-    MODULES.forEach((m) => { if (userPerms[m]) MODULE_PERMISSIONS[m].forEach((p) => (permissions[m][p] = !!userPerms[m][p])); });
-    setForm({ fullName: user.fullName, username: user.username, email: user.email, phone: user.phone, password: "", confirmPassword: "", role: user.role, permissions, selectedModule: "" });
-    setEditingUser(user); setShowModal(true);
+  
+    MODULES.forEach((module) => {
+      MODULE_PERMISSIONS[module].forEach((perm) => {
+        permissions[module][perm] = !!userPerms?.[module]?.[perm];
+      });
+  
+      // ✅ recompute FULL properly
+      const allChecked = MODULE_PERMISSIONS[module]
+        .filter((p) => p !== "full")
+        .every((p) => permissions[module][p]);
+  
+      permissions[module].full = allChecked;
+    });
+  
+    setForm({
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      phone: user.phone,
+      password: "",
+      confirmPassword: "",
+      role: user.role,
+      permissions,
+      selectedModule: "", // user selects module manually
+    });
+  
+    setEditingUser(user);
+    setShowModal(true);
   };
+  
+
 
   const handleToggleStatus = async (id) => {
     setIsLoading(true);
@@ -518,59 +521,6 @@ export default function UserManagementPage() {
   }}
 />
 
-      {/* Modal */}
-      {/* <Modal isOpen={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingUser ? "Edit User" : "Create User"}>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {["fullName","username","email","phone","password","confirmPassword"].map((field) => (
-            <div key={field}>
-              <label className="block mb-1">{field.replace(/([A-Z])/g, " $1")}</label>
-              <input type={field.includes("password") ? "password" : "text"} name={field} value={form[field]} onChange={handleChange} placeholder={field} className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-blue-500 outline-none" required={!editingUser || ["fullName","username"].includes(field)} />
-            </div>
-          ))}
-
-          <div>
-            <label>Role</label>
-            <select name="role" value={form.role} onChange={handleChange} className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-blue-500">
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-
-          {form.role !== "admin" && form.role === "staff" && (
-            <>
-              <div>
-                <label>Select Module</label>
-                <select name="selectedModule" value={form.selectedModule} onChange={handleChange} className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-blue-500">
-                  <option value="">-- Choose Module --</option>
-                  {MODULES.map((mod) => <option key={mod} value={mod}>{mod.charAt(0).toUpperCase() + mod.slice(1)}</option>)}
-                </select>
-              </div>
-
-              {form.selectedModule && (
-                <div className="col-span-full p-4 border rounded bg-white">
-                  <h3 className="font-semibold mb-2">Permissions for {form.selectedModule}</h3>
-                  <div className="flex flex-wrap gap-3">
-                    {MODULE_PERMISSIONS[form.selectedModule].map((perm) => (
-                      <label key={perm} className="flex items-center gap-2 border p-2 rounded hover:bg-gray-50 text-sm">
-                        <input type="checkbox" checked={!!form.permissions[form.selectedModule][perm]} onChange={() => togglePermission(form.selectedModule, perm)} />
-                        {perm.charAt(0).toUpperCase() + perm.slice(1)}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="col-span-full flex justify-end gap-2 mt-2">
-            <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="px-4 py-2 border rounded">Cancel</button>
-            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
-          </div>
-        </form>
-      </Modal> */}
-
-
-
 <Modal
   isOpen={showModal}
   onClose={() => {
@@ -656,7 +606,8 @@ export default function UserManagementPage() {
             value={form.selectedModule}
             onChange={handleChange}
             className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-blue-500"
-            required
+            required={!editingUser}
+
           >
             <option value="">-- Choose Module --</option>
             {MODULES.map((mod) => (
@@ -676,25 +627,18 @@ export default function UserManagementPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {MODULE_PERMISSIONS[form.selectedModule].map((perm) => (
-                <label
-                  key={perm}
-                  className="flex items-center gap-2 border p-2 rounded hover:bg-gray-50 text-sm"
-                >
-                  <input
-                    type="checkbox"
-                    checked={
-                      !!(
-                        form.permissions?.[form.selectedModule]?.[perm]
-                      )
-                    }
-                    onChange={() =>
-                      togglePermission(form.selectedModule, perm)
-                    }
-                  />
-                  {perm.charAt(0).toUpperCase() + perm.slice(1)}
-                </label>
-              ))}
+
+{MODULE_PERMISSIONS[form.selectedModule].map((perm) => (
+  <label key={perm} className="flex items-center gap-2 border p-2 rounded">
+    <input
+      type="checkbox"
+      checked={!!form.permissions[form.selectedModule][perm]}
+      onChange={() => togglePermission(form.selectedModule, perm)}
+    />
+    {perm === "full" ? "Full Access (Select All)" : perm}
+  </label>
+))}
+
             </div>
           </div>
         )}

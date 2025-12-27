@@ -3,7 +3,11 @@ import { fetchJson } from '../http';
 
 export async function previewPromotion(params) {
   // params: URLSearchParams object
-  return fetchJson(`/promotions/preview?${params.toString()}`);
+  // return fetchJson(`/promotions/preview?${params.toString()}`,);
+  return fetchJson(`/promotions/preview?${params.toString()}`, {
+    credentials: 'include', // ✅ FIXED
+    // Credentials: 'include',
+  });
 }
 
 export async function executePromotion({ timing, studentIds }) {

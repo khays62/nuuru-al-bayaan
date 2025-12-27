@@ -139,6 +139,7 @@ export default function GradePage() {
 
 		const { auth, hasPermission } = useAuth();
 		const canViewGrade	 = hasPermission("grades", "view");
+		const canAddGrade	 = hasPermission("grades", "add");
 
 
 
@@ -157,9 +158,11 @@ export default function GradePage() {
 												<Plus className="w-4 h-4 mr-2" /> Add Grade Section
 										</button> */}
 
+{canAddGrade && (
+	
 <button
   onClick={handleAddNew}
-  disabled={!hasPermission("grades", "add")}
+  // disabled={!hasPermission("grades", "add")}
   className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
     ${hasPermission("grades", "add")
       ? "bg-blue-600 hover:bg-blue-700 text-white"
@@ -169,6 +172,8 @@ export default function GradePage() {
   <Plus size={20} className="mr-2" />
   Add Grade Section
 </button>
+
+)}
 								</div>
 						</div>
 

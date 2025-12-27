@@ -4,49 +4,8 @@ import { apiUrl } from '../http';
 import toast from 'react-hot-toast'; // ✅ add this at the top
 
 
-// export async function downloadStudentsCsv() {
-//   const res = await fetch(`/students/export`, {
-//     method: "GET",
-//     credentials: "include",
-//   });
 
-//   const blob = await res.blob();
-//   const url = window.URL.createObjectURL(blob);
-//   const a = document.createElement("a");
-//   a.href = url;
-//   a.download = "students_export.csv";
-//   a.click();
-//   window.URL.revokeObjectURL(url);
-// }
 
-// modules/enrollments.js (frontend)
-// export async function createEnrollment(payload) {
-//   const res = await fetch(apiUrl('/enrollments'), {
-//     method: 'POST',
-//     credentials: 'include',
-//     headers: { 'Content-Type': 'application/json' },
-//     body: JSON.stringify(payload)
-//   });
-//   const data = await res.json().catch(() => ({}));
-//   return { ok: res.ok, status: res.status, data };
-// }
-
-export async function recordEnrollmentPayment(enrollmentId, { amount, method, note }) {
-  const res = await fetch(apiUrl(`/enrollments/${enrollmentId}/payments`), {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, method, note })
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
-}
-
-export async function getStudentBalance(studentId) {
-  const res = await fetch(apiUrl(`/enrollments/student/${studentId}/balance`), { credentials: 'include' });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
-}
 
 
 export async function downloadStudentsCsv() {

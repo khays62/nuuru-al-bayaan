@@ -141,6 +141,7 @@ export default function CohortsPage() {
   const canViewCohort	 = hasPermission("cohorts", "view");
   const canDelete = hasPermission("cohorts", "delete");
   const canEdit = hasPermission("cohorts", "edit");
+  const canAdd = hasPermission("cohorts", "add");
 
   return (
     <div className="space-y-6">
@@ -164,20 +165,28 @@ export default function CohortsPage() {
   Add Cohort
 </button> */}
 
-<button
+{(canAdd && 
+  <button
   onClick={() => {
     setEditing(null);
     setShowModal(true);
   }}
   disabled={!hasPermission("cohorts", "add")}
   className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
-    ${hasPermission("cohorts", "add")
-      ? "bg-blue-600 hover:bg-blue-700 text-white"
-      : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}
+      "bg-blue-600 hover:bg-blue-700 text-white"
+      `
+      
+      }
 >
   <Plus size={20} className="mr-2" />
   Add Cohort
 </button>
+
+  
+  
+)}
+
+
 
 
 
@@ -333,7 +342,24 @@ export default function CohortsPage() {
                     />
                   )}
 
-                  {row.status === 'active' ? (
+{canEdit && (
+  row.status === 'active' ? (
+    <ActionButton
+      title="Archive"
+      icon={<Archive size={16} />}
+      onClick={() => handleArchive(row._id)}
+    />
+  ) : (
+    <ActionButton
+      title="Activate"
+      icon={<ArchiveRestore size={16} />}
+      onClick={() => handleActivate(row._id)}
+    />
+  )
+)}
+
+
+                  {/* {canEdit && row.status === 'active' ? (
                     <ActionButton
                       title="Archive"
                       icon={<Archive size={16} />}
@@ -345,7 +371,7 @@ export default function CohortsPage() {
                       icon={<ArchiveRestore size={16} />}
                       onClick={() => handleActivate(row._id)}
                     />
-                  )}
+                  )} */}
 
                   {canDelete && (
                     <ActionButton

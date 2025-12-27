@@ -299,19 +299,6 @@ export default function StudentPage() {
                     <h1 className="text-2xl font-bold text-gray-800">Student Management</h1>
                     <p className="mt-1 text-sm text-gray-600">Manage all student records in the system.</p>
                 </div>
-                {/* <button onClick={handleAddNew} className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">
-                    <Plus size={20} className="mr-2" />Add New Student
-                </button> */}
-
-{/* {hasPermission("students", "add") && (
-  <button
-    onClick={handleAddNew}
-    className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700"
-  >
-    <Plus size={20} className="mr-2" />
-    Add New Student
-  </button>
-)} */}
 
 <button
   onClick={handleAddNew}
@@ -327,16 +314,6 @@ export default function StudentPage() {
 </button>
 
 
-
-        {/* <ActionButton
-  variant="neutral"
-  onClick={handleAddNew}
-  title="Add New Student"
-  icon={<Plus size={16} className="mr-2"  />}
-  disabled={!hasPermission("students", "add")} // disable if user lacks download permission
->
-Add New Student
- </ActionButton> */}
             </div>
 
             <DataToolbar

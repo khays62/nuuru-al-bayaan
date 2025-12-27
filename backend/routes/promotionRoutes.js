@@ -2,7 +2,6 @@
 import express from 'express';
 import { previewPromotion, executePromotion } from '../controllers/promotionController.js';
 import { checkPermission } from '../middleware/checkPermission.js';
-import ProtectedRoute from '../../frontend/src/components/ProtectedRoute.jsx';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();

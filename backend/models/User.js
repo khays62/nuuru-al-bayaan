@@ -133,6 +133,7 @@ const modulePermissionSchema = new mongoose.Schema({
   edit: { type: Boolean, default: false },
   delete: { type: Boolean, default: false },
   deactivate: { type: Boolean, default: false },
+  reactivate: { type: Boolean, default: false }, 
   transfer: { type: Boolean, default: false },
   download: { type: Boolean, default: false },
   print: { type: Boolean, default: false },   // ✅ ADD THIS

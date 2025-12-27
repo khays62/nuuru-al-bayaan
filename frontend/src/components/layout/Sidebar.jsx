@@ -82,7 +82,16 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         }`;
 
         const { auth } = useAuth();
-        const role = auth?.user?.role;
+        // const role = auth?.user?.role;
+
+const role = auth?.user?.role;
+const permissions = auth?.user?.permissions;
+
+const hasPermission = (module) => {
+  if (role === "admin") return true;
+  return !!permissions?.[module]?.view;
+};
+
     return (
         <>
             {/* Sidebar for Desktop */}
@@ -143,7 +152,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     );
 })} */}
 
-{navItems
+{/* {navItems
   .filter(
     (item) =>
       item &&                    // make sure item exists
@@ -164,7 +173,70 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         {!isCollapsed && <span className="ml-4 whitespace-nowrap">{item.label}</span>}
       </NavLink>
     );
-})}
+})} */}
+
+{/* {navItems
+  .filter((item) => {
+    if (role === "admin") return true;
+    if (role === "staff") return item.module && hasPermission(item.module);
+    if (role === "student") return item.roles?.includes("student");
+    return false;
+  })
+  .map((item) => {
+    const Icon = item.icon;
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        className={navLinkClasses}
+        onClick={closeMobileMenu}
+      >
+        <Icon size={22} />
+        <span className="ml-4">{item.label}</span>
+      </NavLink>
+    );
+  })} */}
+
+  
+
+
+
+{navItems
+  .filter((item) => {
+    if (!item) return false;
+
+    // Admin sees everything
+    if (role === "admin") return true;
+
+    // Staff → permission based ONLY
+    if (role === "staff") {
+      return item.module && hasPermission(item.module);
+    }
+
+    // Student → role based
+    if (role === "student") {
+      return item.roles?.includes("student");
+    }
+
+    return false;
+  })
+  .map((item) => {
+    const Icon = item.icon;
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        className={navLinkClasses}
+        title={isCollapsed ? item.label : ""}
+      >
+        <Icon size={22} className="flex-shrink-0" />
+        {!isCollapsed && (
+          <span className="ml-4 whitespace-nowrap">{item.label}</span>
+        )}
+      </NavLink>
+    );
+  })}
+
 
 
                 </nav>

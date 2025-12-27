@@ -169,6 +169,7 @@ export default function SubjectPage() {
   const { auth, hasPermission } = useAuth();
 
   const canViewSubject = hasPermission("subjects","view")
+  const canAddSubject = hasPermission("subjects","add") 
   // Button hadda waxa aan u raraynaa header-ka sare (title row) si ay uga ekaato Classes page
 
   return (
@@ -185,18 +186,25 @@ export default function SubjectPage() {
           >
             <Plus className="w-4 h-4 mr-2" /> Add New Subject
           </button> */}
-          <button
-  onClick={handleAddNew}
-  disabled={!hasPermission("subjects", "add")}
-  className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
-    ${hasPermission("subjects", "add")
-      ? "bg-blue-600 hover:bg-blue-700 text-white"
-      : "bg-gray-300 text-gray-500 cursor-not-allowed"}
-  `}
->
-  <Plus size={20} className="mr-2" />
-  Add New Subject
-</button>
+
+          {(canAddSubject && 
+          
+                    <button
+                    onClick={handleAddNew}
+                    disabled={!hasPermission("subjects", "add")}
+                    className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
+                     
+                        "bg-blue-600 hover:bg-blue-700 text-white"
+                    `}
+                  >
+                    <Plus size={20} className="mr-2" />
+                    Add New Subject
+                  </button>
+            
+            
+            )}
+
+
         </div>
       </div>
 
@@ -330,8 +338,8 @@ export default function SubjectPage() {
           subjects={subjects}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          canEdit={hasPermission('subject', 'edit')}
-          canDelete={hasPermission('subject', 'delete')}
+          canEdit={hasPermission('subjects', 'edit')}
+          canDelete={hasPermission('subjects', 'delete')}
         />
 
         <PaginationControls

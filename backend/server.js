@@ -68,18 +68,18 @@ import connectDB from "./config/db.js";
 import { ensureIndexes } from "./utils/indexMaintenance.js";
 
 // Routes
-import userRoutes from "./routesss/userRoutes.js";
-import lookupRoutes from "./routesss/lookupRoutes.js";
-import studentRoutes from "./routesss/studentRoutes.js";
-import subjectRoutes from "./routesss/subjectRoutes.js";
-import gradeSectionRoutes from "./routesss/gradeSectionRoutes.js";
-import authRoutes from "./routesss/authRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import lookupRoutes from "./routes/lookupRoutes.js";
+import studentRoutes from "./routes/studentRoutes.js";
+import subjectRoutes from "./routes/subjectRoutes.js";
+import gradeSectionRoutes from "./routes/gradeSectionRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 import announcementRoutes from "./routes/announcementRoutes.js";
-import examRoutes from "./routesss/examRoutes.js";
-import cohortRoutes from "./routesss/cohortRoutes.js";
+import examRoutes from "./routes/examRoutes.js";
+import cohortRoutes from "./routes/cohortRoutes.js";
 // import auditRoutes from "./routes/auditRoutes.js";
-import promotionRoutes from "./routesss/promotionRoutes.js";
-import transcriptRoutes from "./routesss/transcriptRoutes.js";
+import promotionRoutes from "./routes/promotionRoutes.js";
+import transcriptRoutes from "./routes/transcriptRoutes.js";
 dotenv.config();
 
 const startServer = async () => {

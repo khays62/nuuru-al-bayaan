@@ -44,8 +44,6 @@ import {
   setEnrollmentActiveFlag,
   getMyResults, // <-- Add this
   exportStudentsCsvController,
-  recordEnrollmentPayment,
-  getStudentBalance
 } from "../controllers/studentController.js";
 
 import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
@@ -198,12 +196,11 @@ router
   .get(
     protect,
     checkPermission("students", "view"),
-    getStudentBalance
+  
   )
   .post(
     protect,
     checkPermission("students", "add"),
-    recordEnrollmentPayment
   );
 
 
