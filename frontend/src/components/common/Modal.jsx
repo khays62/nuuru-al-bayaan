@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 
 // A reusable Modal component with a professional backdrop blur effect.
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children, panelClassName = '' }) => {
     // If the modal is not open, render nothing.
     if (!isOpen) return null;
 
@@ -19,7 +19,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
                 `animate-scale-in` is a custom animation for a subtle zoom-in effect.
             */}
             <div 
-                className="bg-white rounded-lg shadow-xl w-full max-w-2xl transform transition-transform duration-300 scale-95 animate-scale-in modal-panel"
+                className={`bg-white rounded-lg shadow-xl w-full ${panelClassName || 'max-w-2xl'} transform transition-transform duration-300 scale-95 animate-scale-in modal-panel`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header */}

@@ -43,6 +43,35 @@ export default function TimetablePage() {
 
   const dayNames = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
 
+  const formatTime12h = (t) => {
+    const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return String(t || '');
+    let hh = Number(m[1]);
+    const mm = m[2];
+    if (!Number.isFinite(hh)) return String(t || '');
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = hh % 12;
+    if (hh === 0) hh = 12;
+    return `${hh}:${mm} ${ampm}`;
+  };
+
+  const isValidTime24h = (raw) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(raw || ''));
+
+  const formatRangeWithAmPm = (start, end) => {
+    const sOk = isValidTime24h(start);
+    const eOk = isValidTime24h(end);
+    if (!sOk || !eOk) return `${start || ''} - ${end || ''}`.trim();
+    const s12 = formatTime12h(start);
+    const e12 = formatTime12h(end);
+    const sAmPm = String(s12).endsWith('PM') ? 'PM' : 'AM';
+    const eAmPm = String(e12).endsWith('PM') ? 'PM' : 'AM';
+    if (sAmPm === eAmPm) {
+      // keep original 24h range but suffix with AM/PM once
+      return `${start} - ${end} ${sAmPm}`;
+    }
+    return `${start} ${sAmPm} - ${end} ${eAmPm}`;
+  };
+
   const formatConflictReason = (reason) => {
     const r = String(reason || '').toLowerCase();
     if (r.includes('gs')) return 'Class conflict';
@@ -103,6 +132,20 @@ export default function TimetablePage() {
     const src = slots.find((s) => String(s._id) === String(slotId));
     if (!src) return;
 
+    // Break slots are static (no drag/drop moves or swaps)
+    if (src?.isBreak) {
+      toast.error('Break cannot be moved');
+      return;
+    }
+
+    if (targetSlotId) {
+      const dst = slots.find((s) => String(s._id) === String(targetSlotId));
+      if (dst?.isBreak) {
+        toast.error('Cannot drop onto a Break');
+        return;
+      }
+    }
+
     const same =
       Number(src.dayOfWeek) === Number(target?.dayOfWeek) &&
       String(src.startTime) === String(target?.startTime) &&
@@ -136,6 +179,13 @@ export default function TimetablePage() {
   const handleSwap = async () => {
     if (!swapUi?.aId || !swapUi?.bId) return;
     try {
+      const a = slots.find((s) => String(s._id) === String(swapUi.aId));
+      const b = slots.find((s) => String(s._id) === String(swapUi.bId));
+      if (a?.isBreak || b?.isBreak) {
+        toast.error('Break cannot be swapped');
+        closeSwap();
+        return;
+      }
       setDndBusy(true);
       await swapSlots({ aId: swapUi.aId, bId: swapUi.bId });
       const list = await getSlots({ gs: sectionId });
@@ -388,14 +438,26 @@ export default function TimetablePage() {
                 const da = new Date(a.createdAt || 0).getTime();
                 const db = new Date(b.createdAt || 0).getTime();
                 return da - db;
-              }).map(g => ({ value: g._id, label: g.gradeName }))} placeholder="Level" className="min-w-[140px]" />
-              <FilterSelect value={shiftId} onChange={setShiftId} options={(shifts||[]).map(s => ({ value: s._id, label: s.shiftName }))} placeholder="Shift" className="min-w-[120px]" />
-              <FilterSelect value={sectionId} onChange={setSectionId} options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}` }))} placeholder="Section" className="min-w-[200px]" />
-              <FilterSelect value={subjectId} onChange={setSubjectId} options={(subjects||[]).map(s => ({ value: s._id, label: s.subjectName }))} placeholder="Subject" className="min-w-[160px]" disabled={isBreak} />
-              <MultiSelectDropdown value={days} onChange={setDays} options={dayOpts} placeholder="Days" className="min-w-[200px]" />
-              <input type="time" value={startTime || '00:00'} onChange={e=>setStartTime(e.target.value)} className="px-2 py-1 border rounded" />
+              }).map(g => ({ value: g._id, label: g.gradeName }))} placeholder="Level" className="min-w-35" />
+              <FilterSelect value={shiftId} onChange={setShiftId} options={(shifts||[]).map(s => ({ value: s._id, label: s.shiftName }))} placeholder="Shift" className="min-w-30" />
+              <FilterSelect value={sectionId} onChange={setSectionId} options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}` }))} placeholder="Section" className="min-w-50" />
+              <FilterSelect value={subjectId} onChange={setSubjectId} options={(subjects||[]).map(s => ({ value: s._id, label: s.subjectName }))} placeholder="Subject" className="min-w-40" disabled={isBreak} />
+              <MultiSelectDropdown value={days} onChange={setDays} options={dayOpts} placeholder="Days" className="min-w-50" />
+              <input
+                type="time"
+                step={60}
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="px-2 py-1 border rounded"
+              />
               <span>to</span>
-              <input type="time" value={endTime || '00:00'} onChange={e=>setEndTime(e.target.value)} className="px-2 py-1 border rounded" />
+              <input
+                type="time"
+                step={60}
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="px-2 py-1 border rounded"
+              />
               <input type="text" value={room} onChange={e=>setRoom(e.target.value)} placeholder="Room" className="px-2 py-1 border rounded" />
             </div>
           )}
@@ -430,7 +492,9 @@ export default function TimetablePage() {
               <th className="text-left px-3 py-2">No periods</th>
             ) : (
               periods.map((p, i) => (
-                <th key={i} className="text-left px-3 py-2">{p.startTime} - {p.endTime}</th>
+                <th key={i} className="text-left px-3 py-2">
+                  {formatRangeWithAmPm(p.startTime, p.endTime)}
+                </th>
               ))
             )}
           </tr>

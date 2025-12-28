@@ -13,15 +13,8 @@ import { RotateCcw, Printer, Download } from 'lucide-react';
 import TableShell from '../components/common/table/TableShell';
 import PrintHeader from '../components/print/PrintHeader';
 import PrintFooter from '../components/print/PrintFooter';
-import { useAuth } from "../contexts/AuthContext";
 
 export default function ResultPage() {
-    const { auth, hasPermission } = useAuth();
-
-    const canViewGrid = hasPermission("results", "view");
-    const canExport = hasPermission("results", "export");
-    const canPrint = hasPermission("results", "print");
-
     // Persist filters in sessionStorage (not URL)
     const SESSION_KEY = 'results:filters:v1';
     const saved = (() => {
@@ -234,8 +227,6 @@ export default function ResultPage() {
                 <p className="mt-1 text-sm text-gray-600">Pick filters to load class results and rankings automatically. Totals are normalized to 100.</p>
             </div>
 
-           
-
             <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap items-center gap-3 no-print">
                 <AcademicYearSelect
                     value={academicYearId}
@@ -309,8 +300,6 @@ export default function ResultPage() {
                 )}
                 <div className="flex items-center gap-2 ml-auto flex-wrap">
                     <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
-                    {canExport && (
-
                     <ActionButton
                         variant="neutral"
                         onClick={handleExportCsv}
@@ -318,15 +307,12 @@ export default function ResultPage() {
                         icon={<Download size={16} />}
                         disabled={loading || !academicYearId || !gradeSectionId || mode==='trend' || mode==='difficulty' || results.length===0}
                     >CSV</ActionButton>
-                    )}
-                    {canPrint && (
                     <ActionButton
                         variant="neutral"
                         onClick={handlePrint}
                         title="Print"
                         icon={<Printer size={16} />}
                     >Print</ActionButton>
-                    )}
                 </div>
             </div>
 
@@ -358,14 +344,8 @@ export default function ResultPage() {
                 </div>
             )}
 
-
-
             <div className="bg-white p-4 rounded-lg shadow overflow-auto results-print">
-            {!canViewGrid ? (
-    <p className="text-sm text-red-500">
-      You do not have permission to view results.
-    </p>
-  ) : (!academicYearId || !gradeSectionId) ? (
+                {(!academicYearId || !gradeSectionId) ? (
                     <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift, and Section to view results.</p>
                 ) : (mode === 'subject' && !subjectId) ? (
                     <p className="text-sm text-gray-500">Choose a Subject to view results.</p>
@@ -543,14 +523,7 @@ export default function ResultPage() {
                     </TableShell>
                     </>
                 )}
-
-            
             </div>
-
-
-
-
-
             
         </div>
     );

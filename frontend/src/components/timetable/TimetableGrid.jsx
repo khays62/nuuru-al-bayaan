@@ -114,10 +114,13 @@ export default function TimetableGrid({
                   onDrop={(e) => onDrop(e, idx, p, cellSlot?._id)}
                 >
                   <div
-                    draggable={!busy}
-                    onDragStart={(e) => onDragStart(e, cellSlot._id)}
-                    className="cursor-move"
-                    title="Drag to move"
+                    draggable={!busy && !cellSlot.isBreak}
+                    onDragStart={(e) => {
+                      if (cellSlot.isBreak) return;
+                      onDragStart(e, cellSlot._id);
+                    }}
+                    className={cellSlot.isBreak ? 'cursor-default' : 'cursor-move'}
+                    title={cellSlot.isBreak ? 'Break (locked)' : 'Drag to move'}
                   >
                     {cellSlot.isBreak ? (
                       <div className="text-xs text-gray-500">Break</div>

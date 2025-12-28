@@ -4,192 +4,38 @@ import Student from '../models/Student.js';
 // @desc    Aggregated full transcript across all enrollments (multi-year)
 // @route   GET /api/students/:id/full-transcript (mounted in student routes for compatibility)
 // @route   GET /api/transcripts/students/:id/full-transcript (new router)
-// export const getFullTranscript = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
-//     const student = await Student.findById(id).select('fullName studentId').lean();
-//     if (!student) return res.status(404).json({ message: 'Student not found' });
-
-//     const Enrollment = (await import('../models/Enrollment.js')).default;
-//     // Fetch all enrollments (oldest first for chronological display)
-//     const enrollments = await Enrollment.find({ student: id })
-//       .sort({ joinedAt: 1, createdAt: 1 })
-//       .populate([
-//         { path: 'gradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
-//         { path: 'academicYear', select: 'yearName' },
-//         { path: 'grade', select: 'gradeName' },
-//         { path: 'shift', select: 'shiftName' }
-//       ])
-//       .lean();
-
-//     // Bring in transfers (no pagination) for context
-//     const TransferLog = (await import('../models/TransferLog.js')).default;
-//     const userModelRegisteredFT = !!mongoose.models.User;
-//     let transfersQuery = TransferLog.find({ student: id })
-//       .sort({ date: 1, createdAt: 1 })
-//       .populate({ path: 'fromGradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] })
-//       .populate({ path: 'toGradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] });
-//     if (userModelRegisteredFT) {
-//       transfersQuery = transfersQuery.populate({ path: 'byUser', select: 'fullName email' });
-//     }
-//     const transfers = await transfersQuery.lean();
-
-//     // Helper to build transcript for one enrollment using existing logic (inline adaptation of getTranscript)
-//     const Exam = (await import('../models/Exam.js')).default;
-//     const ExamType = (await import('../models/ExamType.js')).default;
-//     const ExamScore = (await import('../models/ExamScore.js')).default;
-//     const GradeSection = (await import('../models/GradeSection.js')).default;
-//     const Subject = (await import('../models/Subject.js')).default;
-
-//     const enrollmentTranscripts = [];
-//     for (const enr of enrollments) {
-//       const academicYearId = String(enr.academicYear?._id || enr.academicYear);
-//       const gradeSectionId = String(enr.gradeSection?._id || enr.gradeSection);
-//       if (!academicYearId || !gradeSectionId) continue;
-//       // Exams for this AY + section
-//       const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId }).select('_id examType').lean();
-//       if (!exams.length) {
-//         enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes: [], subjects: [], rows: [], overall: { total: 0, average: 0 } } });
-//         continue;
-//       }
-//       const examTypeIds = [...new Set(exams.map(e => String(e.examType)))];
-//       const examTypesDocs = await ExamType.find({ _id: { $in: examTypeIds } }).select('typeName').lean();
-//       const examTypeNameMap = Object.fromEntries(examTypesDocs.map(t => [String(t._id), t.typeName]));
-//       const examTypes = examTypeIds.map(eid => ({ _id: eid, typeName: examTypeNameMap[eid] || 'Exam' })).sort((a,b)=> (a.typeName||'').localeCompare(b.typeName||''));
-//       const examIds = exams.map(e => e._id);
-//       const gsDoc = await GradeSection.findById(gradeSectionId).select('subjects').lean();
-//       const subjectIds = (gsDoc?.subjects || []).map(sid => new mongoose.Types.ObjectId(sid));
-//       if (!subjectIds.length) {
-//         enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes, subjects: [], rows: [], overall: { total: 0, average: 0 } } });
-//         continue;
-//       }
-//       const subjectDocs = await Subject.find({ _id: { $in: subjectIds } }).select('subjectName').lean();
-//       const subjectNameMap = Object.fromEntries(subjectDocs.map(s => [String(s._id), s.subjectName]));
-//       const subjects = subjectIds.map(sid => ({ _id: sid, subjectName: subjectNameMap[String(sid)] || 'Subject' }));
-//       const scores = await ExamScore.find({ student: id, exam: { $in: examIds }, subject: { $in: subjectIds } }).select('subject exam scoreObtained').lean();
-//       const examIdToTypeId = Object.fromEntries(exams.map(e => [String(e._id), String(e.examType)]));
-//       const rows = subjects.map(su => {
-//         const subjectIdStr = String(su._id);
-//         const perMap = {};
-//         for (const et of examTypes) perMap[String(et._id)] = 0;
-//         for (const sc of scores) {
-//           if (String(sc.subject) !== subjectIdStr) continue;
-//           const etId = examIdToTypeId[String(sc.exam)];
-//           if (!etId) continue;
-//           perMap[etId] += Number(sc.scoreObtained || 0);
-//         }
-//         const perExamList = examTypes.map(et => ({ examTypeId: et._id, typeName: et.typeName, score: Number(perMap[String(et._id)] || 0) }));
-//         const total = perExamList.reduce((a,b)=> a + (b.score||0), 0);
-//         const average = subjects.length ? total : 0;
-//         return { subjectId: su._id, subjectName: su.subjectName, exams: perExamList, total, average };
-//       });
-//       const overallTotal = rows.reduce((a,b)=> a + (b.total||0), 0);
-//       const overallAverage = subjects.length ? (overallTotal / subjects.length) : 0;
-//       enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes, subjects, rows, overall: { total: overallTotal, average: overallAverage } } });
-//     }
-
-//     // Merge transcripts back into enrollment objects
-//     const transcriptByEnrollment = new Map(
-//       enrollmentTranscripts.map(et => [String(et.enrollmentId), et.transcript])
-//     );
-//     const enrichedEnrollments = enrollments.map(en => {
-//       const enrichedGradeSection = (en.gradeSection && en.gradeSection.section)
-//         ? {
-//             _id: en.gradeSection._id,
-//             section: en.gradeSection.section,
-//             grade: en.gradeSection.grade?.gradeName || en.grade?.gradeName,
-//             shift: en.gradeSection.shift?.shiftName || en.shift?.shiftName
-//           }
-//         : en.gradeSection;
-//       return {
-//         enrollmentId: en._id,
-//         academicYear: en.academicYear?.yearName
-//           ? { _id: en.academicYear._id, yearName: en.academicYear.yearName }
-//           : en.academicYear,
-//         gradeSection: enrichedGradeSection,
-//         joinedAt: en.joinedAt,
-//         leftAt: en.leftAt,
-//         status: en.status,
-//         transcript: transcriptByEnrollment.get(String(en._id)) || {
-//           examTypes: [],
-//           subjects: [],
-//           rows: [],
-//           overall: { total: 0, average: 0 }
-//         }
-//       };
-//     });
-
-//     // Simple cumulative summary (sum totals across enrollments)
-//     let cumulativeTotal = 0; let cumulativeSubjects = new Set();
-//     enrichedEnrollments.forEach(en => {
-//       cumulativeTotal += en.transcript.overall.total || 0;
-//       (en.transcript.subjects || []).forEach(s => cumulativeSubjects.add(String(s._id)));
-//     });
-//     const cumulativeAverage = enrichedEnrollments.length ? (cumulativeTotal / (cumulativeSubjects.size || 1)) : 0;
-
-//     res.json({
-//       student,
-//       enrollments: enrichedEnrollments,
-//       transfers,
-//       summary: {
-//         enrollmentCount: enrichedEnrollments.length,
-//         distinctSubjects: cumulativeSubjects.size,
-//         cumulativeTotal,
-//         cumulativeAverage
-//       }
-//     });
-//   } catch (err) {
-//     console.error('getFullTranscript error', err);
-//     res.status(500).json({ message: 'Server Error' });
-//   }
-// };
-
 export const getFullTranscript = async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.isValidObjectId(id)) 
-      return res.status(400).json({ message: 'Invalid ID' });
-
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
     const student = await Student.findById(id).select('fullName studentId').lean();
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
     const Enrollment = (await import('../models/Enrollment.js')).default;
+    // Fetch all enrollments (oldest first for chronological display)
     const enrollments = await Enrollment.find({ student: id })
       .sort({ joinedAt: 1, createdAt: 1 })
       .populate([
-        { path: 'gradeSection', populate: [ 
-            { path: 'grade', select: 'gradeName' }, 
-            { path: 'shift', select: 'shiftName' } 
-          ] 
-        },
+        { path: 'gradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
         { path: 'academicYear', select: 'yearName' },
         { path: 'grade', select: 'gradeName' },
         { path: 'shift', select: 'shiftName' }
       ])
       .lean();
 
-    // Fetch transfer logs
+    // Bring in transfers (no pagination) for context
     const TransferLog = (await import('../models/TransferLog.js')).default;
+    const userModelRegisteredFT = !!mongoose.models.User;
     let transfersQuery = TransferLog.find({ student: id })
       .sort({ date: 1, createdAt: 1 })
-      .populate({ path: 'fromGradeSection', populate: [ 
-          { path: 'grade', select: 'gradeName' }, 
-          { path: 'shift', select: 'shiftName' } 
-        ] 
-      })
-      .populate({ path: 'toGradeSection', populate: [ 
-          { path: 'grade', select: 'gradeName' }, 
-          { path: 'shift', select: 'shiftName' } 
-        ] 
-      });
-    
-    if (mongoose.models.User) {
+      .populate({ path: 'fromGradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] })
+      .populate({ path: 'toGradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] });
+    if (userModelRegisteredFT) {
       transfersQuery = transfersQuery.populate({ path: 'byUser', select: 'fullName email' });
     }
     const transfers = await transfersQuery.lean();
 
-    // Prepare transcript per enrollment
+    // Helper to build transcript for one enrollment using existing logic (inline adaptation of getTranscript)
     const Exam = (await import('../models/Exam.js')).default;
     const ExamType = (await import('../models/ExamType.js')).default;
     const ExamScore = (await import('../models/ExamScore.js')).default;
@@ -201,34 +47,34 @@ export const getFullTranscript = async (req, res) => {
       const academicYearId = String(enr.academicYear?._id || enr.academicYear);
       const gradeSectionId = String(enr.gradeSection?._id || enr.gradeSection);
       if (!academicYearId || !gradeSectionId) continue;
-
-      // Fetch exams for this enrollment
-      const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId })
-                              .select('_id examType').lean();
+      // Exams for this AY + section
+      const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId }).select('_id examType').lean();
+      if (!exams.length) {
+        enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes: [], subjects: [], rows: [], overall: { total: 0, average: 0 } } });
+        continue;
+      }
       const examTypeIds = [...new Set(exams.map(e => String(e.examType)))];
       const examTypesDocs = await ExamType.find({ _id: { $in: examTypeIds } }).select('typeName').lean();
       const examTypeNameMap = Object.fromEntries(examTypesDocs.map(t => [String(t._id), t.typeName]));
-      const examTypes = examTypeIds.map(eid => ({ _id: eid, typeName: examTypeNameMap[eid] || 'Exam' }))
-                                   .sort((a,b)=> (a.typeName||'').localeCompare(b.typeName||''));
-
-      // Fetch subjects
+      const examTypes = examTypeIds.map(eid => ({ _id: eid, typeName: examTypeNameMap[eid] || 'Exam' })).sort((a,b)=> (a.typeName||'').localeCompare(b.typeName||''));
+      const examIds = exams.map(e => e._id);
       const gsDoc = await GradeSection.findById(gradeSectionId).select('subjects').lean();
       const subjectIds = (gsDoc?.subjects || []).map(sid => new mongoose.Types.ObjectId(sid));
+      if (!subjectIds.length) {
+        enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes, subjects: [], rows: [], overall: { total: 0, average: 0 } } });
+        continue;
+      }
       const subjectDocs = await Subject.find({ _id: { $in: subjectIds } }).select('subjectName').lean();
       const subjectNameMap = Object.fromEntries(subjectDocs.map(s => [String(s._id), s.subjectName]));
       const subjects = subjectIds.map(sid => ({ _id: sid, subjectName: subjectNameMap[String(sid)] || 'Subject' }));
-
-      // Fetch scores
-      const scores = await ExamScore.find({ student: id, exam: { $in: exams.map(e => e._id) }, subject: { $in: subjectIds } })
-                                    .select('subject exam scoreObtained').lean();
+      const scores = await ExamScore.find({ student: id, exam: { $in: examIds }, subject: { $in: subjectIds } }).select('subject exam scoreObtained').lean();
       const examIdToTypeId = Object.fromEntries(exams.map(e => [String(e._id), String(e.examType)]));
-
-      // Build rows ensuring exams is always an array
       const rows = subjects.map(su => {
+        const subjectIdStr = String(su._id);
         const perMap = {};
         for (const et of examTypes) perMap[String(et._id)] = 0;
         for (const sc of scores) {
-          if (String(sc.subject) !== String(su._id)) continue;
+          if (String(sc.subject) !== subjectIdStr) continue;
           const etId = examIdToTypeId[String(sc.exam)];
           if (!etId) continue;
           perMap[etId] += Number(sc.scoreObtained || 0);
@@ -236,41 +82,46 @@ export const getFullTranscript = async (req, res) => {
         const perExamList = examTypes.map(et => ({ examTypeId: et._id, typeName: et.typeName, score: Number(perMap[String(et._id)] || 0) }));
         const total = perExamList.reduce((a,b)=> a + (b.score||0), 0);
         const average = subjects.length ? total : 0;
-        return { subjectId: su._id, subjectName: su.subjectName, exams: perExamList || [], total, average };
+        return { subjectId: su._id, subjectName: su.subjectName, exams: perExamList, total, average };
       });
-
       const overallTotal = rows.reduce((a,b)=> a + (b.total||0), 0);
       const overallAverage = subjects.length ? (overallTotal / subjects.length) : 0;
-
-      enrollmentTranscripts.push({
-        enrollmentId: enr._id,
-        transcript: { examTypes, subjects, rows, overall: { total: overallTotal, average: overallAverage } }
-      });
+      enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes, subjects, rows, overall: { total: overallTotal, average: overallAverage } } });
     }
 
     // Merge transcripts back into enrollment objects
-    const transcriptByEnrollment = new Map(enrollmentTranscripts.map(et => [String(et.enrollmentId), et.transcript]));
+    const transcriptByEnrollment = new Map(
+      enrollmentTranscripts.map(et => [String(et.enrollmentId), et.transcript])
+    );
     const enrichedEnrollments = enrollments.map(en => {
-      const enrichedGradeSection = en.gradeSection?.section ? {
-        _id: en.gradeSection._id,
-        section: en.gradeSection.section,
-        grade: en.gradeSection.grade?.gradeName || en.grade?.gradeName,
-        shift: en.gradeSection.shift?.shiftName || en.shift?.shiftName
-      } : en.gradeSection;
+      const enrichedGradeSection = (en.gradeSection && en.gradeSection.section)
+        ? {
+            _id: en.gradeSection._id,
+            section: en.gradeSection.section,
+            grade: en.gradeSection.grade?.gradeName || en.grade?.gradeName,
+            shift: en.gradeSection.shift?.shiftName || en.shift?.shiftName
+          }
+        : en.gradeSection;
       return {
         enrollmentId: en._id,
-        academicYear: en.academicYear?.yearName ? { _id: en.academicYear._id, yearName: en.academicYear.yearName } : en.academicYear,
+        academicYear: en.academicYear?.yearName
+          ? { _id: en.academicYear._id, yearName: en.academicYear.yearName }
+          : en.academicYear,
         gradeSection: enrichedGradeSection,
         joinedAt: en.joinedAt,
         leftAt: en.leftAt,
         status: en.status,
-        transcript: transcriptByEnrollment.get(String(en._id)) || { examTypes: [], subjects: [], rows: [], overall: { total: 0, average: 0 } }
+        transcript: transcriptByEnrollment.get(String(en._id)) || {
+          examTypes: [],
+          subjects: [],
+          rows: [],
+          overall: { total: 0, average: 0 }
+        }
       };
     });
 
-    // Cumulative summary
-    let cumulativeTotal = 0; 
-    const cumulativeSubjects = new Set();
+    // Simple cumulative summary (sum totals across enrollments)
+    let cumulativeTotal = 0; let cumulativeSubjects = new Set();
     enrichedEnrollments.forEach(en => {
       cumulativeTotal += en.transcript.overall.total || 0;
       (en.transcript.subjects || []).forEach(s => cumulativeSubjects.add(String(s._id)));
@@ -288,13 +139,11 @@ export const getFullTranscript = async (req, res) => {
         cumulativeAverage
       }
     });
-
   } catch (err) {
     console.error('getFullTranscript error', err);
     res.status(500).json({ message: 'Server Error' });
   }
 };
-
 
 // @desc    Overall multi-level summary for a student (fair, weighted)
 // @route   GET /api/transcripts/students/:id/overall-summary

@@ -16,7 +16,6 @@ import { listGradeSections, deleteGradeSection } from '../api';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
 // AY and Cohort filters removed (GS is AY-agnostic)
-import { useAuth } from '../contexts/AuthContext';
 
 export default function GradePage() {
 		const [isModalOpen, setIsModalOpen] = useState(false);
@@ -137,12 +136,6 @@ export default function GradePage() {
 				/>
 		);
 
-		const { auth, hasPermission } = useAuth();
-		const canViewGrade	 = hasPermission("grades", "view");
-		const canAddGrade	 = hasPermission("grades", "add");
-
-
-
 		return (
 				<div className="space-y-6">
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -151,34 +144,15 @@ export default function GradePage() {
 										<p className="mt-1 text-sm text-gray-600">Manage grade sections by grade and shift. Subjects are linked to grades.</p>
 								</div>
 								<div>
-										{/* <button
+										<button
 												onClick={handleAddNew}
 												className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
 										>
 												<Plus className="w-4 h-4 mr-2" /> Add Grade Section
-										</button> */}
-
-{canAddGrade && (
-	
-<button
-  onClick={handleAddNew}
-  // disabled={!hasPermission("grades", "add")}
-  className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
-    ${hasPermission("grades", "add")
-      ? "bg-blue-600 hover:bg-blue-700 text-white"
-      : "bg-gray-300 text-gray-500 cursor-not-allowed"}
-  `}
->
-  <Plus size={20} className="mr-2" />
-  Add Grade Section
-</button>
-
-)}
+										</button>
 								</div>
 						</div>
 
-						{/* {canViewPromotion && ( */}
-						{/* {canViewGrade && (
 						<DataToolbar
 							showReset={false}
 							searchSlot={searchSlot}
@@ -238,138 +212,22 @@ export default function GradePage() {
 										onAction={handleAddNew}
 								/>
 						) : (
-							
 								<>
-								
 										<div className="flex justify-between items-center mb-2 text-sm text-gray-600">
 												<div>
 														Page {meta.page} of {meta.totalPages || meta.pages || 1} — {meta.total} total
 												</div>
 										</div>
-										)}
-										<GradeTable 
-										classes={classes} 
-										onEdit={handleEdit} 
-										onDelete={handleDelete} 
-										canEdit={hasPermission('grades', 'edit')}
-										canDelete={hasPermission('grades', 'delete')}
-										canView={canViewGrade}          // ✅ ADD THIS
-
-										/>
+										<GradeTable classes={classes} onEdit={handleEdit} onDelete={handleDelete} />
 										<PaginationControls
 												page={meta.page}
 												totalPages={meta.totalPages || meta.pages || 1}
 												limit={meta.limit}
 												onPage={(p) => setPage(p)}
 												onLimit={(l) => setLimit(l)}
-												canView={canViewGrade}
-
 										/>
 								</>
 						)}
-
-						)} */}
-
-{canViewGrade && (
-  <>
-    <DataToolbar
-      showReset={false}
-      searchSlot={searchSlot}
-      filtersSlot={
-        <div className="flex flex-row flex-wrap gap-2 w-full items-center">
-          <GradeSelect
-            id="grades-grade-filter"
-            name="grades-grade-filter"
-            aria-label="Grade"
-            value={gradeFilter}
-            onChange={(v) => applyFilters({ grade: v })}
-            className="flex-1 min-w-[140px]"
-            placeholder="Grade"
-          />
-          <ShiftSelect
-            id="grades-shift-filter"
-            name="grades-shift-filter"
-            aria-label="Shift"
-            value={shiftFilter}
-            onChange={(v) => applyFilters({ shift: v })}
-            className="flex-1 min-w-[140px]"
-            placeholder="Shift"
-          />
-          <input
-            id="grades-section-filter"
-            name="grades-section-filter"
-            aria-label="Section"
-            type="text"
-            value={sectionFilter}
-            onChange={(e) => applyFilters({ section: e.target.value })}
-            className="flex-1 min-w-[120px] px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Section"
-          />
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
-            {sortSlot}
-            <button
-              type="button"
-              onClick={() => {
-                setGradeFilter('');
-                setShiftFilter('');
-                setSectionFilter('');
-                resetAndReload({ filters: {}, search: '' });
-              }}
-              className="px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-md border text-sm"
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-      }
-    />
-
-    {isLoading ? (
-      <LoadingState variant="table" message="Loading..." rows={6} columns={5} />
-    ) : error ? (
-      <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded">
-        {error}{' '}
-        <button onClick={refresh} className="underline ml-2">
-          Retry
-        </button>
-      </div>
-    ) : classes.length === 0 ? (
-      <EmptyState
-        title="No grade sections found"
-        description="Try adjusting filters or create a new one."
-        actionLabel="Add"
-        onAction={handleAddNew}
-      />
-    ) : (
-      <>
-        <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
-          <div>
-            Page {meta.page} of {meta.totalPages || meta.pages || 1} — {meta.total} total
-          </div>
-        </div>
-
-        <GradeTable
-          classes={classes}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          canEdit={hasPermission('grades', 'edit')}
-          canDelete={hasPermission('grades', 'delete')}
-          canView={canViewGrade}
-        />
-
-        <PaginationControls
-          page={meta.page}
-          totalPages={meta.totalPages || meta.pages || 1}
-          limit={meta.limit}
-          onPage={(p) => setPage(p)}
-          onLimit={(l) => setLimit(l)}
-          canView={canViewGrade}
-        />
-      </>
-    )}
-  </>
-)}
-
 
 						<Modal isOpen={isModalOpen} onClose={closeModal} title={editingClass ? 'Edit Grade Section' : 'Add Grade Section'}>
 								<GradeForm cls={editingClass} onClose={closeModal} onSuccess={() => refresh()} />

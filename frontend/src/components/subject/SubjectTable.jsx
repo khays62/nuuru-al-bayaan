@@ -2,7 +2,7 @@ import React from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import TableShell from '../common/table/TableShell';
 
-export default function SubjectTable({ subjects, onEdit, onDelete, canEdit, canDelete }) {
+export default function SubjectTable({ subjects, onEdit, onDelete }) {
     return (
         <TableShell>
             <thead className="bg-gray-800">
@@ -33,18 +33,12 @@ export default function SubjectTable({ subjects, onEdit, onDelete, canEdit, canD
                                 </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200">
-
-                            {canEdit && (
                                 <button onClick={() => onEdit(subject)} className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-green-100 transition-colors" title="Edit Subject">
                                     <Pencil size={18} />
                                 </button>
-                            )}
-                             
-                           {canDelete && (
-                              <button onClick={() => onDelete(subject._id)} className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100 transition-colors" title="Delete Subject">
+                                <button onClick={() => onDelete(subject._id)} className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100 transition-colors" title="Delete Subject">
                                     <Trash2 size={18} />
                                 </button>
-                            )}
                             </td>
                         </tr>
                     ))

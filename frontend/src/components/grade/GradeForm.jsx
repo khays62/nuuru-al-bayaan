@@ -1,28 +1,23 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { getGrades, createGradeSection, updateGradeSection, getSubjects } from '../../api';
-import { resyncGradeSectionCohort } from '../../api';
 import { hasScores as apiHasScores } from '../../api';
 import { Lock, RotateCcw } from 'lucide-react';
-import AcademicYearSelect from '../lookups/AcademicYearSelect';
 import GradeSelect from '../lookups/GradeSelect';
 import ShiftSelect from '../lookups/ShiftSelect';
-import CohortSelect from '../lookups/CohortSelect';
 import { setCachedSubjects, invalidateSubjectsCache } from './subjectsCache';
+
 
 const GradeForm = ({ cls, onClose, onSuccess }) => {
   const isEdit = Boolean(cls?._id);
 
   // We intentionally remove className from the UI; backend still requires it, so we default it under the hood
   const [capacity, setCapacity] = useState(cls?.capacity || '');
-  // const [fee, setFee] = useState(cls?.fee || '');
-
-  const [section, setSection] = useState(cls?.section || '1');
+  const [section, setSection] = useState(cls?.section || '');
   const [grade, setGrade] = useState(cls?.grade?._id || cls?.grade || '');
-  const [academicYear, setAcademicYear] = useState(cls?.academicYear?._id || cls?.academicYear || '');
   const [shift, setShift] = useState(cls?.shift?._id || cls?.shift || '');
   const [subjects, setSubjects] = useState((cls?.subjects || []).map(s => s._id || s));
-  const [cohort, setCohort] = useState(cls?.cohort?._id || cls?.cohort || '');
+  // AY and Cohort removed from GS UI (AY/Cohort tracked in Enrollment)
 
   const [grades, setGrades] = useState([]);
   const [gradeSubjects, setGradeSubjects] = useState([]);
@@ -32,7 +27,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   const hasScoresTimerRef = useRef(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submittingPhase, setSubmittingPhase] = useState(''); // '', 'saving', 'resync'
+  const [submittingPhase, setSubmittingPhase] = useState(''); // '', 'saving'
   const pendingGradeRef = useRef(null);
   const skipFirstGradeEffectRef = useRef(true); // avoid fetch on initial mount/open
 
@@ -87,7 +82,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!grade || !academicYear || !shift || !section) { toast.error('Please fill all required fields'); return; }
+  if (!grade || !shift || !section) { toast.error('Please fill all required fields'); return; }
     if (submitting) return; // guard double submit
     setSubmitting(true);
     setSubmittingPhase('saving');
@@ -96,13 +91,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
     const gradeLabel = selectedGrade?.gradeName || 'Unnamed';
     const className = `Section (${gradeLabel})`;
 
-    const payload = { className, section, capacity: capacity ? Number(capacity) : undefined, grade, academicYear, shift, subjects };
-    // Cohort: include field; empty string means clear on update; omitted on create if empty
-    if (isEdit) {
-      payload.cohort = cohort !== undefined ? cohort : '';
-    } else if (cohort) {
-      payload.cohort = cohort;
-    }
+    const payload = { className, section, capacity: capacity ? Number(capacity) : undefined, grade, shift, subjects };
     // No duplicate cohort assignment; rely on block above
     let result;
     if (isEdit) {
@@ -113,8 +102,6 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
         } else if (res.code === 'SUBJECTS_HAVE_SCORES') {
           const items = (res.blockedSubjects || []).map(s => s.subjectName || s._id).join(', ');
           toast.error(`Cannot remove subjects with scores: ${items}`);
-        } else if (res.code === 'COHORT_CONFLICT_SAME_GRADE_AY' || res.code === 'COHORT_CONFLICT_CLEAR') {
-          toast.error(res.error || 'Cohort conflict: All sections in the same grade and year must share one cohort.');
         } else {
           toast.error(res.error || 'Failed to update');
         }
@@ -123,25 +110,10 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
         return;
       }
       result = res.data;
-      // Auto-resync active enrollments if backend indicates it's needed
-      if (res.resyncNeeded) {
-        setSubmittingPhase('resync');
-        const rx = await resyncGradeSectionCohort(cls._id);
-        if (!rx.ok) {
-          toast.error(rx.error || 'Resync failed');
-          setSubmitting(false);
-          setSubmittingPhase('');
-          return;
-        }
-      }
     } else {
       const res = await createGradeSection(payload);
       if (!res.ok) {
-        if (res.code === 'COHORT_CONFLICT_SAME_GRADE_AY' || res.code === 'COHORT_CONFLICT_CLEAR') {
-          toast.error(res.error || 'Cohort conflict: All sections in the same grade and year must share one cohort.');
-        } else {
-          toast.error(res.error || 'Operation failed');
-        }
+        toast.error(res.error || 'Operation failed');
         setSubmitting(false);
         setSubmittingPhase('');
         return;
@@ -208,6 +180,8 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
     };
   }, [isEdit, cls?._id, subjects]);
 
+  // Cohort refresh key & controls removed
+
   return (
     <div className="relative">
       <form onSubmit={onSubmit}>
@@ -216,25 +190,16 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
             <label className="block text-sm font-medium text-gray-700">Section</label>
             <input disabled={submitting} value={section} onChange={e=>setSection(e.target.value)} type="text" className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60" placeholder="e.g. 1, 2, A, B" required />
           </div>
-
-
-          <div>
-            <label htmlFor="gradeform-ay" className="block text-sm font-medium text-gray-700">Academic Year</label>
-            <AcademicYearSelect id="gradeform-ay" name="gradeform-ay" disabled={submitting} value={academicYear} onChange={(v)=>setAcademicYear(v)} className="mt-1 w-full" placeholder="Select..." />
-          </div>
+          {/* Academic Year field removed (managed via Enrollment) */}
           <div>
             <label htmlFor="gradeform-grade" className="block text-sm font-medium text-gray-700">Grade</label>
             <GradeSelect id="gradeform-grade" name="gradeform-grade" disabled={submitting} value={grade} onChange={(v)=> onGradeChange({ target: { value: v } })} className="mt-1 w-full" placeholder="Select..." />
           </div>
-          
           <div>
             <label htmlFor="gradeform-shift" className="block text-sm font-medium text-gray-700">Shift</label>
             <ShiftSelect id="gradeform-shift" name="gradeform-shift" disabled={submitting} value={shift} onChange={(v)=>setShift(v)} className="mt-1 w-full" placeholder="Select..." />
           </div>
-          <div>
-            <label htmlFor="gradeform-cohort" className="block text-sm font-medium text-gray-700">Cohort (optional)</label>
-            <CohortSelect id="gradeform-cohort" name="gradeform-cohort" disabled={submitting} value={cohort} onChange={(v)=>setCohort(v)} className="mt-1 w-full" placeholder="None" />
-          </div>
+          {/* Cohort field removed (managed via Enrollment) */}
           <div className="md:col-span-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
               <span>Subjects</span>

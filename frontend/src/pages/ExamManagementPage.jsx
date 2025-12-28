@@ -11,17 +11,10 @@ import ShiftSelect from '../components/lookups/ShiftSelect';
 import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
 import CohortSelect from '../components/lookups/CohortSelect';
 import EnrollmentStatusSelect from '../components/lookups/EnrollmentStatusSelect';
-import { useAuth } from "../contexts/AuthContext";
 
 export default function ExamManagementPage() {
-    const { auth, hasPermission } = useAuth();
-
-    // const canViewExam = hasPermission("exams","view")
-
-
     const [subjects, setSubjects] = useState([]); // subjects assigned to the selected section only
-    const canViewGrid = hasPermission("exams", "view");
-    const canEditScores = hasPermission("exams", "edit")
+
     const [academicYearId, setAcademicYearId] = useState('');
     const [gradeId, setGradeId] = useState('');
     const [shiftId, setShiftId] = useState('');
@@ -209,8 +202,6 @@ export default function ExamManagementPage() {
         setErrorCells(new Set());
     };
 
-
-
     return (
         <div className="space-y-6">
             <div>
@@ -218,152 +209,104 @@ export default function ExamManagementPage() {
                 <p className="mt-1 text-sm text-gray-600">Select filters; the grid loads automatically when a subject is chosen. Enter scores inline (0..100).</p>
             </div>
 
-            {canViewGrid && (
-  <><>
-                    {/* Filters */}
-                    <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap gap-3 items-end">
-                        <AcademicYearSelect
-                            id="exam-ay"
-                            name="exam-ay"
-                            aria-label="Academic Year"
-                            value={academicYearId}
-                            onChange={(v) => {
-                                setAcademicYearId(v);
-                                setGradeSectionId('');
-                                setSubjectId('');
-                                setCohortId('');
-                                setTimeline([]);
-                            } }
-                            className="flex-1 min-w-[140px]"
-                            placeholder="Academic Year" />
+            <div className="bg-white p-4 rounded-lg shadow flex flex-row flex-wrap gap-3 items-end">
+                {/* Order: AY → Cohort → Enrollment Status → Grade → Shift → Section → Subject */}
+                <AcademicYearSelect id="exam-ay" name="exam-ay" aria-label="Academic Year" value={academicYearId} onChange={(v)=>{ setAcademicYearId(v); setGradeSectionId(''); setSubjectId(''); setCohortId(''); setTimeline([]); }} className="flex-1 min-w-[140px]" placeholder="Academic Year" />
+                <CohortSelect value={cohortId} onChange={(v)=>{ setCohortId(v); }} mode="context" academicYear={academicYearId} disabled={!academicYearId} className="flex-1 min-w-[140px] border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Cohort" />
+                <EnrollmentStatusSelect value={enrollmentStatus} onChange={(v)=>{ setEnrollmentStatus(v); /* keep cohort & timeline */ }} className="flex-1 min-w-[160px] border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enrollment Status" />
+                <GradeSelect id="exam-grade" name="exam-grade" aria-label="Grade" value={gradeId} onChange={(v)=>{ setGradeId(v); /* keep cohort & timeline */ }} className="flex-1 min-w-[120px]" placeholder="Grade" />
+                <ShiftSelect id="exam-shift" name="exam-shift" aria-label="Shift" value={shiftId} onChange={(v)=>{ setShiftId(v); /* keep cohort & timeline */ }} className="flex-1 min-w-[120px]" placeholder="Shift" />
+                <GradeSectionSelect id="exam-section" name="exam-section" aria-label="Section" gradeId={gradeId} shiftId={shiftId} value={gradeSectionId} onChange={(v)=>{ setGradeSectionId(v); setSubjectId(''); /* keep cohort & timeline */ }} className="flex-1 min-w-[160px]" placeholder="Section" />
+                <select id="exam-subject" name="exam-subject" aria-label="Subject" className="flex-1 min-w-[140px] px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50" value={subjectId} onChange={(e)=> { setSubjectId(e.target.value); /* keep cohort & timeline */ }} disabled={!gradeSectionId}>
+                    <option value="">Subject</option>
+                    {(subjects||[]).map(su => (<option key={su._id} value={su._id}>{su.subjectName}</option>))}
+                </select>
+                <div className="flex items-center gap-2 ml-auto flex-wrap">
+                    <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
+                </div>
+            </div>
 
-                        <CohortSelect
-                            value={cohortId}
-                            onChange={(v) => setCohortId(v)}
-                            mode="context"
-                            academicYear={academicYearId}
-                            disabled={!academicYearId}
-                            className="flex-1 min-w-[140px] border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Cohort" />
+            {cohortId && timeline.length > 0 && (
+                <div className="bg-white p-3 rounded-lg shadow flex flex-row flex-wrap gap-2 items-center">
+                    <div className="text-sm font-medium text-gray-600 mr-2">Cohort Timeline:</div>
+                    {timelineLoading && <div className="text-xs text-gray-500">Loading…</div>}
+                                        {!timelineLoading && timeline.map(entry => {
+                                                const active = academicYearId === String(entry.academicYear._id) && gradeSectionId === String(entry.gradeSection._id);
+                                                return (
+                                                        <button
+                                                            key={String(entry.academicYear._id)+String(entry.gradeSection._id)}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                applyingTimelineRef.current = true;
+                                                                setAcademicYearId(String(entry.academicYear._id));
+                                                                setGradeId(String(entry.grade._id));
+                                                                setShiftId(String(entry.shift._id));
+                                                                setGradeSectionId(String(entry.gradeSection._id));
+                                                                setSubjectId('');
+                                                                // Release flag after microtask so effect can run for future manual changes
+                                                                queueMicrotask(() => { applyingTimelineRef.current = false; });
+                                                            }}
+                                                            className={`text-xs px-2 py-1 rounded border ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
+                                                        >
+                                                            {entry.academicYear.yearName} / {entry.grade.gradeName}{entry.gradeSection.section ? ` Sec ${entry.gradeSection.section}` : ''}
+                                                        </button>
+                                                );
+                                        })}
+                </div>
+            )}
 
-                        <EnrollmentStatusSelect
-                            value={enrollmentStatus}
-                            onChange={(v) => setEnrollmentStatus(v)}
-                            className="flex-1 min-w-[160px] border-blue-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Enrollment Status" />
-
-                        <GradeSelect
-                            id="exam-grade"
-                            name="exam-grade"
-                            aria-label="Grade"
-                            value={gradeId}
-                            onChange={(v) => setGradeId(v)}
-                            className="flex-1 min-w-[120px]"
-                            placeholder="Grade" />
-
-                        <ShiftSelect
-                            id="exam-shift"
-                            name="exam-shift"
-                            aria-label="Shift"
-                            value={shiftId}
-                            onChange={(v) => setShiftId(v)}
-                            className="flex-1 min-w-[120px]"
-                            placeholder="Shift" />
-
-                        <GradeSectionSelect
-                            id="exam-section"
-                            name="exam-section"
-                            aria-label="Section"
-                            gradeId={gradeId}
-                            shiftId={shiftId}
-                            value={gradeSectionId}
-                            onChange={(v) => {
-                                setGradeSectionId(v);
-                                setSubjectId('');
-                            } }
-                            className="flex-1 min-w-[160px]"
-                            placeholder="Section" />
-
-                        <select
-                            id="exam-subject"
-                            name="exam-subject"
-                            aria-label="Subject"
-                            className="flex-1 min-w-[140px] px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
-                            value={subjectId}
-                            onChange={(e) => setSubjectId(e.target.value)}
-                            disabled={!gradeSectionId}
-                        >
-                            <option value="">Subject</option>
-                            {(subjects || []).map((su) => (
-                                <option key={su._id} value={su._id}>
-                                    {su.subjectName}
-                                </option>
-                            ))}
-                        </select>
-
-                        <div className="flex items-center gap-2 ml-auto flex-wrap">
-                            <ActionButton
-                                variant="neutral"
-                                onClick={handleReset}
-                                title="Reset filters"
-                                icon={<RotateCcw size={16} />}
-                            >
-                                Reset
-                            </ActionButton>
-                        </div>
-                    </div>
-
-                    {/* Cohort Timeline */}
-                    {cohortId && timeline.length > 0 && (
-                        <div className="bg-white p-3 rounded-lg shadow flex flex-row flex-wrap gap-2 items-center">
-                            <div className="text-sm font-medium text-gray-600 mr-2">Cohort Timeline:</div>
-                            {timelineLoading && <div className="text-xs text-gray-500">Loading…</div>}
-                            {!timelineLoading &&
-                                timeline.map((entry) => {
-                                    const active = academicYearId === String(entry.academicYear._id) &&
-                                        gradeSectionId === String(entry.gradeSection._id);
-                                    return (
-                                        <button
-                                            key={String(entry.academicYear._id) + String(entry.gradeSection._id)}
-                                            type="button"
-                                            onClick={() => {
-                                                applyingTimelineRef.current = true;
-                                                setAcademicYearId(String(entry.academicYear._id));
-                                                setGradeId(String(entry.grade._id));
-                                                setShiftId(String(entry.shift._id));
-                                                setGradeSectionId(String(entry.gradeSection._id));
-                                                setSubjectId('');
-                                                // Release flag after microtask
-                                                queueMicrotask(() => {
-                                                    applyingTimelineRef.current = false;
-                                                });
-                                            } }
-                                            className={`text-xs px-2 py-1 rounded border ${active
-                                                    ? 'bg-blue-600 text-white border-blue-600'
-                                                    : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
-                                        >
-                                            {entry.academicYear.yearName} / {entry.grade.gradeName}
-                                            {entry.gradeSection.section ? ` Sec ${entry.gradeSection.section}` : ''}
-                                        </button>
-                                    );
-                                })}
-                        </div>
-                    )}
-                </><div className="bg-white p-4 rounded-lg shadow overflow-auto">
-                        {!academicYearId || !gradeSectionId ? (
-                            <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift and Section.</p>
-                        ) : !subjectId ? (
-                            <p className="text-sm text-gray-500">Choose a Subject to load the grid.</p>
-                        ) : loadingGrid ? (
-                            <p className="text-sm text-gray-500">Loading grid…</p>
-                        ) : grid.students.length === 0 ? (
-                            <p className="text-sm text-gray-500">No students or data for this selection.</p>
-                        ) : (
-
-                            <TableShell>
-                                <thead className="bg-gray-800">
-                                    <tr>
-                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
+            <div className="bg-white p-4 rounded-lg shadow overflow-auto">
+                {!academicYearId || !gradeSectionId ? (
+                    <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift and Section.</p>
+                ) : !subjectId ? (
+                    <p className="text-sm text-gray-500">Choose a Subject to load the grid.</p>
+                ) : loadingGrid ? (
+                    <p className="text-sm text-gray-500">Loading grid…</p>
+                ) : grid.students.length === 0 ? (
+                    <p className="text-sm text-gray-500">No students or data for this selection.</p>
+                ) : (
+                    <TableShell>
+                        <thead className="bg-gray-800">
+                            <tr>
+                                <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
+                                {[...grid.columns]
+                                    .sort((a, b) => {
+                                        const aName = (a.typeName || '').toLowerCase();
+                                        const bName = (b.typeName || '').toLowerCase();
+                                        const aIsMid = /mid/.test(aName);
+                                        const bIsMid = /mid/.test(bName);
+                                        const aIsFinal = /final/.test(aName);
+                                        const bIsFinal = /final/.test(bName);
+                                        // Prioritize Mid-Term first, then Final, else by name
+                                        if (aIsMid && !bIsMid) return -1;
+                                        if (!aIsMid && bIsMid) return 1;
+                                        if (aIsFinal && !bIsFinal) return 1;
+                                        if (!aIsFinal && bIsFinal) return -1;
+                                        return aName.localeCompare(bName);
+                                    })
+                                    .map(col => (
+                                    <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <span className="font-medium text-white">{col.typeName}</span>
+                                            <span className="text-xs text-gray-200">({weightMap[col.examId] ?? '-'}%)</span>
+                                        </div>
+                                    </th>
+                                ))}
+                                <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total (100)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {grid.students.map(st => {
+                                const rowTotal = grid.columns.reduce((sum, col) => {
+                                    const raw = getInputValue(st.studentId, col.examId);
+                                    const n = Number(raw);
+                                    const weight = weightMap[col.examId] ?? 100;
+                                    const clamped = Number.isFinite(n) ? clamp(n, 0, weight) : 0;
+                                    return sum + clamped;
+                                }, 0);
+                                return (
+                                    <tr key={st.studentId} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50">
+                                        <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">{st.fullName}</td>
                                         {[...grid.columns]
                                             .sort((a, b) => {
                                                 const aName = (a.typeName || '').toLowerCase();
@@ -372,86 +315,45 @@ export default function ExamManagementPage() {
                                                 const bIsMid = /mid/.test(bName);
                                                 const aIsFinal = /final/.test(aName);
                                                 const bIsFinal = /final/.test(bName);
-                                                // Prioritize Mid-Term first, then Final, else by name
                                                 if (aIsMid && !bIsMid) return -1;
                                                 if (!aIsMid && bIsMid) return 1;
                                                 if (aIsFinal && !bIsFinal) return 1;
                                                 if (!aIsFinal && bIsFinal) return -1;
                                                 return aName.localeCompare(bName);
                                             })
-                                            .map(col => (
-                                                <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <span className="font-medium text-white">{col.typeName}</span>
-                                                        <span className="text-xs text-gray-200">({weightMap[col.examId] ?? '-'}%)</span>
-                                                    </div>
-                                                </th>
-                                            ))}
-                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total (100)</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {grid.students.map(st => {
-                                        const rowTotal = grid.columns.reduce((sum, col) => {
-                                            const raw = getInputValue(st.studentId, col.examId);
-                                            const n = Number(raw);
+                                            .map(col => {
+                                            const key = getCellKey(st.studentId, col.examId);
                                             const weight = weightMap[col.examId] ?? 100;
-                                            const clamped = Number.isFinite(n) ? clamp(n, 0, weight) : 0;
-                                            return sum + clamped;
-                                        }, 0);
-                                        return (
-                                            <tr key={st.studentId} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50">
-                                                <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">{st.fullName}</td>
-                                                {[...grid.columns]
-                                                    .sort((a, b) => {
-                                                        const aName = (a.typeName || '').toLowerCase();
-                                                        const bName = (b.typeName || '').toLowerCase();
-                                                        const aIsMid = /mid/.test(aName);
-                                                        const bIsMid = /mid/.test(bName);
-                                                        const aIsFinal = /final/.test(aName);
-                                                        const bIsFinal = /final/.test(bName);
-                                                        if (aIsMid && !bIsMid) return -1;
-                                                        if (!aIsMid && bIsMid) return 1;
-                                                        if (aIsFinal && !bIsFinal) return 1;
-                                                        if (!aIsFinal && bIsFinal) return -1;
-                                                        return aName.localeCompare(bName);
-                                                    })
-                                                    .map(col => {
-                                                        const key = getCellKey(st.studentId, col.examId);
-                                                        const weight = weightMap[col.examId] ?? 100;
-                                                        const val = getInputValue(st.studentId, col.examId);
-                                                        const isSaving = savingCells.has(key);
-                                                        const hasError = errorCells.has(key);
-                                                        return (
-                                                            <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
-                                                                <div className="relative inline-flex items-center gap-2">
-                                                                    <input
-                                                                        type="number"
-                                                                        inputMode="decimal"
-                                                                        min={0}
-                                                                        max={weight}
-                                                                        step="0.5"
-                                                                        className={`w-24 border rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${hasError ? 'border-red-500' : 'border-gray-300'}`}
-                                                                        value={val}
-                                                                        // onChange={(e) => handleChange(st.studentId, col.examId, e.target.value, weight)}
-                                                                        // onBlur={() => flushDebounce(key)}
-                                                                        onChange={(e) => canEditScores && handleChange(st.studentId, col.examId, e.target.value, weight)}
-                                                                        onBlur={() => canEditScores && flushDebounce(key)} />
-                                                                    {isSaving && <span className="text-xs text-gray-400">Saving…</span>}
-                                                                </div>
-                                                            </td>
-                                                        );
-                                                    })}
-                                                <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </TableShell>
-                        )}
-                    </div></>
-
-)}
+                                            const val = getInputValue(st.studentId, col.examId);
+                                            const isSaving = savingCells.has(key);
+                                            const hasError = errorCells.has(key);
+                                            return (
+                                                <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
+                                                    <div className="relative inline-flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            inputMode="decimal"
+                                                            min={0}
+                                                            max={weight}
+                                                            step="0.5"
+                                                            className={`w-24 border rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${hasError ? 'border-red-500' : 'border-gray-300'}`}
+                                                            value={val}
+                                                            onChange={(e) => handleChange(st.studentId, col.examId, e.target.value, weight)}
+                                                            onBlur={() => flushDebounce(key)}
+                                                        />
+                                                        {isSaving && <span className="text-xs text-gray-400">Saving…</span>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
+                                        <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </TableShell>
+                )}
+            </div>
         </div>
     );
 }

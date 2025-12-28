@@ -8,9 +8,6 @@ import CohortSelect from '../components/lookups/CohortSelect';
 import { Search, Play, Rocket, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { previewPromotion, executePromotion, listStudents } from '../api';
-import { useAuth } from "../contexts/AuthContext";
-import ActionButton from '../components/common/ActionButton';
-
 
 // Skeleton page for Promotions as a standalone tab per PROMOTION.md
 // This wires the layout and UX elements; API integration to be added next.
@@ -252,197 +249,155 @@ export default function PromotionPage() {
     }
   };
 
-      const { auth, hasPermission } = useAuth();
-
-      const canViewPromotion = hasPermission("promotions", "view")
-
-
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold text-gray-800">Promotions</h1>
         <p className="text-sm text-gray-600">Select context filters then preview eligibility before confirming promotions.</p>
       </div>
-
-      {canViewPromotion && (
-
-     
-      <>
-      
       <DataToolbar
-          showReset={false}
-          filtersSlot={
-          <>
-            <div className="flex flex-row flex-wrap gap-2 w-full">
-              <div className="flex items-center"><TimingSelector value={timing} onChange={setTiming} /></div>
-              <AcademicYearSelect value={filters.ay} onChange={v => setFilters({ ...filters, ay: v })} refreshKey={ayRefreshKey} className="flex-1 min-w-[120px]" placeholder="AY" />
-              <GradeSelect value={filters.grade} onChange={v => setFilters({ ...filters, grade: v })} className="flex-1 min-w-[120px]" placeholder="Grade" />
-              <ShiftSelect value={filters.shift} onChange={v => setFilters({ ...filters, shift: v })} className="flex-1 min-w-[120px]" placeholder="Shift" />
-              <GradeSectionSelect gradeId={filters.grade} shiftId={filters.shift} value={filters.section} onChange={v => setFilters({ ...filters, section: v })} className="flex-1 min-w-[140px]" placeholder="Section" />
-              <CohortSelect mode="promotion" academicYear={filters.ay} gradeSectionId={filters.section} gradeId={filters.grade} shiftId={filters.shift} section={null} value={filters.cohort} onChange={v => setFilters({ ...filters, cohort: v })} className="flex-1 min-w-[150px]" placeholder="Cohort" />
-            </div>
-          </>
-          
-        }
-          actionsSlot={<div className="flex gap-2">
-            <button onClick={handlePreview} disabled={!hasPermission("promotions", "preview") || !filtersReady || loadingPreview || loadingPromote} aria-busy={loadingPreview} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-              {loadingPreview ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} <span>Preview</span>
-            </button>
+        showReset={false}
+        filtersSlot={<>
+          <div className="flex flex-row flex-wrap gap-2 w-full">
+            <div className="flex items-center"><TimingSelector value={timing} onChange={setTiming} /></div>
+            <AcademicYearSelect value={filters.ay} onChange={v => setFilters({ ...filters, ay: v })} refreshKey={ayRefreshKey} className="flex-1 min-w-[120px]" placeholder="AY" />
+            <GradeSelect value={filters.grade} onChange={v => setFilters({ ...filters, grade: v })} className="flex-1 min-w-[120px]" placeholder="Grade" />
+            <ShiftSelect value={filters.shift} onChange={v => setFilters({ ...filters, shift: v })} className="flex-1 min-w-[120px]" placeholder="Shift" />
+            <GradeSectionSelect gradeId={filters.grade} shiftId={filters.shift} value={filters.section} onChange={v => setFilters({ ...filters, section: v })} className="flex-1 min-w-[140px]" placeholder="Section" />
+            <CohortSelect mode="promotion" academicYear={filters.ay} gradeSectionId={filters.section} gradeId={filters.grade} shiftId={filters.shift} section={null} value={filters.cohort} onChange={v => setFilters({ ...filters, cohort: v })} className="flex-1 min-w-[150px]" placeholder="Cohort" />
+          </div>
+        </>}
+        actionsSlot={<div className="flex gap-2">
+          <button onClick={handlePreview} disabled={!filtersReady || loadingPreview || loadingPromote} aria-busy={loadingPreview} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+            {loadingPreview ? <Loader2 className="animate-spin" size={16}/> : <Play size={16}/>} <span>Preview</span>
+          </button>
+          <button onClick={handlePromote} disabled={!preview || loadingPromote || loadingPreview} aria-busy={loadingPromote} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+            {loadingPromote ? <Loader2 className="animate-spin" size={16}/> : <Rocket size={16}/>} <span>Promote</span>
+          </button>
+          <button onClick={()=>{ setPreview(null); setSelectedIds(new Set()); setFilters(initialFilters); }} disabled={loadingPreview || loadingPromote} className="inline-flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+            <RefreshCw size={16}/> Reset
+          </button>
+        </div>}
+        onReset={()=>{ setPreview(null); setSelectedIds(new Set()); setFilters(initialFilters); }}
+      />
 
-            {/* <button
-  onClick={handleAddNew}
-  disabled={!hasPermission("students", "add")}
-  className={`flex items-center justify-center w-full sm:w-auto px-4 py-2 rounded-lg shadow-sm
-    ${hasPermission("students", "add")
-      ? "bg-blue-600 hover:bg-blue-700 text-white"
-      : "bg-gray-300 text-gray-500 cursor-not-allowed"}
-  `}
->
-  <Plus size={20} className="mr-2" />
-  Add New Student
-</button> */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Students table */}
+        <div className="bg-white rounded shadow p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">Students</h3>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={!filtersReady || students.length === 0} />
+              <span>Select All</span>
+            </label>
+          </div>
+          <div className="border rounded overflow-auto max-h-[520px]">
+            <table className="min-w-full text-sm border border-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="p-2 border-b border-gray-200"></th>
+                  <th className="p-2 text-left border-b border-gray-200">Student</th>
+                  <th className="p-2 text-left border-b border-gray-200">Current</th>
+                  <th className="p-2 text-left border-b border-gray-200">Cohort</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {studentsLoading && (
+                  <tr><td colSpan={4} className="p-4 text-center text-gray-400">Loading students...</td></tr>
+                )}
+                {studentsError && (
+                  <tr><td colSpan={4} className="p-4 text-center text-red-500">{studentsError}</td></tr>
+                )}
+                {!studentsLoading && !studentsError && !filtersReady && (
+                  <tr><td colSpan={4} className="p-4 text-center text-gray-500">Select AY, Grade, Shift, Section and Cohort to load students</td></tr>
+                )}
+                {!studentsLoading && !studentsError && filtersReady && students.length === 0 && (
+                  <tr><td colSpan={4} className="p-4 text-center text-gray-500">No students found</td></tr>
+                )}
+                {students.map(s => (
+                  <tr key={s._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-2"><input type="checkbox" checked={selectedIds.has(s._id)} onChange={()=>toggleSelected(s._id)} disabled={!filtersReady} /></td>
+                    <td className="p-2 whitespace-nowrap font-medium text-gray-700">{s.studentId} — {s.fullName}</td>
+                    <td className="p-2 text-xs text-gray-600">{formatCurrent(s.current || {}) || '-'}</td>
+                    <td className="p-2"><span className="inline-block text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200">{s.current?.cohort || '-'}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-
-            <button onClick={handlePromote} disabled={!hasPermission("promotions", "promote") || !preview || loadingPromote || loadingPreview} aria-busy={loadingPromote} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-              {loadingPromote ? <Loader2 className="animate-spin" size={16} /> : <Rocket size={16} />} <span>Promote</span>
-            </button>
-
-            {/* <ActionButton
-      variant="neutral"
-      onClick={handlePromote}
-      title="Promote"
-      icon={<Rocket size={16} />}
-      disabled={!hasPermission("students", "Promote") || !preview || loadingPromote || loadingPreview} aria-busy={loadingPromote}
-      className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-    >
-      {/* CSV */}
-            {/* {loadingPromote ? <Loader2 className="animate-spin" size={16}/> : <Rocket size={16}/>} <span>Promote</span>
-          </ActionButton> */}
-            <button onClick={() => { setPreview(null); setSelectedIds(new Set()); setFilters(initialFilters); } } disabled={loadingPreview || loadingPromote} className="inline-flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
-              <RefreshCw size={16} /> Reset
-            </button>
-          </div>}
-          onReset={() => { setPreview(null); setSelectedIds(new Set()); setFilters(initialFilters); } } /><div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Students table */}
-            <div className="bg-white rounded shadow p-3">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold">Students</h3>
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} disabled={!filtersReady || students.length === 0} />
-                  <span>Select All</span>
-                </label>
+        {/* Preview panel */}
+        <div className="bg-white rounded shadow p-3">
+          <h3 className="font-semibold mb-2">Preview</h3>
+          {!preview ? (
+            <div className="text-gray-500">Run Preview to see targets, auto-create needs, and graduations</div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-sm">
+                <div>Total: <b>{preview.summary.total}</b></div>
+                <div>Promotable: <b className="text-emerald-700">{preview.summary.promotable}</b></div>
+                <div>Graduates: <b className="text-blue-700">{preview.summary.graduates}</b></div>
+                <div>Missing Targets: <b className="text-amber-700">{preview.summary.missingTargets}</b></div>
+                <div>Capacity Issues: <b className="text-red-700">{preview.summary.capacityIssues}</b></div>
               </div>
-              <div className="border rounded overflow-auto max-h-[520px]">
+              <div className="border rounded max-h-[520px] overflow-auto">
                 <table className="min-w-full text-sm border border-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="p-2 border-b border-gray-200"></th>
                       <th className="p-2 text-left border-b border-gray-200">Student</th>
-                      <th className="p-2 text-left border-b border-gray-200">Current</th>
-                      <th className="p-2 text-left border-b border-gray-200">Cohort</th>
+                      <th className="p-2 text-left border-b border-gray-200">From</th>
+                      <th className="p-2 text-left border-b border-gray-200">To</th>
+                      <th className="p-2 text-left border-b border-gray-200">Avg</th>
+                      <th className="p-2 text-left border-b border-gray-200">Failed</th>
+                      <th className="p-2 text-left border-b border-gray-200">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {studentsLoading && (
-                      <tr><td colSpan={4} className="p-4 text-center text-gray-400">Loading students...</td></tr>
-                    )}
-                    {studentsError && (
-                      <tr><td colSpan={4} className="p-4 text-center text-red-500">{studentsError}</td></tr>
-                    )}
-                    {!studentsLoading && !studentsError && !filtersReady && (
-                      <tr><td colSpan={4} className="p-4 text-center text-gray-500">Select AY, Grade, Shift, Section and Cohort to load students</td></tr>
-                    )}
-                    {!studentsLoading && !studentsError && filtersReady && students.length === 0 && (
-                      <tr><td colSpan={4} className="p-4 text-center text-gray-500">No students found</td></tr>
-                    )}
-                    {students.map(s => (
-                      <tr key={s._id} className="hover:bg-gray-50 transition-colors">
-                        <td className="p-2"><input type="checkbox" checked={selectedIds.has(s._id)} onChange={() => toggleSelected(s._id)} disabled={!filtersReady} /></td>
-                        <td className="p-2 whitespace-nowrap font-medium text-gray-700">{s.studentId} — {s.fullName}</td>
-                        <td className="p-2 text-xs text-gray-600">{formatCurrent(s.current || {}) || '-'}</td>
-                        <td className="p-2"><span className="inline-block text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200">{s.current?.cohort || '-'}</span></td>
-                      </tr>
-                    ))}
+                    {preview.items.map((it, idx) => {
+                      // Helper: get readable names from populated objects or fallback
+                      const getName = (obj, key) => obj?.[key] || obj?.name || obj?.gradeName || obj?.yearName || obj?.shiftName || '-';
+                      const from = it.fromGS || {};
+                      const target = it.target || {};
+                      const failed = (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay';
+                      const graduated = it.action === 'graduate';
+                      return (
+                        <tr key={idx} className={`${failed ? 'bg-red-50' : graduated ? 'bg-blue-50' : 'bg-white'} hover:bg-gray-50 transition-colors`}>
+                          <td className="p-2">{it.studentId} — {it.fullName}</td>
+                          <td className="p-2">
+                            {formatFrom(from) || '-'}
+                          </td>
+                          <td className="p-2">
+                            {formatTo(target) || '-'}
+                          </td>
+                          <td className="p-2 text-xs">
+                            {typeof it.overallAvg === 'number' ? it.overallAvg.toFixed(1) : '-'}
+                          </td>
+                          <td className="p-2 text-xs">
+                            {typeof it.failedSubjects === 'number' ? it.failedSubjects : '-'}
+                          </td>
+                          <td className="p-2">
+                            {it.action === 'graduate' ? (
+                              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">Graduate</span>
+                            ) : (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay' ? (
+                              <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded">Not eligible (avg &lt; 60)</span>
+                            ) : !it.toGS ? (
+                              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded">Missing GS (will be auto-created on promote)</span>
+                            ) : (
+                              <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded">OK</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
+              {/* Promotion Results table removed per request */}
             </div>
-
-            {/* Preview panel */}
-            <div className="bg-white rounded shadow p-3">
-              <h3 className="font-semibold mb-2">Preview</h3>
-              {!preview ? (
-                <div className="text-gray-500">Run Preview to see targets, auto-create needs, and graduations</div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-4 text-sm">
-                    <div>Total: <b>{preview.summary.total}</b></div>
-                    <div>Promotable: <b className="text-emerald-700">{preview.summary.promotable}</b></div>
-                    <div>Graduates: <b className="text-blue-700">{preview.summary.graduates}</b></div>
-                    <div>Missing Targets: <b className="text-amber-700">{preview.summary.missingTargets}</b></div>
-                    <div>Capacity Issues: <b className="text-red-700">{preview.summary.capacityIssues}</b></div>
-                  </div>
-                  <div className="border rounded max-h-[520px] overflow-auto">
-                    <table className="min-w-full text-sm border border-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="p-2 text-left border-b border-gray-200">Student</th>
-                          <th className="p-2 text-left border-b border-gray-200">From</th>
-                          <th className="p-2 text-left border-b border-gray-200">To</th>
-                          <th className="p-2 text-left border-b border-gray-200">Avg</th>
-                          <th className="p-2 text-left border-b border-gray-200">Failed</th>
-                          <th className="p-2 text-left border-b border-gray-200">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {preview.items.map((it, idx) => {
-                          // Helper: get readable names from populated objects or fallback
-                          const getName = (obj, key) => obj?.[key] || obj?.name || obj?.gradeName || obj?.yearName || obj?.shiftName || '-';
-                          const from = it.fromGS || {};
-                          const target = it.target || {};
-                          const failed = (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay';
-                          const graduated = it.action === 'graduate';
-                          return (
-                            <tr key={idx} className={`${failed ? 'bg-red-50' : graduated ? 'bg-blue-50' : 'bg-white'} hover:bg-gray-50 transition-colors`}>
-                              <td className="p-2">{it.studentId} — {it.fullName}</td>
-                              <td className="p-2">
-                                {formatFrom(from) || '-'}
-                              </td>
-                              <td className="p-2">
-                                {formatTo(target) || '-'}
-                              </td>
-                              <td className="p-2 text-xs">
-                                {typeof it.overallAvg === 'number' ? it.overallAvg.toFixed(1) : '-'}
-                              </td>
-                              <td className="p-2 text-xs">
-                                {typeof it.failedSubjects === 'number' ? it.failedSubjects : '-'}
-                              </td>
-                              <td className="p-2">
-                                {it.action === 'graduate' ? (
-                                  <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">Graduate</span>
-                                ) : (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay' ? (
-                                  <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded">Not eligible (avg &lt; 60)</span>
-                                ) : !it.toGS ? (
-                                  <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded">Missing GS (will be auto-created on promote)</span>
-                                ) : (
-                                  <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded">OK</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  {/* Promotion Results table removed per request */}
-                </div>
-              )}
-            </div>
-          </div>
-          
-          </>
-
-)}
+          )}
+        </div>
+      </div>
     </div>
   );
 }
