@@ -480,7 +480,7 @@ function Info({ label, value }) {
     return (
         <div className="text-sm">
             <div className="text-gray-400 uppercase tracking-wide text-xs">{label}</div>
-            <div className="text-gray-800 font-medium mt-0.5 break-words">{value}</div>
+            <div className="text-gray-800 font-medium mt-0.5 wrap-break-word">{value}</div>
         </div>
     );
 }

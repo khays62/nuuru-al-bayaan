@@ -182,6 +182,36 @@ export default function AttendancePage() {
     userChangedDateRef.current = false;
   }, [sectionId]);
 
+  // Clear downstream selects when upstream filters change (keep tabs).
+  useEffect(() => {
+    const prev = prevGradeIdRef.current;
+    if (prev !== '' && prev !== gradeId) {
+      setShiftId('');
+      setSectionId('');
+      clearForwardFromSection();
+    }
+    prevGradeIdRef.current = gradeId;
+  }, [gradeId]);
+
+  useEffect(() => {
+    const prev = prevShiftIdRef.current;
+    if (prev !== '' && prev !== shiftId) {
+      setSectionId('');
+      clearForwardFromSection();
+    }
+    prevShiftIdRef.current = shiftId;
+  }, [shiftId]);
+
+  useEffect(() => {
+    const prev = prevSectionIdRef.current;
+    if (prev !== '' && prev !== sectionId) {
+      clearForwardFromSection();
+    }
+    prevSectionIdRef.current = sectionId;
+    // Selecting a GS should not immediately warn; warnings should show when user picks a date/day.
+    userChangedDateRef.current = false;
+  }, [sectionId]);
+
   useEffect(() => {
     const run = async () => {
       if (!canViewAttendance) return;
@@ -485,6 +515,10 @@ export default function AttendancePage() {
   const isTableLoading = Boolean(loadingAttendance || detectingMode);
 
   const canActForUi = Boolean(canAct && canEditAttendance);
+
+  // Tabs, table section, footer, and helpers are extracted under components/attendance.
+
+  const isTableLoading = Boolean(loadingAttendance || detectingMode);
 
   // Tabs, table section, footer, and helpers are extracted under components/attendance.
 
