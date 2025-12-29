@@ -10,16 +10,19 @@ import { Printer, RotateCcw } from 'lucide-react';
 import TableShell from '../components/common/table/TableShell';
 import PrintHeader from '../components/print/PrintHeader';
 import PrintFooter from '../components/print/PrintFooter';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function TranscriptPage() {
+  const { hasPermission } = useAuth();
+  const canViewTranscript = hasPermission('transcript', 'view');
+  const canPrintTranscript = hasPermission('transcript', 'print');
+
   // Lookups (for labels only)
-  const [years, setYears] = useState([]);
+  const [_years, setYears] = useState([]);
   // Grade/Shift data no longer displayed; timeline covers progression
   const [grades, setGrades] = useState([]); // grade levels list
-  const [shifts, setShifts] = useState([]); // legacy (hidden)
   const [timeline, setTimeline] = useState([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
-  const applyingTimelineRef = useRef(false);
   const [activeTimelineIndex, setActiveTimelineIndex] = useState(-1); // user must choose one when timeline exists
 
   // Multi-student selection
@@ -44,13 +47,9 @@ export default function TranscriptPage() {
     academicYearId,
     setAcademicYearId,
     // The following from cascading filters are retained but UI removed
-    gradeId,
     setGradeId,
-    shiftId,
     setShiftId,
-    gradeSectionId,
     setGradeSectionId,
-    sections,
     resetLower,
   } = useCascadingFilters();
 
@@ -61,6 +60,7 @@ export default function TranscriptPage() {
   // Load lookups once for labels + levels
   useEffect(() => {
     (async () => {
+      if (!canViewTranscript) return;
       try {
         const ys = await getAcademicYears();
         setYears(Array.isArray(ys) ? ys : (ys?.data || []));
@@ -73,24 +73,30 @@ export default function TranscriptPage() {
         toast.error('Failed to load lookups');
       }
     })();
-  }, []);
+  }, [canViewTranscript]);
 
   // Load cohort timeline when cohort selected
   useEffect(() => {
     (async () => {
+      if (!canViewTranscript) return;
       if (!cohortId) { setTimeline([]); return; }
       setTimelineLoading(true);
       const { data } = await getCohortTimeline(cohortId);
       setTimelineLoading(false);
       setTimeline(data || []);
     })();
-  }, [cohortId]);
+  }, [cohortId, canViewTranscript]);
 
   // Suggest students based on search once all required filters completed
   const suggTimer = useRef(null);
   const lastFilterKeyRef = useRef('');
   const lastEmptyTimelineIndexRef = useRef(null); // track which timeline index already announced empty
   useEffect(() => {
+    if (!canViewTranscript) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
     if (suggTimer.current) clearTimeout(suggTimer.current);
     suggTimer.current = setTimeout(async () => {
       try {
@@ -171,7 +177,7 @@ export default function TranscriptPage() {
       }
     }, 250);
     return () => { if (suggTimer.current) clearTimeout(suggTimer.current); };
-  }, [search, academicYearId, enrollmentStatus, cohortId, timeline, activeTimelineIndex, isPickerOpen]);
+  }, [search, academicYearId, enrollmentStatus, cohortId, timeline, activeTimelineIndex, isPickerOpen, canViewTranscript]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -189,6 +195,10 @@ export default function TranscriptPage() {
   // Auto-load transcripts for newly selected students
   useEffect(() => {
     const run = async () => {
+      if (!canViewTranscript) {
+        setTranscripts({});
+        return;
+      }
       if (!selectedStudents.length) { setTranscripts({}); return; }
       setLoading(true);
       try {
@@ -210,7 +220,7 @@ export default function TranscriptPage() {
     };
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStudents]);
+  }, [selectedStudents, canViewTranscript]);
 
   // (Top/Bottom removed)
 
@@ -237,7 +247,13 @@ export default function TranscriptPage() {
     setTranscripts(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (!canViewTranscript || !canPrintTranscript) {
+      toast.error('You don’t have permission to print transcripts');
+      return;
+    }
+    window.print();
+  };
   const handleReset = () => {
     setSearch('');
     setDropdownSearch('');
@@ -451,14 +467,17 @@ export default function TranscriptPage() {
           </>
         )}
         <div className="mt-3 flex flex-row flex-wrap gap-2 items-center">
-          <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+          <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />} disabled={!canPrintTranscript || !canViewTranscript}>Print</ActionButton>
           <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
         </div>
       </div>
 
   <div className="bg-white p-4 rounded-lg shadow print:shadow-none print:p-0 print-container">
-        {loading && <div>Loading…</div>}
-        {!loading && selectedStudents.length > 0 && (
+        {!canViewTranscript && (
+          <div className="text-sm text-gray-500">You don’t have permission to view transcripts.</div>
+        )}
+        {canViewTranscript && loading && <div>Loading…</div>}
+        {canViewTranscript && !loading && selectedStudents.length > 0 && (
           <div className="space-y-8 print-two" style={{ breakInside: 'auto' }}>
             {(() => {
               return selectedStudents.map((sel) => {

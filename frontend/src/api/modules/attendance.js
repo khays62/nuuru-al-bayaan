@@ -12,3 +12,10 @@ export const getAttendance = (params = {}) => {
 	const path = qs ? `attendance?${qs}` : 'attendance';
 	return http.fetchJson(path);
 };
+
+// Optional fetch options (e.g. { signal }) for cancellation.
+export const getAttendanceWithOptions = (params = {}, options = {}) => {
+	const qs = new URLSearchParams(params).toString();
+	const path = qs ? `attendance?${qs}` : 'attendance';
+	return http.fetchJson(path, options);
+};

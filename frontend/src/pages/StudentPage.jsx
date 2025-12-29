@@ -18,9 +18,18 @@ import AcademicYearSelect from '../components/lookups/AcademicYearSelect';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
 import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
+import { useAuth } from '../contexts/AuthContext';
 
 // Student listing page using reusable entity list hook + pagination controls
 export default function StudentPage() {
+    const { hasPermission } = useAuth();
+    const canViewStudent = hasPermission('students', 'view');
+    const canAddStudent = hasPermission('students', 'add');
+    const canEditStudent = hasPermission('students', 'edit');
+    const canDownloadStudents = hasPermission('students', 'download');
+    const canDeactivateStudent = hasPermission('students', 'deactivate');
+    const canReactivateStudent = hasPermission('students', 'reactivate');
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
     const [loadingEdit, setLoadingEdit] = useState(false);
@@ -39,11 +48,7 @@ export default function StudentPage() {
     const [years, setYears] = useState([]);
     const [grades, setGrades] = useState([]);
     const [shifts, setShifts] = useState([]);
-    // Selected filters
-    const [selYear, setSelYear] = useState('');
-    const [selGrade, setSelGrade] = useState('');
-    const [selShift, setSelShift] = useState('');
-    const [selSection, setSelSection] = useState('');
+    // Selected filters (handled via toolbar state variables)
     // No filter persistence per request
 
     // Dynamic extra filters: ensure clearing enrollmentStatus/includeClosed when switching back to 'open'
@@ -167,6 +172,7 @@ export default function StudentPage() {
     }, [refresh]);
 
     const handleAddNew = () => {
+        if (!canAddStudent) return;
         setEditingStudent(null);
         setIsModalOpen(true);
     };
@@ -179,6 +185,7 @@ export default function StudentPage() {
     // ------------------------------------------------------------
     const profileCacheRef = useRef({}); // { studentId: enrichedStudent }
     const handleEdit = async (student) => {
+        if (!canEditStudent) return;
         // Step 1: Immediate open with basic row data
         setEditingStudent(student);
         setIsModalOpen(true);
@@ -258,7 +265,7 @@ export default function StudentPage() {
     // -----------------------------
     // Reassign (row) helpers
     // -----------------------------
-    const ensureLookupsLoaded = useCallback(async () => {
+    const _ensureLookupsLoaded = useCallback(async () => {
         try {
             if (years.length === 0) {
                 const y = await getAcademicYears();
@@ -293,9 +300,11 @@ export default function StudentPage() {
                     <h1 className="text-2xl font-bold text-gray-800">Student Management</h1>
                     <p className="mt-1 text-sm text-gray-600">Manage all student records in the system.</p>
                 </div>
-                <button onClick={handleAddNew} className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">
-                    <Plus size={20} className="mr-2" />Add New Student
-                </button>
+                {canAddStudent && (
+                    <button onClick={handleAddNew} className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">
+                        <Plus size={20} className="mr-2" />Add New Student
+                    </button>
+                )}
             </div>
 
             <DataToolbar
@@ -338,13 +347,15 @@ export default function StudentPage() {
                                 { field: 'studentId', label: 'Student ID' },
                             ]}
                         />
-                        <button
-                            type="button"
-                            onClick={() => exportCsv(students)}
-                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center"
-                        >
-                            <Download size={16} className="mr-1"/>CSV
-                        </button>
+                        {canDownloadStudents && (
+                            <button
+                                type="button"
+                                onClick={() => exportCsv(students)}
+                                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm flex items-center"
+                            >
+                                <Download size={16} className="mr-1"/>CSV
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => {
@@ -366,9 +377,21 @@ export default function StudentPage() {
             {isLoading ? (
                 <LoadingState variant="table" message="Loading students..." rows={6} columns={8} />
             ) : students.length === 0 ? (
-                <EmptyState title="No students found" description="Try adjusting filters or add a new student." actionLabel="Add Student" onAction={handleAddNew} />
+                <EmptyState
+                    title="No students found"
+                    description="Try adjusting filters or add a new student."
+                    actionLabel={canAddStudent ? "Add Student" : undefined}
+                    onAction={canAddStudent ? handleAddNew : undefined}
+                />
             ) : (
-                <StudentTable students={students} onEdit={handleEdit} />
+                <StudentTable
+                    students={students}
+                    onEdit={handleEdit}
+                    canView={canViewStudent}
+                    canEdit={canEditStudent}
+                    canDeactivate={canDeactivateStudent}
+                    canReactivate={canReactivateStudent}
+                />
             )}
 
             <PaginationControls

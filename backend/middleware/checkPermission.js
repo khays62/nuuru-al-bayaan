@@ -1,0 +1,166 @@
+// export const checkPermission = (module, action) => {
+//   return (req, res, next) => {
+//     const user = req.user;
+
+//     if (!user) {
+//       return res.status(401).json({ message: "Unauthorized" });
+//     }
+
+//     const modulePerm = user.permissions?.[module];
+
+//     if (!modulePerm) {
+//       return res
+//         .status(403)
+//         .json({ message: `No permissions found for module: ${module}` });
+//     }
+
+//     // full = allow all actions
+//     if (modulePerm.full) return next();
+
+//     if (!modulePerm[action]) {
+//       return res.status(403).json({
+//         message: `You do not have permission to ${action} ${module}`,
+//       });
+//     }
+
+//     next();
+//   };
+// };
+
+
+// export const checkPermission = (module, action) => {
+//   return (req, res, next) => {
+//     const perm = req.user?.permissions?.[module];
+//     if (!perm) return res.status(403).json({ message: "No permission module found" });
+
+//     if (perm.full) return next(); // FULL ACCESS OVERRIDES
+
+//     if (!perm[action]) {
+//       return res.status(403).json({
+//         message: `You do not have permission to ${action} ${module}`
+//       });
+//     }
+
+//     next();
+//   };
+// };
+
+
+// export const checkPermission = (module, action) => {
+//   return (req, res, next) => {
+//     // ADMIN ALWAYS ALLOWED
+//     if (req.user?.role === "admin") return next();
+
+//     const perm = req.user?.permissions?.[module];
+//     if (!perm)
+//       return res.status(403).json({ message: "No permission module found" });
+
+//     if (perm.full) return next();
+
+//     if (!perm[action]) {
+//       return res.status(403).json({
+//         message: `You do not have permission to ${action} ${module}`
+//       });
+//     }
+
+//     next();
+//   };
+// };
+
+const isAuthenticated = (req) => Boolean(req?.user);
+
+const hasPermission = (user, module, action) => {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+
+  const modulePerm = user.permissions?.[module];
+  if (!modulePerm) return false;
+
+  if (modulePerm.full === true) return true;
+  return modulePerm?.[action] === true;
+};
+
+export const checkPermission = (module, action) => {
+  return (req, res, next) => {
+    if (!isAuthenticated(req)) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    if (!hasPermission(req.user, module, action)) {
+      return res.status(403).json({
+        message: `You do not have permission to ${action} ${module}`
+      });
+    }
+
+    return next();
+  };
+};
+
+// Allows access if the user has *any one* of the provided (module, action) permissions.
+// Example: checkAnyPermission([{ module: 'grades', action: 'view' }, { module: 'students', action: 'add' }])
+export const checkAnyPermission = (requirements = []) => {
+  return (req, res, next) => {
+    if (!isAuthenticated(req)) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    // ADMIN ALWAYS ALLOWED
+    if (req.user.role === "admin") return next();
+
+    const ok = Array.isArray(requirements)
+      && requirements.some((r) => r?.module && r?.action && hasPermission(req.user, r.module, r.action));
+
+    if (!ok) {
+      const expected = (Array.isArray(requirements) ? requirements : [])
+        .filter((r) => r?.module && r?.action)
+        .map((r) => `${r.module}.${r.action}`)
+        .join(" OR ");
+
+      return res.status(403).json({
+        message: expected
+          ? `Missing required permission: ${expected}`
+          : "Missing required permission"
+      });
+    }
+
+    return next();
+  };
+};
+
+// Allows access if the user has *any* enabled permission within a module.
+// Useful for read/list endpoints where "edit-only" or "deactivate-only" staff
+// still need to load data without requiring a separate "view" flag.
+//
+// Example: checkModuleAnyPermission('students')
+// Optional: provide a limited set of actions to consider.
+export const checkModuleAnyPermission = (module, actions = []) => {
+  return (req, res, next) => {
+    if (!isAuthenticated(req)) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    // ADMIN ALWAYS ALLOWED
+    if (req.user.role === "admin") return next();
+
+    const modulePerm = req.user?.permissions?.[module];
+    if (!modulePerm) {
+      return res.status(403).json({ message: `No permissions found for module: ${module}` });
+    }
+
+    // Mongoose subdocs can have non-enumerable fields; normalize to a plain object
+    // before iterating over keys/values.
+    const permObj = typeof modulePerm?.toObject === 'function' ? modulePerm.toObject() : modulePerm;
+
+    if (permObj?.full === true) return next();
+
+    const allow = Array.isArray(actions) && actions.length
+      ? actions.some((a) => permObj?.[a] === true)
+      : Object.entries(permObj || {}).some(([k, v]) => k !== 'full' && v === true);
+
+    if (!allow) {
+      return res.status(403).json({ message: `You do not have permission to access ${module}` });
+    }
+
+    return next();
+  };
+};

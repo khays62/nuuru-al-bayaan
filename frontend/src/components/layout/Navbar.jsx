@@ -4,7 +4,19 @@ import { Menu, X, LogOut, ChevronRight, Search, User } from 'lucide-react';
 
 // This is the updated Navbar component with a new design.
 const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
-    const { user, logout } = useAuth();
+    // const { user, logout } = useAuth();
+
+    const { auth, logout } = useAuth();
+    const user = auth?.user;
+
+    const isStudent = user?.role === 'student';
+    const primaryText = isStudent
+        ? (user?.fullName || user?.username || 'Student')
+        : (user?.username || 'User');
+    const secondaryText = isStudent
+        ? (user?.studentId || '')
+        : (user?.email || '');
+
 
     return (
         <header className="bg-white shadow-lg p-4 flex items-center justify-between z-10 no-print">
@@ -49,8 +61,10 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             {/* Right side: User Info and Logout */}
             <div className="flex items-center gap-4">
                 <div className="text-right hidden sm:block">
-                    <p className="font-semibold text-sm text-gray-800">{user?.name || 'Admin User'}</p>
-                    <p className="text-xs text-gray-500">{user?.email || 'admin@nuuralbayaan.so'}</p>
+                    <p className="font-semibold text-sm text-gray-800">{primaryText}</p>
+                    {secondaryText ? (
+                        <p className="text-xs text-gray-500">{secondaryText}</p>
+                    ) : null}
                 </div>
                 <User size={24} className="text-gray-600 sm:hidden" />
                 <button

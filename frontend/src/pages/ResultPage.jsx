@@ -13,8 +13,15 @@ import { RotateCcw, Printer, Download } from 'lucide-react';
 import TableShell from '../components/common/table/TableShell';
 import PrintHeader from '../components/print/PrintHeader';
 import PrintFooter from '../components/print/PrintFooter';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ResultPage() {
+    const { hasPermission } = useAuth();
+    const canViewResults = hasPermission('results', 'view');
+    // User Management uses `results.download`; keep `results.export` as a legacy alias.
+    const canExportResults = hasPermission('results', 'download') || hasPermission('results', 'export');
+    const canPrintResults = hasPermission('results', 'print');
+
     // Persist filters in sessionStorage (not URL)
     const SESSION_KEY = 'results:filters:v1';
     const saved = (() => {
@@ -182,6 +189,7 @@ export default function ResultPage() {
 
     // Inside component (top-level function body), add handlers
     const handleExportCsv = () => {
+        if (!canExportResults) return;
         if (!results || results.length === 0) return;
         // Only export for default table (not trend/difficulty)
         if (mode === 'trend' || mode === 'difficulty') return;
@@ -209,6 +217,7 @@ export default function ResultPage() {
     };
 
     const handlePrint = () => {
+        if (!canPrintResults) return;
         window.print();
     };
 
@@ -300,19 +309,23 @@ export default function ResultPage() {
                 )}
                 <div className="flex items-center gap-2 ml-auto flex-wrap">
                     <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
-                    <ActionButton
-                        variant="neutral"
-                        onClick={handleExportCsv}
-                        title="Export CSV"
-                        icon={<Download size={16} />}
-                        disabled={loading || !academicYearId || !gradeSectionId || mode==='trend' || mode==='difficulty' || results.length===0}
-                    >CSV</ActionButton>
-                    <ActionButton
-                        variant="neutral"
-                        onClick={handlePrint}
-                        title="Print"
-                        icon={<Printer size={16} />}
-                    >Print</ActionButton>
+                    {(canViewResults && canExportResults) && (
+                        <ActionButton
+                            variant="neutral"
+                            onClick={handleExportCsv}
+                            title="Export CSV"
+                            icon={<Download size={16} />}
+                            disabled={loading || !academicYearId || !gradeSectionId || mode==='trend' || mode==='difficulty' || results.length===0}
+                        >CSV</ActionButton>
+                    )}
+                    {(canViewResults && canPrintResults) && (
+                        <ActionButton
+                            variant="neutral"
+                            onClick={handlePrint}
+                            title="Print"
+                            icon={<Printer size={16} />}
+                        >Print</ActionButton>
+                    )}
                 </div>
             </div>
 
@@ -345,7 +358,9 @@ export default function ResultPage() {
             )}
 
             <div className="bg-white p-4 rounded-lg shadow overflow-auto results-print">
-                {(!academicYearId || !gradeSectionId) ? (
+                {!canViewResults ? (
+                    <p className="text-sm text-gray-500">You don’t have permission to view results.</p>
+                ) : (!academicYearId || !gradeSectionId) ? (
                     <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift, and Section to view results.</p>
                 ) : (mode === 'subject' && !subjectId) ? (
                     <p className="text-sm text-gray-500">Choose a Subject to view results.</p>

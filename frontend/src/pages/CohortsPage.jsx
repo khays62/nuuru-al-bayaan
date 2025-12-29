@@ -14,6 +14,7 @@ import { getAcademicYears } from '../api';
 import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
 import TableShell from '../components/common/table/TableShell';
+import { useAuth } from '../contexts/AuthContext';
 
 function CohortForm({ initial = {}, onSubmit, onCancel }) {
   const [name, setName] = useState(initial.name || '');
@@ -79,6 +80,11 @@ function CohortForm({ initial = {}, onSubmit, onCancel }) {
 }
 
 export default function CohortsPage() {
+  const { hasPermission } = useAuth();
+  const canAdd = hasPermission('cohorts', 'add');
+  const canEdit = hasPermission('cohorts', 'edit');
+  const canDelete = hasPermission('cohorts', 'delete');
+
   const [statusFilter, setStatusFilter] = useState('');
   const [ayFilter, setAyFilter] = useState('');
   const [ayOptions, setAyOptions] = useState([]);
@@ -142,7 +148,8 @@ export default function CohortsPage() {
         </div>
         <div>
           <button
-            onClick={()=>{ setEditing(null); setShowModal(true); }}
+            onClick={()=>{ if (!canAdd) return; setEditing(null); setShowModal(true); }}
+            disabled={!canAdd}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
           >
             <Plus className="w-4 h-4 mr-2" /> Add Cohort
@@ -178,7 +185,7 @@ export default function CohortsPage() {
           title="No cohorts found"
           description="Try adjusting filters or create a new cohort."
           actionLabel="Add Cohort"
-          onAction={()=>{ setEditing(null); setShowModal(true); }}
+          onAction={()=>{ if (!canAdd) return; setEditing(null); setShowModal(true); }}
         />
       ) : (
         <>
@@ -207,13 +214,13 @@ export default function CohortsPage() {
                   <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{row.startAcademicYear?.yearName || row.startAcademicYearName || '-'}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-gray-700 border-x border-gray-200">{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-'}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200">
-                    <ActionButton title="Edit" icon={<Edit size={16}/>} onClick={()=>{ setEditing(row); setShowModal(true); }} />
+                    <ActionButton title="Edit" icon={<Edit size={16}/>} onClick={()=>{ if (!canEdit) return; setEditing(row); setShowModal(true); }} disabled={!canEdit} />
                     {row.status === 'active' ? (
-                      <ActionButton title="Archive" icon={<Archive size={16}/>} onClick={()=>handleArchive(row._id)} />
+                      <ActionButton title="Archive" icon={<Archive size={16}/>} onClick={()=>{ if (!canEdit) return; handleArchive(row._id); }} disabled={!canEdit} />
                     ) : (
-                      <ActionButton title="Activate" icon={<ArchiveRestore size={16}/>} onClick={()=>handleActivate(row._id)} />
+                      <ActionButton title="Activate" icon={<ArchiveRestore size={16}/>} onClick={()=>{ if (!canEdit) return; handleActivate(row._id); }} disabled={!canEdit} />
                     )}
-                    <ActionButton variant="danger" title="Delete" icon={<Trash2 size={16}/>} onClick={()=>handleDelete(row._id)} />
+                    <ActionButton variant="danger" title="Delete" icon={<Trash2 size={16}/>} onClick={()=>{ if (!canDelete) return; handleDelete(row._id); }} disabled={!canDelete} />
                   </td>
                 </tr>
               ))}

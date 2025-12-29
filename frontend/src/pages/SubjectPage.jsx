@@ -15,6 +15,7 @@ import SortControls from '../components/common/DataToolbar/SortControls';
 import PaginationControls from '../components/common/Pagination/PaginationControls';
 import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
+import { useAuth } from '../contexts/AuthContext';
 
 // API services (existing ones for now)
 import { getSubjects, addSubject, getGrades, updateSubject, deleteSubject } from '../api';
@@ -22,6 +23,11 @@ import { getSubjects, addSubject, getGrades, updateSubject, deleteSubject } from
 // NOTE: getSubjects(apiService) returns { data, meta }. We'll wrap it in fetchFn signature.
 
 export default function SubjectPage() {
+  const { hasPermission } = useAuth();
+  const canAddSubject = hasPermission('subjects', 'add');
+  const canEditSubject = hasPermission('subjects', 'edit');
+  const canDeleteSubject = hasPermission('subjects', 'delete');
+
   // --- Additional State Not Covered by useEntityList ---
   const [grades, setGrades] = useState([]); // For filter + form
   const [gradeFilter, setGradeFilter] = useState('');
@@ -79,18 +85,21 @@ export default function SubjectPage() {
   };
 
   const handleAddNew = () => {
+    if (!canAddSubject) return;
     setEditingSubject(null);
     setFormError(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (subject) => {
+    if (!canEditSubject) return;
     setEditingSubject(subject);
     setFormError(null);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (subjectId) => {
+    if (!canDeleteSubject) return;
     if (!window.confirm('Are you sure you want to delete this subject?')) return;
     const result = await deleteSubject(subjectId);
     if (result.error) {
@@ -177,6 +186,7 @@ export default function SubjectPage() {
         <div className="sm:self-auto">
           <button
             onClick={handleAddNew}
+            disabled={!canAddSubject}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
           >
             <Plus className="w-4 h-4 mr-2" /> Add New Subject
@@ -228,7 +238,13 @@ export default function SubjectPage() {
               Page {meta.page} of {meta.totalPages} — {meta.total} total
             </div>
           </div>
-          <SubjectTable subjects={subjects} onEdit={handleEdit} onDelete={handleDelete} />
+          <SubjectTable
+            subjects={subjects}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            canEdit={canEditSubject}
+            canDelete={canDeleteSubject}
+          />
           <PaginationControls
             page={meta.page}
             totalPages={meta.totalPages}

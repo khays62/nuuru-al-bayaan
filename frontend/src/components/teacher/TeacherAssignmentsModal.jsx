@@ -8,7 +8,7 @@ import { getSubjects } from '../../api/modules/subjects';
 import { addAssignment, getAssignments, removeAssignment } from '../../api/modules/teachers';
 import FilterSelect from '../common/DataToolbar/FilterSelect';
 
-export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
+export default function TeacherAssignmentsModal({ isOpen, onClose, teacher, canAssign = false }) {
   const [loading, setLoading] = useState(false);
   const [grades, setGrades] = useState([]);
   const [gradeId, setGradeId] = useState('');
@@ -66,6 +66,10 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
   const canAdd = useMemo(() => !!(sectionId && subjectId), [sectionId, subjectId]);
 
   const onAdd = async () => {
+    if (!canAssign) {
+      toast.error('You do not have permission to edit teacher assignments', { position: 'top-center' });
+      return;
+    }
     if (!canAdd || submitting) return;
     setSubmitting(true);
     try {
@@ -89,6 +93,10 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
   };
 
   const onRemove = async (assignment) => {
+    if (!canAssign) {
+      toast.error('You do not have permission to edit teacher assignments', { position: 'top-center' });
+      return;
+    }
     if (!confirm('Remove this assignment?')) return;
     try {
       await removeAssignment(teacher._id, assignment._id);
@@ -116,9 +124,11 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
             <FilterSelect value={subjectId} onChange={setSubjectId} options={(subjects||[]).map(s => ({ value: s._id, label: s.subjectName }))} placeholder="Select subject…" className={gradeId ? '' : 'opacity-60'} />
           </div>
         </div>
-        <div className="flex justify-end">
-          <button type="button" onClick={onAdd} disabled={!canAdd || submitting} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-blue-600 bg-blue-600 text-white shadow-sm text-sm disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700">Add Assignment</button>
-        </div>
+        {canAssign ? (
+          <div className="flex justify-end">
+            <button type="button" onClick={onAdd} disabled={!canAdd || submitting} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-blue-600 bg-blue-600 text-white shadow-sm text-sm disabled:opacity-60 disabled:cursor-not-allowed hover:bg-blue-700">Add Assignment</button>
+          </div>
+        ) : null}
 
         <div className="border rounded-md overflow-hidden">
           <table className="w-full text-sm">
@@ -142,7 +152,9 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
                     <td className="px-2 py-1">{a.gradeSection?.section || '-'}</td>
                     <td className="px-2 py-1">{a.subject?.subjectName || '-'}</td>
                     <td className="px-2 py-1 text-right">
-                      <ActionButton variant="danger" onClick={() => onRemove(a)}>Remove</ActionButton>
+                      {canAssign ? (
+                        <ActionButton variant="danger" onClick={() => onRemove(a)}>Remove</ActionButton>
+                      ) : null}
                     </td>
                   </tr>
                 ))

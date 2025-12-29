@@ -9,6 +9,8 @@ export default function TimetableGrid({
   onDelete,
   onMove,
   busy = false,
+  canMove = true,
+  canDelete = true,
 }) {
   const days = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
 
@@ -34,6 +36,7 @@ export default function TimetableGrid({
 
   const onDragStart = (e, slotId) => {
     if (busy) return;
+    if (!canMove) return;
     try {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData(DND_SLOT_MIME, String(slotId));
@@ -46,6 +49,7 @@ export default function TimetableGrid({
 
   const onDragOver = (e) => {
     if (busy) return;
+    if (!canMove) return;
     // Allow drop
     e.preventDefault();
     try { e.dataTransfer.dropEffect = 'move'; } catch { /* ignore */ }
@@ -53,17 +57,20 @@ export default function TimetableGrid({
 
   const onDragEnterCell = (dayIdx, period) => {
     if (busy) return;
+    if (!canMove) return;
     setActiveTarget(cellKey(dayIdx, period));
   };
 
   const onDragLeaveCell = (dayIdx, period) => {
     if (busy) return;
+    if (!canMove) return;
     const key = cellKey(dayIdx, period);
     setActiveTarget((prev) => (prev === key ? null : prev));
   };
 
   const onDrop = (e, targetDayIdx, period, targetSlotId) => {
     if (busy) return;
+    if (!canMove) return;
     e.preventDefault();
     setActiveTarget(null);
     const slotId = e.dataTransfer.getData(DND_SLOT_MIME) || e.dataTransfer.getData('text/plain');
@@ -114,10 +121,14 @@ export default function TimetableGrid({
                   onDrop={(e) => onDrop(e, idx, p, cellSlot?._id)}
                 >
                   <div
-                    draggable={!busy}
-                    onDragStart={(e) => onDragStart(e, cellSlot._id)}
-                    className="cursor-move"
-                    title="Drag to move"
+                    draggable={!busy && canMove && !cellSlot.isBreak}
+                    onDragStart={(e) => {
+                      if (cellSlot.isBreak) return;
+                      if (!canMove) return;
+                      onDragStart(e, cellSlot._id);
+                    }}
+                    className={cellSlot.isBreak ? 'cursor-default' : (canMove ? 'cursor-move' : 'cursor-default')}
+                    title={cellSlot.isBreak ? 'Break (locked)' : (canMove ? 'Drag to move' : '')}
                   >
                     {cellSlot.isBreak ? (
                       <div className="text-xs text-gray-500">Break</div>
@@ -128,9 +139,17 @@ export default function TimetableGrid({
                       </>
                     )}
                   </div>
-                  <div className="mt-2 no-print">
-                    <button className="px-2 py-1 text-xs border rounded text-red-600" onClick={() => onDelete && onDelete(cellSlot)}>Delete</button>
-                  </div>
+                  {canDelete ? (
+                    <div className="mt-2 no-print">
+                      <button
+                        className="px-2 py-1 text-xs border rounded text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => onDelete && onDelete(cellSlot)}
+                        disabled={busy}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : null}
                 </td>
               );
             })

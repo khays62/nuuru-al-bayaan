@@ -10,8 +10,21 @@ import SortControls from '../components/common/DataToolbar/SortControls';
 import ActionButton from '../components/common/ActionButton';
 import TeacherTable from '../components/teacher/TeacherTable';
 import TeacherAssignmentsModal from '../components/teacher/TeacherAssignmentsModal';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function TeachersPage() {
+  const { hasPermission } = useAuth();
+  const canAccessTeachers =
+    hasPermission('teachers', 'view') ||
+    hasPermission('teachers', 'add') ||
+    hasPermission('teachers', 'edit') ||
+    hasPermission('teachers', 'delete') ||
+    hasPermission('teachers', 'assign');
+  const canAddTeacher = hasPermission('teachers', 'add');
+  const canEditTeacher = hasPermission('teachers', 'edit');
+  const canDeleteTeacher = hasPermission('teachers', 'delete');
+  const canAssignTeacher = hasPermission('teachers', 'assign');
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,12 +37,18 @@ export default function TeachersPage() {
   const [sortDir, setSortDir] = useState('desc');
 
   useEffect(() => {
+    if (!canAccessTeachers) {
+      setItems([]);
+      setError('You do not have permission to access teachers');
+      setLoading(false);
+      return;
+    }
     setLoading(true); setError(null);
     listTeachers({ search })
       .then(data => setItems(Array.isArray(data) ? data : (data.items || data?.data || [])))
       .catch(() => setError('Failed to load teachers'))
       .finally(() => setLoading(false));
-  }, [search]);
+  }, [search, canAccessTeachers]);
 
   const sortedItems = React.useMemo(() => {
     const arr = [...items];
@@ -63,9 +82,27 @@ export default function TeachersPage() {
     setSortDir('desc');
   };
 
-  const onAdd = () => { setEditing(null); setShowForm(true); };
-  const onEdit = (row) => { setEditing(row); setShowForm(true); };
+  const onAdd = () => {
+    if (!canAddTeacher) {
+      toast.error('You do not have permission to add teachers');
+      return;
+    }
+    setEditing(null);
+    setShowForm(true);
+  };
+  const onEdit = (row) => {
+    if (!canEditTeacher) {
+      toast.error('You do not have permission to edit teachers');
+      return;
+    }
+    setEditing(row);
+    setShowForm(true);
+  };
   const onDelete = async (row) => {
+    if (!canDeleteTeacher) {
+      toast.error('You do not have permission to delete teachers');
+      return;
+    }
     if (!confirm('Delete this teacher?')) return;
     try {
       await deleteTeacher(row._id || row.id);
@@ -103,12 +140,14 @@ export default function TeachersPage() {
     <div className="space-y-4">
       <div className="flex items-center">
         <h1 className="text-2xl font-semibold">Teacher Management</h1>
-        <button
-          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-blue-600 bg-blue-600 text-white shadow-sm text-sm hover:bg-blue-700"
-          onClick={onAdd}
-        >
-          Add New Teacher
-        </button>
+        {canAddTeacher ? (
+          <button
+            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-blue-600 bg-blue-600 text-white shadow-sm text-sm hover:bg-blue-700"
+            onClick={onAdd}
+          >
+            Add New Teacher
+          </button>
+        ) : null}
       </div>
       <DataToolbar
         searchSlot={<SearchInput value={search} onChange={setSearch} placeholder="Search teachers..." />}
@@ -119,16 +158,21 @@ export default function TeachersPage() {
         items={sortedItems}
         loading={loading}
         error={error}
-        onAssign={(t) => { setAssignTeacher(t); setShowAssign(true); }}
-        onEdit={onEdit}
-        onDelete={onDelete}
+        onAssign={canAssignTeacher ? (t) => { setAssignTeacher(t); setShowAssign(true); } : undefined}
+        onEdit={canEditTeacher ? onEdit : undefined}
+        onDelete={canDeleteTeacher ? onDelete : undefined}
       />
 
       <Modal isOpen={showForm} onClose={() => { setShowForm(false); setEditing(null); }} title={editing ? 'Edit Teacher' : 'Add Teacher'}>
         <TeacherForm initialValue={editing} onCancel={() => { setShowForm(false); setEditing(null); }} onSave={onSave} />
       </Modal>
 
-      <TeacherAssignmentsModal isOpen={showAssign} onClose={() => { setShowAssign(false); setAssignTeacher(null); }} teacher={assignTeacher || {}} />
+      <TeacherAssignmentsModal
+        isOpen={showAssign}
+        onClose={() => { setShowAssign(false); setAssignTeacher(null); }}
+        teacher={assignTeacher || {}}
+        canAssign={canAssignTeacher}
+      />
     </div>
   );
 }

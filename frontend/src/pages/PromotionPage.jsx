@@ -8,6 +8,7 @@ import CohortSelect from '../components/lookups/CohortSelect';
 import { Search, Play, Rocket, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { previewPromotion, executePromotion, listStudents } from '../api';
+import { useAuth } from '../contexts/AuthContext';
 
 // Skeleton page for Promotions as a standalone tab per PROMOTION.md
 // This wires the layout and UX elements; API integration to be added next.
@@ -27,24 +28,30 @@ const TimingSelector = ({ value, onChange }) => (
 );
 
 export default function PromotionPage() {
+  const { hasPermission } = useAuth();
+  const canViewPromotion = hasPermission('promotions', 'view');
+  const canPreviewPromotion = hasPermission('promotions', 'preview');
+  const canPromotePromotion = hasPermission('promotions', 'promote');
+
   const [timing, setTiming] = useState('mid-year');
   const initialFilters = { q: '', ay: '', grade: '', shift: '', section: '', cohort: '' };
   const [filters, setFilters] = useState(initialFilters);
   const [students, setStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsError, setStudentsError] = useState(null);
-  const [ayOptions, setAyOptions] = useState([]);
+  const [_ayOptions, setAyOptions] = useState([]);
   const [gradeOptions, setGradeOptions] = useState([]);
   const [shiftOptions, setShiftOptions] = useState([]);
 
   // Load filter options on mount
   useEffect(() => {
+    if (!canViewPromotion) return;
     import('../api').then(api => {
       api.getAcademicYears().then(res => setAyOptions(res.data || res || []));
       api.getGrades().then(res => setGradeOptions(res.data || res || []));
       api.getShifts().then(res => setShiftOptions(res.data || res || []));
     });
-  }, []);
+  }, [canViewPromotion]);
   // filtersReady: all required dropdowns must be chosen (AY, Grade, Shift, Section, Cohort)
   const filtersReady = useMemo(() => (
     Boolean(filters.ay) && Boolean(filters.grade) && Boolean(filters.shift) && Boolean(filters.section) && Boolean(filters.cohort)
@@ -53,6 +60,14 @@ export default function PromotionPage() {
   // Fetch students only when filtersReady
   useEffect(() => {
     setPreview(null);
+    if (!canViewPromotion) {
+      // Keep UX stable, but avoid any data fetching.
+      setStudents([]);
+      setSelectedIds(new Set());
+      setStudentsLoading(false);
+      setStudentsError(null);
+      return;
+    }
     if (!filtersReady) {
       // Keep table empty & reset selection until user chooses all filters
       setStudents([]);
@@ -92,7 +107,7 @@ export default function PromotionPage() {
         setStudentsError('Failed to load students');
       })
       .finally(() => setStudentsLoading(false));
-  }, [filters, timing, filtersReady]);
+  }, [filters, timing, filtersReady, canViewPromotion]);
 
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [preview, setPreview] = useState(null); // { items:[], summary:{} }
@@ -153,6 +168,10 @@ export default function PromotionPage() {
   };
 
   const handlePreview = async () => {
+    if (!canPreviewPromotion) {
+      toast.error('You do not have permission to preview promotions');
+      return;
+    }
     if (!filtersReady) {
       toast.error('Doora AY, Grade, Shift, Section iyo Cohort marka hore');
       return;
@@ -185,6 +204,10 @@ export default function PromotionPage() {
   };
 
   const handlePromote = async () => {
+    if (!canPromotePromotion) {
+      toast.error('You do not have permission to promote students');
+      return;
+    }
     if (!preview) { toast.error('Run preview first'); return; }
     // Prevent execute if preview already shows mid-year error
     if (preview && preview.items && preview.items.some(it => Array.isArray(it.errors) && it.errors.some(e => String(e).includes('Mid-year promotion already done')))) {
@@ -254,6 +277,9 @@ export default function PromotionPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold text-gray-800">Promotions</h1>
         <p className="text-sm text-gray-600">Select context filters then preview eligibility before confirming promotions.</p>
+        {!canViewPromotion && (
+          <p className="text-sm text-gray-600">You don’t have permission to view promotions.</p>
+        )}
       </div>
       <DataToolbar
         showReset={false}
@@ -268,10 +294,10 @@ export default function PromotionPage() {
           </div>
         </>}
         actionsSlot={<div className="flex gap-2">
-          <button onClick={handlePreview} disabled={!filtersReady || loadingPreview || loadingPromote} aria-busy={loadingPreview} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+          <button onClick={handlePreview} disabled={!canPreviewPromotion || !filtersReady || loadingPreview || loadingPromote} aria-busy={loadingPreview} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
             {loadingPreview ? <Loader2 className="animate-spin" size={16}/> : <Play size={16}/>} <span>Preview</span>
           </button>
-          <button onClick={handlePromote} disabled={!preview || loadingPromote || loadingPreview} aria-busy={loadingPromote} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+          <button onClick={handlePromote} disabled={!canPromotePromotion || !preview || loadingPromote || loadingPreview} aria-busy={loadingPromote} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">
             {loadingPromote ? <Loader2 className="animate-spin" size={16}/> : <Rocket size={16}/>} <span>Promote</span>
           </button>
           <button onClick={()=>{ setPreview(null); setSelectedIds(new Set()); setFilters(initialFilters); }} disabled={loadingPreview || loadingPromote} className="inline-flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded shadow disabled:opacity-50 disabled:cursor-not-allowed text-sm">

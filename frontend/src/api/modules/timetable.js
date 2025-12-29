@@ -6,6 +6,13 @@ export const getSlots = (params = {}) => {
   return http.fetchJson(path);
 };
 
+// Optional fetch options (e.g. { signal }) for cancellation.
+export const getSlotsWithOptions = (params = {}, options = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  const path = qs ? `timetable/slots?${qs}` : 'timetable/slots';
+  return http.fetchJson(path, options);
+};
+
 export const createSlot = (payload) =>
   http.fetchJson('timetable/slots', { method: 'POST', body: JSON.stringify(payload) });
 

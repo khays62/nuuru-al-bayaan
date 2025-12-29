@@ -37,9 +37,15 @@ export default function TeacherTable({ items = [], loading = false, error = '', 
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ring-1 ${t.status==='active' ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>{t.status || '-'}</span>
             </td>
             <td className="px-3 py-2 text-right">
-              <ActionButton variant="info" onClick={() => onAssign && onAssign(t)}>Assignments</ActionButton>
-              <ActionButton className="ml-2" onClick={() => onEdit && onEdit(t)}>Edit</ActionButton>
-              <ActionButton variant="danger" className="ml-2" onClick={() => onDelete && onDelete(t)}>Delete</ActionButton>
+              {typeof onAssign === 'function' ? (
+                <ActionButton variant="info" onClick={() => onAssign(t)}>Assignments</ActionButton>
+              ) : null}
+              {typeof onEdit === 'function' ? (
+                <ActionButton className="ml-2" onClick={() => onEdit(t)}>Edit</ActionButton>
+              ) : null}
+              {typeof onDelete === 'function' ? (
+                <ActionButton variant="danger" className="ml-2" onClick={() => onDelete(t)}>Delete</ActionButton>
+              ) : null}
             </td>
           </tr>
         ))}

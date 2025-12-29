@@ -16,8 +16,14 @@ import { listGradeSections, deleteGradeSection } from '../api';
 import GradeSelect from '../components/lookups/GradeSelect';
 import ShiftSelect from '../components/lookups/ShiftSelect';
 // AY and Cohort filters removed (GS is AY-agnostic)
+import { useAuth } from '../contexts/AuthContext';
 
 export default function GradePage() {
+		const { hasPermission } = useAuth();
+		const canAddGrade = hasPermission('grades', 'add');
+		const canEditGrade = hasPermission('grades', 'edit');
+		const canDeleteGrade = hasPermission('grades', 'delete');
+
 		const [isModalOpen, setIsModalOpen] = useState(false);
 		const [editingClass, setEditingClass] = useState(null);
 		// Local, controlled filters (mirrors StudentPage pattern for stability)
@@ -64,9 +70,10 @@ export default function GradePage() {
 		} = list;
 
 		// CRUD handlers
-		const handleAddNew = () => { setEditingClass(null); setIsModalOpen(true); };
-		const handleEdit = (cls) => { setEditingClass(cls); setIsModalOpen(true); };
+		const handleAddNew = () => { if (!canAddGrade) return; setEditingClass(null); setIsModalOpen(true); };
+		const handleEdit = (cls) => { if (!canEditGrade) return; setEditingClass(cls); setIsModalOpen(true); };
 		const handleDelete = async (id) => {
+				if (!canDeleteGrade) return;
 				if (!window.confirm('Are you sure you want to delete this section for the selected grade/year/shift?')) return;
 				const res = await deleteGradeSection(id);
 				if (res && res.ok) {
@@ -145,7 +152,8 @@ export default function GradePage() {
 								</div>
 								<div>
 										<button
-												onClick={handleAddNew}
+											onClick={handleAddNew}
+											disabled={!canAddGrade}
 												className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm"
 										>
 												<Plus className="w-4 h-4 mr-2" /> Add Grade Section
@@ -218,7 +226,13 @@ export default function GradePage() {
 														Page {meta.page} of {meta.totalPages || meta.pages || 1} — {meta.total} total
 												</div>
 										</div>
-										<GradeTable classes={classes} onEdit={handleEdit} onDelete={handleDelete} />
+										<GradeTable
+											classes={classes}
+											onEdit={handleEdit}
+											onDelete={handleDelete}
+											canEdit={canEditGrade}
+											canDelete={canDeleteGrade}
+										/>
 										<PaginationControls
 												page={meta.page}
 												totalPages={meta.totalPages || meta.pages || 1}

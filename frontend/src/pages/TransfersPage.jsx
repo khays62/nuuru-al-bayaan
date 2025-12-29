@@ -13,8 +13,9 @@ import LoadingState from '../components/common/Feedback/LoadingState';
 import EmptyState from '../components/common/Feedback/EmptyState';
 import { listTransferCandidates, performTransfer, getStudentProfile, listTransferLogs } from '../api';
 import Spinner from '../components/common/Feedback/Spinner';
+import { useAuth } from '../contexts/AuthContext';
 
-function CandidateTable({ rows = [], onTransfer, openingId }) {
+function CandidateTable({ rows = [], onTransfer, openingId, canTransfer }) {
   return (
     <table className="min-w-full divide-y divide-gray-200">
       <thead className="bg-gray-800">
@@ -44,14 +45,16 @@ function CandidateTable({ rows = [], onTransfer, openingId }) {
               <td className="px-6 py-3 text-sm text-gray-600 border-x">{section != null ? `Sec ${section}` : '-'}</td>
               <td className="px-6 py-3 text-sm text-gray-600 border-x">{shift || '-'}</td>
               <td className="px-6 py-3 text-sm text-gray-800 border-x">
-                <ActionButton variant="info" title="Transfer Section" onClick={() => onTransfer(st)} disabled={openingId === st._id}>
-                  {openingId === st._id ? (
-                    <>
-                      <Spinner size={14} color="currentColor" />
-                      <span>Opening…</span>
-                    </>
-                  ) : 'Transfer'}
-                </ActionButton>
+                {canTransfer ? (
+                  <ActionButton variant="info" title="Transfer Section" onClick={() => onTransfer(st)} disabled={openingId === st._id}>
+                    {openingId === st._id ? (
+                      <>
+                        <Spinner size={14} color="currentColor" />
+                        <span>Opening…</span>
+                      </>
+                    ) : 'Transfer'}
+                  </ActionButton>
+                ) : null}
               </td>
             </tr>
           );
@@ -62,6 +65,18 @@ function CandidateTable({ rows = [], onTransfer, openingId }) {
 }
 
 export default function TransfersPage() {
+  const { hasPermission } = useAuth();
+  const canViewTransfers =
+    hasPermission('transfers', 'view')
+    || hasPermission('transfers', 'transfer')
+    // Backward compatibility
+    || hasPermission('students', 'transfer');
+
+  const canTransfer =
+    hasPermission('transfers', 'transfer')
+    // Backward compatibility
+    || hasPermission('students', 'transfer');
+
   // Filters
   const [search, setSearch] = useState('');
   const [ay, setAy] = useState('');
@@ -109,6 +124,11 @@ export default function TransfersPage() {
   }), [search, page, limit, ay, grade, shift, section]);
 
   const load = async () => {
+    if (!canViewTransfers) {
+      setRows([]);
+      setMeta({ page: 1, limit, total: 0, totalPages: 1 });
+      return;
+    }
     setLoading(true);
     try {
       // Gating: ha soo jiidin wax rows ilaa ugu yaraan mid ka mid ah filters (AY / Grade / Shift / Search) la doorto
@@ -129,9 +149,14 @@ export default function TransfersPage() {
     }
   };
 
-  useEffect(() => { load(); }, [params.limit, params.page, params.academicYear, params.grade, params.shift, params.gradeSectionId, params.search]);
+  useEffect(() => { load(); }, [canViewTransfers, params.limit, params.page, params.academicYear, params.grade, params.shift, params.gradeSectionId, params.search]);
 
   const loadLogs = async () => {
+    if (!canViewTransfers) {
+      setLogs([]);
+      setLogsMeta({ page: 1, totalPages: 1, limit: logsLimit, total: 0 });
+      return;
+    }
     setLogsLoading(true);
     try {
       const res = await listTransferLogs({ page: logsPage, limit: logsLimit, search: logsSearch });
@@ -145,7 +170,7 @@ export default function TransfersPage() {
     }
   };
 
-  useEffect(() => { loadLogs(); }, [logsPage, logsLimit, logsSearch]);
+  useEffect(() => { loadLogs(); }, [canViewTransfers, logsPage, logsLimit, logsSearch]);
 
   const onReset = () => {
     setSearch('');
@@ -158,6 +183,10 @@ export default function TransfersPage() {
   };
 
   const openModal = async (st) => {
+    if (!canTransfer) {
+      toast.error("You don’t have permission to transfer students");
+      return;
+    }
     setOpeningId(st._id);
     setModalLoading(true);
     setSelected(st);
@@ -206,6 +235,10 @@ export default function TransfersPage() {
   }, [selAy, selGrade, selShift, isOpen]);
 
   const submit = async () => {
+    if (!canTransfer) {
+      toast.error("You don’t have permission to transfer students");
+      return;
+    }
     if (!selected || !selAy || !selGrade || !selShift || !selSection) {
       toast.error('Please select Year, Grade, Shift and Section');
       return;
@@ -246,6 +279,10 @@ export default function TransfersPage() {
   };
 
   const handleReturn = async (item) => {
+    if (!canTransfer) {
+      toast.error("You don’t have permission to transfer students");
+      return;
+    }
     try {
       const { ok, data, status } = await performTransfer(item.studentId, {
         academicYearId: item.from.academicYearId,
@@ -278,10 +315,10 @@ export default function TransfersPage() {
         searchSlot={<SearchInput value={search} onChange={(v)=>{ setSearch(v); setPage(1); }} placeholder="Search by name or ID" />}
         filtersSlot={(
           <>
-            <AcademicYearSelect placeholder="Academic Year" value={ay} onChange={(v)=>{ setAy(v); setPage(1); }} className="flex-1 min-w-[140px]" />
-            <GradeSelect placeholder="Grade" value={grade} onChange={(v)=>{ setGrade(v); setPage(1); }} className="flex-1 min-w-[120px]" />
-            <ShiftSelect placeholder="Shift" value={shift} onChange={(v)=>{ setShift(v); setPage(1); }} className="flex-1 min-w-[120px]" />
-            <GradeSectionSelect gradeId={grade} shiftId={shift} value={section} onChange={(v)=>{ setSection(v); setPage(1); }} className="flex-1 min-w-[160px]" placeholder="Section" />
+            <AcademicYearSelect placeholder="Academic Year" value={ay} onChange={(v)=>{ setAy(v); setPage(1); }} className="flex-1 min-w-35" />
+            <GradeSelect placeholder="Grade" value={grade} onChange={(v)=>{ setGrade(v); setPage(1); }} className="flex-1 min-w-30" />
+            <ShiftSelect placeholder="Shift" value={shift} onChange={(v)=>{ setShift(v); setPage(1); }} className="flex-1 min-w-30" />
+            <GradeSectionSelect gradeId={grade} shiftId={shift} value={section} onChange={(v)=>{ setSection(v); setPage(1); }} className="flex-1 min-w-40" placeholder="Section" />
           </>
         )}
         onReset={onReset}
@@ -295,7 +332,7 @@ export default function TransfersPage() {
             ? <EmptyState title="No candidates found" description="Try adjusting filters or search keyword." />
             : <EmptyState title="Select filters to begin" description="Choose Academic Year, Grade or Shift to load candidates." />
         ) : (
-          <CandidateTable rows={rows} onTransfer={openModal} openingId={openingId} />
+          <CandidateTable rows={rows} onTransfer={openModal} openingId={openingId} canTransfer={canTransfer} />
         )}
       </div>
 

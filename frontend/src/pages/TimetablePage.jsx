@@ -15,8 +15,17 @@ import { getGrades, getShifts } from '../api/modules/lookups';
 import { listGradeSections } from '../api/modules/gradeSections';
 import { getSubjects } from '../api/modules/subjects';
 import { getSlots, createSlot, createSlotsBulk, updateSlot, swapSlots, deleteSlot } from '../api/modules/timetable';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function TimetablePage() {
+  const { hasPermission } = useAuth();
+  const canViewTimetable = hasPermission('timetable', 'view');
+  const canAddTimetable = hasPermission('timetable', 'add');
+  const canEditTimetable = hasPermission('timetable', 'edit');
+  const canDeleteTimetable = hasPermission('timetable', 'delete');
+  const canDownloadTimetable = hasPermission('timetable', 'download');
+  const canPrintTimetable = hasPermission('timetable', 'print');
+
   const [gradeId, setGradeId] = useState('');
   const [shiftId, setShiftId] = useState('');
   const [sectionId, setSectionId] = useState('');
@@ -43,6 +52,35 @@ export default function TimetablePage() {
 
   const dayNames = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
 
+  const formatTime12h = (t) => {
+    const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return String(t || '');
+    let hh = Number(m[1]);
+    const mm = m[2];
+    if (!Number.isFinite(hh)) return String(t || '');
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    hh = hh % 12;
+    if (hh === 0) hh = 12;
+    return `${hh}:${mm} ${ampm}`;
+  };
+
+  const isValidTime24h = (raw) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(raw || ''));
+
+  const formatRangeWithAmPm = (start, end) => {
+    const sOk = isValidTime24h(start);
+    const eOk = isValidTime24h(end);
+    if (!sOk || !eOk) return `${start || ''} - ${end || ''}`.trim();
+    const s12 = formatTime12h(start);
+    const e12 = formatTime12h(end);
+    const sAmPm = String(s12).endsWith('PM') ? 'PM' : 'AM';
+    const eAmPm = String(e12).endsWith('PM') ? 'PM' : 'AM';
+    if (sAmPm === eAmPm) {
+      // keep original 24h range but suffix with AM/PM once
+      return `${start} - ${end} ${sAmPm}`;
+    }
+    return `${start} ${sAmPm} - ${end} ${eAmPm}`;
+  };
+
   const formatConflictReason = (reason) => {
     const r = String(reason || '').toLowerCase();
     if (r.includes('gs')) return 'Class conflict';
@@ -54,6 +92,7 @@ export default function TimetablePage() {
 
   useEffect(() => {
     (async () => {
+      if (!canViewTimetable) return;
       try {
         const [g, s] = await Promise.all([getGrades(), getShifts()]);
         setGrades(g?.data || g || []);
@@ -62,9 +101,10 @@ export default function TimetablePage() {
         console.warn('Failed to load lookups', err);
       }
     })();
-  }, []);
+  }, [canViewTimetable]);
 
   useEffect(() => {
+    if (!canViewTimetable) return;
     if (!gradeId) { setSections([]); setSectionId(''); setSubjects([]); setSubjectId(''); return; }
     (async () => {
       try {
@@ -80,9 +120,10 @@ export default function TimetablePage() {
         console.warn('Failed to load sections/subjects', err);
       }
     })();
-  }, [gradeId, shiftId]);
+  }, [gradeId, shiftId, canViewTimetable]);
 
   useEffect(() => {
+    if (!canViewTimetable) return;
     if (!sectionId) { setSlots([]); return; }
     (async () => {
       try {
@@ -95,13 +136,31 @@ export default function TimetablePage() {
       }
       finally { setLoading(false); }
     })();
-  }, [sectionId]);
+  }, [sectionId, canViewTimetable]);
 
   const onMove = async (slotId, target, targetSlotId) => {
     if (!sectionId) return;
     if (dndBusy) return;
+    if (!canEditTimetable) {
+      toast.error('You do not have permission to edit timetable');
+      return;
+    }
     const src = slots.find((s) => String(s._id) === String(slotId));
     if (!src) return;
+
+    // Break slots are static (no drag/drop moves or swaps)
+    if (src?.isBreak) {
+      toast.error('Break cannot be moved');
+      return;
+    }
+
+    if (targetSlotId) {
+      const dst = slots.find((s) => String(s._id) === String(targetSlotId));
+      if (dst?.isBreak) {
+        toast.error('Cannot drop onto a Break');
+        return;
+      }
+    }
 
     const same =
       Number(src.dayOfWeek) === Number(target?.dayOfWeek) &&
@@ -135,7 +194,19 @@ export default function TimetablePage() {
   const closeSwap = () => setSwapUi({ isOpen: false, aId: null, bId: null });
   const handleSwap = async () => {
     if (!swapUi?.aId || !swapUi?.bId) return;
+    if (!canEditTimetable) {
+      toast.error('You do not have permission to edit timetable');
+      closeSwap();
+      return;
+    }
     try {
+      const a = slots.find((s) => String(s._id) === String(swapUi.aId));
+      const b = slots.find((s) => String(s._id) === String(swapUi.bId));
+      if (a?.isBreak || b?.isBreak) {
+        toast.error('Break cannot be swapped');
+        closeSwap();
+        return;
+      }
       setDndBusy(true);
       await swapSlots({ aId: swapUi.aId, bId: swapUi.bId });
       const list = await getSlots({ gs: sectionId });
@@ -150,6 +221,7 @@ export default function TimetablePage() {
   };
 
   const onAddSingle = async () => {
+    if (!canAddTimetable) { toast.error('You do not have permission to add timetable slots'); return; }
     if (!sectionId || (!isBreak && !subjectId) || !startTime || !endTime) { toast.error('Fill required fields'); return; }
     if (!Array.isArray(days) || days.length !== 1) { toast.error('Select exactly one day for Add Slot'); return; }
     try {
@@ -169,6 +241,7 @@ export default function TimetablePage() {
   };
 
   const onAddBulk = async () => {
+    if (!canAddTimetable) { toast.error('You do not have permission to add timetable slots'); return; }
     if (!sectionId || (!isBreak && !subjectId) || !startTime || !endTime || !days?.length) { toast.error('Fill required fields'); return; }
     try {
       setAddingBulk(true);
@@ -198,6 +271,7 @@ export default function TimetablePage() {
   };
 
   const onDelete = async (slot) => {
+    if (!canDeleteTimetable) { toast.error('You do not have permission to delete timetable slots'); return; }
     if (!confirm('Delete this slot?')) return;
     try {
       await deleteSlot(slot._id);
@@ -247,6 +321,10 @@ export default function TimetablePage() {
   }, [sections, sectionId]);
 
   const handlePrint = () => {
+    if (!canPrintTimetable) {
+      toast.error('You do not have permission to print timetable');
+      return;
+    }
     window.print();
   };
 
@@ -280,6 +358,10 @@ export default function TimetablePage() {
   };
 
   const handleDownloadCsv = () => {
+    if (!canDownloadTimetable) {
+      toast.error('You do not have permission to download timetable');
+      return;
+    }
     if (!sectionId) { toast.error('Select a section'); return; }
     const rows = getExportRows();
     if (!rows.length) { toast.error('No slots to export'); return; }
@@ -332,7 +414,7 @@ export default function TimetablePage() {
           <ActionButton
             variant="primary"
             onClick={handleSwap}
-            disabled={dndBusy}
+            disabled={dndBusy || !canEditTimetable}
             className="justify-center py-3"
           >
             {dndBusy ? 'Working…' : 'Swap'}
@@ -363,11 +445,37 @@ export default function TimetablePage() {
 
       <div className="flex items-center no-print">
         <h1 className="text-2xl font-semibold">Timetable</h1>
+        {!canViewTimetable && (
+          <div className="ml-4 text-sm text-gray-600">You don’t have permission to view timetable.</div>
+        )}
         <div className="ml-auto flex gap-2 items-center">
-          <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
-          <ActionButton variant="neutral" onClick={handleDownloadCsv} title="Download CSV" icon={<Download size={16} />}>CSV</ActionButton>
-          <button className={`px-3 py-1 rounded-md border bg-blue-600 text-white text-sm ${addingSingle ? 'opacity-70 cursor-wait' : ''}`} onClick={onAddSingle} disabled={addingSingle}>{addingSingle ? 'Adding…' : 'Add Slot'}</button>
-          <button className={`px-3 py-1 rounded-md border bg-blue-600 text-white text-sm ${addingBulk ? 'opacity-70 cursor-wait' : ''}`} onClick={onAddBulk} disabled={addingBulk}>{addingBulk ? 'Adding…' : 'Add Slots (Days)'}</button>
+          {canViewTimetable && canPrintTimetable ? (
+            <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+          ) : null}
+
+          {canViewTimetable && canDownloadTimetable ? (
+            <ActionButton variant="neutral" onClick={handleDownloadCsv} title="Download CSV" icon={<Download size={16} />}>CSV</ActionButton>
+          ) : null}
+
+          {canViewTimetable && canAddTimetable ? (
+            <button
+              className={`px-3 py-1 rounded-md border bg-blue-600 text-white text-sm ${(addingSingle) ? 'opacity-70 cursor-not-allowed' : ''}`}
+              onClick={onAddSingle}
+              disabled={addingSingle}
+            >
+              {addingSingle ? 'Adding…' : 'Add Slot'}
+            </button>
+          ) : null}
+
+          {canViewTimetable && canAddTimetable ? (
+            <button
+              className={`px-3 py-1 rounded-md border bg-blue-600 text-white text-sm ${(addingBulk) ? 'opacity-70 cursor-not-allowed' : ''}`}
+              onClick={onAddBulk}
+              disabled={addingBulk}
+            >
+              {addingBulk ? 'Adding…' : 'Add Slots (Days)'}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -393,9 +501,21 @@ export default function TimetablePage() {
               <FilterSelect value={sectionId} onChange={setSectionId} options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}` }))} placeholder="Section" className="min-w-[200px]" />
               <FilterSelect value={subjectId} onChange={setSubjectId} options={(subjects||[]).map(s => ({ value: s._id, label: s.subjectName }))} placeholder="Subject" className="min-w-[160px]" disabled={isBreak} />
               <MultiSelectDropdown value={days} onChange={setDays} options={dayOpts} placeholder="Days" className="min-w-[200px]" />
-              <input type="time" value={startTime || '00:00'} onChange={e=>setStartTime(e.target.value)} className="px-2 py-1 border rounded" />
+              <input
+                type="time"
+                step={60}
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="px-2 py-1 border rounded"
+              />
               <span>to</span>
-              <input type="time" value={endTime || '00:00'} onChange={e=>setEndTime(e.target.value)} className="px-2 py-1 border rounded" />
+              <input
+                type="time"
+                step={60}
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="px-2 py-1 border rounded"
+              />
               <input type="text" value={room} onChange={e=>setRoom(e.target.value)} placeholder="Room" className="px-2 py-1 border rounded" />
             </div>
           )}
@@ -430,7 +550,9 @@ export default function TimetablePage() {
               <th className="text-left px-3 py-2">No periods</th>
             ) : (
               periods.map((p, i) => (
-                <th key={i} className="text-left px-3 py-2">{p.startTime} - {p.endTime}</th>
+                <th key={i} className="text-left px-3 py-2">
+                  {formatRangeWithAmPm(p.startTime, p.endTime)}
+                </th>
               ))
             )}
           </tr>
@@ -448,11 +570,11 @@ export default function TimetablePage() {
             ) : periods.length === 0 ? (
               <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Set a valid time range to show periods.</td></tr>
             ) : (
-              <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} />
+              <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} canMove={canEditTimetable} canDelete={canDeleteTimetable} />
             ))
           )}
           {!loading && !error && slots.length > 0 && (
-            <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} />
+            <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} canMove={canEditTimetable} canDelete={canDeleteTimetable} />
           )}
         </tbody>
       </TableShell>

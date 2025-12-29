@@ -11,8 +11,14 @@ import ShiftSelect from '../components/lookups/ShiftSelect';
 import GradeSectionSelect from '../components/lookups/GradeSectionSelect';
 import CohortSelect from '../components/lookups/CohortSelect';
 import EnrollmentStatusSelect from '../components/lookups/EnrollmentStatusSelect';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ExamManagementPage() {
+    const { hasPermission } = useAuth();
+    // Backend and User Management use `exams.input` for score entry.
+    // Keep `exams.edit` as a backward-compatible alias.
+    const canEditScores = hasPermission('exams', 'input') || hasPermission('exams', 'edit');
+
     const [subjects, setSubjects] = useState([]); // subjects assigned to the selected section only
 
     const [academicYearId, setAcademicYearId] = useState('');
@@ -104,6 +110,7 @@ export default function ExamManagementPage() {
 
     // Debounced change handler
     const handleChange = (studentId, examId, value, weight) => {
+        if (!canEditScores) return;
         const key = getCellKey(studentId, examId);
         setLocalInputs(prev => ({ ...prev, [key]: value }));
         const timers = debounceTimers.current;
@@ -116,6 +123,7 @@ export default function ExamManagementPage() {
     };
 
     const flushDebounce = (key) => {
+        if (!canEditScores) return;
         const timers = debounceTimers.current;
         if (timers.has(key)) {
             clearTimeout(timers.get(key));
