@@ -1,53 +1,96 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
 import Spinner from '../../common/Feedback/Spinner';
-import { getStudentTransfers } from '../../../api';
+import { getStudentProfile, getStudentTransfers } from '../../../api';
 import TransferBadge from '../../student/TransferBadge';
-import { User as UserIcon } from 'lucide-react';
+import { Eye, EyeOff, User as UserIcon } from 'lucide-react';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 export default function ProfileTab() {
-  const { studentId } = useParams();
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [latestTransfer, setLatestTransfer] = useState(null);
-  const [reloadSig, setReloadSig] = useState(0);
+  const { studentId: paramStudentId } = useParams();
+  const { auth, refreshUser } = useAuth();
+  const studentId = paramStudentId || (auth?.user?.role === 'student' ? auth?.user?._id : null);
 
-  useEffect(() => {
-    let mounted = true;
-    async function fetchProfile() {
-      setLoading(true); setError(null);
-      try {
-        const res = await fetch(`/api/students/${studentId}`);
-        if (!res.ok) throw new Error('Profile request failed');
-        const json = await res.json();
-        if (mounted) setProfile(json);
-      } catch (e) {
-        console.error(e);
-        if (mounted) setError('Failed to load profile');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    if (studentId) fetchProfile();
-    return () => { mounted = false; };
-  }, [studentId, reloadSig]);
+  const isStudentSelf = auth?.user?.role === 'student' && !paramStudentId;
+  const isForcePasswordChange = Boolean(isStudentSelf && auth?.user?.mustChangePassword);
+  const [currentPassword, setCurrentPassword] = React.useState('');
+  const [newPassword, setNewPassword] = React.useState('');
+  const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [pwSaving, setPwSaving] = React.useState(false);
+  const [showCurrentPw, setShowCurrentPw] = React.useState(false);
+  const [showNewPw, setShowNewPw] = React.useState(false);
+  const [showConfirmPw, setShowConfirmPw] = React.useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-    async function loadTransfers() {
-      try {
-        const res = await getStudentTransfers(studentId, { limit: 1 });
-        if (!mounted) return;
-        const logs = res.data || [];
-        setLatestTransfer(logs[0] || null);
-      } catch (e) {
-        // non-blocking
-      }
+  const confirmTouched = String(confirmPassword || '').length > 0;
+  const nextTouched = String(newPassword || '').length > 0;
+  const passwordsMatch = nextTouched && confirmTouched && newPassword === confirmPassword;
+  const passwordsMismatch = confirmTouched && newPassword !== confirmPassword;
+
+  const handleChangePassword = async () => {
+    const curr = String(currentPassword || '').trim();
+    const next = String(newPassword || '').trim();
+    const confirm = String(confirmPassword || '').trim();
+
+    // Security: we never read the current password from the DB.
+    // If the account is still on default password (mustChangePassword), allow changing without entering current.
+    if (!next || !confirm || (!isForcePasswordChange && !curr)) {
+      toast.error('Please fill in all required password fields.');
+      return;
     }
-    if (studentId) loadTransfers();
-    return () => { mounted = false; };
-  }, [studentId]);
+    if (next.length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+    if (next !== confirm) {
+      toast.error('New passwords do not match.');
+      return;
+    }
+
+    setPwSaving(true);
+    try {
+      const payload = isForcePasswordChange
+        ? { newPassword: next }
+        : { oldPassword: curr, newPassword: next };
+
+      await axios.put('/api/students/change-password', payload, { withCredentials: true });
+      toast.success('You changed your password successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      if (typeof refreshUser === 'function') await refreshUser();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to change password.');
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  const profileQuery = useQuery({
+    queryKey: ['studentProfile', studentId],
+    enabled: !!studentId,
+    queryFn: async () => {
+      const data = await getStudentProfile(studentId);
+      if (!data) throw new Error('Failed to load profile');
+      return data;
+    },
+  });
+
+  const transfersQuery = useQuery({
+    queryKey: ['studentTransfersLatest', studentId],
+    enabled: !!studentId,
+    queryFn: async () => {
+      const res = await getStudentTransfers(studentId, { limit: 1 });
+      return Array.isArray(res?.data) ? res.data : [];
+    },
+  });
+
+  const loading = profileQuery.isLoading;
+  const error = profileQuery.isError ? 'Failed to load profile' : null;
+  const profile = profileQuery.data ?? null;
+  const latestTransfer = (transfersQuery.data || [])?.[0] ?? null;
 
   return (
     <div className="bg-white p-0 rounded-xl shadow overflow-hidden">
@@ -56,7 +99,7 @@ export default function ProfileTab() {
       ) : error ? (
         <div className="p-6 text-red-600 text-sm flex items-center gap-3">
           <span>{error}</span>
-          <button onClick={() => setReloadSig(s => s + 1)} className="px-2 py-1 text-xs bg-blue-600 text-white rounded">Retry</button>
+          <button onClick={() => profileQuery.refetch()} className="px-2 py-1 text-xs bg-blue-600 text-white rounded">Retry</button>
         </div>
       ) : profile ? (
         <>
@@ -115,6 +158,117 @@ export default function ProfileTab() {
                 </div>
               </section>
             </div>
+
+            {latestTransfer ? (
+              <div className="mt-6">
+                <TransferBadge transfer={latestTransfer} />
+              </div>
+            ) : null}
+
+            {isStudentSelf ? (
+              <div className="mt-6 rounded-xl border bg-white">
+                <div className="px-4 py-3 border-b">
+                  <h3 className="text-base font-semibold">Change Password</h3>
+                  <p className="text-xs text-gray-500">Update your account password</p>
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Current</label>
+                    <div className="relative">
+                      <input
+                        type={showCurrentPw ? 'text' : 'password'}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm pr-10"
+                        autoComplete="current-password"
+                        disabled={pwSaving || isForcePasswordChange}
+                        placeholder={isForcePasswordChange ? 'Default password' : ''}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        onMouseEnter={() => setShowCurrentPw(true)}
+                        onMouseLeave={() => setShowCurrentPw(false)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        aria-label="Show current password"
+                        title="Show password"
+                        disabled={pwSaving || isForcePasswordChange}
+                      >
+                        {showCurrentPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    {isForcePasswordChange ? (
+                      <div className="mt-1 text-[11px] text-gray-500">
+                        Your account is using the default password. Set a new one.
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="sm:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">New</label>
+                    <div className="relative">
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className={`w-full px-3 py-2 bg-white border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm pr-10 ${
+                          passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : 'border-gray-300')
+                        }`}
+                        autoComplete="new-password"
+                        disabled={pwSaving}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        onMouseEnter={() => setShowNewPw(true)}
+                        onMouseLeave={() => setShowNewPw(false)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        aria-label="Show new password"
+                        title="Show password"
+                      >
+                        {showNewPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="sm:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Confirm</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPw ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className={`w-full px-3 py-2 bg-white border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm pr-10 ${
+                          passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : 'border-gray-300')
+                        }`}
+                        autoComplete="new-password"
+                        disabled={pwSaving}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        onMouseEnter={() => setShowConfirmPw(true)}
+                        onMouseLeave={() => setShowConfirmPw(false)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        aria-label="Show confirm password"
+                        title="Show password"
+                      >
+                        {showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleChangePassword}
+                      disabled={pwSaving}
+                      className="px-3 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {pwSaving ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </>
       ) : null}
@@ -126,7 +280,7 @@ function InfoItem({ label, value }) {
   return (
     <div>
       <div className="text-xs text-gray-500">{label}</div>
-      <div className="font-medium break-words">{value ?? '-'}</div>
+      <div className="font-medium wrap-break-word">{value ?? '-'}</div>
     </div>
   );
 }

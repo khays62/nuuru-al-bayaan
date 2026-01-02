@@ -12,6 +12,9 @@ export default function TimetableGrid({
 }) {
   const days = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
 
+  const canDnd = typeof onMove === 'function' && !busy;
+  const canDelete = typeof onDelete === 'function' && !busy;
+
   const [activeTarget, setActiveTarget] = useState(null); // `${dayIdx}__${start}__${end}`
 
   const cellKey = useMemo(() => {
@@ -33,7 +36,7 @@ export default function TimetableGrid({
   };
 
   const onDragStart = (e, slotId) => {
-    if (busy) return;
+    if (!canDnd) return;
     try {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData(DND_SLOT_MIME, String(slotId));
@@ -45,30 +48,29 @@ export default function TimetableGrid({
   };
 
   const onDragOver = (e) => {
-    if (busy) return;
+    if (!canDnd) return;
     // Allow drop
     e.preventDefault();
     try { e.dataTransfer.dropEffect = 'move'; } catch { /* ignore */ }
   };
 
   const onDragEnterCell = (dayIdx, period) => {
-    if (busy) return;
+    if (!canDnd) return;
     setActiveTarget(cellKey(dayIdx, period));
   };
 
   const onDragLeaveCell = (dayIdx, period) => {
-    if (busy) return;
+    if (!canDnd) return;
     const key = cellKey(dayIdx, period);
     setActiveTarget((prev) => (prev === key ? null : prev));
   };
 
   const onDrop = (e, targetDayIdx, period, targetSlotId) => {
-    if (busy) return;
+    if (!canDnd) return;
     e.preventDefault();
     setActiveTarget(null);
     const slotId = e.dataTransfer.getData(DND_SLOT_MIME) || e.dataTransfer.getData('text/plain');
     if (!slotId) return;
-    if (typeof onMove !== 'function') return;
     onMove(String(slotId), {
       dayOfWeek: targetDayIdx,
       startTime: period.startTime,
@@ -82,9 +84,16 @@ export default function TimetableGrid({
 
   return (
     <>
-      {daysFilter.map((idx) => (
-        <tr key={idx} className="border-t align-top">
-          <td className="px-3 py-2 font-medium whitespace-nowrap border-r">{days[idx]}</td>
+      {daysFilter.map((idx, rowIndex) => (
+        <tr
+          key={idx}
+          className={`border-t border-gray-200 align-top ${rowIndex % 2 === 0 ? 'bg-slate-50' : 'bg-white'} hover:bg-blue-50`}
+        >
+          <td
+            className={`px-3 py-2 font-medium whitespace-nowrap border-r border-gray-200 sticky left-0 z-10 ${rowIndex % 2 === 0 ? 'bg-slate-50' : 'bg-white'}`}
+          >
+            {days[idx]}
+          </td>
           {periods.length === 0 ? (
             <td className="px-3 py-2 text-sm text-gray-500">No periods</td>
           ) : (
@@ -96,28 +105,31 @@ export default function TimetableGrid({
                 return (
                   <td
                     key={`${idx}-${i}`}
-                    className={`px-3 py-6 border-l bg-gray-100 transition-colors ${isActive ? 'bg-blue-50 ring-2 ring-blue-300 ring-inset' : ''}`}
-                    onDragOver={onDragOver}
-                    onDragEnter={() => onDragEnterCell(idx, p)}
-                    onDragLeave={() => onDragLeaveCell(idx, p)}
-                    onDrop={(e) => onDrop(e, idx, p, null)}
+                    className={`px-3 py-6 border-l border-gray-200 transition-colors min-w-40 ${isActive ? 'bg-blue-50 ring-2 ring-blue-300 ring-inset' : ''}`}
+                    onDragOver={canDnd ? onDragOver : undefined}
+                    onDragEnter={canDnd ? (() => onDragEnterCell(idx, p)) : undefined}
+                    onDragLeave={canDnd ? (() => onDragLeaveCell(idx, p)) : undefined}
+                    onDrop={canDnd ? ((e) => onDrop(e, idx, p, null)) : undefined}
                   />
                 );
               }
               return (
                 <td
                   key={cellSlot._id}
-                  className={`px-3 py-2 border-l transition-colors ${isActive ? 'bg-indigo-50 ring-2 ring-indigo-300 ring-inset' : ''}`}
-                  onDragOver={onDragOver}
-                  onDragEnter={() => onDragEnterCell(idx, p)}
-                  onDragLeave={() => onDragLeaveCell(idx, p)}
-                  onDrop={(e) => onDrop(e, idx, p, cellSlot?._id)}
+                  className={`px-3 py-2 border-l border-gray-200 transition-colors min-w-40 ${cellSlot.isBreak ? 'bg-gray-50' : ''} ${isActive ? 'bg-indigo-50 ring-2 ring-indigo-300 ring-inset' : ''}`}
+                  onDragOver={canDnd ? onDragOver : undefined}
+                  onDragEnter={canDnd ? (() => onDragEnterCell(idx, p)) : undefined}
+                  onDragLeave={canDnd ? (() => onDragLeaveCell(idx, p)) : undefined}
+                  onDrop={canDnd ? ((e) => onDrop(e, idx, p, cellSlot?._id)) : undefined}
                 >
                   <div
-                    draggable={!busy}
-                    onDragStart={(e) => onDragStart(e, cellSlot._id)}
-                    className="cursor-move"
-                    title="Drag to move"
+                    draggable={canDnd && !cellSlot.isBreak}
+                    onDragStart={(e) => {
+                      if (cellSlot.isBreak) return;
+                      onDragStart(e, cellSlot._id);
+                    }}
+                    className={cellSlot.isBreak ? 'cursor-default' : (canDnd ? 'cursor-move' : 'cursor-default')}
+                    title={cellSlot.isBreak ? 'Break (locked)' : (canDnd ? 'Drag to move' : '')}
                   >
                     {cellSlot.isBreak ? (
                       <div className="text-xs text-gray-500">Break</div>
@@ -128,9 +140,11 @@ export default function TimetableGrid({
                       </>
                     )}
                   </div>
-                  <div className="mt-2 no-print">
-                    <button className="px-2 py-1 text-xs border rounded text-red-600" onClick={() => onDelete && onDelete(cellSlot)}>Delete</button>
-                  </div>
+                  {canDelete && (
+                    <div className="mt-2 no-print">
+                      <button className="px-2 py-1 text-xs border rounded text-red-600" onClick={() => onDelete(cellSlot)}>Delete</button>
+                    </div>
+                  )}
                 </td>
               );
             })

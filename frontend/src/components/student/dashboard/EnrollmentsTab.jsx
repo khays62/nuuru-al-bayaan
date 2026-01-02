@@ -4,6 +4,7 @@ import Spinner from '../../common/Feedback/Spinner';
 import EmptyState from '../../common/Feedback/EmptyState';
 import TableShell from '../../common/table/TableShell';
 import { getStudentHistory } from '../../../api';
+import { useAuth } from '../../../contexts/AuthContext';
 
 function formatDate(value) {
   if (!value) return '-';
@@ -26,7 +27,9 @@ function statusClass(status) {
 }
 
 export default function EnrollmentsTab() {
-  const { studentId } = useParams();
+  const { studentId: paramStudentId } = useParams();
+  const { auth } = useAuth();
+  const studentId = paramStudentId || (auth?.user?.role === 'student' ? auth?.user?._id : null);
   const [items, setItems] = useState([]);
   const [meta, setMeta] = useState({});
   const [loading, setLoading] = useState(false);

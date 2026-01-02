@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
-import { useAuth } from './contexts/AuthContext';
 import { navItems } from './config/navigation'; // Import from the new central config file
 
 export default function App() {
-    const { isAuthenticated } = useAuth();
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isCollapsed, setCollapsed] = useState(false);
     
@@ -15,10 +13,6 @@ export default function App() {
     // Find the current page title based on the route from the central config
     const currentNavItem = navItems.find(item => location.pathname.startsWith(item.path));
     const currentPageTitle = currentNavItem ? currentNavItem.label : 'Dashboard';
-
-    if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
-    }
 
     const toggleMobileMenu = () => setMobileMenuOpen(!isMobileMenuOpen);
     const toggleCollapse = () => setCollapsed(!isCollapsed);

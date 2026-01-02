@@ -4,9 +4,12 @@ import Spinner from '../../common/Feedback/Spinner';
 import EmptyState from '../../common/Feedback/EmptyState';
 import { getStudentTransfers } from '../../../api';
 import TransferTimeline from '../../student/TransferTimeline';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function TransfersTab() {
-  const { studentId } = useParams();
+  const { studentId: paramStudentId } = useParams();
+  const { auth } = useAuth();
+  const studentId = paramStudentId || (auth?.user?.role === 'student' ? auth?.user?._id : null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

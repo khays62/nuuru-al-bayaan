@@ -10,3 +10,4 @@ export * from './modules/gradeSections.js';
 export { listCohorts, createCohort, updateCohort, deleteCohort, activateCohort, archiveCohort, getAvailableCohortsForPromotion, getCohortTimeline } from './modules/cohorts.js';
 export * from './modules/promotions.js';
 export * from './modules/transfers.js';
+export * from './modules/users.js';

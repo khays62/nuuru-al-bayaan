@@ -2,11 +2,24 @@
 // Exams API (moved from apiService.js)
 import { fetchJson, apiUrl } from '../http';
 
+function isExpectedAuthOrAbortError(e) {
+  const status = e?.status;
+  const msg = String(e?.message || '').toLowerCase();
+  return (
+    e?.name === 'AbortError' ||
+    status === 401 ||
+    status === 403 ||
+    msg.includes('no token') ||
+    msg.includes('not authorized') ||
+    msg.includes('access denied')
+  );
+}
+
 export async function getExamTypes() {
   try {
     return await fetchJson('/exams/types');
   } catch (e) {
-    console.error('Failed to fetch exam types', e);
+    // Avoid noisy console logs on logout/unauth.
     return [];
   }
 }
@@ -19,7 +32,7 @@ export async function getExamGrid({ academicYearId, gradeSectionId, subjectId, e
     const data = await fetchJson(`${apiUrl('/exams/grid')}?${query.toString()}`, { cache: 'no-store' });
     return { ok: true, data };
   } catch (e) {
-    console.error('Failed to fetch exam grid', e);
+    // Avoid noisy console logs on logout/unauth.
     return { ok: false, error: 'Network or server error' };
   }
 }
@@ -29,12 +42,13 @@ export async function saveExamScore({ studentId, examId, subjectId, scoreObtaine
     const res = await fetch(apiUrl('/exams/score'), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId, examId, subjectId, scoreObtained })
+      body: JSON.stringify({ studentId, examId, subjectId, scoreObtained }),
+      credentials: 'include'
     });
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, data };
   } catch (e) {
-    console.error('Failed to save exam score', e);
+    // Avoid noisy console logs on logout/unauth.
     return { ok: false, status: 0, data: { message: 'Network error' } };
   }
 }
@@ -49,7 +63,9 @@ export async function getExamSummary(params = {}) {
     const data = await fetchJson(`${apiUrl('/exams/summary')}${qs ? `?${qs}` : ''}`);
     return { ok: true, data };
   } catch (e) {
-    console.error('Failed to fetch exam summary', e);
+    if (!isExpectedAuthOrAbortError(e)) {
+      // Keep console clean on logout; unexpected errors can be surfaced by UI.
+    }
     return { ok: false, error: e?.message || 'Network or server error' };
   }
 }
@@ -62,28 +78,32 @@ export async function getExamSummaryAbort(params = {}, opts = {}) {
       if (v !== undefined && v !== null && v !== '') query.append(k, v);
     });
     const qs = query.toString();
-    const res = await fetch(`${apiUrl('/exams/summary')}${qs ? `?${qs}` : ''}`, { signal });
+    const res = await fetch(`${apiUrl('/exams/summary')}${qs ? `?${qs}` : ''}`, { signal, credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.message || 'Failed to fetch summary');
     return { ok: true, data };
   } catch (e) {
     if (e?.name === 'AbortError') return { ok: false, error: 'aborted' };
-    console.error('Failed to fetch exam summary (abort)', e);
+    if (!isExpectedAuthOrAbortError(e)) {
+      // Keep console clean on logout.
+    }
     return { ok: false, error: e?.message || 'Network or server error' };
   }
 }
 
-export async function getStudentTranscript(params = {}) {
+export async function getStudentTranscript(params = {}, opts = {}) {
   try {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') query.append(k, v);
     });
     const qs = query.toString();
-    const data = await fetchJson(`${apiUrl('/exams/transcript')}${qs ? `?${qs}` : ''}`);
+    const data = await fetchJson(`${apiUrl('/exams/transcript')}${qs ? `?${qs}` : ''}`, { signal: opts?.signal });
     return { ok: true, data };
   } catch (e) {
-    console.error('Failed to fetch transcript', e);
+    if (!isExpectedAuthOrAbortError(e)) {
+      // Keep console clean on logout.
+    }
     return { ok: false, error: e?.message || 'Network or server error' };
   }
 }
@@ -97,13 +117,15 @@ export async function hasScores(params = {}, opts = {}) {
     });
     const qs = query.toString();
     const { signal } = opts;
-  const res = await fetch(`${apiUrl('/exams/has-scores')}${qs ? `?${qs}` : ''}`, { signal, cache: 'no-store' });
+  const res = await fetch(`${apiUrl('/exams/has-scores')}${qs ? `?${qs}` : ''}`, { signal, cache: 'no-store', credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data?.message || 'Failed to check has-scores');
     return { ok: true, data };
   } catch (e) {
     if (e?.name === 'AbortError') return { ok: false, error: 'aborted' };
-    console.error('Failed to check has-scores', e);
+    if (!isExpectedAuthOrAbortError(e)) {
+      // Keep console clean on logout.
+    }
     return { ok: false, error: e?.message || 'Network or server error' };
   }
 }

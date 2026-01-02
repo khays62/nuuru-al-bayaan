@@ -9,7 +9,7 @@ export async function listGradeSections(params = {}) {
     if (sortBy) query.append('sort', `${sortBy}:${sortDir || 'asc'}`);
     Object.entries(rest).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') query.append(k, v); });
     const qs = query.toString();
-    const response = await fetch(`${apiUrl('/grades/sections')}${qs ? `?${qs}` : ''}`, { cache: 'no-store' });
+    const response = await fetch(`${apiUrl('/grades/sections')}${qs ? `?${qs}` : ''}`, { cache: 'no-store', credentials: 'include' });
     if (!response.ok) throw new Error('Network response was not ok');
     return await response.json(); // { data, meta }
   } catch (error) {
@@ -20,7 +20,7 @@ export async function listGradeSections(params = {}) {
 
 export async function createGradeSection(payload) {
   try {
-    const res = await fetch(apiUrl('/grades/sections'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const res = await fetch(apiUrl('/grades/sections'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' });
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.message || 'Failed to create', code: data.code };
     return { ok: true, data };
@@ -32,7 +32,7 @@ export async function createGradeSection(payload) {
 
 export async function updateGradeSection(id, payload) {
   try {
-    const res = await fetch(apiUrl(`/grades/sections/${id}`), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const res = await fetch(apiUrl(`/grades/sections/${id}`), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' });
     const data = await res.json();
     if (!res.ok) return { ok: false, error: data.message || 'Failed to update', code: data.code, blocked: data.blocked };
     return { ok: true, data };
@@ -44,7 +44,7 @@ export async function updateGradeSection(id, payload) {
 
 export async function deleteGradeSection(id) {
   try {
-    const res = await fetch(apiUrl(`/grades/sections/${id}`), { method: 'DELETE' });
+    const res = await fetch(apiUrl(`/grades/sections/${id}`), { method: 'DELETE', credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: data.message || 'Failed to delete', code: data.code };
     return { ok: true, data };
@@ -56,7 +56,7 @@ export async function deleteGradeSection(id) {
 
 export async function getGradeSectionById(id) {
   try {
-    const res = await fetch(apiUrl(`/grades/sections/${id}`));
+    const res = await fetch(apiUrl(`/grades/sections/${id}`), { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.message || 'Failed to fetch grade section');
     return { ok: true, data };
@@ -68,7 +68,7 @@ export async function getGradeSectionById(id) {
 
 export async function resyncGradeSectionCohort(id) {
   try {
-    const res = await fetch(apiUrl(`/grades/sections/${id}/resync-cohort`), { method: 'POST' });
+    const res = await fetch(apiUrl(`/grades/sections/${id}/resync-cohort`), { method: 'POST', credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: data.message || 'Failed to resync', code: data.code };
     return { ok: true, ...data, data };

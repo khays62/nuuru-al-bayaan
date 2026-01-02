@@ -26,7 +26,7 @@ export async function listCohorts(params = {}) {
 export async function createCohort(payload) {
   try {
     const res = await fetch(apiUrl('/cohorts'), {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include'
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: data.message || 'Failed to create', code: data.code };
@@ -40,7 +40,7 @@ export async function createCohort(payload) {
 export async function updateCohort(id, payload) {
   try {
     const res = await fetch(apiUrl(`/cohorts/${id}`), {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include'
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: data.message || 'Failed to update', code: data.code };
@@ -53,7 +53,7 @@ export async function updateCohort(id, payload) {
 
 export async function deleteCohort(id) {
   try {
-    const res = await fetch(apiUrl(`/cohorts/${id}`), { method: 'DELETE' });
+    const res = await fetch(apiUrl(`/cohorts/${id}`), { method: 'DELETE', credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, error: data.message || 'Failed to delete', code: data.code };
     return { ok: true, data };

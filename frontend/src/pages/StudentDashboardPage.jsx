@@ -1,18 +1,20 @@
-import React, { Suspense, useState, useRef, useEffect } from 'react';
+import React, { Suspense, useMemo, useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useParams, Navigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
-function TabNav({ base }) {
-  const initialTabs = [
-    { to: `${base}/profile`, label: 'Profile' },
-    { to: `${base}/enrollments`, label: 'Enrollments' },
-    { to: `${base}/transcript`, label: 'Transcript' },
-    { to: `${base}/attendance`, label: 'Attendance' },
-    { to: `${base}/library`, label: 'Library' },
-  ];
+import { useAuth } from '../contexts/AuthContext';
+import { getStudentProfile, resetStudentPassword } from '../api';
+
+function TabNav({ tabs = [] }) {
   const PRIMARY_SIZE = 3;
-  const [tabsOrder, setTabsOrder] = useState(initialTabs);
+  const [tabsOrder, setTabsOrder] = useState(Array.isArray(tabs) ? tabs : []);
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    setTabsOrder(Array.isArray(tabs) ? tabs : []);
+  }, [tabs]);
   useEffect(() => {
     if (!open) return;
     function onOutside(e) {
@@ -124,10 +126,94 @@ export default function StudentDashboardPage() {
   const { studentId } = useParams();
   if (!studentId) return <Navigate to="/students" replace />;
   const base = `/students/${studentId}`;
+
+  const { auth, hasPermission } = useAuth();
+
+  const canAny = (module, actions) => {
+    if (!Array.isArray(actions) || actions.length === 0) return false;
+    return actions.some((a) => hasPermission(module, a));
+  };
+
+  const canResetPw = hasPermission('students', 'resetPassword') || hasPermission('students', 'edit');
+
+  const profileQuery = useQuery({
+    queryKey: ['studentProfile', studentId],
+    queryFn: async () => {
+      const data = await getStudentProfile(studentId);
+      if (!data) throw new Error('Failed to load profile');
+      return data;
+    },
+    staleTime: 60_000,
+  });
+
+  const studentName = profileQuery.data?.student?.fullName || profileQuery.data?.student?.name || 'Student';
+
+  const tabs = useMemo(() => {
+    const out = [];
+
+    // The route itself should already be protected by students access.
+    out.push({ to: `${base}/dashboard`, label: 'Dashboard' });
+    out.push({ to: `${base}/profile`, label: 'Profile' });
+    out.push({ to: `${base}/enrollments`, label: 'Enrollments' });
+
+    if (canAny('transcript', ['view', 'print', 'download'])) {
+      out.push({ to: `${base}/transcript`, label: 'Transcript' });
+    }
+
+    if (canAny('attendanceReports', ['view', 'print', 'download']) || canAny('attendance', ['view', 'edit'])) {
+      out.push({ to: `${base}/attendance`, label: 'Attendance' });
+    }
+
+    // Timetable read is allowed if user has timetable access OR attendance access.
+    if (canAny('timetable', ['view', 'add', 'edit', 'delete', 'print', 'download']) || canAny('attendance', ['view', 'edit'])) {
+      out.push({ to: `${base}/timetable`, label: 'Timetable' });
+    }
+
+    if (canAny('transfers', ['view', 'transfer']) || hasPermission('students', 'transfer')) {
+      out.push({ to: `${base}/transfers`, label: 'Transfers' });
+    }
+
+    // Note: "Library" isn't permission-modeled for staff/admin yet, so we hide it here.
+    return out;
+  }, [base, hasPermission]);
+
+  const handleResetPassword = async () => {
+    if (!canResetPw) return;
+    const ok = window.confirm('Reset this student\'s password to the default (123456)?');
+    if (!ok) return;
+
+    try {
+      const res = await resetStudentPassword(studentId);
+      if (!res.ok) throw new Error(res?.data?.message || 'Failed to reset password');
+      toast.success('Password reset to default (123456)');
+    } catch (e) {
+      toast.error(e?.message || 'Failed to reset password');
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Student Dashboard</h1>
-      <TabNav base={base} />
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Student Dashboard</h1>
+          <div className="text-sm text-gray-600">
+            {profileQuery.isLoading ? 'Loading student…' : studentName}
+          </div>
+        </div>
+        {auth?.user?.role !== 'student' && canResetPw && (
+          <button
+            type="button"
+            onClick={handleResetPassword}
+            className="px-3 py-2 text-sm rounded border bg-white hover:bg-gray-50"
+            disabled={profileQuery.isLoading}
+            title="Reset password to default"
+          >
+            Reset Password
+          </button>
+        )}
+      </div>
+
+      <TabNav tabs={tabs} />
       <Suspense fallback={<div>Loading...</div>}>
         <Outlet />
       </Suspense>

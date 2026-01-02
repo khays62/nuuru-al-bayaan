@@ -4,7 +4,12 @@ import { Menu, X, LogOut, ChevronRight, Search, User } from 'lucide-react';
 
 // This is the updated Navbar component with a new design.
 const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
-    const { user, logout } = useAuth();
+    const { auth, logout } = useAuth();
+    const user = auth?.user;
+    const displayName = user?.fullName || user?.name || user?.username || '—';
+    const displayRole = user?.role ? String(user.role).toUpperCase() : '';
+    const displayEmail = user?.email || '';
+    const meta = [displayRole, displayEmail].filter(Boolean).join(' • ');
 
     return (
         <header className="bg-white shadow-lg p-4 flex items-center justify-between z-10 no-print">
@@ -49,13 +54,13 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             {/* Right side: User Info and Logout */}
             <div className="flex items-center gap-4">
                 <div className="text-right hidden sm:block">
-                    <p className="font-semibold text-sm text-gray-800">{user?.name || 'Admin User'}</p>
-                    <p className="text-xs text-gray-500">{user?.email || 'admin@nuuralbayaan.so'}</p>
+                    <p className="font-semibold text-sm text-gray-800">{displayName}</p>
+                    <p className="text-xs text-gray-500">{meta || ' '}</p>
                 </div>
                 <User size={24} className="text-gray-600 sm:hidden" />
                 <button
                     onClick={logout}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
                     title="Logout"
                 >
                     <LogOut size={16} />

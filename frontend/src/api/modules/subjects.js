@@ -23,6 +23,7 @@ export async function addSubject(subjectData) {
     const res = await fetch(apiUrl('/subjects'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(subjectData),
     });
     const data = await res.json();
@@ -47,6 +48,7 @@ export async function updateSubject(id, subjectData) {
     const res = await fetch(apiUrl(`/subjects/${id}`), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(subjectData),
     });
     const data = await res.json();
@@ -68,7 +70,7 @@ export async function updateSubject(id, subjectData) {
 
 export async function deleteSubject(id) {
   try {
-    const res = await fetch(apiUrl(`/subjects/${id}`), { method: 'DELETE' });
+    const res = await fetch(apiUrl(`/subjects/${id}`), { method: 'DELETE', credentials: 'include' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return { error: data.message || 'Failed to delete subject', details: data };

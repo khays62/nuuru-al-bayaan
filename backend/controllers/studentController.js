@@ -4,6 +4,7 @@ import Student from '../models/Student.js';
 import Enrollment from '../models/Enrollment.js';
 import GradeSection from '../models/GradeSection.js';
 import Counter from '../models/Counter.js';
+import bcrypt from 'bcryptjs';
 
 // @desc    List students including details of their current section
 // @route   GET /api/students
@@ -230,8 +231,18 @@ export const addStudent = async (req, res) => {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            const student = await Student.create([{ fullName, gender, dob, guardianName, contactNumber, address, admissionDate }], { session });
-            const studentDoc = student[0];
+            // NOTE: avoid Student.create([{...}]) here because it uses insertMany and bypasses pre('save') hooks.
+            // We need pre('save') to hash the default password.
+            const studentDoc = new Student({
+                fullName,
+                gender,
+                dob,
+                guardianName,
+                contactNumber,
+                address,
+                admissionDate,
+            });
+            await studentDoc.save({ session });
 
             // Check duplicate enrollment same academicYear (in case of rare race conditions)
             const existing = await Enrollment.findOne({ student: studentDoc._id, academicYear: academicYearId }).session(session);
@@ -331,6 +342,90 @@ export const getStudentProfile = async (req, res) => {
     } catch (err) {
         console.error('Get student profile error', err);
         res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Student self: change own password
+// @route   PUT /api/students/change-password
+export const changeStudentPassword = async (req, res) => {
+    try {
+        if (req.user?.role !== 'student') {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        const DEFAULT_STUDENT_PASSWORD = '123456';
+
+        const body = req.body || {};
+        const currentPassword = body.currentPassword ?? body.oldPassword ?? '';
+        const newPassword = body.newPassword ?? '';
+        const curr = String(currentPassword || '').trim();
+        const next = String(newPassword || '').trim();
+        if (!next) {
+            return res.status(400).json({ message: 'newPassword is required' });
+        }
+
+        if (next.length < 6) {
+            return res.status(400).json({ message: 'New password must be at least 6 characters' });
+        }
+
+        const student = await Student.findById(req.user._id);
+        if (!student) return res.status(404).json({ message: 'Student not found' });
+
+        const storedPassword = student.password || '';
+        const looksHashed = typeof storedPassword === 'string' && storedPassword.startsWith('$2');
+
+        // If old/current password is not provided, allow ONLY when the account is still on the default password.
+        if (!curr) {
+            const isDefault = looksHashed
+                ? await bcrypt.compare(DEFAULT_STUDENT_PASSWORD, storedPassword)
+                : String(storedPassword) === DEFAULT_STUDENT_PASSWORD;
+            if (!isDefault) {
+                return res.status(400).json({ message: 'currentPassword is required' });
+            }
+        } else {
+            const ok = looksHashed
+                ? await bcrypt.compare(curr, storedPassword)
+                : curr === String(storedPassword);
+            if (!ok) {
+                return res.status(400).json({ message: 'Current password is incorrect' });
+            }
+        }
+
+        student.password = next;
+        await student.save();
+
+        return res.json({ success: true, message: 'Password updated' });
+    } catch (err) {
+        console.error('Change student password error', err);
+        return res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Staff/admin: reset a student's password (does not reveal existing password)
+// @route   PATCH /api/students/:id/reset-password
+export const resetStudentPassword = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
+
+        const DEFAULT_STUDENT_PASSWORD = '123456';
+        const student = await Student.findById(id);
+        if (!student) return res.status(404).json({ message: 'Student not found' });
+
+        // Reset to default so the system can force change on next login (mustChangePassword=true)
+        student.password = DEFAULT_STUDENT_PASSWORD;
+        student.failedLoginAttempts = 0;
+        student.lockUntil = null;
+        await student.save();
+
+        return res.json({
+            success: true,
+            message: 'Password reset to default. Student must change it after login.',
+            temporaryPassword: DEFAULT_STUDENT_PASSWORD
+        });
+    } catch (err) {
+        console.error('Reset student password error', err);
+        return res.status(500).json({ message: 'Server Error' });
     }
 };
 

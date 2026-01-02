@@ -9,7 +9,7 @@ export async function listTransferCandidates(params = {}) {
     if (sortBy) query.append('sort', `${sortBy}:${sortDir || 'asc'}`);
     Object.entries(rest).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') query.append(k, v); });
     const qs = query.toString();
-    const res = await fetch(`${apiUrl('/transfers/candidates')}${qs ? `?${qs}` : ''}`, { cache: 'no-store' });
+    const res = await fetch(`${apiUrl('/transfers/candidates')}${qs ? `?${qs}` : ''}`, { cache: 'no-store', credentials: 'include' });
     if (!res.ok) throw new Error('Failed to list transfer candidates');
     return await res.json(); // { data, meta }
   } catch (e) {
@@ -20,7 +20,7 @@ export async function listTransferCandidates(params = {}) {
 
 export async function performTransfer(studentId, payload) {
   // Uses dedicated transfers endpoint so we keep Student routes clean
-  const res = await fetch(apiUrl(`/transfers/${studentId}`), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  const res = await fetch(apiUrl(`/transfers/${studentId}`), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }
@@ -32,7 +32,7 @@ export async function listTransferLogs(params = {}) {
     if (sortBy) query.append('sort', `${sortBy}:${sortDir || 'desc'}`);
     Object.entries(rest).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') query.append(k, v); });
     const qs = query.toString();
-    const res = await fetch(`${apiUrl('/transfers/logs')}${qs ? `?${qs}` : ''}`);
+    const res = await fetch(`${apiUrl('/transfers/logs')}${qs ? `?${qs}` : ''}`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to list transfer logs');
     return await res.json(); // { data, meta }
   } catch (e) {

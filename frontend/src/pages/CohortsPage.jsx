@@ -52,19 +52,37 @@ function CohortForm({ initial = {}, onSubmit, onCancel }) {
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <label className="block text-sm font-medium mb-1">Name</label>
-        <input value={name} onChange={(e)=>setName(e.target.value)} required className="w-full border rounded px-3 py-2 bg-white disabled:opacity-60" placeholder="e.g. Dufcada 1aad" disabled={submitting} />
+        <input
+          value={name}
+          onChange={(e)=>setName(e.target.value)}
+          required
+          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+          placeholder="e.g. Dufcada 1aad"
+          disabled={submitting}
+        />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium mb-1">Start Academic Year</label>
-          <select value={startAY} onChange={(e)=>setStartAY(e.target.value)} className="w-full border rounded px-3 py-2 bg-white disabled:opacity-60" required disabled={submitting}>
+          <select
+            value={startAY}
+            onChange={(e)=>setStartAY(e.target.value)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+            required
+            disabled={submitting}
+          >
             <option value="" disabled>Select Academic Year</option>
             {ays.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Status</label>
-          <select value={status} onChange={(e)=>setStatus(e.target.value)} className="w-full border rounded px-3 py-2 bg-white disabled:opacity-60" disabled={submitting}>
+          <select
+            value={status}
+            onChange={(e)=>setStatus(e.target.value)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
+            disabled={submitting}
+          >
             <option value="active">Active</option>
             <option value="archived">Archived</option>
           </select>
@@ -154,8 +172,8 @@ export default function CohortsPage() {
         showReset={false}
         searchSlot={<SearchInput value={searchTerm} onChange={setSearch} placeholder="Search cohorts..." />}
         filtersSlot={<div className="flex flex-row flex-wrap gap-2 w-full items-center">
-          <FilterSelect value={statusFilter} onChange={(v)=>{ setStatusFilter(v); setFilter('status', v || undefined); }} options={statuses} placeholder="Status" className="flex-1 min-w-[130px]" />
-          <FilterSelect value={ayFilter} onChange={(v)=>{ setAyFilter(v); setFilter('startAcademicYear', v || undefined); }} options={ayOptions} placeholder="Start AY" className="flex-1 min-w-[150px]" />
+          <FilterSelect value={statusFilter} onChange={(v)=>{ setStatusFilter(v); setFilter('status', v || undefined); }} options={statuses} placeholder="Status" className="flex-1 min-w-32.5" />
+          <FilterSelect value={ayFilter} onChange={(v)=>{ setAyFilter(v); setFilter('startAcademicYear', v || undefined); }} options={ayOptions} placeholder="Start AY" className="flex-1 min-w-37.5" />
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <SortControls currentField={meta.sortBy} currentDir={meta.sortDir} onSort={toggleSort} fields={[{ field: 'createdAt', label: 'Created' }, { field: 'startAcademicYear', label: 'Start AY' }]} />
             <button

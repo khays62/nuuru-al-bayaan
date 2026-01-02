@@ -10,4 +10,8 @@ export default defineConfig({
       '/api': 'http://localhost:7000', // Proxy API requests to the backend server
     },
   },
+  build: {
+    // This project bundles large libs (e.g., PDF/Excel). Avoid failing CI/builds on size warnings.
+    chunkSizeWarningLimit: 1500,
+  },
 })

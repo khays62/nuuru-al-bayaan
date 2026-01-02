@@ -5,10 +5,10 @@ const AttendanceRecordSchema = new mongoose.Schema({
   gradeSection: { type: mongoose.Schema.Types.ObjectId, ref: 'GradeSection', required: true },
   periodCode: { type: String },
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
-  status: { type: String, enum: ['present','absent','late','excused'], required: true },
+  status: { type: String, enum: ['present','absent','late','excused','sick','medical','family','other'], required: true },
   // Admin can mark attendance before teacher auth exists; later we can enforce markedBy.
   markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher' },
-  remarks: { type: String },
+  remarks: { type: String, default: '', trim: true },
 }, { timestamps: true });
 
 AttendanceRecordSchema.index({ gradeSection: 1, date: 1, periodCode: 1, student: 1 }, { unique: false });

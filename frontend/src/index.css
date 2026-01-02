@@ -61,6 +61,14 @@
 	/* Results table print tuning */
 	.results-print table { font-size: 11px !important; }
 	.results-print th, .results-print td { padding: 6px 8px !important; }
+
+	/* Attendance reports print tuning (avoid vertical header text) */
+	.attendance-report-print table { font-size: 9px !important; }
+	.attendance-report-print th, .attendance-report-print td {
+		padding: 4px 6px !important;
+		white-space: nowrap !important;
+		word-break: normal !important;
+	}
 }
 @media screen {
 	.print-only { display: none !important; }

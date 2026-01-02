@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Timetable from '../models/Timetable.js';
 import TeacherAssignment from '../models/TeacherAssignment.js';
+import Enrollment from '../models/Enrollment.js';
 
 function buildTimeOverlapQuery({ startTime, endTime }) {
   return { startTime: { $lt: endTime }, endTime: { $gt: startTime } };
@@ -10,7 +11,20 @@ export const listSlots = async (req, res) => {
   try {
     let { gs, teacher, day, subject, from, to } = req.query;
     const q = {};
+
+  // Student-safe scope: force gradeSection to the student's active enrollment.
+  if (req.user?.role === 'student') {
+    const enr = await Enrollment.findOne({ student: req.user._id, status: 'active' })
+      .sort({ createdAt: -1 })
+      .select('gradeSection')
+      .lean();
+    if (!enr?.gradeSection) {
+      return res.json({ data: [] });
+    }
+    q.gradeSection = enr.gradeSection;
+  } else {
     if (gs && mongoose.isValidObjectId(gs)) q.gradeSection = gs;
+  }
     if (teacher && mongoose.isValidObjectId(teacher)) q.teacher = teacher;
     if (subject && mongoose.isValidObjectId(subject)) q.subject = subject;
     if (day != null && day !== '') {
