@@ -11,7 +11,11 @@ export const allowStudentSelfOr = (permissionMiddleware, opts = {}) => {
     if (role === 'student') {
       const provided = query ? req.query?.[query] : req.params?.[param];
 
-      if (!provided || String(provided) !== String(req.user?._id)) {
+      // New model: students authenticate via User account with a studentRef.
+      // Legacy model: students authenticate directly as a Student document.
+      const ownStudentId = req.user?.studentRef || req.user?._id;
+
+      if (!provided || String(provided) !== String(ownStudentId)) {
         return res.status(403).json({ message: 'Access denied' });
       }
 

@@ -1,74 +1,64 @@
-## API‑ga Frontend — Sida uu hadda u shaqeeyo
+## API‑ga Frontend — Feature‑first (Update)
 
-Dukumeentigan wuxuu sharxayaa qaab‑dhismeedka hadda ee API‑ga frontend, sida loo isticmaalo, iyo sida loo daro endpoints cusub. Waxa uu beddelay kii hore ee qorshaha guuritaanka.
+Dukumeentigan wuxuu sharxayaa qaab‑dhismeedka API‑ga frontend ee hadda (feature‑first), sida loo isticmaalo, iyo sida loo daro endpoints cusub.
+
+Update: Qaabkii hore ee `src/api/modules/*` waa la guuriyey/waa la tiray. Hadda endpoints‑ka badankood waxay ku jiraan `src/features/<feature>/api/*`.
 
 ## Erayo muhiim ah (Micno)
 - Repo: Mashruuca oo dhan (repository‑ga aad hadda la shaqaynayso).
-- Barrel re‑export: Waa fayl (tusaale `src/api/index.js`) oo ka soo dhoofiya (import) waxyaabo badan meelo kala duwan, kadibna hal meel ka re‑dhoofiya (export). Faa’iido: hal path oo keliya ayaad ka import‑gareyn kartaa.
+- Barrel re‑export: Waa fayl (tusaale `src/features/users/api/index.js`) oo ka soo dhoofiya waxyaabo badan, kadibna hal meel ka re‑dhoofiya.
 - Exports: Waa waxyaabaha aad ka soo saarto module‑ka adigoo isticmaalaya `export` (tusaale funsiyo sida `export const getSubjects = ...`).
 - Thin barrel: Waa “barrel” aad u khafiif ah oo aan lahayn logic, kaliya re‑export; badanaa waxaa loo adeegsadaa in la ilaaliyo "backward compatibility" (imports‑kii hore si ay u sii shaqeeyaan).
 
-## Qaab‑dhismeedka hadda
+## Qaab‑dhismeedka hadda (Feature‑first)
 ```
 src/
-  api/
-    http.js                 # API_BASE_URL, apiUrl(), fetchJson()
-    modules/
-      subjects.js           # getSubjects, addSubject, updateSubject, deleteSubject
-      exams.js              # getExamTypes, getExamGrid, saveExamScore, getExamSummary, getExamSummaryAbort
-      students.js           # list/create/update/deactivate/reactivate/transfer/profile/history/transcript
-      gradeSections.js      # list/create/update/delete/getById
-      lookups.js            # getGrades/years/shifts (+cache)
-   index.js                # Barrel: re‑export modules/* hal meel
-   apiService.js           # (la tirtiiray) hore wuxuu ahaa thin barrel; hadda ma jiro
+   shared/
+      api/
+         http.js               # apiUrl(), fetchJson(), http client (canonical)
+   features/
+      lookups/
+         api/lookups.js
+      subjects/
+         api/subjects.js
+      exams/
+         api/exams.js
+      grades/
+         api/gradeSections.js
+      transfers/
+         api/transfers.js
+      users/
+         api/usersApi.js
+         api/index.js          # barrel u gaar ah users (feature‑local)
+   api/
+      http.js                 # (bridge/compat) haddii faylal hore u tixraacaan
+      sessionAbort.js         # session-level abort controller (still used)
+      index.js                # (compat barrel) haddii meelaha qaar wali ka import-gareeyaan
 ```
 
-## Sida loo isticmaalo API‑ga
+## Sida loo isticmaalo API‑ga (talo)
 
-- Imports hal meel ka keen: `src/api/index.js` (barrel)
-   - Tusaale: `import { getSubjects, getGrades } from '../api'`
-- Dhammaan wicitaanada API waxay maraan helper‑ka `src/api/http.js`:
-   - `apiUrl(path)`: dhisa URL sax ah (`VITE_API_BASE_URL` + path)
-   - `fetchJson(urlAmaPath, options)`: sameeya fetch + JSON parsing + error handling
+- Doorbid: Ka import‑garee feature‑ka uu leeyahay:
+   - Tusaale: `import { getSubjects } from '@/features/subjects/api/subjects'`
+   - Tusaale: `import { listUsers } from '@/features/users/api/usersApi'`
 
-## Modules la heli karo
+- Wicitaanada HTTP‑ga waxaa lagu mideeyey `src/shared/api/http.js`:
+   - `apiUrl(path)`
+   - `fetchJson(pathOrUrl, options)`
 
-- `modules/lookups.js`
-   - `getGrades(options)` (cache)
-   - `getAcademicYears()` (cache)
-   - `getShifts()` (cache)
+## Endpoints / Modules (tusaalooyin)
 
-- `modules/subjects.js`
-   - `getSubjects(params)` → { data, meta }
-   - `addSubject(payload)` → { data } | { error, field }
-   - `updateSubject(id, payload)` → { data } | { error, field }
-   - `deleteSubject(id)` → { data } | { error, details }
+- Lookups: `src/features/lookups/api/lookups.js`
+   - `getGrades()` / `getAcademicYears()` / `getShifts()`
 
-- `modules/exams.js`
-   - `getExamTypes()` → Array
-   - `getExamGrid({ academicYearId, gradeSectionId, subjectId })` → { ok, data | error }
-   - `saveExamScore({ studentId, examId, subjectId, scoreObtained })` → { ok, status, data }
-   - `getExamSummary(params)` → { ok, data | error }
-   - `getExamSummaryAbort(params, { signal })` → { ok, data | error }
-   - `getStudentTranscript(params)` → { ok, data | error }
+- Subjects: `src/features/subjects/api/subjects.js`
+   - `getSubjects()` / `addSubject()` / `updateSubject()` / `deleteSubject()`
 
-- `modules/students.js`
-   - `listStudents(params)` → { data, meta }
-   - `createStudent(payload)` → { ok, status, data }
-   - `updateStudent(id, payload)` → { ok, status, data }
-   - `deactivateStudentApi(id)` / `reactivateStudentApi(id)` → { ok, status, data }
-   - `transferEnrollmentApi(id, payload)` → { ok, status, data }
-   - `getStudentProfile(id)` → object | null
-   - `getStudentHistory(id, params)` → { data, meta }
-   - `getFullTranscript(id)` → { ok, data | error }
-   - `getStudentTransfers(id, params)` → { data, meta }
+- Exams: `src/features/exams/api/exams.js`
 
-- `modules/gradeSections.js`
-   - `listGradeSections(params)` → { data, meta }
-   - `createGradeSection(payload)` → { ok, data | error }
-   - `updateGradeSection(id, payload)` → { ok, data | error, blocked? }
-   - `deleteGradeSection(id)` → { ok, data | error }
-   - `getGradeSectionById(id)` → { ok, data | error }
+- Students: `src/features/students/api/studentsApi.js`
+
+- Grades/Sections: `src/features/grades/api/gradeSections.js`
 
 ## Qaabka khaladaadka iyo natiijooyinka
 - `fetchJson` marka uu helo HTTP error → wuxuu tuuraa Error(message, status, data). Modules qaar si ula kac ah ayay u soo celiyaan `{ ok: false, error }` halkii ay Error u tuuri lahaayeen, si ay ugu fududaato pages-ka.
@@ -77,22 +67,19 @@ src/
    - actions: `{ ok, status?, data | error }` ama `{ data } | { error }`
 
 ## Sida loo daro endpoint cusub (tusaale kooban)
-1) Abuur ama furo module ku habboon `src/api/modules/` (tusaale `fees.js`).
-2) Qor function-ka:
+1) Ku dar feature‑ka uu leeyahay: `src/features/<feature>/api/<name>.js`.
+2) Qor function‑ka, adigoo isticmaalaya `src/shared/api/http.js`:
     ```js
-    import { fetchJson, apiUrl } from '../http';
+   import { fetchJson, apiUrl } from '@/shared/api/http';
     export async function listFees(params = {}) {
        const qs = new URLSearchParams(params).toString();
        return await fetchJson(`${apiUrl('/fees')}${qs ? `?${qs}` : ''}`);
     }
     ```
-3) Ku dar barrel-ka `src/api/index.js`:
-    ```js
-    export * from './modules/fees.js';
-    ```
+3) (Ikhtiyaar) haddii feature‑ka uu leeyahay barrel: ku dar `src/features/<feature>/api/index.js`.
 4) Isticmaal boggaaga/components:
     ```js
-    import { listFees } from '../api';
+   import { listFees } from '@/features/<feature>/api/<name>';
     ```
 
 ## Xusuusin
@@ -113,6 +100,8 @@ src/
 - entityClient.js maxaa ka dhacay?
   - Waxaa la tirtiray (lama isticmaalin, si aan u yareyno is‑dhexyaac). Haddii mustaqbal loo baahdo, waxaa wanaagsan in uu la jaanqaado `http.js` halkii uu ka yeelan lahaa config u gaar ah.
 
-## Sidee hadda u bilaabi karnaa?
-- Talo: ku bilow Talaabada 1 iyo 2 ee `http.js` + `lookups.js`. Markaas tijaabi bogagga isticmaalaya lookups (filters), kadib sii wad modules kale.
+## Sidee u joogteynaa DRY + Feature‑first?
+- Isticmaal alias‑ka `@` (Vite + jsconfig) si aad uga baxdo relative paths dheer.
+- Ku koobo shared UI/logic `src/components/common/*` iyo `src/shared/*`.
+- Ka fogow “global barrel” haddii uusan daruuri ahayn; feature‑local exports ayaa ka nadiifsan.
 

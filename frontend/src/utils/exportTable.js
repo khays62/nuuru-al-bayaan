@@ -41,7 +41,7 @@ const toText = (v) => {
 
 const csvEscape = (s) => {
   const text = toText(s);
-  if (/[\n\r,\"]/g.test(text)) {
+  if (/[\n\r,"]/g.test(text)) {
     return `"${text.replace(/"/g, '""')}"`;
   }
   return text;
@@ -103,7 +103,7 @@ export async function exportTableToExcel({
   const colCount = Math.max(1, safeHeaders.length);
 
   const safeSheetName = String(sheetName || 'Sheet1')
-    .replace(/[\\/\?\*\[\]:]/g, ' ')
+    .replace(/[\\/?*[\]:]/g, ' ')
     .trim()
     .slice(0, 31) || 'Sheet1';
 
@@ -151,8 +151,9 @@ export async function exportTableToExcel({
     mergeAcross(rowCursor);
     const c = ws.getCell(rowCursor, 1);
     c.value = toText(title);
-    c.font = { bold: true, size: 14 };
+    c.font = { bold: true, size: 16 };
     c.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    ws.getRow(rowCursor).height = 24;
     rowCursor += 1;
   }
   if (subtitle) {
@@ -160,7 +161,8 @@ export async function exportTableToExcel({
     const c = ws.getCell(rowCursor, 1);
     c.value = toText(subtitle);
     c.font = { size: 10, color: { argb: 'FF374151' } };
-    c.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    c.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+    ws.getRow(rowCursor).height = 34;
     rowCursor += 1;
   }
   if (title || subtitle) rowCursor += 1;
@@ -169,14 +171,17 @@ export async function exportTableToExcel({
   const headerRowIndex = rowCursor;
   const headerRow = ws.getRow(headerRowIndex);
   headerRow.values = [null, ...safeHeaders.map(toText)];
-  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
-  headerRow.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+  // Apply styles only to the actual header cells (otherwise Excel paints the entire row).
+  for (let c = 1; c <= colCount; c += 1) {
+    const cell = headerRow.getCell(c);
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: false };
+  }
   headerRow.height = 20;
   rowCursor += 1;
 
   // 4) Data rows
-  const dataStartRowIndex = rowCursor;
   for (const rawRow of safeRows) {
     const row = ws.getRow(rowCursor);
     const values = (Array.isArray(rawRow) ? rawRow : []).map(toText);
@@ -192,7 +197,11 @@ export async function exportTableToExcel({
       const v = Array.isArray(safeRows[i]) ? safeRows[i][cIdx] : '';
       maxLen = Math.max(maxLen, String(toText(v)).length);
     }
-    return Math.min(40, Math.max(12, Math.ceil(maxLen * 1.1)));
+    const header = String(safeHeaders[cIdx] || '').toLowerCase();
+    // Heuristics for nicer Excel layout
+    const minW = header.includes('rank') ? 8 : header.includes('student') ? 22 : 12;
+    const maxW = header.includes('student') ? 55 : 40;
+    return Math.min(maxW, Math.max(minW, Math.ceil(maxLen * 1.1)));
   });
 
   ws.columns = widths.map((w) => ({ width: w }));
@@ -208,7 +217,8 @@ export async function exportTableToExcel({
         right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
       };
       if (rowNumber !== headerRowIndex) {
-        cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+        // Avoid aggressive wrapping that makes cells very tall.
+        cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: false };
       }
     });
   });
@@ -266,15 +276,19 @@ export async function exportTableToPDF({
     }
   }
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text(toText(title), marginX, cursorY);
+  const safeTitle = String(title || '').trim();
+  if (safeTitle) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(toText(safeTitle), marginX, cursorY);
+    cursorY += 16;
+  }
 
-  cursorY += 16;
-  if (subtitle) {
+  const safeSubtitle = String(subtitle || '').trim();
+  if (safeSubtitle) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(toText(subtitle), marginX, cursorY);
+    doc.text(toText(safeSubtitle), marginX, cursorY);
     cursorY += 12;
   }
 
@@ -301,7 +315,7 @@ export async function exportTableToPDF({
   doc.save(filename);
 }
 
-export function exportTableToClipboard({ title = '', subtitle = '', headers = [], rows = [], delimiter = '\t' }) {
+export function exportTableToClipboard({ headers = [], rows = [], delimiter = '\t' }) {
   const safeHeaders = Array.isArray(headers) ? headers : [];
   const safeRows = Array.isArray(rows) ? rows : [];
   const colCount = Math.max(1, safeHeaders.length);

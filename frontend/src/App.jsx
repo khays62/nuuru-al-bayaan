@@ -1,25 +1,90 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import Sidebar from './components/layout/Sidebar';
-import Navbar from './components/layout/Navbar';
+import Sidebar from './shared/components/layout/Sidebar.jsx';
+import Navbar from './shared/components/layout/Navbar.jsx';
 import { navItems } from './config/navigation'; // Import from the new central config file
+import { useAuth } from './auth/AuthContext';
+import ForcePasswordChangeModal from './auth/components/ForcePasswordChangeModal';
+import TeacherDashboardPrefetcher from './features/teachers/components/dashboard/TeacherDashboardPrefetcher.jsx';
 
 export default function App() {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isCollapsed, setCollapsed] = useState(false);
+    const { auth, refreshUser } = useAuth();
     
     const location = useLocation();
 
-    // Find the current page title based on the route from the central config
-    const currentNavItem = navItems.find(item => location.pathname.startsWith(item.path));
+    const flatNavItems = (() => {
+        const out = [];
+        for (const item of navItems) {
+            if (!item) continue;
+            if (Array.isArray(item.children)) {
+                for (const child of item.children) {
+                    if (child) out.push(child);
+                }
+            }
+            if (item.path) out.push(item);
+        }
+        return out;
+    })();
+
+    // Find the current page title based on the route from the central config (supports children)
+    const currentNavItem = flatNavItems.find(item => item?.path && location.pathname.startsWith(item.path));
     const currentPageTitle = currentNavItem ? currentNavItem.label : 'Dashboard';
 
     const toggleMobileMenu = () => setMobileMenuOpen(!isMobileMenuOpen);
     const toggleCollapse = () => setCollapsed(!isCollapsed);
     const closeMobileMenu = () => setMobileMenuOpen(false);
 
+    const mustChangeNonStudent = useMemo(() => {
+        const u = auth?.user;
+        if (!u) return false;
+        const role = String(u.role || '').toLowerCase();
+        if (role === 'student') return false;
+        return Boolean(u.mustChangePassword);
+    }, [auth?.user]);
+
+    const [userForceOpen, setUserForceOpen] = useState(false);
+    useEffect(() => {
+        if (!mustChangeNonStudent) {
+            setUserForceOpen(false);
+            return;
+        }
+        const u = auth?.user;
+        const key = u?._id ? `user_force_pw_dismissed:${String(u._id)}` : 'user_force_pw_dismissed';
+        const dismissed = sessionStorage.getItem(key) === '1';
+        setUserForceOpen(!dismissed);
+    }, [mustChangeNonStudent, auth?.user?._id]);
+
+    const skipUserPasswordChange = () => {
+        const u = auth?.user;
+        const key = u?._id ? `user_force_pw_dismissed:${String(u._id)}` : 'user_force_pw_dismissed';
+        sessionStorage.setItem(key, '1');
+        setUserForceOpen(false);
+    };
+
+    const passwordChanged = async () => {
+        try {
+            const u = auth?.user;
+            const key = u?._id ? `user_force_pw_dismissed:${String(u._id)}` : 'user_force_pw_dismissed';
+            sessionStorage.removeItem(key);
+        } catch {
+            // ignore
+        }
+        if (typeof refreshUser === 'function') await refreshUser();
+    };
+
     return (
         <div className="flex h-screen bg-gray-100">
+            {String(auth?.user?.role || '').toLowerCase() === 'teacher' ? <TeacherDashboardPrefetcher /> : null}
+
+            <ForcePasswordChangeModal
+                isOpen={userForceOpen}
+                onSkip={skipUserPasswordChange}
+                onChanged={passwordChanged}
+                mode="user"
+            />
+
             <Sidebar
                 isMobileMenuOpen={isMobileMenuOpen}
                 isCollapsed={isCollapsed}
@@ -41,7 +106,7 @@ export default function App() {
 
             {isMobileMenuOpen && (
                 <div 
-                    className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" 
+                    className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden no-print" 
                     onClick={closeMobileMenu}
                 ></div>
             )}

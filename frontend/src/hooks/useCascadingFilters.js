@@ -3,7 +3,7 @@
 // Contract (bilow): returns { academicYearId, setAcademicYearId, gradeId, setGradeId, shiftId, setShiftId, gradeSectionId, setGradeSectionId, sections, loadingSections, resetLower }
 // Fiiro: Skeleton. Logic‑ga load sections waxa lagu xoojin doonaa marka la dabaqo page‑ka pilot.
 import { useState, useEffect } from 'react';
-import { listGradeSections } from '../api';
+import { listGradeSections } from '../features/grades/api/gradeSections';
 
 export function useCascadingFilters(initial = {}) {
   const [academicYearId, setAcademicYearId] = useState(initial.academicYearId || '');

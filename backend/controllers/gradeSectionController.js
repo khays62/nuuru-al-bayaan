@@ -4,6 +4,8 @@ import Subject from '../models/Subject.js';
 import Shift from '../models/Shift.js';
 import Grade from '../models/Grade.js';
 import Enrollment from '../models/Enrollment.js';
+import TeacherAssignment from '../models/TeacherAssignment.js';
+import { parsePagination } from '../utils/pagination.js';
 // Note: Cohort and AcademicYear are no longer part of GradeSection. Uniformity per AY
 // is enforced at Enrollment layer, not at GS layer.
 
@@ -19,12 +21,24 @@ function buildSort(sortParam) {
 export const listGradeSections = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '', grade, shift, section, sort } = req.query;
-    const pageNum = Math.max(parseInt(page) || 1, 1);
-    const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-    const skip = (pageNum - 1) * limitNum;
+    const { pageNum, limitNum, skip } = parsePagination({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 100 });
     const sortObj = buildSort(sort);
 
     const match = {};
+
+    // Teacher-safe scope: list only assigned gradeSections
+    if (req.user?.role === 'teacher') {
+      const teacherId = req.user?.teacherRef;
+      if (!teacherId || !mongoose.isValidObjectId(teacherId)) {
+        return res.status(403).json({ message: 'Teacher account is missing teacherRef' });
+      }
+      const rows = await TeacherAssignment.find({ teacher: teacherId }).select('gradeSection').lean();
+      const ids = [...new Set((rows || []).map(r => String(r.gradeSection)))].filter(mongoose.isValidObjectId);
+      if (!ids.length) {
+        return res.json({ data: [], meta: { page: 1, limit: limitNum, total: 0, totalPages: 1, sortBy: (sort||'createdAt:desc').split(':')[0], sortDir: (sort||'createdAt:desc').split(':')[1] || 'desc' } });
+      }
+      match._id = { $in: ids.map(id => new mongoose.Types.ObjectId(id)) };
+    }
     if (grade) match.grade = new mongoose.Types.ObjectId(grade);
     if (shift) match.shift = new mongoose.Types.ObjectId(shift);
     if (section) match.section = section;
@@ -37,9 +51,11 @@ export const listGradeSections = async (req, res) => {
       { $unwind: '$shift' },
     ];
     if (search) {
+      const safeQ = String(search).trim().slice(0, 64);
+      const safe = safeQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       pipeline.push({ $match: { $or: [
-        { 'grade.gradeName': { $regex: search, $options: 'i' } },
-        { section: { $regex: search, $options: 'i' } }
+        { 'grade.gradeName': { $regex: safe, $options: 'i' } },
+        { section: { $regex: safe, $options: 'i' } }
       ] } });
     }
     pipeline.push({ $sort: sortObj });
@@ -52,7 +68,7 @@ export const listGradeSections = async (req, res) => {
       }
     );
 
-  const result = await GradeSection.aggregate(pipeline);
+    const result = await GradeSection.aggregate(pipeline);
     const data = result[0]?.data || [];
     const total = result[0]?.totalCount?.[0]?.count || 0;
     const totalPages = Math.max(Math.ceil(total / limitNum), 1);
@@ -82,6 +98,16 @@ export const getGradeSection = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid id' });
+
+    if (req.user?.role === 'teacher') {
+      const teacherId = req.user?.teacherRef;
+      if (!teacherId || !mongoose.isValidObjectId(teacherId)) {
+        return res.status(403).json({ message: 'Teacher account is missing teacherRef' });
+      }
+      const ok = await TeacherAssignment.exists({ teacher: teacherId, gradeSection: id });
+      if (!ok) return res.status(403).json({ message: 'Not assigned to this class' });
+    }
+
     const cls = await GradeSection.findById(id)
       .populate('grade', 'gradeName')
       .populate('shift', 'shiftName')

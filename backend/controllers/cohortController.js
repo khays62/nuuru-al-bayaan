@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Cohort from '../models/Cohort.js';
 import Enrollment from '../models/Enrollment.js';
 import GradeSection from '../models/GradeSection.js';
+import { parsePagination } from '../utils/pagination.js';
 
 // Policy: Maximum number of cohorts allowed per Academic Year
 const MAX_COHORTS_PER_ACADEMIC_YEAR = 2; // Mid-year + Year-end intakes
@@ -26,9 +27,7 @@ function buildSearchFilter(q) {
 export const listCohorts = async (req, res) => {
   try {
     const { page = 1, limit = 10, q = '', status, startAcademicYear, ay } = req.query;
-    const pageNum = Math.max(parseInt(page) || 1, 1);
-    const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-    const skip = (pageNum - 1) * limitNum;
+    const { pageNum, limitNum, skip } = parsePagination({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 100 });
     const sort = parseSort(req);
 
     const filter = { ...buildSearchFilter(q) };
@@ -269,16 +268,26 @@ export const getCohortTimeline = async (req, res) => {
     const EnrollmentModel = Enrollment; // already imported
     const pipeline = [
       { $match: { cohort: new mongoose.Types.ObjectId(id) } },
-      { $lookup: { from: 'academicyears', localField: 'academicYear', foreignField: '_id', as: 'ay' } },
+
+      // Compute a best-effort status hint per (academicYear, gradeSection) by taking the most common enrollment.status.
+      { $group: { _id: { ay: '$academicYear', gs: '$gradeSection', status: '$status' }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $group: {
+          _id: { ay: '$_id.ay', gs: '$_id.gs' },
+          statusHint: { $first: '$_id.status' },
+          statusCounts: { $push: { status: '$_id.status', count: '$count' } }
+        }
+      },
+
+      { $lookup: { from: 'academicyears', localField: '_id.ay', foreignField: '_id', as: 'ay' } },
       { $unwind: '$ay' },
-      { $lookup: { from: 'gradesections', localField: 'gradeSection', foreignField: '_id', as: 'gs' } },
+      { $lookup: { from: 'gradesections', localField: '_id.gs', foreignField: '_id', as: 'gs' } },
       { $unwind: '$gs' },
       { $lookup: { from: 'grades', localField: 'gs.grade', foreignField: '_id', as: 'grade' } },
       { $unwind: { path: '$grade', preserveNullAndEmptyArrays: true } },
       { $lookup: { from: 'shifts', localField: 'gs.shift', foreignField: '_id', as: 'shift' } },
-      // NOTE: unwind path must be prefixed with '$'
       { $unwind: { path: '$shift', preserveNullAndEmptyArrays: true } },
-      { $group: { _id: { ay: '$ay._id', gs: '$gs._id' }, academicYear: { $first: '$ay' }, gradeSection: { $first: '$gs' }, grade: { $first: '$grade' }, shift: { $first: '$shift' } } },
+
       // Add numeric order for grade words/digits so level three comes before level four etc.
       { $addFields: { gradeOrder: {
           $switch: {
@@ -298,12 +307,14 @@ export const getCohortTimeline = async (req, res) => {
           }
         }
       } },
-      { $sort: { 'academicYear.yearName': 1, gradeOrder: 1 } },
+      { $sort: { 'ay.yearName': 1, gradeOrder: 1 } },
       { $project: {
-          academicYear: { _id: '$academicYear._id', yearName: '$academicYear.yearName' },
-          gradeSection: { _id: '$gradeSection._id', section: '$gradeSection.section' },
+          academicYear: { _id: '$ay._id', yearName: '$ay.yearName' },
+          gradeSection: { _id: '$gs._id', section: '$gs.section' },
           grade: { _id: '$grade._id', gradeName: '$grade.gradeName' },
-          shift: { _id: '$shift._id', shiftName: '$shift.shiftName' }
+          shift: { _id: '$shift._id', shiftName: '$shift.shiftName' },
+          statusHint: '$statusHint',
+          statusCounts: '$statusCounts'
         }
       }
     ];

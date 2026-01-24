@@ -10,6 +10,14 @@ Dukumiintigaan wuxuu qeexayaa qaab-dhismeedka xogta, APIs, iyo socodka UI ee nid
 | examTypeId | INT (PK) | Aqoonsiga gaarka ah |
 | typeName | VARCHAR | Magaca nooca (tusaale: Mid-term, Final) |
 
+**Cusub (Versioning / Exam Settings):**
+| Field | Type | Sharaxaad |
+|---|---|---|
+| templateVersion | INT | Nooca qaabka (v1, v2, ...) si imtixaanadii hore u sii ahaadaan sidii ay ahaayeen |
+| maxScore | INT | Max score ee component‑ka (tusaale Mid=40, Final=60) |
+| order | INT | Kala horeynta columns‑ka |
+| isActive | BOOL | Calaamadeyn version‑ka default ee mustaqbalka |
+
 - Talo: Seed/lookup ah; wax laga beddelo waa naadir. Tusaale values: 1=Mid-term, 2=Final.
 
 ### 1.2 Exam (Kalfadhiga Imtixaanka)
@@ -19,10 +27,11 @@ Dukumiintigaan wuxuu qeexayaa qaab-dhismeedka xogta, APIs, iyo socodka UI ee nid
 | examTypeId | INT (FK->ExamType) | Nooca imtixaanka |
 | academicYearId | INT (FK->AcademicYear) | Sanad dugsiyeedka |
 | gradeSectionId | INT (FK->GradeSection) | Fasalka/Section-ka |
+| templateVersion | INT | Version‑ka qaabka uu exam‑kani ku abuurmay |
 | createdAt | DATETIME | Auto |
 | updatedAt | DATETIME | Auto |
 
-- Unique constraint: (examTypeId, academicYearId, gradeSectionId) waa inay noqdaan mid gaar ah si looga hortago nuqulo.
+- Unique constraint: (examTypeId, academicYearId, gradeSectionId, templateVersion) waa inay noqdaan mid gaar ah si looga hortago nuqulo.
 - Auto-generation: Markii ugu horreysa ee fasal/section loo baahan yahay imtixaan, waxaa si otomaatig ah loogu abuuraa noocyada ka jira ExamType (tusaale Mid-term, Final).
 
 ### 1.3 ExamScore (Dhibcaha Imtixaanka)
@@ -103,9 +112,9 @@ Errors (examples): 400 validation, 404 not found (invalid ids), 409 conflict (un
 ## 5) Validations, Indexes, Rules
 
 - Indexes:
-  - Exam: unique(examTypeId, academicYearId, gradeSectionId)
+  - Exam: unique(examTypeId, academicYearId, gradeSectionId, templateVersion)
   - ExamScore: unique(studentId, examId, subjectId)
-- Score ranges: default 0..100; per-subject maxScore (mustaqbalka) → config.
+- Score ranges: 0..maxScore (maxScore‑ka waxaa laga qaataa ExamType ee templateVersion‑kaas)
 - Integrity:
   - studentId waa inuu ku jiraa enrollment-ka section-kan sannadkaas (active) si score loo oggolaado.
 - Idempotency:

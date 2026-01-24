@@ -58,5 +58,7 @@ frontend/lint*.txt
 backend/cookies.txt
 backend/login_response.txt
 backend/*response*.txt
+backend/build_err_latest.txt
+backend/build_log_backend_latest.txt
 frontend/build_err.txt
 frontend/build_out.txt

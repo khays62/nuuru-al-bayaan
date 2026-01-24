@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
 
 const { Schema } = mongoose;
 
@@ -13,7 +14,7 @@ const studentSchema = new Schema({
     address: { type: String },
     admissionDate: { type: Date, required: true },
     // Auth fields (ported from Target)
-    password: { type: String, required: true, default: '123456' },
+    password: { type: String, required: true, default: () => getDefaultInitialPassword() },
     role: { type: String, default: 'student' },
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date, default: null },
@@ -44,8 +45,9 @@ studentSchema.pre('insertMany', async function (next, docs) {
     try {
         if (!Array.isArray(docs) || docs.length === 0) return next();
         const salt = await bcrypt.genSalt(10);
+        const defaultPwd = getDefaultInitialPassword();
         for (const doc of docs) {
-            const pwd = typeof doc?.password === 'string' && doc.password.length > 0 ? doc.password : '123456';
+            const pwd = typeof doc?.password === 'string' && doc.password.length > 0 ? doc.password : defaultPwd;
             const looksHashed = typeof pwd === 'string' && pwd.startsWith('$2');
             if (!looksHashed) {
                 doc.password = await bcrypt.hash(pwd, salt);

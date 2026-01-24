@@ -1,6 +1,54 @@
 import mongoose from 'mongoose';
 import Student from '../models/Student.js';
 
+const inferTemplateVersionForContext = async ({ academicYearId, gradeSectionId, studentId }) => {
+  const ayOk = mongoose.isValidObjectId(academicYearId);
+  const gsOk = mongoose.isValidObjectId(gradeSectionId);
+  const stOk = mongoose.isValidObjectId(studentId);
+  if (!ayOk || !gsOk) return null;
+
+  const Exam = (await import('../models/Exam.js')).default;
+  const ExamScore = (await import('../models/ExamScore.js')).default;
+
+  const ay = new mongoose.Types.ObjectId(academicYearId);
+  const gs = new mongoose.Types.ObjectId(gradeSectionId);
+
+  // Prefer templateVersion where THIS student has scores for this AY+Section.
+  if (stOk) {
+    const sid = new mongoose.Types.ObjectId(studentId);
+    const agg = await ExamScore.aggregate([
+      { $match: { student: sid } },
+      { $lookup: { from: 'exams', localField: 'exam', foreignField: '_id', as: 'examDoc' } },
+      { $unwind: '$examDoc' },
+      { $match: { 'examDoc.academicYear': ay, 'examDoc.gradeSection': gs } },
+      { $group: { _id: '$examDoc.templateVersion', scoreCount: { $sum: 1 } } },
+      { $sort: { scoreCount: -1, _id: -1 } },
+      { $limit: 1 }
+    ]);
+    if (agg?.[0]?._id != null) return Number(agg[0]._id);
+  }
+
+  // Otherwise choose the version with most scores in the class for this AY+Section.
+  const classAgg = await Exam.aggregate([
+    { $match: { academicYear: ay, gradeSection: gs } },
+    { $lookup: { from: 'examscores', localField: '_id', foreignField: 'exam', as: 'scores' } },
+    { $addFields: { scoreCount: { $size: '$scores' } } },
+    { $group: { _id: '$templateVersion', scoreCount: { $sum: '$scoreCount' }, examsCount: { $sum: 1 } } },
+    { $sort: { scoreCount: -1, examsCount: -1, _id: -1 } },
+    { $limit: 1 }
+  ]);
+  if (classAgg?.[0]?._id != null) return Number(classAgg[0]._id);
+
+  // If no scores, use latest templateVersion present.
+  const anyExam = await Exam.findOne({ academicYear: ay, gradeSection: gs })
+    .sort({ templateVersion: -1 })
+    .select('templateVersion')
+    .lean();
+  if (anyExam?.templateVersion != null) return Number(anyExam.templateVersion);
+
+  return null;
+};
+
 // @desc    Aggregated full transcript across all enrollments (multi-year)
 // @route   GET /api/students/:id/full-transcript (mounted in student routes for compatibility)
 // @route   GET /api/transcripts/students/:id/full-transcript (new router)
@@ -35,33 +83,41 @@ export const getFullTranscript = async (req, res) => {
     }
     const transfers = await transfersQuery.lean();
 
-    // Helper to build transcript for one enrollment using existing logic (inline adaptation of getTranscript)
+    // Helper to build transcript for one enrollment (templateVersion-aware)
     const Exam = (await import('../models/Exam.js')).default;
     const ExamType = (await import('../models/ExamType.js')).default;
     const ExamScore = (await import('../models/ExamScore.js')).default;
     const GradeSection = (await import('../models/GradeSection.js')).default;
     const Subject = (await import('../models/Subject.js')).default;
 
+
     const enrollmentTranscripts = [];
     for (const enr of enrollments) {
       const academicYearId = String(enr.academicYear?._id || enr.academicYear);
       const gradeSectionId = String(enr.gradeSection?._id || enr.gradeSection);
       if (!academicYearId || !gradeSectionId) continue;
-      // Exams for this AY + section
-      const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId }).select('_id examType').lean();
+
+      const version = await inferTemplateVersionForContext({ academicYearId, gradeSectionId, studentId: id });
+
+      // Exams for this AY + section + resolved templateVersion
+      const examsQuery = { academicYear: academicYearId, gradeSection: gradeSectionId };
+      if (version != null) examsQuery.templateVersion = version;
+      const exams = await Exam.find(examsQuery).select('_id examType templateVersion').lean();
       if (!exams.length) {
-        enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes: [], subjects: [], rows: [], overall: { total: 0, average: 0 } } });
+        enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes: [], subjects: [], rows: [], overall: { total: 0, average: 0 }, templateVersion: version } });
         continue;
       }
       const examTypeIds = [...new Set(exams.map(e => String(e.examType)))];
-      const examTypesDocs = await ExamType.find({ _id: { $in: examTypeIds } }).select('typeName').lean();
-      const examTypeNameMap = Object.fromEntries(examTypesDocs.map(t => [String(t._id), t.typeName]));
-      const examTypes = examTypeIds.map(eid => ({ _id: eid, typeName: examTypeNameMap[eid] || 'Exam' })).sort((a,b)=> (a.typeName||'').localeCompare(b.typeName||''));
+      const examTypesDocs = await ExamType.find({ _id: { $in: examTypeIds } }).select('typeName order maxScore').lean();
+      const examTypeMap = Object.fromEntries(examTypesDocs.map(t => [String(t._id), { typeName: t.typeName, order: t.order, maxScore: t.maxScore }]));
+      const examTypes = examTypeIds
+        .map(eid => ({ _id: eid, typeName: examTypeMap[eid]?.typeName || 'Exam', order: examTypeMap[eid]?.order || 0, maxScore: examTypeMap[eid]?.maxScore || 0 }))
+        .sort((a, b) => (Number(a.order || 0) - Number(b.order || 0)) || (a.typeName || '').localeCompare(b.typeName || ''));
       const examIds = exams.map(e => e._id);
       const gsDoc = await GradeSection.findById(gradeSectionId).select('subjects').lean();
       const subjectIds = (gsDoc?.subjects || []).map(sid => new mongoose.Types.ObjectId(sid));
       if (!subjectIds.length) {
-        enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes, subjects: [], rows: [], overall: { total: 0, average: 0 } } });
+        enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes, subjects: [], rows: [], overall: { total: 0, average: 0 }, templateVersion: version } });
         continue;
       }
       const subjectDocs = await Subject.find({ _id: { $in: subjectIds } }).select('subjectName').lean();
@@ -86,7 +142,7 @@ export const getFullTranscript = async (req, res) => {
       });
       const overallTotal = rows.reduce((a,b)=> a + (b.total||0), 0);
       const overallAverage = subjects.length ? (overallTotal / subjects.length) : 0;
-      enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes, subjects, rows, overall: { total: overallTotal, average: overallAverage } } });
+      enrollmentTranscripts.push({ enrollmentId: enr._id, transcript: { examTypes, subjects, rows, overall: { total: overallTotal, average: overallAverage }, templateVersion: version } });
     }
 
     // Merge transcripts back into enrollment objects
@@ -177,7 +233,11 @@ export const getOverallSummary = async (req, res) => {
       const academicYearId = String(en.academicYear?._id || en.academicYear);
       const gradeSectionId = String(en.gradeSection?._id || en.gradeSection);
       if (!academicYearId || !gradeSectionId) continue;
-      const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId }).select('_id').lean();
+
+      const version = await inferTemplateVersionForContext({ academicYearId, gradeSectionId, studentId: id });
+      const examsQuery = { academicYear: academicYearId, gradeSection: gradeSectionId };
+      if (version != null) examsQuery.templateVersion = version;
+      const exams = await Exam.find(examsQuery).select('_id').lean();
       const examIds = exams.map(e => e._id);
       if (!examIds.length) {
         levels.push({ enrollmentId: en._id, total: 0, average: 0, rank: null, subjectsCount: 0, classSize: 0 });
@@ -325,7 +385,11 @@ export const getClassOverallRanks = async (req, res) => {
         const ayId = String(en.academicYear?._id || en.academicYear);
         const gsId = String(en.gradeSection?._id || en.gradeSection);
         if (!ayId || !gsId) continue;
-        const exams = await Exam.find({ academicYear: ayId, gradeSection: gsId }).select('_id').lean();
+
+        const version = await inferTemplateVersionForContext({ academicYearId: ayId, gradeSectionId: gsId, studentId: sid });
+        const examsQuery = { academicYear: ayId, gradeSection: gsId };
+        if (version != null) examsQuery.templateVersion = version;
+        const exams = await Exam.find(examsQuery).select('_id').lean();
         const examIds = exams.map(e => e._id);
         if (!examIds.length) { levels.push({ total: 0, subjectsCount: 0, classSize: 0, rank: null }); continue; }
         const gs = await GradeSection.findById(gsId).select('subjects').lean();

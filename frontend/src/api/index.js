@@ -1,13 +1,13 @@
 // api/index.js
 // Barrel: re-export API modules from a single place
 
-export { getGrades, getAcademicYears, getShifts } from './modules/lookups.js';
-export * from './modules/lookups.js';
-export * from './modules/subjects.js';
-export * from './modules/exams.js';
-export * from './modules/students.js';
-export * from './modules/gradeSections.js';
-export { listCohorts, createCohort, updateCohort, deleteCohort, activateCohort, archiveCohort, getAvailableCohortsForPromotion, getCohortTimeline } from './modules/cohorts.js';
-export * from './modules/promotions.js';
-export * from './modules/transfers.js';
-export * from './modules/users.js';
+export { getGrades, getAcademicYears, getShifts } from '../features/lookups/api/lookups.js';
+export * from '../features/lookups/api/lookups.js';
+export * from '../features/subjects/api/subjects.js';
+export * from '../features/exams/api/exams.js';
+export * from '../features/students/api/studentsApi.js';
+export * from '../features/grades/api/gradeSections.js';
+export { listCohorts, createCohort, updateCohort, deleteCohort, activateCohort, archiveCohort, getAvailableCohortsForPromotion, getCohortTimeline } from '../features/cohorts/api/cohorts.js';
+export * from '../features/promotions/api/promotions.js';
+export * from '../features/transfers/api/transfers.js';
+export * from '../features/users/api/usersApi.js';

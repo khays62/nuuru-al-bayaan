@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Student from '../models/Student.js';
+import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
 
 // One-time migration:
 // Hash any student.password values that are still plaintext.
@@ -57,8 +58,10 @@ async function main() {
     const ops = [];
     let skipped = 0;
 
+    const defaultPwd = getDefaultInitialPassword();
+
     for (const s of candidates) {
-      const raw = typeof s.password === 'string' && s.password.length > 0 ? s.password : '123456';
+      const raw = typeof s.password === 'string' && s.password.length > 0 ? s.password : defaultPwd;
       if (looksHashed(raw)) {
         skipped += 1;
         continue;

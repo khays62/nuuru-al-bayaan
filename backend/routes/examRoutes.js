@@ -1,16 +1,34 @@
 import express from 'express';
-import { getExamTypes, ensureExams, getExamGrid, upsertScore, getSummary, getTranscript, hasScores } from '../controllers/examController.js';
+import {
+	getExamTypes,
+	ensureExams,
+	getExamGrid,
+	upsertScore,
+	getSummary,
+	getTranscript,
+	hasScores,
+	getExamTemplateVersions,
+	getExamTemplateDetail,
+	setExamTemplateTotal,
+	createExamTemplateComponent,
+	updateExamTemplateComponent,
+	deleteExamTemplateComponent,
+	deleteExamTemplateVersion,
+	cloneExamTemplateVersion,
+	setActiveExamTemplateVersion
+} from '../controllers/examController.js';
 
 import { protect } from "../middleware/authMiddleware.js";
 import { checkAnyPermission, checkPermission } from "../middleware/checkPermission.js";
 import { allowStudentSelfOr } from '../middleware/studentSelf.js';
+import { allowTeacher, teacherOr, requireTeacherAssignment } from '../middleware/teacherScope.js';
 
 const router = express.Router();
 
 router.get(
 	'/types',
 	protect,
-	checkAnyPermission([
+	allowTeacher(checkAnyPermission([
 		{ module: 'exams', action: 'view' },
 		{ module: 'results', action: 'view' },
 		{ module: 'results', action: 'print' },
@@ -24,8 +42,76 @@ router.get(
 		{ module: 'students', action: 'deactivate' },
 		{ module: 'students', action: 'reactivate' },
 		{ module: 'students', action: 'download' }
-	]),
+	])),
 	getExamTypes
+);
+
+router.get(
+	'/template/versions',
+	protect,
+	allowTeacher(checkAnyPermission([
+		{ module: 'exams', action: 'view' },
+		{ module: 'exams', action: 'input' }
+	])),
+	getExamTemplateVersions
+);
+
+router.get(
+	'/template/detail',
+	protect,
+	allowTeacher(checkAnyPermission([
+		{ module: 'exams', action: 'view' },
+		{ module: 'exams', action: 'input' }
+	])),
+	getExamTemplateDetail
+);
+
+router.put(
+	'/template/total',
+	protect,
+	checkPermission('exams', 'input'),
+	setExamTemplateTotal
+);
+
+router.post(
+	'/template/component',
+	protect,
+	checkPermission('exams', 'input'),
+	createExamTemplateComponent
+);
+
+router.put(
+	'/template/component/:id',
+	protect,
+	checkPermission('exams', 'input'),
+	updateExamTemplateComponent
+);
+
+router.delete(
+	'/template/component/:id',
+	protect,
+	checkPermission('exams', 'input'),
+	deleteExamTemplateComponent
+);
+
+router.delete(
+	'/template/version/:templateVersion',
+	protect,
+	checkPermission('exams', 'input'),
+	deleteExamTemplateVersion
+);
+
+router.post(
+	'/template/clone',
+	protect,
+	checkPermission('exams', 'input'),
+	cloneExamTemplateVersion
+);
+router.put(
+	'/template/active',
+	protect,
+	checkPermission('exams', 'input'),
+	setActiveExamTemplateVersion
 );
 
 router.get(
@@ -59,38 +145,44 @@ router.post(
 router.get(
 	'/grid',
 	protect,
-	checkAnyPermission([
-		{ module: 'exams', action: 'view' },
-		{ module: 'exams', action: 'input' }
-	]),
+	teacherOr(
+		checkAnyPermission([
+			{ module: 'exams', action: 'view' },
+			{ module: 'exams', action: 'input' }
+		]),
+		requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectKeys: ['subjectId'], subjectOptional: false })
+	),
 	getExamGrid
 );
 
 router.put(
 	'/score',
 	protect,
-	checkPermission("exams", "input"),
+	allowTeacher(checkPermission("exams", "input")),
 	upsertScore
 );
 
 router.get(
 	'/summary',
 	protect,
-	checkAnyPermission([
-		{ module: 'exams', action: 'view' },
-		{ module: 'results', action: 'view' },
-		{ module: 'results', action: 'print' },
-		{ module: 'results', action: 'download' },
-		{ module: 'transcript', action: 'view' },
-		{ module: 'students', action: 'view' },
-		{ module: 'students', action: 'add' },
-		{ module: 'students', action: 'edit' },
-		{ module: 'students', action: 'delete' },
-		{ module: 'students', action: 'transfer' },
-		{ module: 'students', action: 'deactivate' },
-		{ module: 'students', action: 'reactivate' },
-		{ module: 'students', action: 'download' }
-	]),
+	teacherOr(
+		checkAnyPermission([
+			{ module: 'exams', action: 'view' },
+			{ module: 'results', action: 'view' },
+			{ module: 'results', action: 'print' },
+			{ module: 'results', action: 'download' },
+			{ module: 'transcript', action: 'view' },
+			{ module: 'students', action: 'view' },
+			{ module: 'students', action: 'add' },
+			{ module: 'students', action: 'edit' },
+			{ module: 'students', action: 'delete' },
+			{ module: 'students', action: 'transfer' },
+			{ module: 'students', action: 'deactivate' },
+			{ module: 'students', action: 'reactivate' },
+			{ module: 'students', action: 'download' }
+		]),
+		requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectKeys: ['subjectId'], subjectOptional: true })
+	),
 	getSummary
 );
 

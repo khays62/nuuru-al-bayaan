@@ -28,10 +28,14 @@ export async function computeOverallAverages(enrollments = []) {
   }
   if (byStudent.size === 0) return new Map();
 
-  // Resolve ExamType ids for Mid-term and Final (robust, case-insensitive contains)
-  const types = await ExamType.find({}).lean();
+  // Resolve ExamType ids for Mid-term and Final from the ACTIVE template version
+  // (prevents ambiguous selection when multiple versions exist)
+  let types = await ExamType.find({ isActive: true }).lean();
+  if (!types.length) types = await ExamType.find({ templateVersion: 1 }).lean();
   const midType = types.find(t => String(t.typeName || '').toLowerCase().includes('mid'));
   const finalType = types.find(t => String(t.typeName || '').toLowerCase().includes('final'));
+
+  const version = Number(types?.[0]?.templateVersion || 1);
 
   // Build AY+GS → exam ids map per type
   const pairs = Array.from(pairKeys).map(k => {
@@ -42,8 +46,8 @@ export async function computeOverallAverages(enrollments = []) {
   if (pairs.length > 0) {
     const orConds = [];
     for (const p of pairs) {
-      if (midType) orConds.push({ academicYear: p.academicYear, gradeSection: p.gradeSection, examType: midType._id });
-      if (finalType) orConds.push({ academicYear: p.academicYear, gradeSection: p.gradeSection, examType: finalType._id });
+      if (midType) orConds.push({ academicYear: p.academicYear, gradeSection: p.gradeSection, examType: midType._id, templateVersion: version });
+      if (finalType) orConds.push({ academicYear: p.academicYear, gradeSection: p.gradeSection, examType: finalType._id, templateVersion: version });
     }
     if (orConds.length > 0) {
       exams = await Exam.find({ $or: orConds }).lean();

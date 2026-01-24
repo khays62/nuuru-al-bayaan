@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Debug artifacts
+vite_build_debug*.txt
+
+# Copilot/build/test artifacts (local)
+build_*.txt
+test_*.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

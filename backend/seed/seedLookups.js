@@ -43,10 +43,15 @@ function generateAcademicYears() {
 }
 
 async function seedExamTypes() {
-  for (const t of EXAM_TYPES) {
-    const exists = await ExamType.findOne({ typeName: t });
+  for (let i = 0; i < EXAM_TYPES.length; i++) {
+    const t = EXAM_TYPES[i];
+    const exists = await ExamType.findOne({ typeName: t, templateVersion: 1 });
     if (!exists) {
-      await ExamType.create({ typeName: t });
+      const name = String(t || '').toLowerCase();
+      const maxScore = name.includes('mid') ? 40 : (name.includes('final') ? 60 : 100);
+      const templateTotal = 100;
+      const order = i + 1;
+      await ExamType.create({ typeName: t, templateVersion: 1, maxScore, templateTotal, order, isActive: true });
       console.log('[seed] Added ExamType:', t);
     } else {
       console.log('[seed] ExamType exists:', t);

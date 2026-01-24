@@ -2,6 +2,7 @@ import express from 'express';
 import { listCohorts, createCohort, updateCohort, deleteCohort, getAvailableCohortsForPromotion, getCohortTimeline } from '../controllers/cohortController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { checkAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+import { allowTeacher } from '../middleware/teacherScope.js';
 
 const router = express.Router();
 
@@ -9,7 +10,7 @@ router
   .route('/')
   .get(
     protect,
-    checkAnyPermission([
+    allowTeacher(checkAnyPermission([
       { module: 'cohorts', action: 'view' },
       { module: 'students', action: 'view' },
       { module: 'students', action: 'add' },
@@ -19,7 +20,7 @@ router
       { module: 'students', action: 'deactivate' },
       { module: 'students', action: 'reactivate' },
       { module: 'students', action: 'download' }
-    ]),
+    ])),
     listCohorts
   )
   .post(
@@ -33,7 +34,7 @@ router
   .route('/available')
   .get(
     protect,
-    checkAnyPermission([
+    allowTeacher(checkAnyPermission([
       { module: 'cohorts', action: 'view' },
       { module: 'students', action: 'view' },
       { module: 'students', action: 'add' },
@@ -43,7 +44,7 @@ router
       { module: 'students', action: 'deactivate' },
       { module: 'students', action: 'reactivate' },
       { module: 'students', action: 'download' }
-    ]),
+    ])),
     getAvailableCohortsForPromotion
   );
 
@@ -51,7 +52,7 @@ router
   .route('/:id/timeline')
   .get(
     protect,
-    checkAnyPermission([
+    allowTeacher(checkAnyPermission([
       { module: 'cohorts', action: 'view' },
       { module: 'students', action: 'view' },
       { module: 'students', action: 'add' },
@@ -61,7 +62,7 @@ router
       { module: 'students', action: 'deactivate' },
       { module: 'students', action: 'reactivate' },
       { module: 'students', action: 'download' }
-    ]),
+    ])),
     getCohortTimeline
   );
 

@@ -9,23 +9,53 @@ function buildTimeOverlapQuery({ startTime, endTime }) {
 
 export const listSlots = async (req, res) => {
   try {
-    let { gs, teacher, day, subject, from, to } = req.query;
+    let { gs, teacher, day, subject, from, to, mine } = req.query;
     const q = {};
 
-  // Student-safe scope: force gradeSection to the student's active enrollment.
-  if (req.user?.role === 'student') {
-    const enr = await Enrollment.findOne({ student: req.user._id, status: 'active' })
-      .sort({ createdAt: -1 })
-      .select('gradeSection')
-      .lean();
-    if (!enr?.gradeSection) {
-      return res.json({ data: [] });
+    // Student-safe scope: force gradeSection to the student's active enrollment.
+    if (req.user?.role === 'student') {
+      const selfStudentId = req.user?.studentRef?._id || req.user?.studentRef || null;
+      const studentId = selfStudentId ? String(selfStudentId) : String(req.user._id);
+      const enr = await Enrollment.findOne({ student: studentId, status: 'active' })
+        .sort({ createdAt: -1 })
+        .select('gradeSection')
+        .lean();
+      if (!enr?.gradeSection) {
+        return res.json({ data: [] });
+      }
+      q.gradeSection = enr.gradeSection;
     }
-    q.gradeSection = enr.gradeSection;
-  } else {
-    if (gs && mongoose.isValidObjectId(gs)) q.gradeSection = gs;
-  }
-    if (teacher && mongoose.isValidObjectId(teacher)) q.teacher = teacher;
+
+    // Teacher-safe scope: teacher can view timetable for assigned gradeSections.
+    // If `mine=1`, return only slots taught by the logged-in teacher.
+    if (req.user?.role === 'teacher') {
+      const teacherRef = req.user?.teacherRef;
+      if (!teacherRef || !mongoose.isValidObjectId(teacherRef)) {
+        return res.status(403).json({ message: 'Teacher account is missing teacherRef' });
+      }
+
+      const mineOnly = ['1', 'true', 'yes'].includes(String(mine || '').toLowerCase());
+      const assigned = await TeacherAssignment.find({ teacher: teacherRef }).distinct('gradeSection');
+      const allowed = (assigned || []).filter((id) => mongoose.isValidObjectId(id));
+      if (!allowed.length) return res.json({ data: [] });
+
+      if (gs && mongoose.isValidObjectId(gs)) {
+        const ok = allowed.some((id) => String(id) === String(gs));
+        if (!ok) return res.status(403).json({ message: 'Not assigned to this class' });
+        q.gradeSection = gs;
+      } else {
+        q.gradeSection = { $in: allowed };
+      }
+
+      if (mineOnly) {
+        q.teacher = teacherRef;
+      }
+
+      // Ignore teacher query param for teachers (they can see the full class timetable).
+    } else {
+      if (!q.gradeSection && gs && mongoose.isValidObjectId(gs)) q.gradeSection = gs;
+      if (teacher && mongoose.isValidObjectId(teacher)) q.teacher = teacher;
+    }
     if (subject && mongoose.isValidObjectId(subject)) q.subject = subject;
     if (day != null && day !== '') {
       const d = Number(day);

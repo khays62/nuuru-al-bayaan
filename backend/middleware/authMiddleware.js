@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import Admin from "../models/Admin.js";
 import User from "../models/User.js";
-import Student from "../models/Student.js";
+import { getCookieConfig } from "../config/cookies.js";
 
 // 🔐 Protect middleware
 export const protect = async (req, res, next) => {
@@ -11,25 +11,53 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: "No token provided" });
     }
 
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: "Server auth is not configured (JWT_SECRET missing)" });
+    }
+
     // Verify JWT
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev_secret");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Find in Admin, User, or Student (keep type so we can normalize role safely)
+    // CUTOVER: Students are User accounts now.
     const admin = await Admin.findById(decoded.id).select("-password");
-    const staff = admin ? null : await User.findById(decoded.id).select("-password");
-    const student = admin || staff ? null : await Student.findById(decoded.id).select("-password");
+    const user = admin ? null : await User.findById(decoded.id).select("-password");
 
-    const user = admin || staff || student;
+    const principal = admin || user;
 
-    if (!user) {
+    if (!principal) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // 🔒 Session invalidation (global logout): reject stale tokens.
+    try {
+      const currentVersion = Number(principal.tokenVersion || 0);
+      const tokenV = Number(decoded?.v || 0);
+      if (tokenV !== currentVersion) {
+        res.clearCookie('auth_token', { httpOnly: true, ...getCookieConfig() });
+        return res.status(401).json({ message: 'Not authorized' });
+      }
+    } catch {
+      // ignore
+    }
+
+    // If the account is security-locked (24h), force logout.
+    // We treat loginCooldownLevel>=4 as the security lock level.
+    try {
+      const lockUntilMs = principal.lockUntil?.getTime ? principal.lockUntil.getTime() : 0;
+      const level = Number(principal.loginCooldownLevel || 0);
+      if (lockUntilMs && lockUntilMs > Date.now() && level >= 4) {
+        res.clearCookie('auth_token', { httpOnly: true, ...getCookieConfig() });
+        return res.status(401).json({ message: 'Not authorized' });
+      }
+    } catch {
+      // ignore
+    }
+
     // Store user & role
-    req.user = user;
-    // If the principal is a Student document, always treat it as role=student.
-    const rawRole = student ? "student" : (decoded.role || user.role || "student");
-    req.user.role = typeof rawRole === "string" ? rawRole.toLowerCase() : "student";
+    req.user = principal;
+    const rawRole = decoded.role || principal.role || 'staff';
+    req.user.role = typeof rawRole === "string" ? rawRole.toLowerCase() : "staff";
 
     next();
   } catch (err) {

@@ -4,6 +4,8 @@ import AttendanceAuditLog from '../models/AttendanceAuditLog.js';
 import GradeSection from '../models/GradeSection.js';
 import Enrollment from '../models/Enrollment.js';
 import Timetable from '../models/Timetable.js';
+import Student from '../models/Student.js';
+import User from '../models/User.js';
 
 function parseISODateOnly(value) {
   if (!value) return null;
@@ -101,8 +103,18 @@ export const markAttendanceBulk = async (req, res) => {
       }
     }
 
-    // Option 1 (Admin-first): markedBy is optional until teacher auth exists.
-    const actorTeacher = (markedBy && mongoose.isValidObjectId(markedBy)) ? markedBy : null;
+    // Actor (admin/staff/teacher). Keep legacy Teacher ref support when available.
+    const actorUserId = req.user?._id && mongoose.isValidObjectId(req.user._id) ? req.user._id : null;
+    const actorRole = ['admin', 'staff', 'teacher'].includes(String(req.user?.role || '').toLowerCase())
+      ? String(req.user.role).toLowerCase()
+      : null;
+
+    // Option 1 (Admin-first): markedBy (Teacher ref) is optional until teacher auth exists.
+    const actorTeacher = (markedBy && mongoose.isValidObjectId(markedBy))
+      ? markedBy
+      : (req.user?.teacherRef && mongoose.isValidObjectId(req.user.teacherRef) ? req.user.teacherRef : null);
+
+    const now = new Date();
 
     // Prepare audit: read existing statuses for this selection.
     const studentIds = items
@@ -143,6 +155,14 @@ export const markAttendanceBulk = async (req, res) => {
             status: String(r.status).trim(),
             remarks: sanitizeRemarks(r.remarks, { maxWords: 40, maxChars: 120 }),
             ...(actorTeacher ? { markedBy: actorTeacher } : {}),
+            ...(actorUserId ? { updatedByUser: actorUserId } : {}),
+            ...(actorRole ? { updatedByRole: actorRole } : {}),
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            ...(actorUserId ? { markedByUser: actorUserId } : {}),
+            ...(actorRole ? { markedByRole: actorRole } : {}),
+            createdAt: now,
           }
         },
         upsert: true,
@@ -257,19 +277,103 @@ export const getAttendance = async (req, res) => {
       AttendanceRecord.exists({ gradeSection: gradeSectionId, date: when, periodCode: { $ne: 'DAY' } }),
       AttendanceRecord.distinct('periodCode', { gradeSection: gradeSectionId, date: when, periodCode: { $ne: 'DAY' } }),
       AttendanceRecord.find({ gradeSection: gradeSectionId, date: when, periodCode: pCode })
-        .select('student status remarks')
+        .select('student status remarks createdAt updatedAt markedByUser markedByRole updatedByUser updatedByRole')
         .lean(),
     ]);
 
-    const statusMap = new Map(existing.map(r => [String(r.student), { status: r.status, remarks: r.remarks || '' }]));
-    const merged = roster.map(stu => ({
-      _id: stu._id,
-      studentId: stu.studentId,
-      fullName: stu.fullName,
-      status: statusMap.get(String(stu._id))?.status || 'present',
-      remarks: statusMap.get(String(stu._id))?.remarks || '',
-      active: String(stu.status || '').toLowerCase() === 'active',
-    }));
+    const isTeacherRole = String(req.user?.role || '').toLowerCase() === 'teacher';
+
+    const recordMap = new Map((existing || []).map(r => [String(r.student), r]));
+
+    // Load actor names for admin/staff audit display.
+    const actorIds = new Set();
+    if (!isTeacherRole) {
+      for (const r of existing || []) {
+        if (r?.markedByUser) actorIds.add(String(r.markedByUser));
+        if (r?.updatedByUser) actorIds.add(String(r.updatedByUser));
+      }
+    }
+    const actorUsers = actorIds.size
+      ? await User.find({ _id: { $in: Array.from(actorIds).filter(mongoose.isValidObjectId) } })
+          .select('_id fullName username role')
+          .lean()
+      : [];
+    const actorById = new Map(actorUsers.map(u => [String(u._id), u]));
+
+    const merged = roster.map(stu => {
+      const rec = recordMap.get(String(stu._id));
+      const row = {
+        _id: stu._id,
+        studentId: stu.studentId,
+        fullName: stu.fullName,
+        status: rec?.status || 'present',
+        remarks: rec?.remarks || '',
+        active: String(stu.status || '').toLowerCase() === 'active',
+      };
+      if (!isTeacherRole && rec) {
+        const mb = rec?.markedByUser ? actorById.get(String(rec.markedByUser)) : null;
+        const ub = rec?.updatedByUser ? actorById.get(String(rec.updatedByUser)) : null;
+        const wasUpdated = Boolean(
+          rec?.updatedAt && rec?.createdAt && new Date(rec.updatedAt).getTime() > new Date(rec.createdAt).getTime()
+        );
+        row.audit = {
+          markedBy: rec?.markedByUser
+            ? { role: rec?.markedByRole || mb?.role || '', name: mb?.fullName || mb?.username || '—' }
+            : null,
+          markedAt: rec?.createdAt || null,
+          updatedBy: wasUpdated && rec?.updatedByUser
+            ? { role: rec?.updatedByRole || ub?.role || '', name: ub?.fullName || ub?.username || '—' }
+            : null,
+          updatedAt: wasUpdated ? (rec?.updatedAt || null) : null,
+        };
+      }
+      return row;
+    });
+
+    let dataRows = merged;
+    // Fallback: if roster is empty but there are existing attendance records, include those students too
+    if (dataRows.length === 0 && existing && existing.length > 0) {
+      const ids = Array.from(new Set(existing.map(r => String(r.student))));
+      const students = await Student.find({ _id: { $in: ids } })
+        .select('_id studentId fullName status')
+        .lean();
+      const byId = new Map(students.map(s => [String(s._id), s]));
+      dataRows = ids
+        .map(id => {
+          const s = byId.get(id);
+          if (!s) return null;
+          const rec = recordMap.get(id);
+          const row = {
+            _id: s._id,
+            studentId: s.studentId,
+            fullName: s.fullName,
+            status: rec?.status || 'present',
+            remarks: rec?.remarks || '',
+            active: String(s.status || '').toLowerCase() === 'active',
+          };
+          if (!isTeacherRole && rec) {
+            const mb = rec?.markedByUser ? actorById.get(String(rec.markedByUser)) : null;
+            const ub = rec?.updatedByUser ? actorById.get(String(rec.updatedByUser)) : null;
+            const wasUpdated = Boolean(
+              rec?.updatedAt && rec?.createdAt && new Date(rec.updatedAt).getTime() > new Date(rec.createdAt).getTime()
+            );
+            row.audit = {
+              markedBy: rec?.markedByUser
+                ? { role: rec?.markedByRole || mb?.role || '', name: mb?.fullName || mb?.username || '—' }
+                : null,
+              markedAt: rec?.createdAt || null,
+              updatedBy: wasUpdated && rec?.updatedByUser
+                ? { role: rec?.updatedByRole || ub?.role || '', name: ub?.fullName || ub?.username || '—' }
+                : null,
+              updatedAt: wasUpdated ? (rec?.updatedAt || null) : null,
+            };
+          }
+          return row;
+        })
+        .filter(Boolean)
+        // Keep a stable order similar to normal roster: by studentId, name
+        .sort((a, b) => String(a.studentId || '').localeCompare(String(b.studentId || '')) || String(a.fullName || '').localeCompare(String(b.fullName || '')));
+    }
 
     res.json({
       meta: {
@@ -280,7 +384,7 @@ export const getAttendance = async (req, res) => {
         lessonPeriodCodes: Array.isArray(lessonPeriodCodes) ? lessonPeriodCodes : [],
         hasSelectionRecords: Array.isArray(existing) && existing.length > 0,
       },
-      data: merged,
+      data: dataRows,
     });
   } catch (e) {
     res.status(500).json({ message: 'Server Error' });
@@ -358,6 +462,34 @@ export const getAttendanceReportSummary = async (req, res) => {
     let daily = [];
     let lesson = [];
 
+    // Collect actor info per date/period.
+    // - markedBy: best-effort based on createdAt (who originally marked)
+    // - updatedBy: best-effort based on updatedAt where updatedAt > createdAt (who last updated)
+    // We intentionally do NOT apply studentId filtering for actor display.
+    const markedByKey = new Map();
+    const updatedByKey = new Map();
+    const actorUserIds = new Set();
+
+    const addMarkedRow = (row) => {
+      const date = String(row?.date || '');
+      const periodCode = String(row?.periodCode || '');
+      if (!date || !periodCode) return;
+      const userId = row?.user ? String(row.user) : '';
+      const role = row?.role ? String(row.role) : '';
+      markedByKey.set(`${date}__${periodCode}`, { userId, role });
+      if (userId) actorUserIds.add(userId);
+    };
+
+    const addUpdatedRow = (row) => {
+      const date = String(row?.date || '');
+      const periodCode = String(row?.periodCode || '');
+      if (!date || !periodCode) return;
+      const userId = row?.user ? String(row.user) : '';
+      const role = row?.role ? String(row.role) : '';
+      updatedByKey.set(`${date}__${periodCode}`, { userId, role });
+      if (userId) actorUserIds.add(userId);
+    };
+
     if (wantDaily) {
       daily = await AttendanceRecord.aggregate([
         { $match: { ...effectiveMatch, periodCode: 'DAY' } },
@@ -375,6 +507,11 @@ export const getAttendanceReportSummary = async (req, res) => {
             present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
             absent: { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
             late: { $sum: { $cond: [{ $eq: ['$status', 'late'] }, 1, 0] } },
+            excusedExact: { $sum: { $cond: [{ $eq: ['$status', 'excused'] }, 1, 0] } },
+            sick: { $sum: { $cond: [{ $eq: ['$status', 'sick'] }, 1, 0] } },
+            medical: { $sum: { $cond: [{ $eq: ['$status', 'medical'] }, 1, 0] } },
+            family: { $sum: { $cond: [{ $eq: ['$status', 'family'] }, 1, 0] } },
+            other: { $sum: { $cond: [{ $eq: ['$status', 'other'] }, 1, 0] } },
             excused: { $sum: { $cond: [{ $in: ['$status', EXCUSED_LIKE_STATUSES] }, 1, 0] } },
             total: { $sum: 1 },
           }
@@ -387,6 +524,11 @@ export const getAttendanceReportSummary = async (req, res) => {
             present: 1,
             absent: 1,
             late: 1,
+            excusedExact: 1,
+            sick: 1,
+            medical: 1,
+            family: 1,
+            other: 1,
             excused: 1,
             total: 1,
           }
@@ -412,6 +554,11 @@ export const getAttendanceReportSummary = async (req, res) => {
             present: { $sum: { $cond: [{ $eq: ['$status', 'present'] }, 1, 0] } },
             absent: { $sum: { $cond: [{ $eq: ['$status', 'absent'] }, 1, 0] } },
             late: { $sum: { $cond: [{ $eq: ['$status', 'late'] }, 1, 0] } },
+            excusedExact: { $sum: { $cond: [{ $eq: ['$status', 'excused'] }, 1, 0] } },
+            sick: { $sum: { $cond: [{ $eq: ['$status', 'sick'] }, 1, 0] } },
+            medical: { $sum: { $cond: [{ $eq: ['$status', 'medical'] }, 1, 0] } },
+            family: { $sum: { $cond: [{ $eq: ['$status', 'family'] }, 1, 0] } },
+            other: { $sum: { $cond: [{ $eq: ['$status', 'other'] }, 1, 0] } },
             excused: { $sum: { $cond: [{ $in: ['$status', EXCUSED_LIKE_STATUSES] }, 1, 0] } },
             total: { $sum: 1 },
           }
@@ -425,11 +572,156 @@ export const getAttendanceReportSummary = async (req, res) => {
             present: 1,
             absent: 1,
             late: 1,
+            excusedExact: 1,
+            sick: 1,
+            medical: 1,
+            family: 1,
+            other: 1,
             excused: 1,
             total: 1,
           }
         }
       ]);
+    }
+
+    // Attach actor info (best-effort; never block report on actor lookup).
+    try {
+      const actorBaseMatch = {
+        gradeSection: new mongoose.Types.ObjectId(gradeSectionId),
+        date: { $gte: start, $lte: end },
+      };
+
+      const [markedDailyRows, markedLessonRows, updatedDailyRows, updatedLessonRows] = await Promise.all([
+        wantDaily
+          ? AttendanceRecord.aggregate([
+              { $match: { ...actorBaseMatch, periodCode: 'DAY' } },
+              { $sort: { createdAt: -1, _id: -1 } },
+              {
+                $group: {
+                  _id: {
+                    date: {
+                      $dateToString: {
+                        format: '%Y-%m-%d',
+                        date: '$date',
+                        timezone: 'UTC',
+                      }
+                    },
+                    periodCode: '$periodCode',
+                  },
+                  user: { $first: '$markedByUser' },
+                  role: { $first: '$markedByRole' },
+                }
+              },
+              { $project: { _id: 0, date: '$_id.date', periodCode: '$_id.periodCode', user: 1, role: 1 } },
+            ])
+          : Promise.resolve([]),
+        wantLesson
+          ? AttendanceRecord.aggregate([
+              { $match: { ...actorBaseMatch, periodCode: { $ne: 'DAY' } } },
+              { $sort: { createdAt: -1, _id: -1 } },
+              {
+                $group: {
+                  _id: {
+                    date: {
+                      $dateToString: {
+                        format: '%Y-%m-%d',
+                        date: '$date',
+                        timezone: 'UTC',
+                      }
+                    },
+                    periodCode: '$periodCode',
+                  },
+                  user: { $first: '$markedByUser' },
+                  role: { $first: '$markedByRole' },
+                }
+              },
+              { $project: { _id: 0, date: '$_id.date', periodCode: '$_id.periodCode', user: 1, role: 1 } },
+            ])
+          : Promise.resolve([]),
+        wantDaily
+          ? AttendanceRecord.aggregate([
+              { $match: { ...actorBaseMatch, periodCode: 'DAY', updatedByUser: { $ne: null }, $expr: { $gt: ['$updatedAt', '$createdAt'] } } },
+              { $sort: { updatedAt: -1, _id: -1 } },
+              {
+                $group: {
+                  _id: {
+                    date: {
+                      $dateToString: {
+                        format: '%Y-%m-%d',
+                        date: '$date',
+                        timezone: 'UTC',
+                      }
+                    },
+                    periodCode: '$periodCode',
+                  },
+                  user: { $first: '$updatedByUser' },
+                  role: { $first: '$updatedByRole' },
+                }
+              },
+              { $project: { _id: 0, date: '$_id.date', periodCode: '$_id.periodCode', user: 1, role: 1 } },
+            ])
+          : Promise.resolve([]),
+        wantLesson
+          ? AttendanceRecord.aggregate([
+              { $match: { ...actorBaseMatch, periodCode: { $ne: 'DAY' }, updatedByUser: { $ne: null }, $expr: { $gt: ['$updatedAt', '$createdAt'] } } },
+              { $sort: { updatedAt: -1, _id: -1 } },
+              {
+                $group: {
+                  _id: {
+                    date: {
+                      $dateToString: {
+                        format: '%Y-%m-%d',
+                        date: '$date',
+                        timezone: 'UTC',
+                      }
+                    },
+                    periodCode: '$periodCode',
+                  },
+                  user: { $first: '$updatedByUser' },
+                  role: { $first: '$updatedByRole' },
+                }
+              },
+              { $project: { _id: 0, date: '$_id.date', periodCode: '$_id.periodCode', user: 1, role: 1 } },
+            ])
+          : Promise.resolve([]),
+      ]);
+
+      for (const r of (markedDailyRows || [])) addMarkedRow(r);
+      for (const r of (markedLessonRows || [])) addMarkedRow(r);
+      for (const r of (updatedDailyRows || [])) addUpdatedRow(r);
+      for (const r of (updatedLessonRows || [])) addUpdatedRow(r);
+
+      const actorById = new Map();
+      if (actorUserIds.size) {
+        const users = await User.find({ _id: { $in: Array.from(actorUserIds) } })
+          .select('fullName username role')
+          .lean();
+        for (const u of (users || [])) actorById.set(String(u._id), u);
+      }
+
+      const toActorObj = ({ userId, role }) => {
+        if (!userId) return null;
+        const u = actorById.get(String(userId)) || null;
+        const name = u?.fullName || u?.username || '—';
+        const outRole = role || u?.role || '';
+        return { role: outRole, name };
+      };
+
+      daily = (daily || []).map((r) => {
+        const k = `${String(r?.date || '')}__DAY`;
+        const mb = markedByKey.get(k) || null;
+        const ub = updatedByKey.get(k) || null;
+        return { ...r, markedBy: mb ? toActorObj(mb) : null, updatedBy: ub ? toActorObj(ub) : null };
+      });
+
+      lesson = (lesson || []).map((r) => {
+        const k = `${String(r?.date || '')}__${String(r?.periodCode || '')}`;
+        const mb = markedByKey.get(k) || null;
+        const ub = updatedByKey.get(k) || null;
+        return { ...r, markedBy: mb ? toActorObj(mb) : null, updatedBy: ub ? toActorObj(ub) : null };
+      });
+    } catch {
+      // non-blocking
     }
 
     res.json({
@@ -537,7 +829,7 @@ export const getAttendanceReportDetails = async (req, res) => {
 
     const roster = rosterAgg || [];
 
-    const [existingAny, existingStudent] = await Promise.all([
+    const [existingAny, existingStudent, actorDoc] = await Promise.all([
       AttendanceRecord.find({
         gradeSection: gradeSectionId,
         date: when,
@@ -555,6 +847,14 @@ export const getAttendanceReportDetails = async (req, res) => {
             .select('student status remarks')
             .lean()
         : null,
+      AttendanceRecord.findOne({
+        gradeSection: gradeSectionId,
+        date: when,
+        periodCode: pCode,
+      })
+        .sort({ updatedAt: -1, createdAt: -1, _id: -1 })
+        .select('markedByUser markedByRole updatedByUser updatedByRole')
+        .lean(),
     ]);
 
     const existing = studentObjectId ? (existingStudent || []) : (existingAny || []);
@@ -570,10 +870,34 @@ export const getAttendanceReportDetails = async (req, res) => {
           mode: m,
           periodCode: pCode,
           rosterScope: wantAsOf ? 'asOf' : 'current',
+          markedBy: null,
+          updatedBy: null,
         },
         counts: { total: 0, present: 0, absent: 0, late: 0, excused: 0 },
         data: [],
       });
+    }
+
+    // Best-effort actor lookup
+    let markedBy = null;
+    let updatedBy = null;
+    try {
+      const mbUserId = actorDoc?.markedByUser || null;
+      const mbRole = actorDoc?.markedByRole || null;
+      const ubUserId = actorDoc?.updatedByUser || null;
+      const ubRole = actorDoc?.updatedByRole || null;
+
+      if (mbUserId) {
+        const u = await User.findById(mbUserId).select('fullName username role').lean();
+        markedBy = { role: mbRole || u?.role || '', name: u?.fullName || u?.username || '—' };
+      }
+      if (ubUserId) {
+        const u = await User.findById(ubUserId).select('fullName username role').lean();
+        updatedBy = { role: ubRole || u?.role || '', name: u?.fullName || u?.username || '—' };
+      }
+    } catch {
+      markedBy = null;
+      updatedBy = null;
     }
 
     const statusMap = new Map(existing.map(r => [String(r.student), { status: r.status, remarks: r.remarks || '' }]));
@@ -609,6 +933,8 @@ export const getAttendanceReportDetails = async (req, res) => {
         mode: m,
         periodCode: pCode,
         rosterScope: wantAsOf ? 'asOf' : 'current',
+        markedBy,
+        updatedBy,
       },
       counts,
       data,
@@ -626,10 +952,12 @@ export const getAttendanceReportStudentRange = async (req, res) => {
 
     const isStudentSelf = req.user?.role === 'student';
     if (isStudentSelf) {
-      studentId = String(req.user._id);
+      const selfStudentId = req.user?.studentRef?._id || req.user?.studentRef || null;
+      // Backward compatibility: if somehow studentRef is missing, fall back to req.user._id.
+      studentId = String(selfStudentId || req.user._id);
       rosterScope = 'current';
 
-      const enr = await Enrollment.findOne({ student: req.user._id, status: 'active' })
+      const enr = await Enrollment.findOne({ student: studentId, status: 'active' })
         .sort({ createdAt: -1 })
         .select('gradeSection')
         .lean();
@@ -802,8 +1130,8 @@ export const getStudentSelfAttendance = async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const studentId = String(req.user._id);
-    const enr = await Enrollment.findOne({ student: req.user._id, status: 'active' })
+    const studentId = String(req.user?.studentRef?._id || req.user?.studentRef || req.user._id);
+    const enr = await Enrollment.findOne({ student: studentId, status: 'active' })
       .sort({ createdAt: -1 })
       .select('gradeSection')
       .lean();

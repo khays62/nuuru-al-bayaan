@@ -3,8 +3,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import connectDB from './config/db.js';
 import { ensureIndexes } from './utils/indexMaintenance.js';
+import { getDefaultInitialPassword } from './utils/defaultPasswords.js';
+import { csrfProtection } from './middleware/csrf.js';
+import { responseNormalize } from './middleware/responseNormalize.js';
 // import seedDatabase from './utils/seeder.js'; // Import the seeder function
 
 // Import routes
@@ -25,59 +30,169 @@ import announcementRoutes from './routes/announcementRoutes.js';
 // Auth + User Management routes
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-
+import securityRoutes from './routes/securityRoutes.js';
 
 dotenv.config();
+
+// Validate required secrets early (avoid running with an implicit weak default password)
+try {
+  getDefaultInitialPassword();
+} catch (err) {
+  console.error('[config] Missing DEFAULT_INITIAL_PASSWORD:', err?.message || err);
+  process.exit(1);
+}
 
 // Connect to the database and then seed it
 const startServer = async () => {
   await connectDB();
   await ensureIndexes();
-    // After connecting, run the seeder to ensure initial data exists.
-    // await seedDatabase();
+  // After connecting, run the seeder to ensure initial data exists.
+  // await seedDatabase();
 
-    const app = express();
+  const app = express();
 
-    const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
-    app.use(cors({ origin: corsOrigin, credentials: true }));
-    app.use(express.json());
-    app.use(cookieParser());
+  // Reduce fingerprinting / information leakage.
+  app.disable('x-powered-by');
 
-    // Handle invalid JSON bodies gracefully (avoids server crashes on bad requests)
-    app.use((err, req, res, next) => {
-      if (err instanceof SyntaxError && 'body' in err) {
-        return res.status(400).json({ success: false, message: 'Invalid JSON body' });
-      }
-      return next(err);
-    });
+  // CORS allowlist (comma-separated). In production, avoid using '*', especially with cookies.
+  const corsAllowlist = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  app.use(
+    cors({
+      origin(origin, cb) {
+        // Allow non-browser clients (no Origin header).
+        if (!origin) return cb(null, true);
+        if (corsAllowlist.includes(origin)) return cb(null, true);
+        return cb(new Error('CORS: Origin not allowed'));
+      },
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    })
+  );
 
-    // Routes
-    app.get('/', (req, res) => res.send('API is running...'));
-    app.use('/api/auth', authRoutes);
-    app.use('/api/lookups', lookupRoutes);
-    app.use('/api/students', studentRoutes);
-    app.use('/api/subjects', subjectRoutes);
-    // legacy /api/classes removed
-    app.use('/api/grades', gradeSectionRoutes);
-    app.use('/api/exams', examRoutes);
-    app.use('/api/cohorts', cohortRoutes);
-    app.use('/api/promotions', promotionRoutes);
-    app.use('/api/transfers', transferRoutes);
-    app.use('/api/transcripts', transcriptRoutes);
-    app.use('/api/teachers', teacherRoutes);
-    app.use('/api/attendance', attendanceRoutes);
-    app.use('/api/timetable', timetableRoutes);
-    app.use('/api/announcements', announcementRoutes);
+  // If deploying behind a reverse proxy/load balancer, enable this so IP-based
+  // features like rate limiting work correctly.
+  if (process.env.TRUST_PROXY === '1') {
+    // Only enable this when you are actually behind a trusted reverse proxy.
+    // Otherwise, clients can spoof IP via X-Forwarded-For.
+    app.set('trust proxy', 1);
+  }
 
-    // User management (admin-only). Keep this mounted after all other /api routers
-    // so its router-level auth middleware doesn't block unrelated endpoints.
-    app.use('/api', userRoutes);
+  // Basic security headers. Keep CSP disabled for now to avoid breaking the SPA in dev.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: false,
+    })
+  );
 
+  // Parse JSON before route-level limiters that may depend on body fields.
+  app.use(express.json({ limit: '50kb' }));
+  app.use(cookieParser());
 
-    const PORT = process.env.PORT || 7000;
-    app.listen(PORT, () => {
-      console.log(`${chalk.green.bold('Server')} is running on port ${PORT}`);
-    });
+  // Normalize JSON responses so frontend can rely on { success: true|false, ... }
+  // for common object responses, without breaking endpoints that return arrays or Mongoose documents.
+  app.use(responseNormalize());
+
+  // CSRF protection for cookie-based auth (double-submit token).
+  app.use('/api', csrfProtection);
+
+  // General API limiter to reduce bot scraping / noisy clients.
+  // NOTE: In production, consider a shared store (e.g., Redis) so limits survive restarts.
+  const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many requests. Please slow down.' },
+  });
+  app.use('/api', apiLimiter);
+
+  // Login brute-force defense:
+  // 1) Per-IP limiter
+  // 2) Per-IP+identity limiter (username/studentId) to prevent distributed attempts across many accounts.
+  const loginIpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    handler(req, res) {
+      const resetTime = req.rateLimit?.resetTime;
+      const retryAfterSeconds = resetTime ? Math.max(0, Math.ceil((resetTime.getTime() - Date.now()) / 1000)) : 0;
+      if (retryAfterSeconds) res.setHeader('Retry-After', String(retryAfterSeconds));
+      return res.status(429).json({
+        success: false,
+        code: 'RATE_LIMITED',
+        message: retryAfterSeconds
+          ? `Too many requests. Try again in ${retryAfterSeconds}s.`
+          : 'Too many requests. Try again later.',
+        remainingAttempts: 0,
+        retryAfterSeconds,
+      });
+    },
+  });
+
+  app.use('/api/auth/login', loginIpLimiter);
+
+  // Handle invalid JSON bodies gracefully (avoids server crashes on bad requests)
+  app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+      return res.status(400).json({ success: false, message: 'Invalid JSON body' });
+    }
+    return next(err);
+  });
+
+  // Routes
+  app.get('/', (req, res) => res.send('API is running...'));
+  app.use('/api/auth', authRoutes);
+  app.use('/api/security', securityRoutes);
+  app.use('/api/lookups', lookupRoutes);
+  app.use('/api/students', studentRoutes);
+  app.use('/api/subjects', subjectRoutes);
+  // legacy /api/classes removed
+  app.use('/api/grades', gradeSectionRoutes);
+  app.use('/api/exams', examRoutes);
+  app.use('/api/cohorts', cohortRoutes);
+  app.use('/api/promotions', promotionRoutes);
+  app.use('/api/transfers', transferRoutes);
+  app.use('/api/transcripts', transcriptRoutes);
+  app.use('/api/teachers', teacherRoutes);
+  app.use('/api/attendance', attendanceRoutes);
+  app.use('/api/timetable', timetableRoutes);
+  app.use('/api/announcements', announcementRoutes);
+
+  // User management (admin-only). Mount on a specific prefix so unknown /api/*
+  // routes return 404 (not 401 from router-level auth).
+  app.use('/api/users', userRoutes);
+
+  // 404 handler (JSON)
+  app.use((req, res) => res.status(404).json({ success: false, message: 'Not found' }));
+
+  // Central error handler (JSON)
+  app.use((err, req, res, next) => {
+    if (err?.message?.startsWith('CORS:')) {
+      return res.status(403).json({ success: false, message: 'CORS: Origin not allowed' });
+    }
+
+    const status = Number(err?.status) || 500;
+    const isProd = process.env.NODE_ENV === 'production';
+    const message = status === 500 && isProd ? 'Server error' : (err?.message || 'Server error');
+
+    if (!isProd) {
+      console.error(err);
+    }
+
+    return res.status(status).json({ success: false, message });
+  });
+
+  const PORT = process.env.PORT || 7000;
+  app.listen(PORT, () => {
+    console.log(`${chalk.green.bold('Server')} is running on port ${PORT}`);
+  });
 };
 
 startServer();

@@ -4,6 +4,52 @@ import TeacherAssignment from '../models/TeacherAssignment.js';
 import Enrollment from '../models/Enrollment.js';
 import Student from '../models/Student.js';
 import Counter from '../models/Counter.js';
+import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
+import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
+
+function getDefaultTeacherPassword() {
+  return getDefaultInitialPassword();
+}
+
+async function ensureTeacherUser({ teacherId, teacherDoc }) {
+  // Username is always teacherId, so teachers can login via:
+  // - username: teacherId
+  // - email: teacher email (if set)
+  const username = String(teacherDoc.teacherId || teacherId || '').trim();
+  if (!username) throw new Error('Cannot create teacher login: missing teacherId');
+
+  const conflicts = [];
+  const existing = await User.findOne({
+    $or: [
+      { username },
+      ...(teacherDoc.email ? [{ email: teacherDoc.email }] : []),
+    ],
+  })
+    .select('_id username email')
+    .lean();
+  if (existing) conflicts.push('username/email');
+  if (conflicts.length) {
+    const e = new Error('Duplicate teacher login');
+    e.code = 'DUP_LOGIN';
+    throw e;
+  }
+
+  const hashed = await bcrypt.hash(getDefaultTeacherPassword(), 10);
+  const user = await User.create({
+    fullName: teacherDoc.fullName,
+    username,
+    email: teacherDoc.email || undefined,
+    phone: teacherDoc.phone || undefined,
+    password: hashed,
+    role: 'teacher',
+    teacherRef: teacherDoc._id,
+    mustChangePassword: true,
+    status: teacherDoc.status || 'active',
+  });
+
+  return user;
+}
 
 export const listTeachers = async (req, res) => {
   try {
@@ -70,10 +116,56 @@ export const createTeacher = async (req, res) => {
       return res.status(409).json({ message: `Duplicate ${conflicts.join(', ')}` });
     }
 
+    // Pre-check that we can create the linked login user (avoid creating Teacher without login)
+    const prospectiveUsername = String(teacherId || '').trim();
+    if (!prospectiveUsername) return res.status(400).json({ message: 'TeacherId required for login' });
+    const loginConflict = await User.exists({
+      $or: [
+        { username: prospectiveUsername },
+        ...(email ? [{ email }] : []),
+      ],
+    });
+    if (loginConflict) {
+      return res.status(409).json({ message: 'Teacher login already exists (username/email conflict)' });
+    }
+
     const doc = await Teacher.create({ fullName, teacherId, email, phone, status, lastAcademicYear });
+
+    try {
+      await ensureTeacherUser({ teacherId, teacherDoc: doc });
+    } catch (e) {
+      // Best-effort rollback (keep DB consistent for admin)
+      await Teacher.deleteOne({ _id: doc._id });
+      if (e?.code === 'DUP_LOGIN') {
+        return res.status(409).json({ message: 'Teacher login already exists (username/email conflict)' });
+      }
+      return res.status(400).json({ message: e?.message || 'Could not create teacher login' });
+    }
+
     res.status(201).json({ data: { _id: String(doc._id), fullName: doc.fullName, teacherId: doc.teacherId, email: doc.email, phone: doc.phone, status: doc.status, lastAcademicYear: doc.lastAcademicYear, createdAt: doc.createdAt } });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
+  }
+};
+
+export const createTeacherLoginUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
+    const teacher = await Teacher.findById(id).select('fullName teacherId email phone status').lean();
+    if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
+
+    // If a user already exists for this teacherRef, do nothing.
+    const existing = await User.findOne({ teacherRef: id }).select('_id username email').lean();
+    if (existing) return res.json({ data: { ok: true, userId: String(existing._id), username: existing.username } });
+
+    const user = await ensureTeacherUser({ teacherId: teacher.teacherId, teacherDoc: teacher });
+    return res.status(201).json({ data: { ok: true, userId: String(user._id), username: user.username } });
+  } catch (e) {
+    if (e?.code === 'DUP_LOGIN') {
+      return res.status(409).json({ message: 'Teacher login already exists (username/email conflict)' });
+    }
+    return res.status(400).json({ message: e?.message || 'Bad Request' });
   }
 };
 
@@ -82,6 +174,10 @@ export const updateTeacher = async (req, res) => {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
     const { fullName, teacherId, email, phone, status } = req.body;
+
+    const existingTeacher = await Teacher.findById(id).select('teacherId email').lean();
+    if (!existingTeacher) return res.status(404).json({ message: 'Not found' });
+
     // Uniqueness validation excluding current doc
     const orConds = [];
     if (fullName) orConds.push({ fullName });
@@ -92,8 +188,42 @@ export const updateTeacher = async (req, res) => {
       const dup = await Teacher.exists({ _id: { $ne: id }, $or: orConds });
       if (dup) return res.status(409).json({ message: 'Duplicate fields detected (fullName/email/phone/teacherId)' });
     }
+
+    // If teacherId/email changes, keep linked login user in sync (and detect conflicts).
+    const nextTeacherId = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId).trim() : existingTeacher.teacherId;
+    const nextEmail = email != null && String(email).trim() !== '' ? String(email).trim() : (existingTeacher.email || undefined);
+
+    if (nextTeacherId && String(nextTeacherId) !== String(existingTeacher.teacherId)) {
+      const usernameConflict = await User.exists({
+        teacherRef: { $ne: id },
+        username: nextTeacherId,
+      });
+      if (usernameConflict) return res.status(409).json({ message: 'Teacher login username already exists' });
+    }
+    if (nextEmail && String(nextEmail) !== String(existingTeacher.email || '')) {
+      const emailConflict = await User.exists({
+        teacherRef: { $ne: id },
+        email: nextEmail,
+      });
+      if (emailConflict) return res.status(409).json({ message: 'Teacher login email already exists' });
+    }
+
     const updated = await Teacher.findByIdAndUpdate(id, { $set: { fullName, teacherId, email, phone, status } }, { new: true }).select('fullName teacherId email phone status lastAcademicYear createdAt').lean();
     if (!updated) return res.status(404).json({ message: 'Not found' });
+
+    // Best-effort sync to linked User account (if exists)
+    try {
+      const patch = {};
+      if (nextTeacherId) patch.username = nextTeacherId;
+      if (email !== undefined) patch.email = nextEmail || undefined;
+      if (phone !== undefined) patch.phone = phone || undefined;
+      if (Object.keys(patch).length) {
+        await User.updateOne({ teacherRef: id }, { $set: patch });
+      }
+    } catch {
+      // non-blocking
+    }
+
     res.json({ data: updated });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });

@@ -6,15 +6,28 @@ import chalk from "chalk";
 const connectDB = async () => {
   const tryConnect = async (uri, label) => {
     await mongoose.connect(uri);
-    console.log(`Connected to the database at ${chalk.green(label || uri)}`);
+    // Never print raw URIs (they can include credentials)
+    console.log(`Connected to the database at ${chalk.green(label || 'MongoDB')}`);
   };
   try {
-    await tryConnect(dbURL, dbURL);
+    const primary = typeof dbURL === "string" && dbURL.length ? dbURL : (process.env.LOCAL_MONG_URL || "");
+    if (!primary) {
+      console.error(
+        chalk.red(
+          "[DB] Missing MongoDB URI. Set MONG_URL in backend/.env (recommended) or set LOCAL_MONG_URL."
+        )
+      );
+      process.exit(1);
+    }
+
+    await tryConnect(primary, primary === dbURL ? 'MONG_URL' : 'LOCAL_MONG_URL');
   } catch (error) {
     // Handle common SRV DNS failures gracefully with a local fallback
-    const isSrv = typeof dbURL === 'string' && dbURL.includes('mongodb+srv://');
-    const looksDnsError = String(error?.code).toUpperCase() === 'EREFUSED' || /querySrv/i.test(String(error?.message || ''));
-    const fallback = process.env.LOCAL_MONG_URL || 'mongodb://127.0.0.1:27017/nuuru';
+    const isSrv = typeof dbURL === "string" && dbURL.includes("mongodb+srv://");
+    const looksDnsError =
+      String(error?.code).toUpperCase() === "EREFUSED" ||
+      /querySrv/i.test(String(error?.message || ""));
+    const fallback = process.env.LOCAL_MONG_URL || "mongodb://127.0.0.1:27017/nuuru";
     if (isSrv && looksDnsError) {
       console.warn(chalk.yellow(`[DB] SRV lookup failed (${error?.code || 'ERR'}). Trying local fallback → ${fallback}`));
       try {

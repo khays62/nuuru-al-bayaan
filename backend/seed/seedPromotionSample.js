@@ -101,10 +101,12 @@ async function run() {
   }
 
   // Exam types & exams
-  const examTypes = await ExamType.find({}).lean();
+  let examTypes = await ExamType.find({ isActive: true }).lean();
+  if (!examTypes.length) examTypes = await ExamType.find({ templateVersion: 1 }).lean();
+  const version = Number(examTypes?.[0]?.templateVersion || 1);
   for (const t of examTypes) {
-    let exam = await Exam.findOne({ examType: t._id, academicYear: ay._id, gradeSection: gs._id });
-    if (!exam) await Exam.create({ examType: t._id, academicYear: ay._id, gradeSection: gs._id });
+    let exam = await Exam.findOne({ examType: t._id, academicYear: ay._id, gradeSection: gs._id, templateVersion: version });
+    if (!exam) await Exam.create({ examType: t._id, academicYear: ay._id, gradeSection: gs._id, templateVersion: version });
   }
   const exams = await Exam.find({ academicYear: ay._id, gradeSection: gs._id }).populate('examType').lean();
   const midExam = exams.find(e => /mid/i.test(e.examType.typeName));

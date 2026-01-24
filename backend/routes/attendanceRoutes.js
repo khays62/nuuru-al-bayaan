@@ -10,6 +10,7 @@ import {
 } from '../controllers/attendanceController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { checkAnyPermission, checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+import { teacherOr, requireTeacherAssignment } from '../middleware/teacherScope.js';
 
 const router = express.Router();
 
@@ -18,6 +19,10 @@ router.use(protect);
 const canViewStudentRangeReport = (req, res, next) => {
 	// Students are allowed to read *their own* attendance timeline (controller enforces scope).
 	if (req.user?.role === 'student') return next();
+	// Teachers are allowed within their assigned class scope.
+	if (req.user?.role === 'teacher') {
+		return requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectOptional: true })(req, res, next);
+	}
 	return checkAnyPermission([
 		{ module: 'attendanceReports', action: 'view' },
 		{ module: 'attendanceReports', action: 'print' },
@@ -30,13 +35,28 @@ const canViewStudentRangeReport = (req, res, next) => {
 	])(req, res, next);
 };
 
-router.post('/mark', checkPermission('attendance', 'edit'), markAttendanceBulk);
-router.get('/', checkModuleAnyPermission('attendance'), getAttendance);
+router.post(
+	'/mark',
+	teacherOr(
+		checkPermission('attendance', 'edit'),
+		requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectOptional: true })
+	),
+	markAttendanceBulk
+);
+router.get(
+	'/',
+	teacherOr(
+		checkModuleAnyPermission('attendance'),
+		requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectOptional: true })
+	),
+	getAttendance
+);
 
 // Reports: allow dedicated attendanceReports module OR attendance module (backward compatibility)
 router.get(
 	'/reports/summary',
-	checkAnyPermission([
+	teacherOr(
+		checkAnyPermission([
 		{ module: 'attendanceReports', action: 'view' },
 		{ module: 'attendanceReports', action: 'print' },
 		{ module: 'attendanceReports', action: 'download' },
@@ -45,13 +65,16 @@ router.get(
 		{ module: 'attendance', action: 'edit' },
 		{ module: 'attendance', action: 'print' },
 		{ module: 'attendance', action: 'download' },
-	]),
+		]),
+		requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectOptional: true })
+	),
 	getAttendanceReportSummary
 );
 
 router.get(
 	'/reports/details',
-	checkAnyPermission([
+	teacherOr(
+		checkAnyPermission([
 		{ module: 'attendanceReports', action: 'view' },
 		{ module: 'attendanceReports', action: 'print' },
 		{ module: 'attendanceReports', action: 'download' },
@@ -60,7 +83,9 @@ router.get(
 		{ module: 'attendance', action: 'edit' },
 		{ module: 'attendance', action: 'print' },
 		{ module: 'attendance', action: 'download' },
-	]),
+		]),
+		requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectOptional: true })
+	),
 	getAttendanceReportDetails
 );
 

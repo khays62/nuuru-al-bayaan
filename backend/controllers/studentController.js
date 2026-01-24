@@ -5,6 +5,26 @@ import Enrollment from '../models/Enrollment.js';
 import GradeSection from '../models/GradeSection.js';
 import Counter from '../models/Counter.js';
 import bcrypt from 'bcryptjs';
+import TeacherAssignment from '../models/TeacherAssignment.js';
+import User from '../models/User.js';
+import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
+import { parsePagination } from '../utils/pagination.js';
+
+const normalizeStudentStatusToUserStatus = (studentStatus) => {
+    const s = String(studentStatus || '').trim().toLowerCase();
+    return s === 'active' ? 'active' : 'inactive';
+};
+
+const normalizeStudentStatusToModel = (value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '';
+    const lower = raw.toLowerCase();
+    if (lower === 'active') return 'Active';
+    if (lower === 'inactive') return 'Inactive';
+    // allow exact enum values too
+    if (raw === 'Active' || raw === 'Inactive') return raw;
+    return raw;
+};
 
 // @desc    List students including details of their current section
 // @route   GET /api/students
@@ -20,14 +40,13 @@ export const getStudents = async (req, res) => {
             grade,
             shift,
             status,
+            cohortId,
             enrollmentStatus,
             includeClosed,
             sort
         } = req.query;
 
-        const pageNum = Math.max(parseInt(page) || 1, 1);
-        const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-        const skip = (pageNum - 1) * limitNum;
+        const { pageNum, limitNum, skip } = parsePagination({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 100 });
 
         // Sorting: default createdAt desc on student creation time
         let sortField = 'studentCreatedAt';
@@ -52,18 +71,41 @@ export const getStudents = async (req, res) => {
             // Allow precise filtering by enrollment.status
             enrollmentStatuses = [enrollmentStatus];
         }
+
         const enrollmentMatch = { status: { $in: enrollmentStatuses } };
-    const sectionId = gradeSectionId || req.query.classId; // legacy fallback
-    if (sectionId && mongoose.isValidObjectId(sectionId)) enrollmentMatch.gradeSection = new mongoose.Types.ObjectId(sectionId);
+        const sectionId = gradeSectionId || req.query.classId; // legacy fallback
+        if (sectionId && mongoose.isValidObjectId(sectionId)) enrollmentMatch.gradeSection = new mongoose.Types.ObjectId(sectionId);
         if (academicYear && mongoose.isValidObjectId(academicYear)) enrollmentMatch.academicYear = new mongoose.Types.ObjectId(academicYear);
-    if (grade && mongoose.isValidObjectId(grade)) enrollmentMatch.grade = new mongoose.Types.ObjectId(grade);
-    if (shift && mongoose.isValidObjectId(shift)) enrollmentMatch.shift = new mongoose.Types.ObjectId(shift);
+        if (grade && mongoose.isValidObjectId(grade)) enrollmentMatch.grade = new mongoose.Types.ObjectId(grade);
+        if (shift && mongoose.isValidObjectId(shift)) enrollmentMatch.shift = new mongoose.Types.ObjectId(shift);
+        if (cohortId && mongoose.isValidObjectId(cohortId)) enrollmentMatch.cohort = new mongoose.Types.ObjectId(cohortId);
 
         const studentMatch = {};
-        if (status) studentMatch.status = status; // Active / Inactive
+        if (status) studentMatch.status = normalizeStudentStatusToModel(status); // Active / Inactive
+
+        // Teacher-safe scope: teacher can only list ACTIVE roster for an assigned class.
+        if (req.user?.role === 'teacher') {
+            const teacherId = req.user?.teacherRef;
+            if (!teacherId || !mongoose.isValidObjectId(teacherId)) {
+                return res.status(403).json({ message: 'Teacher account is missing teacherRef' });
+            }
+            if (!sectionId || !mongoose.isValidObjectId(sectionId)) {
+                return res.status(400).json({ message: 'gradeSectionId is required' });
+            }
+            const ok = await TeacherAssignment.exists({ teacher: teacherId, gradeSection: sectionId });
+            if (!ok) return res.status(403).json({ message: 'Not assigned to this class' });
+
+            enrollmentMatch.gradeSection = new mongoose.Types.ObjectId(sectionId);
+            enrollmentMatch.status = { $in: ['active'] };
+            // Student.status is capitalized in the model: 'Active'/'Inactive'
+            studentMatch.status = 'Active';
+        }
+
+        const effectiveStudentStatus = studentMatch.status || status;
         let searchStage = [];
         if (search) {
-            const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+            const safeQ = String(search).trim().slice(0, 64);
+            const regex = new RegExp(safeQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
             searchStage = [
                 { $match: { $or: [ { 'student.fullName': { $regex: regex } }, { 'student.studentId': { $regex: regex } } ] } }
             ];
@@ -96,7 +138,7 @@ export const getStudents = async (req, res) => {
             },
             { $unwind: '$student' },
             // Filter by student status if provided
-            ...(status ? [{ $match: { 'student.status': status } }] : []),
+                ...(effectiveStudentStatus ? [{ $match: { 'student.status': effectiveStudentStatus } }] : []),
             // Apply search on computed fields
             ...searchStage,
             // Join gradeSection (latest.gradeSection) from gradesections collection
@@ -294,6 +336,44 @@ export const addStudent = async (req, res) => {
                 console.warn('Cohort-coded studentId generation warning:', idErr);
             }
 
+            // Create linked login account in User collection (studentId-only login)
+            try {
+                const DEFAULT_STUDENT_PASSWORD = getDefaultInitialPassword();
+                const sid = String(studentDoc.studentId || '').trim();
+                if (sid) {
+                    const conflict = await User.exists({ username: sid }).session(session);
+                    if (conflict) {
+                        await session.abortTransaction();
+                        session.endSession();
+                        return res.status(409).json({ message: 'Student login already exists (username conflict).' });
+                    }
+
+                    const hashed = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10);
+                    await User.create([{
+                        fullName: studentDoc.fullName,
+                        username: sid,
+                        password: hashed,
+                        role: 'student',
+                        studentRef: studentDoc._id,
+                        mustChangePassword: true,
+                        status: normalizeStudentStatusToUserStatus(studentDoc.status),
+                    }], { session });
+                } else {
+                    // Keep behavior backward compatible: allow student creation even if studentId generation fails.
+                    // But log a warning so admin can fix data.
+                    console.warn('Student created without studentId; skipping User login creation. student _id=', String(studentDoc._id));
+                }
+            } catch (userErr) {
+                // Treat user creation failure as fatal to avoid creating a Student without a login.
+                await session.abortTransaction();
+                session.endSession();
+                console.error('Create student User login failed:', userErr);
+                if (String(userErr?.message || '').includes('DEFAULT_INITIAL_PASSWORD')) {
+                    return res.status(500).json({ message: 'Missing DEFAULT_INITIAL_PASSWORD (set it in backend/.env)' });
+                }
+                return res.status(500).json({ message: 'Failed to create student login account' });
+            }
+
             await session.commitTransaction();
             session.endSession();
 
@@ -353,8 +433,10 @@ export const changeStudentPassword = async (req, res) => {
             return res.status(403).json({ message: 'Access denied' });
         }
 
-        const DEFAULT_STUDENT_PASSWORD = '123456';
+        const studentProfileId = req.user?.studentRef || req.user?._id;
+        const userAccountId = req.user?.studentRef ? req.user?._id : null;
 
+        const DEFAULT_STUDENT_PASSWORD = getDefaultInitialPassword();
         const body = req.body || {};
         const currentPassword = body.currentPassword ?? body.oldPassword ?? '';
         const newPassword = body.newPassword ?? '';
@@ -368,10 +450,14 @@ export const changeStudentPassword = async (req, res) => {
             return res.status(400).json({ message: 'New password must be at least 6 characters' });
         }
 
-        const student = await Student.findById(req.user._id);
+        const [student, userAccount] = await Promise.all([
+            Student.findById(studentProfileId).select('_id').lean(),
+            userAccountId ? User.findById(userAccountId).select('password mustChangePassword') : Promise.resolve(null)
+        ]);
         if (!student) return res.status(404).json({ message: 'Student not found' });
 
-        const storedPassword = student.password || '';
+        // CUTOVER: password source of truth is the User account.
+        const storedPassword = (userAccount?.password || '');
         const looksHashed = typeof storedPassword === 'string' && storedPassword.startsWith('$2');
 
         // If old/current password is not provided, allow ONLY when the account is still on the default password.
@@ -391,8 +477,17 @@ export const changeStudentPassword = async (req, res) => {
             }
         }
 
-        student.password = next;
-        await student.save();
+        if (userAccount) {
+            const hashed = await bcrypt.hash(next, 10);
+            await User.updateOne(
+                { _id: userAccountId },
+                { $set: { password: hashed, mustChangePassword: false, failedLoginAttempts: 0, lockUntil: null } }
+            );
+        } else {
+            // If we reach here, the student is missing a linked User account.
+            // Treat this as a migration inconsistency.
+            return res.status(409).json({ message: 'Student login account is missing. Contact admin to re-run migration.' });
+        }
 
         return res.json({ success: true, message: 'Password updated' });
     } catch (err) {
@@ -408,20 +503,26 @@ export const resetStudentPassword = async (req, res) => {
         const { id } = req.params;
         if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
 
-        const DEFAULT_STUDENT_PASSWORD = '123456';
-        const student = await Student.findById(id);
+        const student = await Student.findById(id).select('_id').lean();
         if (!student) return res.status(404).json({ message: 'Student not found' });
 
-        // Reset to default so the system can force change on next login (mustChangePassword=true)
-        student.password = DEFAULT_STUDENT_PASSWORD;
-        student.failedLoginAttempts = 0;
-        student.lockUntil = null;
-        await student.save();
+        const DEFAULT_STUDENT_PASSWORD = getDefaultInitialPassword();
+
+        // CUTOVER: reset the linked User account password (primary).
+        const userAccount = await User.findOne({ studentRef: id }).select('_id').lean();
+        if (userAccount?._id) {
+            const hashed = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10);
+            await User.updateOne(
+                { _id: userAccount._id },
+                { $set: { password: hashed, mustChangePassword: true, failedLoginAttempts: 0, lockUntil: null, loginCooldownLevel: 0 } }
+            );
+        } else {
+            return res.status(409).json({ message: 'Student login account is missing. Contact admin to re-run migration.' });
+        }
 
         return res.json({
             success: true,
             message: 'Password reset to default. Student must change it after login.',
-            temporaryPassword: DEFAULT_STUDENT_PASSWORD
         });
     } catch (err) {
         console.error('Reset student password error', err);
@@ -436,9 +537,7 @@ export const getStudentHistory = async (req, res) => {
         const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
         const { page = 1, limit = 10 } = req.query;
-        const pageNum = Math.max(parseInt(page) || 1, 1);
-        const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-        const skip = (pageNum - 1) * limitNum;
+        const { pageNum, limitNum, skip } = parsePagination({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 100 });
 
         const [rows, total] = await Promise.all([
             Enrollment.find({ student: id })
@@ -476,9 +575,7 @@ export const getStudentTransfers = async (req, res) => {
         const { id } = req.params;
         if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
         const { page = 1, limit = 20 } = req.query;
-        const pageNum = Math.max(parseInt(page) || 1, 1);
-        const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 100);
-        const skip = (pageNum - 1) * limitNum;
+        const { pageNum, limitNum, skip } = parsePagination({ page, limit }, { defaultPage: 1, defaultLimit: 20, maxLimit: 100 });
 
         const TransferLog = (await import('../models/TransferLog.js')).default;
         // Determine if User model is registered (some deployments may not have User schema loaded yet)
@@ -591,6 +688,9 @@ export const updateStudent = async (req, res) => {
         }
     if (Object.keys(updates).length === 0) return res.status(400).json({ message: 'No updates provided.' });
         // Prevent invalid status value
+        if (updates.status) {
+            updates.status = normalizeStudentStatusToModel(updates.status);
+        }
         if (updates.status && !['Active', 'Inactive'].includes(updates.status)) {
             return res.status(400).json({ message: 'Invalid status.' });
         }

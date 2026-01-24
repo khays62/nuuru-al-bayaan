@@ -3,6 +3,7 @@ import Enrollment from '../models/Enrollment.js';
 import Student from '../models/Student.js';
 import GradeSection from '../models/GradeSection.js';
 import TransferLog from '../models/TransferLog.js';
+import { parsePagination } from '../utils/pagination.js';
 
 // GET /api/transfers/candidates
 // Lists only ACTIVE students with ACTIVE latest enrollment, with optional filters and search
@@ -19,9 +20,7 @@ export const listTransferCandidates = async (req, res) => {
       sort
     } = req.query;
 
-    const pageNum = Math.max(parseInt(page) || 1, 1);
-    const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-    const skip = (pageNum - 1) * limitNum;
+    const { pageNum, limitNum, skip } = parsePagination({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 100 });
 
     // Sorting defaults
     let sortField = 'studentCreatedAt';
@@ -327,18 +326,21 @@ export const performTransfer = async (req, res) => {
         const ExamType = (await import('../models/ExamType.js')).default;
         const ExamScore = (await import('../models/ExamScore.js')).default;
 
-        const types = await ExamType.find({}).select('_id').lean();
+        let types = await ExamType.find({ isActive: true }).select('_id templateVersion').lean();
+        if (!types.length) types = await ExamType.find({ templateVersion: 1 }).select('_id templateVersion').lean();
+        const version = Number(types?.[0]?.templateVersion || 1);
+
         const ensureOps = types.map(t => (
           Exam.updateOne(
-            { examType: t._id, academicYear: enrollment.academicYear, gradeSection: target._id },
-            { $setOnInsert: { examType: t._id, academicYear: enrollment.academicYear, gradeSection: target._id } },
+            { examType: t._id, academicYear: enrollment.academicYear, gradeSection: target._id, templateVersion: version },
+            { $setOnInsert: { examType: t._id, academicYear: enrollment.academicYear, gradeSection: target._id, templateVersion: version } },
             { upsert: true }
           )
         ));
         await Promise.all(ensureOps);
 
-        const sourceExams = await Exam.find({ academicYear: enrollment.academicYear, gradeSection: sourceSectionId }).select('_id examType').lean();
-        const targetExams = await Exam.find({ academicYear: enrollment.academicYear, gradeSection: target._id }).select('_id examType').lean();
+        const sourceExams = await Exam.find({ academicYear: enrollment.academicYear, gradeSection: sourceSectionId, templateVersion: version }).select('_id examType').lean();
+        const targetExams = await Exam.find({ academicYear: enrollment.academicYear, gradeSection: target._id, templateVersion: version }).select('_id examType').lean();
         const targetByType = new Map(targetExams.map(e => [String(e.examType), String(e._id)]));
 
         for (const se of sourceExams) {
@@ -396,9 +398,7 @@ export const performTransfer = async (req, res) => {
 export const listAllTransferLogs = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
-    const pageNum = Math.max(parseInt(page) || 1, 1);
-    const limitNum = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
-    const skip = (pageNum - 1) * limitNum;
+    const { pageNum, limitNum, skip } = parsePagination({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 100 });
 
     const match = {};
     const pipeline = [

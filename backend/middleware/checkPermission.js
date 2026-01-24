@@ -1,72 +1,3 @@
-// export const checkPermission = (module, action) => {
-//   return (req, res, next) => {
-//     const user = req.user;
-
-//     if (!user) {
-//       return res.status(401).json({ message: "Unauthorized" });
-//     }
-
-//     const modulePerm = user.permissions?.[module];
-
-//     if (!modulePerm) {
-//       return res
-//         .status(403)
-//         .json({ message: `No permissions found for module: ${module}` });
-//     }
-
-//     // full = allow all actions
-//     if (modulePerm.full) return next();
-
-//     if (!modulePerm[action]) {
-//       return res.status(403).json({
-//         message: `You do not have permission to ${action} ${module}`,
-//       });
-//     }
-
-//     next();
-//   };
-// };
-
-
-// export const checkPermission = (module, action) => {
-//   return (req, res, next) => {
-//     const perm = req.user?.permissions?.[module];
-//     if (!perm) return res.status(403).json({ message: "No permission module found" });
-
-//     if (perm.full) return next(); // FULL ACCESS OVERRIDES
-
-//     if (!perm[action]) {
-//       return res.status(403).json({
-//         message: `You do not have permission to ${action} ${module}`
-//       });
-//     }
-
-//     next();
-//   };
-// };
-
-
-// export const checkPermission = (module, action) => {
-//   return (req, res, next) => {
-//     // ADMIN ALWAYS ALLOWED
-//     if (req.user?.role === "admin") return next();
-
-//     const perm = req.user?.permissions?.[module];
-//     if (!perm)
-//       return res.status(403).json({ message: "No permission module found" });
-
-//     if (perm.full) return next();
-
-//     if (!perm[action]) {
-//       return res.status(403).json({
-//         message: `You do not have permission to ${action} ${module}`
-//       });
-//     }
-
-//     next();
-//   };
-// };
-
 const isAuthenticated = (req) => Boolean(req?.user);
 
 const hasPermission = (user, module, action) => {
@@ -83,11 +14,12 @@ const hasPermission = (user, module, action) => {
 export const checkPermission = (module, action) => {
   return (req, res, next) => {
     if (!isAuthenticated(req)) {
-      return res.status(401).json({ message: "User not authenticated" });
+      return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
     if (!hasPermission(req.user, module, action)) {
       return res.status(403).json({
+        success: false,
         message: `You do not have permission to ${action} ${module}`
       });
     }
@@ -101,7 +33,7 @@ export const checkPermission = (module, action) => {
 export const checkAnyPermission = (requirements = []) => {
   return (req, res, next) => {
     if (!isAuthenticated(req)) {
-      return res.status(401).json({ message: "User not authenticated" });
+      return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
     // ADMIN ALWAYS ALLOWED
@@ -117,6 +49,7 @@ export const checkAnyPermission = (requirements = []) => {
         .join(" OR ");
 
       return res.status(403).json({
+        success: false,
         message: expected
           ? `Missing required permission: ${expected}`
           : "Missing required permission"
@@ -136,7 +69,7 @@ export const checkAnyPermission = (requirements = []) => {
 export const checkModuleAnyPermission = (module, actions = []) => {
   return (req, res, next) => {
     if (!isAuthenticated(req)) {
-      return res.status(401).json({ message: "User not authenticated" });
+      return res.status(401).json({ success: false, message: "User not authenticated" });
     }
 
     // ADMIN ALWAYS ALLOWED
@@ -144,7 +77,7 @@ export const checkModuleAnyPermission = (module, actions = []) => {
 
     const modulePerm = req.user?.permissions?.[module];
     if (!modulePerm) {
-      return res.status(403).json({ message: `No permissions found for module: ${module}` });
+      return res.status(403).json({ success: false, message: `No permissions found for module: ${module}` });
     }
 
     // Mongoose subdocs can have non-enumerable fields; normalize to a plain object
@@ -158,7 +91,7 @@ export const checkModuleAnyPermission = (module, actions = []) => {
       : Object.entries(permObj || {}).some(([k, v]) => k !== 'full' && v === true);
 
     if (!allow) {
-      return res.status(403).json({ message: `You do not have permission to access ${module}` });
+      return res.status(403).json({ success: false, message: `You do not have permission to access ${module}` });
     }
 
     return next();

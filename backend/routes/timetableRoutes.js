@@ -10,6 +10,8 @@ router.use(protect);
 const canReadSlots = (req, res, next) => {
 	// Students are allowed to read *their own* timetable slots (controller enforces scope).
 	if (req.user?.role === 'student') return next();
+	// Teachers are allowed to read *their own* timetable slots (controller enforces scope).
+	if (req.user?.role === 'teacher') return next();
 	return checkAnyPermission([
 		{ module: 'timetable', action: 'view' },
 		{ module: 'timetable', action: 'add' },

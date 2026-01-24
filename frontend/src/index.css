@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/*
+  Design tokens (light theme).
+  Non-breaking: tokens are not required by Tailwind, but allow gradual migration
+  to a consistent design system.
+*/
+:root {
+	--nb-radius-sm: 0.375rem;
+	--nb-radius-md: 0.5rem;
+	--nb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+	--nb-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+	--nb-color-brand: #2563eb; /* blue-600 */
+	--nb-color-text: #0f172a; /* slate-900 */
+	--nb-color-muted: #64748b; /* slate-500 */
+	--nb-color-border: #e2e8f0; /* slate-200 */
+	--nb-color-bg: #ffffff;
+}
+
 /* Print helpers + enhanced layout */
 @page {
 	size: A4;
@@ -56,7 +73,7 @@
 	/* Avoid scrollbars in print: let tables expand */
 	.overflow-x-auto, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
 	table { width: 100% !important; table-layout: auto !important; border-collapse: collapse !important; }
-	th, td { white-space: normal !important; word-break: break-word; }
+	/* Keep cell wrapping behavior controlled by the page/table (don't force global wrapping). */
 
 	/* Results table print tuning */
 	.results-print table { font-size: 11px !important; }

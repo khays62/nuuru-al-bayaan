@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Student from '../models/Student.js';
 import bcrypt from 'bcryptjs';
+import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
 
 async function main() {
   dotenv.config();
@@ -39,10 +40,10 @@ async function main() {
         .select('studentId password')
         .lean();
       if (anyStudent) {
-        const ok = await bcrypt.compare('123456', String(anyStudent.password));
+        const ok = await bcrypt.compare(getDefaultInitialPassword(), String(anyStudent.password));
         console.log('[checkStudentPasswordHashes] Default password check:', {
           studentId: anyStudent.studentId,
-          matches123456: ok,
+          matchesDefault: ok,
         });
       }
     }
