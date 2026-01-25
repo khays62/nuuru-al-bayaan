@@ -11,6 +11,9 @@ import { fetchJson } from '../../../../shared/api/http';
 import { studentKeys } from '../../queryKeys';
 import Button from '../../../../shared/components/ui/Button.jsx';
 import Input from '../../../../shared/components/ui/Input.jsx';
+import Card from '../../../../shared/components/ui/Card.jsx';
+import Alert from '../../../../shared/components/ui/Alert.jsx';
+import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 
 export default function ProfileTab() {
   const { studentId: paramStudentId } = useParams();
@@ -99,14 +102,16 @@ export default function ProfileTab() {
   const latestTransfer = (transfersQuery.data || [])?.[0] ?? null;
 
   return (
-    <div className="bg-white p-0 rounded-xl shadow overflow-hidden">
+    <Card className="overflow-hidden">
       {loading ? (
-        <div className="p-6 text-gray-600 flex items-center gap-2"><Spinner size={20} /> Loading…</div>
+        <div className="p-6">
+          <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+        </div>
       ) : error ? (
-        <div className="p-6 text-red-600 text-sm flex items-center gap-3">
+        <Alert variant="danger" className="m-6 flex items-center justify-between gap-3">
           <span>{error}</span>
           <Button size="sm" variant="brand" onClick={() => profileQuery.refetch()}>Retry</Button>
-        </div>
+        </Alert>
       ) : profile ? (
         <>
           <div className="bg-white p-10 border-b border-gray-200">
@@ -135,7 +140,7 @@ export default function ProfileTab() {
 
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <section className="rounded-xl border bg-white">
+              <Card className="rounded-xl shadow-none">
                 <div className="px-4 py-3 border-b">
                   <h3 className="text-base font-semibold">Personal Information</h3>
                   <p className="text-xs text-gray-500">Student personal details</p>
@@ -149,9 +154,9 @@ export default function ProfileTab() {
                   <InfoItem label="Admission Date" value={profile?.student?.admissionDate ? new Date(profile.student.admissionDate).toLocaleDateString() : '-'} />
                   <InfoItem label="Address" value={profile?.student?.address} />
                 </div>
-              </section>
+              </Card>
 
-              <section className="rounded-xl border bg-white">
+              <Card className="rounded-xl shadow-none">
                 <div className="px-4 py-3 border-b">
                   <h3 className="text-base font-semibold">Academic Information</h3>
                   <p className="text-xs text-gray-500">Student academic details</p>
@@ -162,7 +167,7 @@ export default function ProfileTab() {
                   <InfoItem label="Section" value={profile?.latestEnrollment?.gradeSection?.section} />
                   <InfoItem label="Shift" value={profile?.latestEnrollment?.shift?.shiftName} />
                 </div>
-              </section>
+              </Card>
             </div>
 
             {latestTransfer ? (
@@ -172,7 +177,7 @@ export default function ProfileTab() {
             ) : null}
 
             {isStudentSelf ? (
-              <div className="mt-6 rounded-xl border bg-white">
+              <Card className="mt-6 rounded-xl shadow-none">
                 <div className="px-4 py-3 border-b">
                   <h3 className="text-base font-semibold">Change Password</h3>
                   <p className="text-xs text-gray-500">Update your account password</p>
@@ -264,12 +269,12 @@ export default function ProfileTab() {
                     </Button>
                   </div>
                 </div>
-              </div>
+              </Card>
             ) : null}
           </div>
         </>
       ) : null}
-    </div>
+    </Card>
   );
 }
 

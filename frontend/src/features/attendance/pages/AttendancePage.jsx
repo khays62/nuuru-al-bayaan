@@ -5,7 +5,9 @@ import { getAttendanceWithOptions, markAttendanceBulk } from '../api/attendance'
 import { getSlotsWithOptions } from '../../timetable/api/timetable';
 import { getAssignments as getTeacherAssignments } from '../../teachers/api/teachersApi';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
-import FilterSelect from '../../../shared/components/DataToolbar/FilterSelect.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect';
 import ShiftSelect from '../../lookups/components/ShiftSelect';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect';
@@ -1030,90 +1032,105 @@ export default function AttendancePage() {
 
       <DataToolbar
         filtersSlot={(
-          <div className="w-full flex flex-wrap items-center gap-2">
+          <FilterRow>
             {isTeacher ? (
               <>
                 {teacherAssignedGrades.length > 1 && (
-                  <FilterSelect
-                    value={gradeId}
-                    onChange={(v) => { setGradeId(v); setShiftId(''); setSectionId(''); setSubjectId(''); clearForwardFromSection(); }}
-                    options={teacherAssignedGrades}
-                    placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Level'}
-                    className="min-w-44"
-                    disabled={teacherAssignmentsLoading}
-                  />
+                  <FilterItem minWidthClass="sm:min-w-44">
+                    <DropdownSelect
+                      value={gradeId}
+                      onChange={(v) => { setGradeId(v); setShiftId(''); setSectionId(''); setSubjectId(''); clearForwardFromSection(); }}
+                      options={teacherAssignedGrades}
+                      placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Level'}
+                      disabled={teacherAssignmentsLoading}
+                    />
+                  </FilterItem>
                 )}
                 {teacherShiftOptions.length > 1 && (
-                  <FilterSelect
-                    value={shiftId}
-                    onChange={(v) => { setShiftId(v); setSectionId(''); setSubjectId(''); clearForwardFromSection(); }}
-                    options={teacherShiftOptions}
-                    placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Shift'}
-                    className="min-w-40"
-                    disabled={teacherAssignmentsLoading || (teacherMustPickGrade && !gradeId)}
-                  />
+                  <FilterItem minWidthClass="sm:min-w-40">
+                    <FilterDropdownSelect
+                      value={shiftId}
+                      onChange={(v) => { setShiftId(v); setSectionId(''); setSubjectId(''); clearForwardFromSection(); }}
+                      options={teacherShiftOptions}
+                      placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Shift'}
+                      disabled={teacherAssignmentsLoading || (teacherMustPickGrade && !gradeId)}
+                      searchPlaceholder="Search shifts…"
+                    />
+                  </FilterItem>
                 )}
-                <FilterSelect
-                  value={sectionId}
-                  onChange={(v) => { setSectionId(v); setSubjectId(''); setPeriodCode(''); }}
-                  options={(teacherFilteredSections || []).map((gs) => {
-                    const sectionNum = gs?.section;
-                    const shiftName = gs?.shift?.shiftName;
-                    const base = sectionNum ? `Sec ${sectionNum}` : (gs?.sectionName || 'Section');
-                    const label = shiftName ? `${base} - (${shiftName})` : base;
-                    return { value: gs?._id, label };
-                  })}
-                  placeholder={teacherSectionsLoading ? 'Loading…' : 'Section'}
-                  className="min-w-60"
-                  disabled={
-                    teacherSectionsLoading
-                    || (teacherMustPickGrade && !gradeId)
-                    || (teacherShiftOptions.length > 1 && !shiftId)
-                  }
-                />
-                {mode === 'lesson' && (
-                  <FilterSelect
-                    value={subjectId}
-                    onChange={(v) => { setSubjectId(v); setPeriodCode(''); }}
-                    options={teacherSubjectsForSection}
-                    placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Subject'}
-                    className="min-w-52"
-                    disabled={teacherAssignmentsLoading || teacherSubjectsForSection.length === 0}
+                <FilterItem minWidthClass="sm:min-w-60">
+                  <FilterDropdownSelect
+                    value={sectionId}
+                    onChange={(v) => { setSectionId(v); setSubjectId(''); setPeriodCode(''); }}
+                    options={(teacherFilteredSections || []).map((gs) => {
+                      const sectionNum = gs?.section;
+                      const shiftName = gs?.shift?.shiftName;
+                      const base = sectionNum ? `Sec ${sectionNum}` : (gs?.sectionName || 'Section');
+                      const label = shiftName ? `${base} - (${shiftName})` : base;
+                      return { value: gs?._id, label };
+                    })}
+                    placeholder={teacherSectionsLoading ? 'Loading…' : 'Section'}
+                    disabled={
+                      teacherSectionsLoading
+                      || (teacherMustPickGrade && !gradeId)
+                      || (teacherShiftOptions.length > 1 && !shiftId)
+                    }
+                    searchPlaceholder="Search sections…"
                   />
+                </FilterItem>
+                {mode === 'lesson' && (
+                  <FilterItem minWidthClass="sm:min-w-52">
+                    <FilterDropdownSelect
+                      value={subjectId}
+                      onChange={(v) => { setSubjectId(v); setPeriodCode(''); }}
+                      options={teacherSubjectsForSection}
+                      placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Subject'}
+                      disabled={teacherAssignmentsLoading || teacherSubjectsForSection.length === 0}
+                      searchPlaceholder="Search subjects…"
+                    />
+                  </FilterItem>
                 )}
               </>
             ) : (
               <>
-                <GradeSelect value={gradeId} onChange={handleAdminGradeChange} placeholder="Level" />
-                <ShiftSelect value={shiftId} onChange={handleAdminShiftChange} placeholder="Shift" />
-                <GradeSectionSelect
-                  value={sectionId}
-                  onChange={handleAdminSectionChange}
-                  gradeId={gradeId}
-                  shiftId={shiftId}
-                  placeholder="Section"
-                  toastOnEmpty
-                  toastOnEmptyMessage="No classes (sections) exist for the selected level and shift."
-                  toastKeyPrefix="AttendancePage"
-                />
+                <FilterItem minWidthClass="sm:min-w-44">
+                  <GradeSelect value={gradeId} onChange={handleAdminGradeChange} placeholder="Level" />
+                </FilterItem>
+                <FilterItem minWidthClass="sm:min-w-40">
+                  <ShiftSelect value={shiftId} onChange={handleAdminShiftChange} placeholder="Shift" />
+                </FilterItem>
+                <FilterItem minWidthClass="sm:min-w-60">
+                  <GradeSectionSelect
+                    value={sectionId}
+                    onChange={handleAdminSectionChange}
+                    gradeId={gradeId}
+                    shiftId={shiftId}
+                    placeholder="Section"
+                    toastOnEmpty
+                    toastOnEmptyMessage="No classes (sections) exist for the selected level and shift."
+                    toastKeyPrefix="AttendancePage"
+                  />
+                </FilterItem>
               </>
             )}
 
             {mode === 'lesson' && sectionId && (
-              <FilterSelect
-                value={periodCode}
-                onChange={setPeriodCode}
-                options={periodOptions}
-                placeholder="Period"
-                className="min-w-60"
-                disabled={
-                  dayOfWeek == null
-                  || (isTeacher && !subjectId)
-                  || periodOptions.length === 0
-                }
-              />
+              <FilterItem minWidthClass="sm:min-w-60">
+                <FilterDropdownSelect
+                  value={periodCode}
+                  onChange={setPeriodCode}
+                  options={periodOptions}
+                  placeholder="Period"
+                  disabled={
+                    dayOfWeek == null
+                    || (isTeacher && !subjectId)
+                    || periodOptions.length === 0
+                  }
+                  searchPlaceholder="Search periods…"
+                />
+              </FilterItem>
             )}
-          </div>
+          </FilterRow>
         )}
         onReset={() => {
           setGradeId('');

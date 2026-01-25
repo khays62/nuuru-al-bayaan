@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import toast from 'react-hot-toast';
 
 // AY-agnostic: GradeSection is reusable across years; filter by Grade + Shift only.
@@ -110,31 +111,31 @@ export default function GradeSectionSelect({
     );
   }
 
+  const options = (items || []).map((gs) => {
+    const gradeName = gs?.grade?.gradeName;
+    const sectionNum = gs?.section;
+    const shiftName = gs?.shift?.shiftName;
+    const tail = [shiftName].filter(Boolean).join(' - ');
+    const label = [
+      gradeName ? `${gradeName}` : null,
+      sectionNum ? `Sec ${sectionNum}` : null,
+      tail ? `(${tail})` : null,
+    ].filter(Boolean).join(' - ');
+    return { value: gs._id, label: label || gs.sectionName || 'Section' };
+  });
+
   return (
-    <select
+    <DropdownSelect
       id={id}
       name={name}
-      {...rest}
       value={value}
-      onChange={(e)=>onChange?.(e.target.value)}
+      onChange={(v) => onChange?.(v)}
       disabled={disabled || loading || !gradeId || !shiftId}
-      className={`px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${className}`}
-    >
-      <option value="">{loading ? 'Loading…' : placeholder}</option>
-      {items.map(gs => {
-        const gradeName = gs?.grade?.gradeName;
-        const sectionNum = gs?.section;
-        const shiftName = gs?.shift?.shiftName;
-        const tail = [shiftName].filter(Boolean).join(' - ');
-        const label = [
-          gradeName ? `${gradeName}` : null,
-          sectionNum ? `Sec ${sectionNum}` : null,
-          tail ? `(${tail})` : null,
-        ].filter(Boolean).join(' - ');
-        return (
-          <option key={gs._id} value={gs._id}>{label || gs.sectionName || 'Section'}</option>
-        );
-      })}
-    </select>
+      options={options}
+      placeholder={loading ? 'Loading…' : placeholder}
+      className={className}
+      maxHeightClassName="max-h-72"
+      buttonProps={rest}
+    />
   );
 }

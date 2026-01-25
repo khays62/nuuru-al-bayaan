@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Pencil, Trash2, Send } from "lucide-react";
 import toast from "react-hot-toast";
 import Button from "../../../shared/components/ui/Button.jsx";
+import Card from "../../../shared/components/ui/Card.jsx";
 import Input from "../../../shared/components/ui/Input.jsx";
 import Textarea from "../../../shared/components/ui/Textarea.jsx";
 
@@ -126,7 +127,7 @@ const handleDelete = async (id) => {
       <h1 className="text-3xl font-bold text-gray-800">📢 Announcements</h1>
 
       {canPost && (
-        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+        <Card className="rounded-xl p-5 border-gray-100 shadow-md">
           <Input
             type="text"
             value={newTitle}
@@ -144,7 +145,7 @@ const handleDelete = async (id) => {
           <Button onClick={handlePost} variant="brand" icon={<Send size={18} />}>
             Post
           </Button>
-        </div>
+        </Card>
       )}
 
       <div className="space-y-4">
@@ -152,9 +153,9 @@ const handleDelete = async (id) => {
           <p className="text-gray-500 italic">No announcements yet.</p>
         ) : (
           announcements.map((a) => (
-            <div
+            <Card
               key={a._id}
-              className="bg-white border border-gray-100 p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+              className="border-gray-100 p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow"
             >
               {editingId === a._id ? (
                 <div>
@@ -210,7 +211,7 @@ const handleDelete = async (id) => {
                   </div>
                 </>
               )}
-            </div>
+            </Card>
           ))
         )}
       </div>

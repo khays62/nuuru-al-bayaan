@@ -1,5 +1,7 @@
 import React from 'react';
 
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+
 // Reusable single-select for enrollment status filtering across pages.
 // Values supported (MVP): active, graduated, promoted, transferred, withdrawn, all.
 // Optional includeInactive to surface 'inactive'.
@@ -15,9 +17,14 @@ export default function EnrollmentStatusSelect({ value, onChange, includeInactiv
   const allOption = { value: 'all', label: 'All (include closed)' };
   const options = [...base, allOption];
   return (
-    <select id={id} name={name} value={value} onChange={(e)=>onChange?.(e.target.value)} className={`border rounded px-2 py-1 ${className}`}>
-      <option value="">{placeholder}</option>
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
+    <DropdownSelect
+      id={id}
+      name={name}
+      value={value}
+      onChange={onChange}
+      options={options}
+      placeholder={placeholder}
+      className={className}
+    />
   );
 }

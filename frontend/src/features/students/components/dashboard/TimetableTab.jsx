@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
 import LoadingState from '../../../../shared/components/feedback/LoadingState.jsx';
+import Card from '../../../../shared/components/ui/Card.jsx';
 import TableShell from '../../../../shared/components/table/TableShell.jsx';
 import TimetableGrid from '../../../timetable/components/TimetableGrid.jsx';
 import { getStudentHistory } from '../../../../api';
@@ -116,7 +117,7 @@ export default function TimetableTab() {
   }, [slots]);
 
   return (
-    <div className="bg-white p-4 rounded shadow with-print-header with-print-footer">
+    <Card className="p-4 with-print-header with-print-footer">
       <PrintHeader />
 
       <div className="mb-4">
@@ -284,6 +285,6 @@ export default function TimetableTab() {
       )}
 
       <PrintFooter />
-    </div>
+    </Card>
   );
 }

@@ -1,11 +1,12 @@
 import React from 'react';
+import Card from '../../../shared/components/ui/Card.jsx';
 
 // Placeholder for the main Dashboard page content.
 const PlaceholderContent = ({ title, children }) => (
-    <div className="bg-white p-6 rounded-lg shadow-sm">
+    <Card className="p-6 rounded-lg shadow-sm">
         <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
         <p className="mt-2 text-gray-600">{children}</p>
-    </div>
+    </Card>
 );
 
 export default function DashboardPage() {

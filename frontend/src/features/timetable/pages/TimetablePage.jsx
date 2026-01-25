@@ -3,8 +3,10 @@ import { toast } from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import TableShell from '../../../shared/components/table/TableShell.jsx';
-import FilterSelect from '../../../shared/components/DataToolbar/FilterSelect.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import MultiSelectDropdown from '../../../shared/components/DataToolbar/MultiSelectDropdown.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import TimetableGrid from '../components/TimetableGrid.jsx';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import Spinner from '../../../shared/components/feedback/Spinner.jsx';
@@ -564,33 +566,85 @@ export default function TimetablePage() {
           <div className="no-print">
             <DataToolbar
               filtersSlot={(
-                <div className="flex flex-wrap gap-2 items-center">
-                  <FilterSelect value={gradeId} onChange={setGradeId} options={(grades||[]).slice().sort((a,b)=>{
-                    const da = new Date(a.createdAt || 0).getTime();
-                    const db = new Date(b.createdAt || 0).getTime();
-                    return da - db;
-                  }).map(g => ({ value: g._id, label: g.gradeName }))} placeholder="Level" className="min-w-35" />
-                  <FilterSelect value={shiftId} onChange={setShiftId} options={(shifts||[]).map(s => ({ value: s._id, label: s.shiftName }))} placeholder="Shift" className="min-w-30" />
-                  <FilterSelect value={sectionId} onChange={setSectionId} options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}` }))} placeholder="Section" className="min-w-50" />
-                  <FilterSelect value={subjectId} onChange={setSubjectId} options={(subjects||[]).map(s => ({ value: s._id, label: s.subjectName }))} placeholder="Subject" className="min-w-40" disabled={isBreak} />
-                  <MultiSelectDropdown value={days} onChange={setDays} options={dayOpts} placeholder="Days" className="min-w-50" />
-                  <input
-                    type="time"
-                    step={60}
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="px-2 py-1 border rounded"
-                  />
-                  <span>to</span>
-                  <input
-                    type="time"
-                    step={60}
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="px-2 py-1 border rounded"
-                  />
-                  <input type="text" value={room} onChange={e=>setRoom(e.target.value)} placeholder="Room" className="px-2 py-1 border rounded" />
-                </div>
+                <FilterRow align="center">
+                  <FilterItem grow minWidthClass="min-w-35">
+                    <DropdownSelect
+                      value={gradeId}
+                      onChange={setGradeId}
+                      options={(grades||[]).slice().sort((a,b)=>{
+                        const da = new Date(a.createdAt || 0).getTime();
+                        const db = new Date(b.createdAt || 0).getTime();
+                        return da - db;
+                      }).map(g => ({ value: g._id, label: g.gradeName }))}
+                      placeholder="Level"
+                    />
+                  </FilterItem>
+
+                  <FilterItem grow minWidthClass="min-w-30">
+                    <FilterDropdownSelect
+                      value={shiftId}
+                      onChange={setShiftId}
+                      options={(shifts||[]).map(s => ({ value: s._id, label: s.shiftName }))}
+                      placeholder="Shift"
+                      searchPlaceholder="Search shifts…"
+                    />
+                  </FilterItem>
+
+                  <FilterItem grow minWidthClass="min-w-50">
+                    <FilterDropdownSelect
+                      value={sectionId}
+                      onChange={setSectionId}
+                      options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}` }))}
+                      placeholder="Section"
+                      searchPlaceholder="Search sections…"
+                    />
+                  </FilterItem>
+
+                  <FilterItem grow minWidthClass="min-w-40">
+                    <FilterDropdownSelect
+                      value={subjectId}
+                      onChange={setSubjectId}
+                      options={(subjects||[]).map(s => ({ value: s._id, label: s.subjectName }))}
+                      placeholder="Subject"
+                      searchPlaceholder="Search subjects…"
+                      disabled={isBreak}
+                    />
+                  </FilterItem>
+
+                  <FilterItem grow minWidthClass="min-w-50">
+                    <MultiSelectDropdown value={days} onChange={setDays} options={dayOpts} placeholder="Days" className="w-full" />
+                  </FilterItem>
+
+                  <FilterItem minWidthClass="min-w-44" className="sm:w-auto">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        step={60}
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="px-2 py-1 border rounded w-full"
+                      />
+                      <span className="text-sm text-gray-600">to</span>
+                      <input
+                        type="time"
+                        step={60}
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="px-2 py-1 border rounded w-full"
+                      />
+                    </div>
+                  </FilterItem>
+
+                  <FilterItem grow minWidthClass="min-w-32">
+                    <input
+                      type="text"
+                      value={room}
+                      onChange={e=>setRoom(e.target.value)}
+                      placeholder="Room"
+                      className="px-2 py-1 border rounded w-full"
+                    />
+                  </FilterItem>
+                </FilterRow>
               )}
               actionsSlot={(
                 <button

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
+import { cn } from '../../utils/cn';
+
 export default function DropdownSelect({
   value,
   onChange,
@@ -13,6 +15,8 @@ export default function DropdownSelect({
   maxHeightClassName = 'max-h-64',
   buttonProps = {},
   hideSelectedOption = true,
+  clearable = true,
+  clearLabel = 'Clear',
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -44,6 +48,8 @@ export default function DropdownSelect({
     setOpen(false);
   };
 
+  const canClear = clearable && String(value || '') !== '';
+
   const listOptions = useMemo(() => {
     if (!hideSelectedOption) return safeOptions;
     const v = String(value || '');
@@ -59,27 +65,38 @@ export default function DropdownSelect({
         name={name}
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={
-          `w-full inline-flex items-center justify-between gap-2 border border-gray-300 rounded-md shadow-sm bg-white/90 px-3 py-2 text-sm ` +
-          `focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 ` +
+        className={cn(
+          'w-full inline-flex items-center justify-between gap-2',
+          'px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm text-sm text-gray-800',
+          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
           className
-        }
+        )}
         {...buttonProps}
       >
-        <span className={`truncate ${selectedLabel ? 'text-gray-800' : 'text-gray-500'}`}>{selectedLabel || placeholder}</span>
+        <span className={cn('truncate', selectedLabel ? 'text-gray-800' : 'text-gray-500')}>
+          {selectedLabel || placeholder}
+        </span>
         <ChevronDown size={18} className="text-gray-500" />
       </button>
 
       {open && !disabled ? (
-        <div className="absolute right-0 left-0 mt-2 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden z-50">
+        <div
+          className={cn(
+            'absolute right-0 left-0 mt-2 overflow-hidden z-50',
+            'rounded-md border border-gray-200 bg-white shadow-lg'
+          )}
+        >
           <div className={`${maxHeightClassName} overflow-auto`}>
-            <button
-              type="button"
-              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => onPick('')}
-            >
-              {placeholder}
-            </button>
+            {canClear ? (
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                onClick={() => onPick('')}
+              >
+                {clearLabel}
+              </button>
+            ) : null}
 
             {listOptions.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-500">No options.</div>

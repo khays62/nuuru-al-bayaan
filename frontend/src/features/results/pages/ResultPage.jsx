@@ -24,6 +24,10 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
 import { teacherKeys } from '../../teachers/queryKeys.js';
+import Card from '../../../shared/components/ui/Card.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 
 export default function ResultPage() {
     const { auth } = useAuth();
@@ -456,19 +460,22 @@ export default function ResultPage() {
                 </div>
             )}
 
-            <div className="bg-white p-4 rounded-lg shadow-lg flex flex-row flex-wrap items-center gap-3 no-print">
-                <AcademicYearSelect
-                    value={academicYearId}
-                    onChange={(v)=>{ setAcademicYearId(v); if (!applyingTimelineRef.current) { resetLower('ay'); setCohortId(''); setTimeline([]); } else { applyingTimelineRef.current = false; } }}
-                    placeholder="Academic Year"
-                    searchable
-                    maxVisible={5}
-                    searchPlaceholder="Search academic years…"
-                    className="w-full sm:flex-1 sm:min-w-40"
-                />
+            <Card className="p-4 no-print">
+                <FilterRow className="gap-3">
+                    <FilterItem grow minWidthClass="sm:min-w-40">
+                        <AcademicYearSelect
+                            value={academicYearId}
+                            onChange={(v)=>{ setAcademicYearId(v); if (!applyingTimelineRef.current) { resetLower('ay'); setCohortId(''); setTimeline([]); } else { applyingTimelineRef.current = false; } }}
+                            placeholder="Academic Year"
+                            searchable
+                            maxVisible={5}
+                            searchPlaceholder="Search academic years…"
+                            className="w-full"
+                        />
+                    </FilterItem>
                 {!isTeacher && (
-                    <div className="w-full sm:w-auto sm:min-w-44">
-                        <DropdownSelect
+                    <FilterItem minWidthClass="sm:min-w-44">
+                            <DropdownSelect
                             value={gradeId}
                             onChange={(v)=>{ setGradeId(v); if (!applyingTimelineRef.current) { resetLower('grade'); } else { applyingTimelineRef.current = false; } }}
                             placeholder="Grade"
@@ -476,22 +483,23 @@ export default function ResultPage() {
                                 .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
                                 .map((g) => ({ value: g._id, label: g.gradeName }))}
                         />
-                    </div>
+                    </FilterItem>
                 )}
 
                 {!isTeacher && (
-                    <div className="w-full sm:w-auto sm:min-w-44">
-                        <DropdownSelect
+                    <FilterItem minWidthClass="sm:min-w-44">
+                            <FilterDropdownSelect
                             value={shiftId}
                             onChange={(v)=>{ setShiftId(v); if (!applyingTimelineRef.current) { resetLower('shift'); } else { applyingTimelineRef.current = false; } }}
                             placeholder="Shift"
                             options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
+                                maxVisible={5}
                         />
-                    </div>
+                    </FilterItem>
                 )}
 
-                <div className="w-full sm:w-auto sm:min-w-56">
-                    <DropdownSelect
+                <FilterItem minWidthClass="sm:min-w-56">
+                        <FilterDropdownSelect
                         value={gradeSectionId}
                         onChange={setGradeSectionId}
                         placeholder="Section"
@@ -508,10 +516,12 @@ export default function ResultPage() {
                             ].filter(Boolean).join(' - ');
                             return { value: gs._id, label: label || gs.sectionName || 'Section' };
                         })}
+                            maxVisible={5}
+                            searchPlaceholder="Type to search sections…"
                     />
-                </div>
+                </FilterItem>
 
-                <div className="w-full sm:w-auto sm:min-w-44">
+                <FilterItem minWidthClass="sm:min-w-44">
                     <DropdownSelect
                         value={mode}
                         onChange={(v) => setMode(v || 'subject')}
@@ -533,10 +543,10 @@ export default function ResultPage() {
                                   ]
                         )}
                     />
-                </div>
+                </FilterItem>
                 {mode === 'subject' && (
-                    <div className="w-full sm:w-auto sm:min-w-56">
-                        <DropdownSelect
+                    <FilterItem minWidthClass="sm:min-w-56">
+							<FilterDropdownSelect
                             value={subjectId}
                             onChange={setSubjectId}
                             disabled={!gradeSectionId || (isTeacher && (teacherAssignmentsLoading || teacherAllowedSubjectIds?.size === 0))}
@@ -549,31 +559,38 @@ export default function ResultPage() {
                                     .filter((su) => teacherAllowedSubjectIds.has(String(su?._id)))
                                     .map((su) => ({ value: su._id, label: su.subjectName }));
                             })()}
+							maxVisible={5}
+							searchPlaceholder="Type to search subjects…"
                         />
-                    </div>
+                    </FilterItem>
                 )}
                 {mode === 'examType' && (
-                    <div className="w-full sm:w-auto sm:min-w-56">
-                        <DropdownSelect
+                    <FilterItem minWidthClass="sm:min-w-56">
+							<FilterDropdownSelect
                             value={examTypeId}
                             onChange={setExamTypeId}
                             disabled={!gradeSectionId}
                             placeholder="Exam Type"
                             options={(examTypes || []).map((et) => ({ value: et._id, label: et.typeName }))}
+							maxVisible={5}
+							searchPlaceholder="Type to search exam types…"
                         />
-                    </div>
+                    </FilterItem>
                 )}
                 {(mode === 'top' || mode === 'bottom') && (
-                    <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-600">N</label>
-                        <input className="w-20 border rounded px-2 py-1" type="number" min={1} max={100} value={mode==='top'?topN:bottomN} onChange={e=> (mode==='top'? setTopN(Number(e.target.value)||0): setBottomN(Number(e.target.value)||0))} />
-                        {/* Number input styled separately for consistency */}
-                    </div>
+                    <FilterItem>
+                        <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-600">N</label>
+                            <Input className="w-20" type="number" min={1} max={100} value={mode==='top'?topN:bottomN} onChange={e=> (mode==='top'? setTopN(Number(e.target.value)||0): setBottomN(Number(e.target.value)||0))} />
+                            {/* Number input styled separately for consistency */}
+                        </div>
+                    </FilterItem>
                 )}
                 {(() => {
                     const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
                     return (
-                        <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-2 flex-nowrap overflow-x-auto">
+                        <FilterItem className="sm:ml-auto">
+                            <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
                             <ActionButton
                                 variant="neutral"
                                 className={outlineBtn}
@@ -598,13 +615,15 @@ export default function ResultPage() {
                             >
                                 Reset
                             </ActionButton>
-                        </div>
+                            </div>
+                        </FilterItem>
                     );
                 })()}
-            </div>
+				</FilterRow>
+            </Card>
 
             {cohortId && timeline.length > 0 && (
-                <div className="bg-white p-3 rounded-lg shadow-lg flex flex-row flex-wrap gap-2 items-center no-print">
+                <Card className="p-3 flex flex-row flex-wrap gap-2 items-center no-print">
                     <div className="text-sm font-medium text-gray-600 mr-2">Cohort Timeline:</div>
                     {timelineLoading && <div className="text-xs text-gray-500">Loading…</div>}
                     {!timelineLoading && timeline.map(entry => {
@@ -623,16 +642,16 @@ export default function ResultPage() {
                                     if (entry?.statusHint) setEnrollmentStatus(String(entry.statusHint));
                                     queueMicrotask(() => { applyingTimelineRef.current = false; });
                                 }}
-                                className={`text-xs px-2 py-1 rounded border ${active ? 'bg-[color:var(--nb-color-brand)] text-white border-[color:var(--nb-color-brand)]' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
+                                className={`text-xs px-2 py-1 rounded border ${active ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
                             >
                                 {entry.academicYear.yearName} / {entry.grade.gradeName}{entry.gradeSection.section ? ` Sec ${entry.gradeSection.section}` : ''}
                             </button>
                         );
                     })}
-                </div>
+                </Card>
             )}
 
-            <div className="bg-white p-4 rounded-lg shadow overflow-auto results-print">
+            <Card className="p-4 overflow-auto results-print">
                 {(!academicYearId || !gradeSectionId) ? (
                     <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift, and Section to view results.</p>
                 ) : (mode === 'subject' && !subjectId) ? (
@@ -835,7 +854,7 @@ export default function ResultPage() {
                     </TableShell>
                     </>
                 )}
-            </div>
+            </Card>
             
         </div>
     );

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import Tabs from '../../../features/attendance/components/Tabs';
 import CohortSelect from '../../../features/lookups/components/CohortSelect';
+import Card from '../ui/Card.jsx';
 
 const defaultEnrollmentStatusOptions = [
   { value: 'active', label: 'Active' },
@@ -32,7 +33,7 @@ export default function EnrollmentCohortToolbar({
   );
 
   return (
-    <div className={`bg-white p-3 rounded-lg shadow-lg mt-2 ${className}`}>
+    <Card className={`p-3 rounded-lg shadow-lg mt-2 ${className}`.trim()}>
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         {/* spacer: keeps tabs from starting at far-left on desktop only */}
         <div className="hidden lg:block w-36 shrink-0" aria-hidden="true" />
@@ -58,6 +59,6 @@ export default function EnrollmentCohortToolbar({
           />
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

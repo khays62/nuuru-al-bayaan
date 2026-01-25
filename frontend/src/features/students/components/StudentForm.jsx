@@ -9,6 +9,8 @@ import Select from '../../../shared/components/ui/Select.jsx';
 import Textarea from '../../../shared/components/ui/Textarea.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import Separator from '../../../shared/components/ui/Separator.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 
 // Refactored StudentForm aligned with backend API (POST /api/students)
 // Academic Year and Cohort are required at creation; GradeSection is AY-agnostic.
@@ -105,8 +107,21 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         setFormData(p => ({ ...p, [name]: value }));
     };
 
+    const setField = (name, value) => {
+        setFormData((p) => ({ ...p, [name]: value }));
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        if (!student) {
+            if (!formData.academicYearId) return toast.error('Academic Year is required');
+            if (!formData.cohortId) return toast.error('Cohort is required');
+            if (!formData.gradeId) return toast.error('Grade is required');
+            if (!formData.shiftId) return toast.error('Shift is required');
+            if (!formData.gradeSectionId) return toast.error('Section is required');
+        }
+
         // Only include fields API expects
         const payload = {
             academicYearId: formData.academicYearId,
@@ -164,40 +179,97 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                     <>
                         <div>
                             <Label>Academic Year</Label>
-                            <Select name="academicYearId" value={formData.academicYearId} onChange={handleChange} required disabled={submitting} className="mt-1">
-                                <option value="">-- Select Academic Year --</option>
-                                {years.map(y => <option key={y._id} value={y._id}>{y.yearName}</option>)}
-                            </Select>
+                            <div className="mt-1">
+                                <SearchableSelect
+                                    id="student-academic-year"
+                                    name="academicYearId"
+                                    value={formData.academicYearId}
+                                    onChange={(v) => {
+                                        setField('academicYearId', v);
+                                        setField('cohortId', '');
+                                    }}
+                                    options={(years || []).map((y) => ({ value: y._id, label: y.yearName }))}
+                                    placeholder="-- Select Academic Year --"
+                                    maxVisible={5}
+                                    searchPlaceholder="Search academic years…"
+                                    disabled={submitting}
+                                />
+                            </div>
                         </div>
                         <div>
                             <Label>Cohort</Label>
-                            <Select name="cohortId" value={formData.cohortId} onChange={handleChange} required disabled={submitting || !formData.academicYearId} className="mt-1">
-                                <option value="">-- Select Cohort --</option>
-                                {(cohorts||[]).map(c => <option key={c._id} value={c._id}>{c.name}{c.startAcademicYear?.yearName ? ` (${c.startAcademicYear.yearName})` : ''}</option>)}
-                            </Select>
+                            <div className="mt-1">
+                                <SearchableSelect
+                                    id="student-cohort"
+                                    name="cohortId"
+                                    value={formData.cohortId}
+                                    onChange={(v) => setField('cohortId', v)}
+                                    options={(cohorts || []).map((c) => ({
+                                        value: c._id,
+                                        label: `${c.name}${c.startAcademicYear?.yearName ? ` (${c.startAcademicYear.yearName})` : ''}`,
+                                    }))}
+                                    placeholder="-- Select Cohort --"
+                                    maxVisible={5}
+                                    searchPlaceholder="Search cohorts…"
+                                    disabled={submitting || !formData.academicYearId}
+                                />
+                            </div>
                         </div>
                         <div>
                             <Label>Grade</Label>
-                            <Select name="gradeId" value={formData.gradeId} onChange={handleChange} required disabled={submitting} className="mt-1">
-                                <option value="">-- Select Grade --</option>
-                                {[...grades].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map(g => <option key={g._id} value={g._id}>{g.gradeName}</option>)}
-                            </Select>
+                            <div className="mt-1">
+                                <DropdownSelect
+                                    id="student-grade"
+                                    name="gradeId"
+                                    value={formData.gradeId}
+                                    onChange={(v) => {
+                                        setField('gradeId', v);
+                                        setField('shiftId', '');
+                                        setField('gradeSectionId', '');
+                                    }}
+                                    options={[...(grades || [])]
+                                        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+                                        .map((g) => ({ value: g._id, label: g.gradeName }))}
+                                    placeholder="-- Select Grade --"
+                                    disabled={submitting}
+                                    maxHeightClassName="max-h-72"
+                                />
+                            </div>
                         </div>
                         <div>
                             <Label>Shift</Label>
-                            <Select name="shiftId" value={formData.shiftId} onChange={handleChange} required disabled={submitting || !formData.gradeId} className="mt-1">
-                                <option value="">-- Select Shift --</option>
-                                {shifts.map(s => <option key={s._id} value={s._id}>{s.shiftName}</option>)}
-                            </Select>
+                            <div className="mt-1">
+                                <DropdownSelect
+                                    id="student-shift"
+                                    name="shiftId"
+                                    value={formData.shiftId}
+                                    onChange={(v) => {
+                                        setField('shiftId', v);
+                                        setField('gradeSectionId', '');
+                                    }}
+                                    options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
+                                    placeholder="-- Select Shift --"
+                                    disabled={submitting || !formData.gradeId}
+                                />
+                            </div>
                         </div>
                         <div className="md:col-span-2">
                             <Label>Enroll in Section</Label>
-                            <Select name="gradeSectionId" value={formData.gradeSectionId} onChange={handleChange} required disabled={submitting || loadingSections || !formData.gradeId || !formData.shiftId} className="mt-1">
-                                <option value="">{loadingSections ? 'Loading sections…' : '-- Select Section --'}</option>
-                                {sections.map(sec => (
-                                    <option key={sec._id} value={sec._id}>{`${sec.grade?.gradeName || ''} - Sec ${sec.section} (${sec.shift?.shiftName || ''})`}</option>
-                                ))}
-                            </Select>
+                            <div className="mt-1">
+                                <DropdownSelect
+                                    id="student-section"
+                                    name="gradeSectionId"
+                                    value={formData.gradeSectionId}
+                                    onChange={(v) => setField('gradeSectionId', v)}
+                                    options={(sections || []).map((sec) => ({
+                                        value: sec._id,
+                                        label: `${sec.grade?.gradeName || ''} - Sec ${sec.section} (${sec.shift?.shiftName || ''})`,
+                                    }))}
+                                    placeholder={loadingSections ? 'Loading sections…' : '-- Select Section --'}
+                                    disabled={submitting || loadingSections || !formData.gradeId || !formData.shiftId}
+                                    maxHeightClassName="max-h-72"
+                                />
+                            </div>
                         </div>
                     </>
                 )}

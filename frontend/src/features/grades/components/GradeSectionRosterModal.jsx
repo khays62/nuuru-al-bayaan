@@ -6,6 +6,7 @@ import StickyTableControls from '../../../shared/components/table/StickyTableCon
 import PaginationControls from '../../../shared/components/Pagination/PaginationControls.jsx';
 import LoadingState from '../../../shared/components/feedback/LoadingState.jsx';
 import EmptyState from '../../../shared/components/feedback/EmptyState.jsx';
+import Alert from '../../../shared/components/ui/Alert.jsx';
 import PdfDownloadButton from '../../../shared/components/exports/downloadButtons/PdfDownloadButton.jsx';
 import ExcelDownloadButton from '../../../shared/components/exports/downloadButtons/ExcelDownloadButton.jsx';
 import CsvDownloadButton from '../../../shared/components/exports/downloadButtons/CsvDownloadButton.jsx';
@@ -214,9 +215,7 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
 
       <div className="mt-4 max-h-[70vh] overflow-auto">
         {error ? (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded">
-            {error}
-          </div>
+          <Alert variant="danger">{error}</Alert>
         ) : isLoading && students.length === 0 ? (
           <LoadingState variant="table" message="Loading students..." rows={6} columns={7} />
         ) : students.length === 0 ? (

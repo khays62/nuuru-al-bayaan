@@ -11,6 +11,9 @@ import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx'
 import GradeSelect from '../../lookups/components/GradeSelect';
 import ShiftSelect from '../../lookups/components/ShiftSelect';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import Tabs from '../components/Tabs';
 import AttendanceReportTable from '../components/reports/AttendanceReportTable';
 import AttendanceStatusBadge from '../components/reports/AttendanceStatusBadge';
@@ -1203,80 +1206,80 @@ export default function AttendanceReportsPage() {
       <DataToolbar
         className="no-print"
         filtersSlot={(
-          <div className="flex flex-wrap items-center gap-2">
+          <FilterRow>
             {isTeacher ? (
               <>
                 {teacherAssignedGrades.length > 1 && (
-                  <select
-                    value={gradeId}
-                    onChange={(e) => { setGradeId(e.target.value); setSectionId(''); }}
-                    disabled={teacherSectionsLoading}
-                    className="px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-w-44"
-                  >
-                    <option value="">{teacherSectionsLoading ? 'Loading…' : 'Level'}</option>
-                    {teacherAssignedGrades.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
+                  <FilterItem minWidthClass="sm:min-w-44">
+                    <DropdownSelect
+                      value={gradeId}
+                      onChange={(v) => { setGradeId(v); setSectionId(''); }}
+                      disabled={teacherSectionsLoading}
+                      options={teacherAssignedGrades}
+                      placeholder={teacherSectionsLoading ? 'Loading…' : 'Level'}
+                    />
+                  </FilterItem>
                 )}
 
                 {teacherAssignedShifts.length > 1 && (
-                  <select
-                    value={shiftId}
-                    onChange={(e) => { setShiftId(e.target.value); setSectionId(''); }}
-                    disabled={teacherSectionsLoading}
-                    className="px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-w-40"
-                  >
-                    <option value="">{teacherSectionsLoading ? 'Loading…' : 'Shift'}</option>
-                    {teacherAssignedShifts.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
+                  <FilterItem minWidthClass="sm:min-w-40">
+                    <FilterDropdownSelect
+                      value={shiftId}
+                      onChange={(v) => { setShiftId(v); setSectionId(''); }}
+                      disabled={teacherSectionsLoading}
+                      options={teacherAssignedShifts}
+                      placeholder={teacherSectionsLoading ? 'Loading…' : 'Shift'}
+                      searchPlaceholder="Search shifts…"
+                    />
+                  </FilterItem>
                 )}
 
-                <select
-                  value={sectionId}
-                  onChange={(e) => setSectionId(e.target.value)}
-                  disabled={teacherSectionsLoading}
-                  className="px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-w-60"
-                >
-                  <option value="">{teacherSectionsLoading ? 'Loading…' : 'Section'}</option>
-                  {(teacherFilteredSections || []).map((gs) => {
-                    const sectionNum = gs?.section;
-                    const shiftName = gs?.shift?.shiftName;
-                    const base = sectionNum ? `Sec ${sectionNum}` : (gs?.sectionName || 'Section');
-                    const label = shiftName ? `${base} - (${shiftName})` : base;
-                    return (
-                      <option key={gs?._id} value={gs?._id}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
+                <FilterItem minWidthClass="sm:min-w-60">
+                  <FilterDropdownSelect
+                    value={sectionId}
+                    onChange={(v) => setSectionId(v)}
+                    disabled={teacherSectionsLoading}
+                    options={(teacherFilteredSections || []).map((gs) => {
+                      const sectionNum = gs?.section;
+                      const shiftName = gs?.shift?.shiftName;
+                      const base = sectionNum ? `Sec ${sectionNum}` : (gs?.sectionName || 'Section');
+                      const label = shiftName ? `${base} - (${shiftName})` : base;
+                      return { value: gs?._id, label };
+                    })}
+                    placeholder={teacherSectionsLoading ? 'Loading…' : 'Section'}
+                    searchPlaceholder="Search sections…"
+                  />
+                </FilterItem>
 
-                <select
-                  value={subjectId}
-                  onChange={(e) => setSubjectId(e.target.value)}
-                  disabled={!sectionId || teacherSectionsLoading}
-                  className="px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-w-56"
-                >
-                  <option value="">
-                    {!sectionId ? 'Subject (select section first)' : (subjectSlotsLoading ? 'Subject (loading periods…)'
-                      : 'Subject (required)')}
-                  </option>
-                  {teacherSubjectsForSection.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
+                <FilterItem minWidthClass="sm:min-w-56">
+                  <FilterDropdownSelect
+                    value={subjectId}
+                    onChange={(v) => setSubjectId(v)}
+                    disabled={!sectionId || teacherSectionsLoading}
+                    options={teacherSubjectsForSection}
+                    placeholder={
+                      !sectionId
+                        ? 'Subject (select section first)'
+                        : (subjectSlotsLoading ? 'Subject (loading periods…)' : 'Subject (required)')
+                    }
+                    searchPlaceholder="Search subjects…"
+                  />
+                </FilterItem>
               </>
             ) : (
               <>
-                <GradeSelect value={gradeId} onChange={setGradeId} placeholder="Level" />
-                <ShiftSelect value={shiftId} onChange={setShiftId} placeholder="Shift" />
-                <GradeSectionSelect value={sectionId} onChange={setSectionId} gradeId={gradeId} shiftId={shiftId} placeholder="Section" />
+                <FilterItem minWidthClass="sm:min-w-44">
+                  <GradeSelect value={gradeId} onChange={setGradeId} placeholder="Level" />
+                </FilterItem>
+                <FilterItem minWidthClass="sm:min-w-40">
+                  <ShiftSelect value={shiftId} onChange={setShiftId} placeholder="Shift" />
+                </FilterItem>
+                <FilterItem minWidthClass="sm:min-w-60">
+                  <GradeSectionSelect value={sectionId} onChange={setSectionId} gradeId={gradeId} shiftId={shiftId} placeholder="Section" />
+                </FilterItem>
               </>
             )}
-          </div>
+          </FilterRow>
         )}
         showReset={false}
         actionsSlot={(

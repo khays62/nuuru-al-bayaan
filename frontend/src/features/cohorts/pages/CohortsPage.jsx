@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
-import FilterSelect from '../../../shared/components/DataToolbar/FilterSelect.jsx';
 import SortControls from '../../../shared/components/DataToolbar/SortControls.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import { Plus, Edit, Trash2, Archive, ArchiveRestore } from 'lucide-react';
@@ -195,20 +196,43 @@ export default function CohortsPage() {
       <DataToolbar
         showReset={false}
         searchSlot={<SearchInput value={searchTerm} onChange={setSearch} placeholder="Search cohorts..." />}
-        filtersSlot={<div className="flex flex-row flex-wrap gap-2 w-full items-center">
-          <FilterSelect value={statusFilter} onChange={(v)=>{ setStatusFilter(v); setFilter('status', v || undefined); }} options={statuses} placeholder="Status" className="flex-1 min-w-32.5" />
-          <FilterSelect value={ayFilter} onChange={(v)=>{ setAyFilter(v); setFilter('startAcademicYear', v || undefined); }} options={ayOptions} placeholder="Start AY" className="flex-1 min-w-37.5" />
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
-            <SortControls currentField={sortBy} currentDir={sortDir} onSort={onSort} fields={[{ field: 'createdAt', label: 'Created' }, { field: 'startAcademicYear', label: 'Start AY' }]} />
-            <Button
-              type="button"
-              variant="neutral"
-              onClick={() => { setStatusFilter(''); setAyFilter(''); resetAndReload({ filters: { status: undefined, startAcademicYear: undefined }, search: '' }); }}
-            >
-              Reset
-            </Button>
-          </div>
-        </div>}
+        filtersSlot={
+          <FilterRow>
+            <FilterItem grow minWidthClass="min-w-32.5">
+              <FilterDropdownSelect
+                value={statusFilter}
+                onChange={(v)=>{ setStatusFilter(v); setFilter('status', v || undefined); }}
+                options={statuses}
+                placeholder="Status"
+              />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-37.5">
+              <FilterDropdownSelect
+                value={ayFilter}
+                onChange={(v)=>{ setAyFilter(v); setFilter('startAcademicYear', v || undefined); }}
+                options={ayOptions}
+                placeholder="Start AY"
+                searchable
+                maxVisible={5}
+                searchPlaceholder="Search academic years…"
+              />
+            </FilterItem>
+
+            <FilterItem className="sm:ml-auto">
+              <div className="flex items-center gap-2 flex-wrap">
+                <SortControls currentField={sortBy} currentDir={sortDir} onSort={onSort} fields={[{ field: 'createdAt', label: 'Created' }, { field: 'startAcademicYear', label: 'Start AY' }]} />
+                <Button
+                  type="button"
+                  variant="neutral"
+                  onClick={() => { setStatusFilter(''); setAyFilter(''); resetAndReload({ filters: { status: undefined, startAcademicYear: undefined }, search: '' }); }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </FilterItem>
+          </FilterRow>
+        }
       />
 
       <StandardTable

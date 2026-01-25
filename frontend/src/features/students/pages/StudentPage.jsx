@@ -15,8 +15,10 @@ import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookup
 import { listGradeSections } from '../../grades/api/gradeSections';
 import { on as onEvent, off as offEvent, EVENTS, emitStudentsChanged } from '../../../utils/events';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import EnrollmentCohortToolbar from '../../../shared/components/filters/EnrollmentCohortToolbar.jsx';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import PdfDownloadButton from '../../../shared/components/exports/downloadButtons/PdfDownloadButton.jsx';
@@ -417,18 +419,20 @@ export default function StudentPage() {
                             <SearchInput value={searchTerm} onChange={setSearch} placeholder="Search by name or ID..." />
                         </div>
 
-                        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 flex-1">
-                            <AcademicYearSelect
-                                placeholder="Academic Year"
-                                value={yearFilter}
-                                onChange={(v)=>{ setYearFilter(v); setPage(1); }}
-                                searchable
-                                maxVisible={5}
-                                searchPlaceholder="Search academic years…"
-                                className="w-full sm:flex-1 sm:min-w-40"
-                            />
+                        <FilterRow className="flex-1">
+                            <FilterItem grow minWidthClass="sm:min-w-40">
+                                <AcademicYearSelect
+                                    placeholder="Academic Year"
+                                    value={yearFilter}
+                                    onChange={(v)=>{ setYearFilter(v); setPage(1); }}
+                                    searchable
+                                    maxVisible={5}
+                                    searchPlaceholder="Search academic years…"
+                                    className="w-full"
+                                />
+                            </FilterItem>
 
-                            <div className="w-full sm:w-auto sm:min-w-44">
+                            <FilterItem minWidthClass="sm:min-w-44">
                                 <DropdownSelect
                                     value={gradeFilter}
                                     onChange={(v)=>{ setGradeFilter(v); setPage(1); }}
@@ -441,19 +445,20 @@ export default function StudentPage() {
                                         })
                                         .map((g) => ({ value: g._id, label: g.gradeName }))}
                                 />
-                            </div>
+                            </FilterItem>
 
-                            <div className="w-full sm:w-auto sm:min-w-44">
-                                <DropdownSelect
+                            <FilterItem minWidthClass="sm:min-w-44">
+                                <FilterDropdownSelect
                                     value={shiftFilter}
                                     onChange={(v)=>{ setShiftFilter(v); setPage(1); }}
                                     placeholder="Shift"
                                     options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
+                                    maxVisible={5}
                                 />
-                            </div>
+                            </FilterItem>
 
-                            <div className="w-full sm:w-auto sm:min-w-56">
-                                <DropdownSelect
+                            <FilterItem minWidthClass="sm:min-w-56">
+                                <FilterDropdownSelect
                                     value={gradeSectionFilter}
                                     onChange={(v)=>{ setGradeSectionFilter(v); setPage(1); }}
                                     placeholder="Section"
@@ -471,18 +476,20 @@ export default function StudentPage() {
                                         ].filter(Boolean).join(' - ');
                                         return { value: gs._id, label: label || gs.sectionName || 'Section' };
                                     })}
+                                    maxVisible={5}
+                                    searchPlaceholder="Type to search sections…"
                                 />
-                            </div>
+                            </FilterItem>
 
-                            <div className="w-full sm:w-auto sm:min-w-44">
+                            <FilterItem minWidthClass="sm:min-w-44">
                                 <DropdownSelect
                                     value={statusFilter}
                                     onChange={(v) => { setStatusFilter(v); setPage(1); }}
                                     placeholder="Status"
                                     options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
                                 />
-                            </div>
-                        </div>
+                            </FilterItem>
+                        </FilterRow>
                     </div>
 
                     {/* Row 2: Add button (left) + Actions (right) */}

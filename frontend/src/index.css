@@ -92,3 +92,13 @@
 }
 
 /* (no extra table CSS; we use Tailwind utilities directly) */
+
+@keyframes scale-in {
+	from { opacity: 0; transform: translateY(6px) scale(0.98); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Used by shared Modal primitive (non-breaking if unused elsewhere). */
+.animate-scale-in {
+	animation: scale-in 160ms ease-out both;
+}

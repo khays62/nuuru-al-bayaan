@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../../auth/AuthContext';
 import { getStudentProfile, resetStudentPassword } from '../api/studentsApi';
 import { studentKeys } from '../queryKeys';
+import Card from '../../../shared/components/ui/Card.jsx';
 
 function TabNav({ tabs = [] }) {
   const PRIMARY_SIZE = 3;
@@ -97,7 +98,7 @@ function TabNav({ tabs = [] }) {
               <span className="font-semibold tracking-wider">⋯</span>
             </button>
             {open && (
-              <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow z-10">
+              <Card className="absolute right-0 mt-2 w-40 z-10">
                 <ul className="py-1 text-sm">
                   {overflow.map(t => (
                     <li key={t.to}>
@@ -114,7 +115,7 @@ function TabNav({ tabs = [] }) {
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Card>
             )}
           </div>
         )}

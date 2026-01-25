@@ -3,6 +3,7 @@
 import React from 'react';
 import ActionButton from '../ui/ActionButton';
 import { RotateCcw } from 'lucide-react';
+import Card from '../ui/Card.jsx';
 
 export default function DataToolbar({
   searchSlot,
@@ -30,7 +31,7 @@ export default function DataToolbar({
     try { window.location.reload(); } catch { /* no-op */ }
   };
   return (
-    <div className={`bg-white p-4 rounded-lg shadow ${className}`}>
+    <Card className={`p-4 rounded-lg ${className}`.trim()}>
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-4">
         <div className={`flex flex-row flex-wrap items-center gap-3 flex-1 ${searchSlot ? 'min-w-[240px]' : ''}`}>
           {searchSlot && <div className="w-full md:max-w-xs flex-grow">{searchSlot}</div>}
@@ -53,6 +54,6 @@ export default function DataToolbar({
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }

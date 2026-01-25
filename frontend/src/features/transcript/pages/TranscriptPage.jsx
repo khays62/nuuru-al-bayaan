@@ -13,6 +13,16 @@ import TableShell from '../../../shared/components/table/TableShell.jsx';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 
+import Card from '../../../shared/components/ui/Card.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Select from '../../../shared/components/ui/Select.jsx';
+import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
+import Radio from '../../../shared/components/ui/Radio.jsx';
+import Chip from '../../../shared/components/ui/Chip.jsx';
+import FormField from '../../../shared/components/ui/FormField.jsx';
+import LoadingState from '../../../shared/components/feedback/LoadingState.jsx';
+import Alert from '../../../shared/components/ui/Alert.jsx';
+
 export default function TranscriptPage() {
   // Lookups (for labels only)
   const [, setYears] = useState([]);
@@ -267,43 +277,44 @@ export default function TranscriptPage() {
     <div className="space-y-6 with-print-footer">
   <PrintHeader />
 
-      <div className="bg-white p-4 rounded-lg shadow no-print">
+      <Card className="p-4 no-print">
         <h1 className="text-lg font-semibold mb-3">Transcript Builder</h1>
         {/* Row 1: Search + Select from class + Modes + Filters toggle */}
         <div className="flex flex-row flex-wrap items-end w-full gap-3">
           <div className="flex-1 min-w-[320px]" ref={pickerRef}>
-            <label htmlFor="transcript-search" className="text-xs text-gray-500">Search Student</label>
-            <div className="relative">
-              <input
-                id="transcript-search"
-                name="transcript-search"
-                value={search}
-                onChange={e=>{ setSearch(e.target.value); setShowSuggestions(true); }}
-                onFocus={()=> setShowSuggestions(true)}
-                placeholder="Search by name or ID"
-                className="mt-1 w-full pr-20 px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <div className="absolute right-1 top-1.5 flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => { setIsPickerOpen(v=>!v); setShowSuggestions(true); }}
-                  className="px-2 py-1 text-xs border rounded bg-gray-50 hover:bg-gray-100"
-                  title="Open class list"
-                >
-                  Select from class ▾
-                </button>
+            <FormField label="Search Student" htmlFor="transcript-search">
+              <div className="relative">
+                <Input
+                  id="transcript-search"
+                  name="transcript-search"
+                  value={search}
+                  onChange={e=>{ setSearch(e.target.value); setShowSuggestions(true); }}
+                  onFocus={()=> setShowSuggestions(true)}
+                  placeholder="Search by name or ID"
+                  className="pr-28"
+                />
+                <div className="absolute right-1 top-1.5 flex gap-1">
+                  <ActionButton
+                    variant="neutral"
+                    onClick={() => { setIsPickerOpen(v=>!v); setShowSuggestions(true); }}
+                    title="Open class list"
+                    className="text-xs"
+                  >
+                    Select from class ▾
+                  </ActionButton>
+                </div>
               </div>
               {(isPickerOpen || (showSuggestions && suggestions.length > 0)) && (
-                <div className="absolute left-0 right-0 top-full mt-1 border rounded shadow-lg bg-white z-50 max-h-72 overflow-auto">
+                <Card className="absolute left-0 right-0 top-full mt-1 z-50 max-h-72 overflow-auto">
                   <div className="sticky top-0 bg-white border-b px-2 py-1 flex items-center gap-2">
-                    <input
+                    <Input
                       id="transcript-student-filter"
                       name="transcript-student-filter"
                       aria-label="Filter suggested students"
                       value={dropdownSearch}
                       onChange={e=>setDropdownSearch(e.target.value)}
                       placeholder="Filter list..."
-                      className="w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      className="text-sm"
                     />
                   </div>
                   {(() => {
@@ -315,7 +326,7 @@ export default function TranscriptPage() {
                       return (
                         <label key={s._id} className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
                           <div className="flex items-center gap-2">
-                            <input type="checkbox" checked={checked} onChange={()=> checked ? removeStudent(s._id) : addStudent(s)} aria-label={`Select ${s.fullName}`} />
+                            <Checkbox checked={checked} onChange={()=> checked ? removeStudent(s._id) : addStudent(s)} aria-label={`Select ${s.fullName}`} />
                             <span>{s.fullName} <span className="text-gray-500">({s.studentId})</span></span>
                           </div>
                           {s.gradeDisplay && <span className="text-xs text-gray-500">{s.gradeDisplay}</span>}
@@ -323,32 +334,31 @@ export default function TranscriptPage() {
                       );
                     });
                   })()}
-                </div>
+                </Card>
               )}
-            </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {selectedStudents.map(s => (
-                <span key={s._id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs">
+                <Chip key={s._id} onRemove={()=>removeStudent(s._id)} removeLabel={`Remove ${s.fullName}`}>
                   {s.fullName} ({s.studentId})
-                  <button type="button" onClick={()=>removeStudent(s._id)} className="ml-1 text-indigo-500 hover:text-indigo-700">×</button>
-                </span>
+                </Chip>
               ))}
             </div>
+            </FormField>
           </div>
         </div>
         {/* Inline modes + filter toggle */}
         <div className="flex flex-row flex-wrap items-end gap-4 w-full">
           <div className="flex flex-row flex-wrap items-center gap-4 text-sm">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="transcript-mode" checked={mode==='full'} onChange={()=> setMode('full')} />
+              <Radio name="transcript-mode" checked={mode==='full'} onChange={()=> setMode('full')} />
               <span>Full Transcript</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="transcript-mode" checked={mode==='latest'} onChange={()=> setMode('latest')} />
+              <Radio name="transcript-mode" checked={mode==='latest'} onChange={()=> setMode('latest')} />
               <span>Last Enrollment</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="transcript-mode" checked={mode==='levels'} onChange={()=> setMode('levels')} />
+              <Radio name="transcript-mode" checked={mode==='levels'} onChange={()=> setMode('levels')} />
               <span>Levels</span>
             </label>
             <div className="relative flex items-center gap-2" ref={levelsRef}>
@@ -361,7 +371,7 @@ export default function TranscriptPage() {
                 Levels ▾ {selectedLevels.length ? <span className="text-indigo-600">({selectedLevels.length})</span> : null}
               </button>
               {levelsOpen && mode==='levels' && (
-                <div className="absolute z-40 mt-1 w-48 max-h-64 overflow-auto bg-white border rounded shadow">
+                <Card className="absolute z-40 mt-1 w-48 max-h-64 overflow-auto">
                   <div className="sticky top-0 bg-white border-b px-2 py-1 text-xs font-medium">Select Levels</div>
                   {(!grades || grades.length===0) && <div className="px-3 py-2 text-xs text-gray-500">No grades</div>}
                   {grades && [...grades]
@@ -372,11 +382,7 @@ export default function TranscriptPage() {
                     const checked = selectedLevels.includes(id);
                     return (
                       <label key={id} className="flex items-center gap-2 px-3 py-1 text-xs hover:bg-gray-50 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={()=> setSelectedLevels(prev => checked ? prev.filter(x => x!==id) : [...prev, id])}
-                        />
+                        <Checkbox checked={checked} onChange={()=> setSelectedLevels(prev => checked ? prev.filter(x => x!==id) : [...prev, id])} />
                         <span>{g.gradeName || g.name || 'Grade'}</span>
                       </label>
                     );
@@ -388,35 +394,31 @@ export default function TranscriptPage() {
                       className="m-2 mt-1 px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 w-[calc(100%-1rem)]"
                     >Clear</button>
                   )}
-                </div>
+                </Card>
               )}
             </div>
           </div>
           <label className="ml-auto flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
-            <input type="checkbox" checked={showFilters} onChange={e=> setShowFilters(e.target.checked)} />
+            <Checkbox checked={showFilters} onChange={e=> setShowFilters(e.target.checked)} />
             <span>Filters: AY → Cohort / Status / Timeline</span>
           </label>
         </div>
         {showFilters && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-              <div>
-                <label htmlFor="transcript-ay" className="text-xs text-gray-500">Academic Year</label>
-                <AcademicYearSelect id="transcript-ay" name="academicYearId" value={academicYearId} onChange={(v)=>{ setAcademicYearId(v); resetLower('ay'); setCohortId(''); setActiveTimelineIndex(-1); }} className="mt-1 w-full" placeholder="Select year" />
-              </div>
-              <div>
-                <label htmlFor="transcript-cohort" className="text-xs text-gray-500">Cohort</label>
-                <CohortSelect id="transcript-cohort" value={cohortId} onChange={(v)=>{ setCohortId(v); setActiveTimelineIndex(-1); }} mode="context" academicYear={academicYearId} disabled={!academicYearId} className="mt-1 w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Select cohort" />
-              </div>
+              <FormField label="Academic Year" htmlFor="transcript-ay">
+                <AcademicYearSelect id="transcript-ay" name="academicYearId" value={academicYearId} onChange={(v)=>{ setAcademicYearId(v); resetLower('ay'); setCohortId(''); setActiveTimelineIndex(-1); }} className="mt-1" placeholder="Select year" />
+              </FormField>
+              <FormField label="Cohort" htmlFor="transcript-cohort">
+                <CohortSelect id="transcript-cohort" value={cohortId} onChange={(v)=>{ setCohortId(v); setActiveTimelineIndex(-1); }} mode="context" academicYear={academicYearId} disabled={!academicYearId} className="mt-1" placeholder="Select cohort" />
+              </FormField>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <div>
-                <label htmlFor="transcript-status" className="text-xs text-gray-500">Enrollment Status</label>
-                <EnrollmentStatusSelect id="transcript-status" value={enrollmentStatus} onChange={(v)=>{ setEnrollmentStatus(v); }} className="mt-1 w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" placeholder="Select status" />
-              </div>
-              <div>
-                <label htmlFor="transcript-timeline" className="text-xs text-gray-500">Timeline Segment</label>
-                <select
+              <FormField label="Enrollment Status" htmlFor="transcript-status">
+                <EnrollmentStatusSelect id="transcript-status" value={enrollmentStatus} onChange={(v)=>{ setEnrollmentStatus(v); }} className="mt-1" placeholder="Select status" />
+              </FormField>
+              <FormField label="Timeline Segment" htmlFor="transcript-timeline">
+                <Select
                   id="transcript-timeline"
                   value={timelineLoading ? -2 : activeTimelineIndex}
                   onChange={e=> {
@@ -430,7 +432,7 @@ export default function TranscriptPage() {
                     }
                   }}
                   disabled={timelineLoading || (!timeline.length && activeTimelineIndex === -1)}
-                  className="mt-1 w-full px-3 py-2 bg-white/90 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="mt-1"
                 >
                   <option value={-1}>Dooro segment</option>
                   {timelineLoading && <option value={-2}>Loading…</option>}
@@ -444,8 +446,8 @@ export default function TranscriptPage() {
                     const label = [ayName, labelCore].filter(Boolean).join(' | ');
                     return <option key={idx} value={idx}>{label || `Segment ${idx+1}`}</option>;
                   })}
-                </select>
-              </div>
+                </Select>
+              </FormField>
             </div>
           </>
         )}
@@ -453,10 +455,10 @@ export default function TranscriptPage() {
           <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
           <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
         </div>
-      </div>
+      </Card>
 
-  <div className="bg-white p-4 rounded-lg shadow print:shadow-none print:p-0 print-container">
-        {loading && <div>Loading…</div>}
+  <Card className="p-4 print:shadow-none print:p-0 print-container">
+        {loading && <LoadingState message="Loading…" />}
         {!loading && selectedStudents.length > 0 && (
           <div className="space-y-8 print-two" style={{ breakInside: 'auto' }}>
             {(() => {
@@ -488,7 +490,7 @@ export default function TranscriptPage() {
                     <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
                   </div>
                   {(!ok || filteredEnrolls.length === 0) && (
-                    <div className="text-sm text-gray-500">No transcript data for the selected mode/filters.</div>
+                    <Alert variant="neutral">No transcript data for the selected mode/filters.</Alert>
                   )}
                   {ok && filteredEnrolls.map((en, idx) => (
                     <section key={en.enrollmentId || idx} className="p-3 avoid-break">
@@ -557,7 +559,7 @@ export default function TranscriptPage() {
             })()}
           </div>
         )}
-      </div>
+      </Card>
 
       <PrintFooter left="Generated by Nuuru Al-Bayaan" />
     </div>

@@ -6,7 +6,9 @@ import { getGrades, getShifts } from '../../lookups/api/lookups';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import { getSubjects } from '../../subjects/api/subjects';
 import { addAssignment, getAssignments, removeAssignment } from '../api/teachersApi';
-import FilterSelect from '../../../shared/components/DataToolbar/FilterSelect.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import DataTable from '../../../shared/components/table/DataTable.jsx';
 
 export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
@@ -21,6 +23,30 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
   const [shifts, setShifts] = useState([]);
   const [shiftId, setShiftId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const onGradeChange = (next) => {
+    const nextVal = String(next || '');
+    setGradeId(nextVal);
+    setShiftId('');
+    setSectionId('');
+    setSubjectId('');
+    setSections([]);
+    setSubjects([]);
+  };
+
+  const onShiftChange = (next) => {
+    const nextVal = String(next || '');
+    setShiftId(nextVal);
+    setSectionId('');
+    setSubjectId('');
+    setSections([]);
+  };
+
+  const onSectionChange = (next) => {
+    const nextVal = String(next || '');
+    setSectionId(nextVal);
+    setSubjectId('');
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -101,20 +127,53 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
     <Modal isOpen={isOpen} onClose={onClose} title={`Assignments • ${teacher?.fullName || teacher?.teacherId || ''}`}>
       <div className="space-y-4">
         {error && <div className="text-red-600 text-sm">{error}</div>}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
-            <FilterSelect value={gradeId} onChange={setGradeId} options={(grades || []).map((g) => ({ value: g._id, label: g.gradeName }))} placeholder="Select level…" />
-          </div>
-          <div>
-            <FilterSelect value={shiftId} onChange={setShiftId} options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))} placeholder="Select shift…" className={gradeId ? '' : 'opacity-60'} />
-          </div>
-          <div>
-            <FilterSelect value={sectionId} onChange={setSectionId} options={(sections || []).map((s) => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}` }))} placeholder="Select section…" className={gradeId ? '' : 'opacity-60'} />
-          </div>
-          <div>
-            <FilterSelect value={subjectId} onChange={setSubjectId} options={(subjects || []).map((s) => ({ value: s._id, label: s.subjectName }))} placeholder="Select subject…" className={gradeId ? '' : 'opacity-60'} />
-          </div>
-        </div>
+        <FilterRow>
+          <FilterItem>
+            <DropdownSelect
+              value={gradeId}
+              onChange={onGradeChange}
+              options={(grades || []).map((g) => ({ value: g._id, label: g.gradeName }))}
+              placeholder="Select level…"
+              maxHeightClassName="max-h-72"
+            />
+          </FilterItem>
+
+          <FilterItem>
+            <FilterDropdownSelect
+              value={shiftId}
+              onChange={onShiftChange}
+              options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
+              placeholder="Select shift…"
+              disabled={!gradeId}
+              className={gradeId ? '' : 'opacity-60'}
+            />
+          </FilterItem>
+
+          <FilterItem>
+            <FilterDropdownSelect
+              value={sectionId}
+              onChange={onSectionChange}
+              options={(sections || []).map((s) => ({
+                value: s._id,
+                label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}`,
+              }))}
+              placeholder="Select section…"
+              disabled={!gradeId || !shiftId}
+              className={gradeId && shiftId ? '' : 'opacity-60'}
+            />
+          </FilterItem>
+
+          <FilterItem>
+            <FilterDropdownSelect
+              value={subjectId}
+              onChange={setSubjectId}
+              options={(subjects || []).map((s) => ({ value: s._id, label: s.subjectName }))}
+              placeholder="Select subject…"
+              disabled={!gradeId || !sectionId}
+              className={gradeId && sectionId ? '' : 'opacity-60'}
+            />
+          </FilterItem>
+        </FilterRow>
         <div className="flex justify-end">
           <ActionButton type="button" variant="brand" onClick={onAdd} disabled={!canAdd || submitting}>Add Assignment</ActionButton>
         </div>
@@ -128,8 +187,8 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
               showControls={false}
               theadClassName=""
               headerRowClassName="bg-gray-50 border-b"
-              useDefaultHeaderStyles={false}
               baseRowClassName="border-t"
+              useDefaultHeaderStyles={false}
               columns={[
                 { key: 'level', label: 'Level', thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
                 { key: 'shift', label: 'Shift', thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },

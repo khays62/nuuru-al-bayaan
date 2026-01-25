@@ -11,6 +11,7 @@ import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx'
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect';
 import SortControls from '../../../shared/components/DataToolbar/SortControls.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { useClientSort } from '../../../shared/hooks/useClientSort';
 
@@ -221,28 +222,34 @@ export default function SubjectPage() {
       <DataToolbar
         showReset={false}
         searchSlot={searchSlot}
-        filtersSlot={<div className="flex flex-row flex-wrap gap-2 w-full items-center">
-          <GradeSelect
-            id="subjects-grade-filter"
-            name="subjects-grade-filter"
-            aria-label="Grade"
-            value={gradeFilter}
-            onChange={(v) => { setGradeFilter(v); setPage(1); }}
-            className="flex-1 min-w-35"
-            placeholder="Grade"
-          />
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
-            {sortSlot}
-            <Button
-              type="button"
-              variant="neutral"
-              size="md"
-              onClick={() => { setGradeFilter(''); resetAndReload({ filters: {}, search: '' }); }}
-            >
-              Reset
-            </Button>
-          </div>
-        </div>}
+        filtersSlot={
+          <FilterRow>
+            <FilterItem grow minWidthClass="min-w-35">
+              <GradeSelect
+                id="subjects-grade-filter"
+                name="subjects-grade-filter"
+                aria-label="Grade"
+                value={gradeFilter}
+                onChange={(v) => { setGradeFilter(v); setPage(1); }}
+                placeholder="Grade"
+              />
+            </FilterItem>
+
+            <FilterItem className="sm:ml-auto">
+              <div className="flex items-center gap-2 flex-wrap">
+                {sortSlot}
+                <Button
+                  type="button"
+                  variant="neutral"
+                  size="md"
+                  onClick={() => { setGradeFilter(''); resetAndReload({ filters: {}, search: '' }); }}
+                >
+                  Reset
+                </Button>
+              </div>
+            </FilterItem>
+          </FilterRow>
+        }
       />
 
       <StandardTable

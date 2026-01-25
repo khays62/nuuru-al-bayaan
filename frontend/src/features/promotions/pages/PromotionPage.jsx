@@ -10,8 +10,11 @@ import { toast } from 'react-hot-toast';
 import { previewPromotion, executePromotion } from '../api/promotions';
 import { listStudents } from '../../students/api/studentsApi';
 import Button from '../../../shared/components/ui/Button';
-import Select from '../../../shared/components/ui/Select';
+import Card from '../../../shared/components/ui/Card.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox';
+import Chip from '../../../shared/components/ui/Chip.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 
 // Skeleton page for Promotions as a standalone tab per PROMOTION.md
 // This wires the layout and UX elements; API integration to be added next.
@@ -19,14 +22,17 @@ import Checkbox from '../../../shared/components/ui/Checkbox';
 const TimingSelector = ({ value, onChange }) => (
   <div className="flex items-center gap-3">
     <label className="font-medium">Timing</label>
-    <Select
-      className="w-auto bg-white/90"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      <option value="mid-year">Mid-Year</option>
-      <option value="year-end">Year-End</option>
-    </Select>
+    <div className="min-w-40">
+      <DropdownSelect
+        value={value}
+        onChange={onChange}
+        options={[
+          { value: 'mid-year', label: 'Mid-Year' },
+          { value: 'year-end', label: 'Year-End' },
+        ]}
+        placeholder="Timing"
+      />
+    </div>
   </div>
 );
 
@@ -249,16 +255,68 @@ export default function PromotionPage() {
       </div>
       <DataToolbar
         showReset={false}
-        filtersSlot={<>
-          <div className="flex flex-row flex-wrap gap-2 w-full">
-            <div className="flex items-center"><TimingSelector value={timing} onChange={setTiming} /></div>
-            <AcademicYearSelect value={filters.ay} onChange={v => setFilters({ ...filters, ay: v })} refreshKey={ayRefreshKey} className="flex-1 min-w-[120px]" placeholder="AY" />
-            <GradeSelect value={filters.grade} onChange={v => setFilters({ ...filters, grade: v })} className="flex-1 min-w-[120px]" placeholder="Grade" />
-            <ShiftSelect value={filters.shift} onChange={v => setFilters({ ...filters, shift: v })} className="flex-1 min-w-[120px]" placeholder="Shift" />
-            <GradeSectionSelect gradeId={filters.grade} shiftId={filters.shift} value={filters.section} onChange={v => setFilters({ ...filters, section: v })} className="flex-1 min-w-[140px]" placeholder="Section" />
-            <CohortSelect mode="promotion" academicYear={filters.ay} gradeSectionId={filters.section} gradeId={filters.grade} shiftId={filters.shift} section={null} value={filters.cohort} onChange={v => setFilters({ ...filters, cohort: v })} className="flex-1 min-w-[150px]" placeholder="Cohort" />
-          </div>
-        </>}
+        filtersSlot={
+          <FilterRow align="end">
+            <FilterItem>
+              <TimingSelector value={timing} onChange={setTiming} />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-30">
+              <AcademicYearSelect
+                value={filters.ay}
+                onChange={v => setFilters({ ...filters, ay: v })}
+                refreshKey={ayRefreshKey}
+                placeholder="AY"
+                searchable
+                maxVisible={5}
+                searchPlaceholder="Search academic years…"
+              />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-30">
+              <GradeSelect
+                value={filters.grade}
+                onChange={v => setFilters({ ...filters, grade: v })}
+                placeholder="Grade"
+              />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-30">
+              <ShiftSelect
+                value={filters.shift}
+                onChange={v => setFilters({ ...filters, shift: v })}
+                placeholder="Shift"
+              />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-35">
+              <GradeSectionSelect
+                gradeId={filters.grade}
+                shiftId={filters.shift}
+                value={filters.section}
+                onChange={v => setFilters({ ...filters, section: v })}
+                placeholder="Section"
+              />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-40">
+              <CohortSelect
+                mode="promotion"
+                academicYear={filters.ay}
+                gradeSectionId={filters.section}
+                gradeId={filters.grade}
+                shiftId={filters.shift}
+                section={null}
+                value={filters.cohort}
+                onChange={v => setFilters({ ...filters, cohort: v })}
+                placeholder="Cohort"
+                searchable
+                maxVisible={5}
+                searchPlaceholder="Search cohorts…"
+              />
+            </FilterItem>
+          </FilterRow>
+        }
         actionsSlot={<div className="flex gap-2">
           <Button
             onClick={handlePreview}
@@ -297,7 +355,7 @@ export default function PromotionPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Students table */}
-        <div className="bg-white rounded shadow p-3">
+        <Card className="p-3">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Students</h3>
             <label className="inline-flex items-center gap-2 text-sm">
@@ -305,7 +363,7 @@ export default function PromotionPage() {
               <span>Select All</span>
             </label>
           </div>
-          <div className="border rounded overflow-auto max-h-[520px]">
+          <div className="border rounded overflow-auto max-h-130">
             <table className="min-w-full text-sm border border-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -333,16 +391,16 @@ export default function PromotionPage() {
                     <td className="p-2"><Checkbox checked={selectedIds.has(s._id)} onChange={()=>toggleSelected(s._id)} disabled={!filtersReady} /></td>
                     <td className="p-2 whitespace-nowrap font-medium text-gray-700">{s.studentId} — {s.fullName}</td>
                     <td className="p-2 text-xs text-gray-600">{formatCurrent(s.current || {}) || '-'}</td>
-                    <td className="p-2"><span className="inline-block text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded border border-indigo-200">{s.current?.cohort || '-'}</span></td>
+                    <td className="p-2"><Chip>{s.current?.cohort || '-'}</Chip></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
 
         {/* Preview panel */}
-        <div className="bg-white rounded shadow p-3">
+        <Card className="p-3">
           <h3 className="font-semibold mb-2">Preview</h3>
           {!preview ? (
             <div className="text-gray-500">Run Preview to see targets, auto-create needs, and graduations</div>
@@ -355,7 +413,7 @@ export default function PromotionPage() {
                 <div>Missing Targets: <b className="text-amber-700">{preview.summary.missingTargets}</b></div>
                 <div>Capacity Issues: <b className="text-red-700">{preview.summary.capacityIssues}</b></div>
               </div>
-              <div className="border rounded max-h-[520px] overflow-auto">
+              <div className="border rounded max-h-130 overflow-auto">
                 <table className="min-w-full text-sm border border-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -408,7 +466,7 @@ export default function PromotionPage() {
               {/* Promotion Results table removed per request */}
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

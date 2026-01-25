@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
 import GradeSelect from '../../lookups/components/GradeSelect';
 import ShiftSelect from '../../lookups/components/ShiftSelect';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
 import { listTransferCandidates, performTransfer, listTransferLogs } from '../api/transfers';
 import { getStudentProfile } from '../../students/api/studentsApi';
 import Spinner from '../../../shared/components/feedback/Spinner.jsx';
@@ -296,17 +298,55 @@ export default function TransfersPage() {
       <DataToolbar
         searchSlot={<SearchInput value={search} onChange={(v)=>{ setSearch(v); setPage(1); }} placeholder="Search by name or ID" />}
         filtersSlot={(
-          <>
-            <AcademicYearSelect placeholder="Academic Year" value={ay} onChange={(v)=>{ setAy(v); setPage(1); }} className="flex-1 min-w-[140px]" />
-            <GradeSelect placeholder="Grade" value={grade} onChange={(v)=>{ setGrade(v); setPage(1); }} className="flex-1 min-w-[120px]" />
-            <ShiftSelect placeholder="Shift" value={shift} onChange={(v)=>{ setShift(v); setPage(1); }} className="flex-1 min-w-[120px]" />
-            <GradeSectionSelect gradeId={grade} shiftId={shift} value={section} onChange={(v)=>{ setSection(v); setPage(1); }} className="flex-1 min-w-[160px]" placeholder="Section" />
-          </>
+          <FilterRow>
+            <FilterItem grow minWidthClass="min-w-[140px]">
+              <AcademicYearSelect
+                placeholder="Academic Year"
+                value={ay}
+                onChange={(v)=>{ setAy(v); setPage(1); }}
+                searchable
+                maxVisible={5}
+                searchPlaceholder="Search academic years…"
+              />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-[120px]">
+              <GradeSelect
+                placeholder="Grade"
+                value={grade}
+                onChange={(v)=>{ setGrade(v); setPage(1); }}
+              />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-[120px]">
+              <ShiftSelect
+                placeholder="Shift"
+                value={shift}
+                onChange={(v)=>{ setShift(v); setPage(1); }}
+                searchable
+                maxVisible={5}
+                searchPlaceholder="Search shifts…"
+              />
+            </FilterItem>
+
+            <FilterItem grow minWidthClass="min-w-[160px]">
+              <GradeSectionSelect
+                gradeId={grade}
+                shiftId={shift}
+                value={section}
+                onChange={(v)=>{ setSection(v); setPage(1); }}
+                placeholder="Section"
+                searchable
+                maxVisible={5}
+                searchPlaceholder="Search sections…"
+              />
+            </FilterItem>
+          </FilterRow>
         )}
         onReset={onReset}
       />
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <Card className="overflow-hidden">
         <TableState
           isLoading={loading}
           items={rows}
@@ -328,7 +368,7 @@ export default function TransfersPage() {
             onLimit={(v) => { setLimit(v); setPage(1); }}
           />
         </TableState>
-      </div>
+      </Card>
 
       <PaginationBar
         meta={meta}
@@ -338,7 +378,7 @@ export default function TransfersPage() {
       />
 
       {recent.length > 0 ? (
-        <div className="bg-white rounded-lg shadow p-4">
+        <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-gray-800">Recent transfers (session)</h2>
             <button
@@ -367,11 +407,11 @@ export default function TransfersPage() {
             ))}
           </div>
           <div className="mt-2 text-[11px] text-gray-500">Recent transfers are kept only during this page session.</div>
-        </div>
+        </Card>
       ) : null}
 
       {/* All Transfers (from DB) */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <Card className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-800">All Transfers</h2>
           <div className="w-full max-w-xs">
@@ -439,7 +479,7 @@ export default function TransfersPage() {
             showRowsSelector={false}
           />
         </div>
-      </div>
+      </Card>
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={`Transfer Section${selected ? `: ${selected.fullName}` : ''}`}>
         <div className="space-y-4">

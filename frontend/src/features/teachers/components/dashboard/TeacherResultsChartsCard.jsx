@@ -6,6 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../../../auth/AuthContext';
 import DropdownSelect from '../../../../shared/components/ui/DropdownSelect.jsx';
+import Alert from '../../../../shared/components/ui/Alert.jsx';
+import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 import AcademicYearSelect from '../../../lookups/components/AcademicYearSelect';
 
 import { getAcademicYears } from '../../../../api';
@@ -550,13 +552,13 @@ export default function TeacherResultsChartsCard() {
         ) : !teacherRef ? (
           <div className="text-sm text-gray-600">No teacherRef found on your account.</div>
         ) : (view === 'performance' && perfError) ? (
-          <div className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-3">{perfError}</div>
+          <Alert variant="danger">{perfError}</Alert>
         ) : error ? (
-          <div className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-3">{error}</div>
+          <Alert variant="danger">{error}</Alert>
         ) : (view === 'performance' && perfLoading) ? (
-          <div className="text-sm text-gray-600">Loading performance…</div>
+          <UiLoadingState label="Loading performance…" className="border-0 bg-transparent p-0 justify-start" />
         ) : loading ? (
-          <div className="text-sm text-gray-600">Loading results…</div>
+          <UiLoadingState label="Loading results…" className="border-0 bg-transparent p-0 justify-start" />
         ) : !canRun ? (
           <div className="text-sm text-gray-600">Select Academic Year + Section + (Subject/Exam Type) to view charts.</div>
         ) : (view === 'performance' && (perf?.rows || []).length === 0) ? (

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Columns, Check, ChevronDown } from 'lucide-react';
 import ActionButton from '../ui/ActionButton.jsx';
+import Card from '../ui/Card.jsx';
 
 export default function ColumnVisibilityMenu({
   columns = [],
@@ -40,7 +41,7 @@ export default function ColumnVisibilityMenu({
       </ActionButton>
 
       {open ? (
-        <div className="absolute right-0 mt-2 w-64 rounded-md border border-gray-200 bg-white shadow-lg overflow-hidden z-50">
+        <Card className="absolute right-0 mt-2 w-64 overflow-hidden z-50">
           <div className="max-h-72 overflow-auto">
             {cols.map((c) => {
               const key = String(c.key);
@@ -67,7 +68,7 @@ export default function ColumnVisibilityMenu({
               );
             })}
           </div>
-        </div>
+        </Card>
       ) : null}
     </div>
   );

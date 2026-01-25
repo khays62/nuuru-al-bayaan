@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import TableShell from '../../../../shared/components/table/TableShell.jsx';
 import TimetableGrid from '../../../timetable/components/TimetableGrid.jsx';
 import { useAuth } from '../../../../auth/AuthContext';
+import Card from '../../../../shared/components/ui/Card.jsx';
 
 export default function TeacherTimetablePanel({
   sections,
@@ -149,7 +150,7 @@ export default function TeacherTimetablePanel({
 
   return (
     <div className="no-print">
-      <div className="rounded-xl border border-gray-200/70 bg-white shadow-md overflow-hidden mt-3">
+      <Card className="rounded-xl overflow-hidden mt-3">
         <div className="px-4 py-2 bg-gray-800 text-white">
           <div className="font-semibold">Today's Schedule</div>
           <div className="text-xs text-white/80 mt-0.5">
@@ -159,10 +160,10 @@ export default function TeacherTimetablePanel({
         <div className="p-5">
           {todayBody}
         </div>
-      </div>
+      </Card>
 
       <div className="flex flex-col lg:flex-row gap-4 mt-6">
-        <div className="w-full lg:w-80 bg-white p-4 rounded-lg shadow-md border border-gray-200/70">
+        <Card className="w-full lg:w-80 p-4 rounded-lg">
           <div className="text-sm font-semibold text-gray-800">My Assigned Classes</div>
           <div className="mt-3 space-y-2 max-h-96 overflow-auto">
             {(sections || []).length === 0 ? (
@@ -188,10 +189,10 @@ export default function TeacherTimetablePanel({
               })
             )}
           </div>
-        </div>
+        </Card>
 
         <div className="flex-1">
-          <div className="rounded-lg border border-gray-200/70 bg-white shadow-md overflow-hidden">
+          <Card className="rounded-lg overflow-hidden">
             <TableShell>
               <thead>
                 <tr className="bg-black text-white">
@@ -232,7 +233,7 @@ export default function TeacherTimetablePanel({
                 )}
               </tbody>
             </TableShell>
-          </div>
+          </Card>
         </div>
       </div>
     </div>

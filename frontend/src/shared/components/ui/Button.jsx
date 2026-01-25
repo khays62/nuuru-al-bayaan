@@ -3,7 +3,7 @@ import { cn } from '../../utils/cn';
 
 const variants = {
   primary: 'border-blue-300 bg-white text-blue-700 hover:bg-blue-50',
-  brand: 'border-[color:var(--nb-color-brand)] bg-[color:var(--nb-color-brand)] text-white hover:opacity-95',
+  brand: 'border-(--nb-color-brand) bg-(--nb-color-brand) text-white hover:opacity-95',
   neutral: 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100',
   danger: 'border-red-600 bg-red-600 text-white hover:bg-red-700',
   info: 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100',

@@ -5,6 +5,8 @@ import { Menu, X, LogOut, ChevronRight, Search, User, Bell, ShieldAlert } from '
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getAuthLockCount, listAuthLocks, resetUserPasswordAndUnlock, lockUser24h, markAuthLockRead } from '../../../features/security/api/security';
+import Card from '../ui/Card.jsx';
+import UiLoadingState from '../ui/LoadingState.jsx';
 
 // This is the updated Navbar component with a new design.
 const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
@@ -166,7 +168,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         </button>
 
                         {openLocks && (
-                            <div className="absolute right-0 mt-2 w-96 bg-white border rounded-xl shadow-xl overflow-hidden z-50">
+                            <Card className="absolute right-0 mt-2 w-96 rounded-xl shadow-xl overflow-hidden z-50">
                                 <div className="px-3 py-2 border-b flex items-center justify-between bg-gray-50">
                                     <div className="flex items-center gap-2">
                                         <ShieldAlert size={16} className="text-red-600" />
@@ -184,7 +186,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
 
                                 <div className="max-h-96 overflow-auto">
                                     {locksQuery.isLoading && (
-                                        <div className="p-3 text-sm text-gray-600">Loading…</div>
+                                        <div className="p-3">
+                                            <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+                                        </div>
                                     )}
                                     {!locksQuery.isLoading && (locksQuery.data?.length || 0) === 0 && (
                                         <div className="p-3 text-sm text-gray-600">No locked accounts right now.</div>
@@ -257,7 +261,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         );
                                     })}
                                 </div>
-                            </div>
+                            </Card>
                         )}
                     </div>
                 )}

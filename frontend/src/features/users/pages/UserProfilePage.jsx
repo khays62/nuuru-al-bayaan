@@ -15,6 +15,11 @@ import {
 import toast from 'react-hot-toast';
 
 import StatusBadge from '../../../shared/components/ui/badges/StatusBadge.jsx';
+import Badge from '../../../shared/components/ui/Badge.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import Alert from '../../../shared/components/ui/Alert.jsx';
+import LoadingState from '../../../shared/components/feedback/LoadingState.jsx';
 import { getUserById, getUserAuditLogs } from '../api/usersApi';
 
 export default function UserProfilePage() {
@@ -48,40 +53,31 @@ export default function UserProfilePage() {
     fetchData();
   }, [fetchData]);
 
-  if (loading)
-    return (
-      <div className="p-8 text-gray-600 animate-pulse">Loading user details…</div>
-    );
+  if (loading) return <LoadingState message="Loading user details…" />;
 
-  if (!user)
-    return (
-      <div className="p-8 text-red-600">Could not load user profile.</div>
-    );
+  if (!user) {
+    return <Alert variant="danger" title="Could not load user profile." />;
+  }
 
   return (
     <div className="space-y-8">
-      <Link
-        to="/users"
-        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-white border rounded-md hover:bg-gray-50"
-      >
-        <ArrowLeft size={15} /> Back to Users
-      </Link>
+      <Button as={Link} to="/users" variant="neutral" size="md" icon={<ArrowLeft size={15} />}>
+        Back to Users
+      </Button>
 
-      <div className="bg-white rounded-xl shadow border">
-        <div className="flex justify-between items-center px-6 py-5 border-b">
+      <Card className="overflow-hidden">
+        <div className="flex justify-between items-center px-6 py-5 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <User className="text-blue-600" size={34} />
+            <User className="text-(--nb-color-brand)" size={34} />
             <div>
               <h1 className="text-xl font-semibold">{user.fullName}</h1>
-              <p className="text-sm text-gray-600">{user.username}</p>
+              <p className="text-sm text-slate-600">{user.username}</p>
             </div>
           </div>
 
           <div className="flex gap-3 items-center">
             <StatusBadge status={user.status} />
-            <span className="text-xs px-3 py-1 bg-purple-100 text-purple-600 rounded-full">
-              Role: {user.role}
-            </span>
+            <Badge variant="primary">Role: {user.role}</Badge>
           </div>
         </div>
 
@@ -103,23 +99,20 @@ export default function UserProfilePage() {
           />
         </div>
 
-        <div className="border-t px-6 py-6">
+        <div className="border-t border-slate-200 px-6 py-6">
           <h2 className="text-lg font-semibold mb-4">Audit History</h2>
 
           {logs.length === 0 ? (
-            <p className="text-gray-500 text-sm">No audit history available.</p>
+            <p className="text-slate-500 text-sm">No audit history available.</p>
           ) : (
             <div className="space-y-3">
               {logs.map((log, index) => (
-                <div
-                  key={index}
-                  className="p-4 border rounded-lg bg-gray-50 flex flex-col md:flex-row md:justify-between md:items-center"
-                >
+                <Card key={index} className="p-4 bg-slate-50 flex flex-col md:flex-row md:justify-between md:items-center">
                   <div>
                     <p className="font-medium">{log.action}</p>
-                    <p className="text-sm text-gray-600">{log.description}</p>
+                    <p className="text-sm text-slate-600">{log.description}</p>
 
-                    <div className="flex gap-3 mt-2 text-xs text-gray-500">
+                    <div className="flex gap-3 mt-2 text-xs text-slate-500">
                       <span className="flex items-center gap-1">
                         <Clock size={13} /> {format(log.timestamp)}
                       </span>
@@ -133,24 +126,24 @@ export default function UserProfilePage() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
 
 function Info({ label, value, icon }) {
   return (
-    <div className="border rounded-xl p-4 bg-white">
-      <div className="text-xs text-gray-500 flex items-center gap-2 mb-1">
+    <Card className="p-4 shadow-(--nb-shadow-sm)">
+      <div className="text-xs text-slate-500 flex items-center gap-2 mb-1">
         {icon} {label.toUpperCase()}
       </div>
       <p className="font-medium">{value}</p>
-    </div>
+    </Card>
   );
 }
 

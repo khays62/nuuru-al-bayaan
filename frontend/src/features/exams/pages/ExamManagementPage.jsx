@@ -10,7 +10,10 @@ import { getGrades, getShifts } from '../../lookups/api/lookups';
 import { getCohortTimeline } from '../../cohorts/api/cohorts';
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
 import EnrollmentCohortToolbar from '../../../shared/components/filters/EnrollmentCohortToolbar.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
 import { getAssignments as getTeacherAssignments } from '../../teachers/api/teachersApi';
 import { teacherKeys } from '../../teachers/queryKeys.js';
@@ -523,7 +526,7 @@ export default function ExamManagementPage() {
             ) : null}
 
             {!isTeacher && cohortId ? (
-                <div className="bg-white p-3 rounded-lg shadow-lg">
+                <Card className="p-3">
                     <div className="flex items-center justify-between">
                         <div className="text-sm font-semibold text-gray-800">Cohort timeline</div>
                         {timelineLoading ? <div className="text-xs text-gray-500">Loading…</div> : null}
@@ -557,148 +560,157 @@ export default function ExamManagementPage() {
                             })}
                         </div>
                     ) : null}
-                </div>
+                </Card>
             ) : null}
 
             {/* Main filter row: AY → Grade → Shift → Section → Subject */}
-            <div className="bg-white p-4 rounded-lg shadow-lg flex flex-row flex-wrap gap-3 items-end">
-                <AcademicYearSelect
-                    id="exam-ay"
-                    name="exam-ay"
-                    aria-label="Academic Year"
-                    value={academicYearId}
-                    onChange={(v) => {
-                        setAcademicYearId(v);
-                        setGradeSectionId('');
-                        setSubjectId('');
-                    }}
-                    searchable
-                    maxVisible={5}
-                    searchPlaceholder="Search academic years…"
-                    className="flex-1 min-w-40"
-                    placeholder="Academic Year"
-                />
-
-                {!isTeacher && (
-                    <div className="flex-1 min-w-35">
-                        <DropdownSelect
-                            id="exam-grade"
-                            name="exam-grade"
-                            value={gradeId}
+            <Card className="p-4">
+                <FilterRow align="end">
+                    <FilterItem grow minWidthClass="min-w-40">
+                        <AcademicYearSelect
+                            id="exam-ay"
+                            name="exam-ay"
+                            aria-label="Academic Year"
+                            value={academicYearId}
                             onChange={(v) => {
-                                setGradeId(v);
+                                setAcademicYearId(v);
                                 setGradeSectionId('');
                                 setSubjectId('');
                             }}
-                            placeholder="Grade"
-                            options={[...(grades || [])]
-                                .sort((a, b) => {
-                                    const at = a?.createdAt ? new Date(a.createdAt).getTime() : Number.POSITIVE_INFINITY;
-                                    const bt = b?.createdAt ? new Date(b.createdAt).getTime() : Number.POSITIVE_INFINITY;
-                                    return at - bt;
-                                })
-                                .map((g) => ({ value: g._id, label: g.gradeName }))}
+                            searchable
+                            maxVisible={5}
+                            searchPlaceholder="Search academic years…"
+                            placeholder="Academic Year"
                         />
-                    </div>
-                )}
+                    </FilterItem>
 
-                {!isTeacher && (
-                    <div className="flex-1 min-w-35">
-                        <DropdownSelect
-                            id="exam-shift"
-                            name="exam-shift"
-                            value={shiftId}
+                    {!isTeacher && (
+                        <FilterItem grow minWidthClass="min-w-35">
+                            <DropdownSelect
+                                id="exam-grade"
+                                name="exam-grade"
+                                value={gradeId}
+                                onChange={(v) => {
+                                    setGradeId(v);
+                                    setGradeSectionId('');
+                                    setSubjectId('');
+                                }}
+                                placeholder="Grade"
+                                options={[...(grades || [])]
+                                    .sort((a, b) => {
+                                        const at = a?.createdAt ? new Date(a.createdAt).getTime() : Number.POSITIVE_INFINITY;
+                                        const bt = b?.createdAt ? new Date(b.createdAt).getTime() : Number.POSITIVE_INFINITY;
+                                        return at - bt;
+                                    })
+                                    .map((g) => ({ value: g._id, label: g.gradeName }))}
+                            />
+                        </FilterItem>
+                    )}
+
+                    {!isTeacher && (
+                        <FilterItem grow minWidthClass="min-w-35">
+                            <FilterDropdownSelect
+                                id="exam-shift"
+                                name="exam-shift"
+                                value={shiftId}
+                                onChange={(v) => {
+                                    setShiftId(v);
+                                    setGradeSectionId('');
+                                    setSubjectId('');
+                                }}
+                                placeholder="Shift"
+                                options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
+                                searchPlaceholder="Search shifts…"
+                            />
+                        </FilterItem>
+                    )}
+
+                    <FilterItem grow minWidthClass="min-w-45">
+                        <FilterDropdownSelect
+                            id="exam-section"
+                            name="exam-section"
+                            value={gradeSectionId}
                             onChange={(v) => {
-                                setShiftId(v);
-                                setGradeSectionId('');
+                                setGradeSectionId(v);
                                 setSubjectId('');
                             }}
-                            placeholder="Shift"
-                            options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
+                            placeholder="Section"
+                            disabled={isTeacher ? teacherSectionsLoading : (!gradeId || !shiftId)}
+                            options={((isTeacher ? teacherSections : sections) || []).map((gs) => {
+                                const gradeName = gs?.grade?.gradeName;
+                                const sectionNum = gs?.section;
+                                const shiftName = gs?.shift?.shiftName;
+                                const tail = [shiftName].filter(Boolean).join(' - ');
+                                const label = [
+                                    gradeName ? `${gradeName}` : null,
+                                    sectionNum ? `Sec ${sectionNum}` : null,
+                                    tail ? `(${tail})` : null,
+                                ].filter(Boolean).join(' - ');
+                                return { value: gs._id, label: label || gs.sectionName || 'Section' };
+                            })}
+                            searchPlaceholder="Search sections…"
                         />
-                    </div>
-                )}
+                    </FilterItem>
 
-                <div className="flex-1 min-w-45">
-                    <DropdownSelect
-                        id="exam-section"
-                        name="exam-section"
-                        value={gradeSectionId}
-                        onChange={(v) => {
-                            setGradeSectionId(v);
-                            setSubjectId('');
-                        }}
-                        placeholder="Section"
-                        disabled={isTeacher ? teacherSectionsLoading : (!gradeId || !shiftId)}
-                        options={((isTeacher ? teacherSections : sections) || []).map((gs) => {
-                            const gradeName = gs?.grade?.gradeName;
-                            const sectionNum = gs?.section;
-                            const shiftName = gs?.shift?.shiftName;
-                            const tail = [shiftName].filter(Boolean).join(' - ');
-                            const label = [
-                                gradeName ? `${gradeName}` : null,
-                                sectionNum ? `Sec ${sectionNum}` : null,
-                                tail ? `(${tail})` : null,
-                            ].filter(Boolean).join(' - ');
-                            return { value: gs._id, label: label || gs.sectionName || 'Section' };
-                        })}
-                    />
-                </div>
-
-                <div className="flex-1 min-w-45">
-                    <DropdownSelect
-                        id="exam-subject"
-                        name="exam-subject"
-                        value={subjectId}
-                        onChange={setSubjectId}
-                        disabled={!gradeSectionId || (isTeacher && (teacherAssignmentsLoading || teacherAllowedSubjectIds?.size === 0))}
-                        placeholder={isTeacher && teacherAssignmentsLoading ? 'Loading…' : 'Subject'}
-                        options={(() => {
-                            const list = subjects || [];
-                            if (!isTeacher || !teacherAllowedSubjectIds) return list.map((su) => ({ value: su._id, label: su.subjectName }));
-                            if (teacherAllowedSubjectIds.size === 0) return [];
-                            return list
-                                .filter((su) => teacherAllowedSubjectIds.has(String(su?._id)))
-                                .map((su) => ({ value: su._id, label: su.subjectName }));
-                        })()}
-                    />
-                </div>
-
-                {!isTeacher && (
-                    <div className="flex-1 min-w-32">
-                        <DropdownSelect
-                            id="exam-template-version"
-                            name="exam-template-version"
-                            value={templateVersion}
-                            onChange={(v) => {
-                                setTemplateVersion(v);
-                                // clear local input buffers when switching templates
-                                setLocalInputs({});
-                                setSavingCells(new Set());
-                                setErrorCells(new Set());
-                            }}
-                            placeholder="Template"
-                            options={(templateVersions || []).map((v) => ({
-                                value: String(v.templateVersion),
-                                label: `v${v.templateVersion}${v.isActive ? ' (default)' : ''}`
-                            }))}
+                    <FilterItem grow minWidthClass="min-w-45">
+                        <FilterDropdownSelect
+                            id="exam-subject"
+                            name="exam-subject"
+                            value={subjectId}
+                            onChange={setSubjectId}
+                            disabled={!gradeSectionId || (isTeacher && (teacherAssignmentsLoading || teacherAllowedSubjectIds?.size === 0))}
+                            placeholder={isTeacher && teacherAssignmentsLoading ? 'Loading…' : 'Subject'}
+                            options={(() => {
+                                const list = subjects || [];
+                                if (!isTeacher || !teacherAllowedSubjectIds) return list.map((su) => ({ value: su._id, label: su.subjectName }));
+                                if (teacherAllowedSubjectIds.size === 0) return [];
+                                return list
+                                    .filter((su) => teacherAllowedSubjectIds.has(String(su?._id)))
+                                    .map((su) => ({ value: su._id, label: su.subjectName }));
+                            })()}
+                            searchPlaceholder="Search subjects…"
                         />
-                    </div>
-                )}
+                    </FilterItem>
 
-                <div className="flex items-center gap-2 ml-auto flex-wrap">
-                    <ActionButton
-                        variant="primary"
-                        onClick={handleReset}
-                        title="Reset filters"
-                        icon={<RotateCcw size={16} />}
-                    >
-                        Reset
-                    </ActionButton>
-                </div>
-            </div>
+                    {!isTeacher && (
+                        <FilterItem grow minWidthClass="min-w-32">
+                            <FilterDropdownSelect
+                                id="exam-template-version"
+                                name="exam-template-version"
+                                value={templateVersion}
+                                onChange={(v) => {
+                                    setTemplateVersion(v);
+                                    // clear local input buffers when switching templates
+                                    setLocalInputs({});
+                                    setSavingCells(new Set());
+                                    setErrorCells(new Set());
+                                }}
+                                placeholder="Template"
+                                options={(templateVersions || []).map((v) => ({
+                                    value: String(v.templateVersion),
+                                    label: `v${v.templateVersion}${v.isActive ? ' (default)' : ''}`
+                                }))}
+                                searchPlaceholder="Search templates…"
+                            />
+                        </FilterItem>
+                    )}
 
-            <div className="bg-white p-4 rounded-lg shadow overflow-auto">
+                    <FilterItem className="sm:ml-auto">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <ActionButton
+                                variant="primary"
+                                onClick={handleReset}
+                                title="Reset filters"
+                                icon={<RotateCcw size={16} />}
+                            >
+                                Reset
+                            </ActionButton>
+                        </div>
+                    </FilterItem>
+                </FilterRow>
+            </Card>
+
+            <Card className="p-4 overflow-auto">
                 {!academicYearId || !gradeSectionId ? (
                     <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift and Section.</p>
                 ) : !subjectId ? (
@@ -908,7 +920,7 @@ export default function ExamManagementPage() {
                     </div>
                     </>
                 )}
-            </div>
+            </Card>
         </div>
     );
 }

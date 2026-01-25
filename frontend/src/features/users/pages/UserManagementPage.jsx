@@ -16,7 +16,8 @@ import SearchInput from "../../../shared/components/DataToolbar/SearchInput.jsx"
 import StatusBadge from "../../../shared/components/ui/badges/StatusBadge.jsx";
 import ActionButton from "../../../shared/components/ui/ActionButton.jsx";
 import DataToolbar from "../../../shared/components/DataToolbar/DataToolbar.jsx";
-import FilterSelect from "../../../shared/components/DataToolbar/FilterSelect.jsx";
+import { FilterItem, FilterRow } from "../../../shared/components/DataToolbar/FilterLayout.jsx";
+import FilterDropdownSelect from "../../../shared/components/DataToolbar/FilterDropdownSelect.jsx";
 import ListPageShell from "../../../shared/components/ui/ListPageShell.jsx";
 import StandardTable from "../../../shared/components/table/StandardTable.jsx";
 import { useClientSort } from "../../../shared/hooks/useClientSort";
@@ -485,28 +486,32 @@ export default function UserManagementPage() {
             setStatusFilter("");
           }}
           filtersSlot={
-            <div className="flex gap-3">
-              <FilterSelect
-                value={roleFilter}
-                onChange={(v) => setRoleFilter(v)}
-                placeholder="Role"
-                options={[
-                  { value: "", label: "All Roles" },
-                  { value: "admin", label: "Admin" },
-                  { value: "staff", label: "Staff" },
-                ]}
-              />
-              <FilterSelect
-                value={statusFilter}
-                onChange={(v) => setStatusFilter(v)}
-                placeholder="Status"
-                options={[
-                  { value: "", label: "All Status" },
-                  { value: "active", label: "Active" },
-                  { value: "inactive", label: "Inactive" },
-                ]}
-              />
-            </div>
+            <FilterRow>
+              <FilterItem grow minWidthClass="min-w-32.5">
+                <FilterDropdownSelect
+                  value={roleFilter}
+                  onChange={(v) => setRoleFilter(v)}
+                  placeholder="Role"
+                  options={[
+                    { value: "", label: "All Roles" },
+                    { value: "admin", label: "Admin" },
+                    { value: "staff", label: "Staff" },
+                  ]}
+                />
+              </FilterItem>
+              <FilterItem grow minWidthClass="min-w-32.5">
+                <FilterDropdownSelect
+                  value={statusFilter}
+                  onChange={(v) => setStatusFilter(v)}
+                  placeholder="Status"
+                  options={[
+                    { value: "", label: "All Status" },
+                    { value: "active", label: "Active" },
+                    { value: "inactive", label: "Inactive" },
+                  ]}
+                />
+              </FilterItem>
+            </FilterRow>
           }
         />
       )}

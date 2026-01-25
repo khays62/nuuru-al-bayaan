@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAcademicYears, invalidateAcademicYearsCache } from '../api/lookups';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import Select from '../../../shared/components/ui/Select.jsx';
 
 export default function AcademicYearSelect({
   value,
@@ -13,7 +14,7 @@ export default function AcademicYearSelect({
   id,
   name,
   refreshKey,
-  searchable = false,
+  searchable = true,
   maxVisible = 5,
   searchPlaceholder = 'Type to search…',
   ...rest
@@ -92,17 +93,17 @@ export default function AcademicYearSelect({
   }
 
   return (
-    <select
+    <Select
       id={id}
       name={name}
       {...rest}
       value={value}
       onChange={(e)=>onChange?.(e.target.value)}
       disabled={disabled || loading}
-      className={`px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${className}`}
+      className={className}
     >
       <option value="">{placeholder}</option>
       {items.map(y => <option key={y._id} value={y._id}>{y.yearName}</option>)}
-    </select>
+    </Select>
   );
 }

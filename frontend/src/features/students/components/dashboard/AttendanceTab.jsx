@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
 import LoadingState from '../../../../shared/components/feedback/LoadingState.jsx';
+import Card from '../../../../shared/components/ui/Card.jsx';
 import { useAuth } from '../../../../auth/AuthContext';
 import { getStudentAttendanceSelfWithOptions, getStudentSelfAttendanceWithOptions } from '../../../attendance/api/attendance';
 import { useQuery } from '@tanstack/react-query';
@@ -122,7 +123,7 @@ export default function AttendanceTab() {
   }, [items]);
 
   return (
-    <div className="bg-white p-4 rounded shadow with-print-header with-print-footer">
+    <Card className="p-4 with-print-header with-print-footer">
       <PrintHeader />
 
       <div className="mb-4">
@@ -216,6 +217,6 @@ export default function AttendanceTab() {
         </div>
       )}
       <PrintFooter />
-    </div>
+    </Card>
   );
 }

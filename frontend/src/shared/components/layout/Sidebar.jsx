@@ -9,7 +9,7 @@ import { useAuth } from '../../../auth/AuthContext';
 export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu }) {
   const navLinkClasses = ({ isActive }) =>
     `flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${
-      isActive ? 'bg-[color:var(--nb-color-brand)] text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+      isActive ? 'bg-(--nb-color-brand) text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
     }`;
 
   const { auth, hasPermission } = useAuth();
@@ -192,7 +192,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
                     to={child.path}
                     className={({ isActive }) =>
                       `flex items-center p-2 my-1 rounded-md transition-colors duration-200 ${
-                        isActive ? 'bg-[color:var(--nb-color-brand)] text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        isActive ? 'bg-(--nb-color-brand) text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                       }`
                     }
                     onClick={isMobile ? onMobileNavClick : undefined}

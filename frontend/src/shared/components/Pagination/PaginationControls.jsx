@@ -2,6 +2,7 @@
 // Maareynta bogagga: Prev/Next + tirada rows per page.
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Select from '../ui/Select.jsx';
 
 function buildPageItems(_current, total) {
   const totalPages = Math.max(1, Number(total) || 1);
@@ -53,7 +54,7 @@ export default function PaginationControls({
           type="button"
           disabled={p <= 1}
           onClick={() => onPage(p - 1)}
-          className="px-3 py-2 text-sm text-[color:var(--nb-color-brand)] hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed border-r border-slate-300"
+          className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed border-r border-slate-300"
           aria-label="Previous page"
           title="Previous"
         >
@@ -65,7 +66,7 @@ export default function PaginationControls({
             return (
               <span
                 key={`ellipsis-${idx}`}
-                className="px-3 py-2 text-sm text-[color:var(--nb-color-brand)] select-none border-r border-slate-300 flex items-center"
+                className="px-3 py-2 text-sm text-(--nb-color-brand) select-none border-r border-slate-300 flex items-center"
               >
                 …
               </span>
@@ -81,8 +82,8 @@ export default function PaginationControls({
               className={
                 'min-w-9 px-3 py-2 text-sm border-r border-slate-300 ' +
                 (active
-                  ? 'bg-[color:var(--nb-color-brand)] text-white'
-                  : 'bg-white text-[color:var(--nb-color-brand)] hover:bg-slate-50')
+                  ? 'bg-(--nb-color-brand) text-white'
+                  : 'bg-white text-(--nb-color-brand) hover:bg-slate-50')
               }
               aria-current={active ? 'page' : undefined}
             >
@@ -95,7 +96,7 @@ export default function PaginationControls({
           type="button"
           disabled={p >= tp}
           onClick={() => onPage(p + 1)}
-          className="px-3 py-2 text-sm text-[color:var(--nb-color-brand)] hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Next page"
           title="Next"
         >
@@ -134,7 +135,7 @@ export default function PaginationControls({
         {showRowsSelector ? (
           <div className="flex items-center gap-2">
             <span className="text-slate-600">Rows</span>
-            <select
+            <Select
               value={selectValue}
               onChange={(e) => {
                 const v = e.target.value;
@@ -147,14 +148,14 @@ export default function PaginationControls({
                 setAllSelected(false);
                 onLimit(parseInt(v, 10));
               }}
-              className="border border-slate-300 rounded-md px-2 py-1.5 text-sm bg-white"
+              className="w-auto px-2 py-1.5"
             >
               {limits.map((l) => (
                 <option key={String(l)} value={String(l).toLowerCase() === 'all' ? 'all' : l}>
                   {String(l).toLowerCase() === 'all' ? 'All' : l}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         ) : null}
       </div>

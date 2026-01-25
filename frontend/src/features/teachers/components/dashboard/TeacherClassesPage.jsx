@@ -217,7 +217,7 @@ export default function TeacherClassesPage() {
 									</div>
 
 									<div className="px-4 pb-4">
-										<div className="w-full text-center px-4 py-3 rounded-xl bg-[color:var(--nb-color-brand)] text-white font-semibold shadow-sm group-hover:opacity-95 transition-colors">
+										<div className="w-full text-center px-4 py-3 rounded-xl bg-(--nb-color-brand) text-white font-semibold shadow-sm group-hover:opacity-95 transition-colors">
 											View Students
 										</div>
 									</div>

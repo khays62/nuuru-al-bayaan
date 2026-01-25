@@ -1,6 +1,8 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
+import { cn } from '../../utils/cn';
+
 // A reusable Modal component with a professional backdrop blur effect.
 const Modal = ({
     isOpen,
@@ -20,27 +22,31 @@ const Modal = ({
     const canClose = typeof onClose === 'function';
     const handleBackdropClick = canClose && closeOnBackdrop ? onClose : undefined;
     const isTitlePrimitive = typeof title === 'string' || typeof title === 'number';
-    const closeBtnClass = closeButtonClassName || 'text-gray-500 hover:text-gray-800 p-1 rounded-full hover:bg-gray-100 transition-colors';
+    const closeBtnClass = closeButtonClassName || 'text-slate-500 hover:text-slate-800 p-1 rounded-(--nb-radius-sm) hover:bg-slate-100 transition-colors';
 
     return (
         // Main overlay container.
         // It now uses a semi-transparent background with a backdrop blur effect.
         // `transition-opacity` and `duration-300` create a smooth fade-in effect.
-        <div 
+        <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4 transition-opacity duration-300"
-            onClick={handleBackdropClick} // Optional: close by clicking the backdrop
+            onClick={handleBackdropClick}
         >
             {/* Modal Panel. 
                 `onClick={(e) => e.stopPropagation()}` prevents the modal from closing when clicking inside it.
                 `animate-scale-in` is a custom animation for a subtle zoom-in effect.
             */}
-            <div 
-                className={`bg-white rounded-lg shadow-xl w-full ${panelClassName || 'max-w-2xl'} transform transition-transform duration-300 scale-95 animate-scale-in modal-panel`}
+            <div
+                className={cn(
+                    'w-full transform transition-transform duration-300 scale-95 animate-scale-in modal-panel',
+                    'bg-white rounded-(--nb-radius-md) border border-slate-200 shadow-(--nb-shadow-md)',
+                    panelClassName || 'max-w-2xl'
+                )}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header */}
-                <div className={`p-4 border-b flex justify-between items-center modal-header ${headerClassName}`.trim()}>
-                    <h3 className={`${isTitlePrimitive ? 'text-lg font-semibold text-gray-800' : 'text-left w-full'} ${titleClassName}`.trim()}>{title}</h3>
+                <div className={cn('p-4 border-b border-slate-200 flex justify-between items-center modal-header', headerClassName)}>
+                    <h3 className={cn(isTitlePrimitive ? 'text-lg font-semibold text-slate-900' : 'text-left w-full', titleClassName)}>{title}</h3>
                     {showCloseButton && canClose ? (
                         <button 
                             onClick={onClose} 

@@ -6,6 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../../../auth/AuthContext';
 import DropdownSelect from '../../../../shared/components/ui/DropdownSelect.jsx';
+import Alert from '../../../../shared/components/ui/Alert.jsx';
+import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 
 import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { getSlotsWithOptions } from '../../../timetable/api/timetable';
@@ -21,7 +23,7 @@ const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
       className={
         `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
         (active
-          ? 'bg-[color:var(--nb-color-brand)] text-white border-[color:var(--nb-color-brand)] shadow-sm'
+          ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand) shadow-sm'
           : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:shadow')
       }
     >
@@ -703,10 +705,10 @@ export default function TeacherAttendanceChartsCard() {
         ) : !teacherRef ? (
           <div className="text-sm text-gray-600">No teacherRef found on your account.</div>
         ) : error ? (
-          <div className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-3">{error}</div>
+          <Alert variant="danger">{error}</Alert>
         ) : loading ? (
           <div className="space-y-2">
-            <div className="text-sm text-gray-600">Loading attendance…</div>
+            <UiLoadingState label="Loading attendance…" className="border-0 bg-transparent p-0 justify-start" />
             {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
           </div>
         ) : !canRun ? (

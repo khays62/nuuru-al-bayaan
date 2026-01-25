@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import TableShell from '../../../shared/components/table/TableShell.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import {
   getExamTemplateVersions,
@@ -377,7 +379,7 @@ export default function ExamSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-4 rounded-lg shadow space-y-4">
+      <Card className="p-4 space-y-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-40">
             <DropdownSelect
@@ -395,12 +397,10 @@ export default function ExamSettingsPage() {
 
           <div className="min-w-40">
             <label className="block text-xs text-gray-600 mb-1">Declared Total</label>
-            <input
+            <Input
               type="number"
               min={1}
-              className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-0 ${
-                draftValidation.sumExceedsTotal ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
-              }`}
+              className={draftValidation.sumExceedsTotal ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-slate-900'}
               value={templateTotalInput}
               onChange={(e) => setTemplateTotalInput(e.target.value)}
               disabled={savingTemplate || templateLocked}
@@ -624,7 +624,7 @@ export default function ExamSettingsPage() {
             </div>
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import Spinner from '../../../../shared/components/feedback/Spinner.jsx';
 import EmptyState from '../../../../shared/components/feedback/EmptyState.jsx';
 import TableShell from '../../../../shared/components/table/TableShell.jsx';
 import { getStudentHistory } from '../../../../api';
 import { useAuth } from '../../../../auth/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
+import Card from '../../../../shared/components/ui/Card.jsx';
+import Alert from '../../../../shared/components/ui/Alert.jsx';
+import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 
 function formatDate(value) {
   if (!value) return '-';
@@ -71,10 +73,14 @@ export default function EnrollmentsTab() {
   const error = historyQuery.isError ? 'Failed to load history' : null;
 
   return (
-    <div className="bg-white p-4 rounded shadow">
+    <Card className="p-4">
       <h2 className="text-lg font-medium mb-2">Enrollments</h2>
-      {loading && <div className="py-6 text-gray-600 flex items-center gap-2"><Spinner size={20} /> Loading…</div>}
-      {error && <div className="py-4 text-red-600 text-sm">{error}</div>}
+      {loading && (
+        <div className="py-6">
+          <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+        </div>
+      )}
+      {error && <Alert variant="danger" title={error} className="py-3" />}
       {!loading && !error && (
         items.length === 0 ? (
           <EmptyState title="No enrollment history" description="This student has no recorded enrollments yet." />
@@ -113,7 +119,7 @@ export default function EnrollmentsTab() {
           </TableShell>
         )
       )}
-    </div>
+    </Card>
   );
 }
 

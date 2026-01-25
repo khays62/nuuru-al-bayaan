@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../../../../auth/AuthContext';
 import { fetchJson } from '../../../../shared/api/http';
 import Button from '../../../../shared/components/ui/Button.jsx';
+import Card from '../../../../shared/components/ui/Card.jsx';
 import Input from '../../../../shared/components/ui/Input.jsx';
 
 function firstChar(s) {
@@ -56,7 +57,7 @@ export default function TeacherProfileCard({ user, summary }) {
 	const stats = summary || {};
 
 	return (
-		<div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
+		<Card className="rounded-xl border-blue-100 shadow-sm overflow-hidden">
 			<div className="px-4 py-2 bg-gray-800 text-white">
 				<div className="font-semibold">My Profile</div>
 				<div className="text-xs text-white/80 mt-0.5">Quick account info</div>
@@ -109,7 +110,7 @@ export default function TeacherProfileCard({ user, summary }) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</Card>
 	);
 }
 
@@ -285,7 +286,7 @@ export function TeacherProfilePage() {
 	const fullName = user?.fullName || 'Teacher';
 
 	return (
-		<div className="bg-white p-0 rounded-xl shadow overflow-hidden">
+		<Card className="p-0 rounded-xl overflow-hidden">
 			<div className="bg-white p-10 border-b border-gray-200">
 				<div className="flex flex-col items-center text-center gap-4">
 					<div className="w-28 h-28 rounded-full bg-white flex items-center justify-center shadow-inner ring-2 ring-gray-300">
@@ -312,7 +313,7 @@ export function TeacherProfilePage() {
 
 			<div className="p-6">
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-					<section className="rounded-xl border bg-white">
+					<Card className="rounded-xl shadow-none">
 						<div className="px-4 py-3 border-b">
 							<h3 className="text-base font-semibold">Personal Information</h3>
 							<p className="text-xs text-gray-500">Teacher account details</p>
@@ -323,9 +324,9 @@ export function TeacherProfilePage() {
 							<InfoItem label="Phone" value={user?.phone ?? '-'} />
 							<InfoItem label="Teacher Ref" value={user?.teacherRef ? String(user.teacherRef) : '-'} />
 						</div>
-					</section>
+					</Card>
 
-					<section className="rounded-xl border bg-white">
+					<Card className="rounded-xl shadow-none">
 						<div className="px-4 py-3 border-b">
 							<h3 className="text-base font-semibold">Account Summary</h3>
 							<p className="text-xs text-gray-500">Quick dashboard stats</p>
@@ -333,7 +334,7 @@ export function TeacherProfilePage() {
 						<div className="p-4">
 							<TeacherProfileCard user={user} summary={{}} />
 						</div>
-					</section>
+					</Card>
 				</div>
 
 				<div className="mt-6">
@@ -345,7 +346,7 @@ export function TeacherProfilePage() {
 					<span>If profile fields are missing, ask admin to update your teacher record.</span>
 				</div>
 			</div>
-		</div>
+		</Card>
 	);
 }
 

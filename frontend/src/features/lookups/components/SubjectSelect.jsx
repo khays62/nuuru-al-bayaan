@@ -1,8 +1,22 @@
 // SubjectSelect.jsx
 import React, { useEffect, useState } from 'react';
 import { getSubjects } from '../../subjects/api/subjects';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 
-export default function SubjectSelect({ value, onChange, disabled = false, className = '', placeholder = 'Any' }) {
+export default function SubjectSelect({
+  value,
+  onChange,
+  disabled = false,
+  className = '',
+  placeholder = 'Any',
+  id,
+  name,
+  searchable = false,
+  maxVisible = 5,
+  searchPlaceholder = 'Type to search…',
+  ...rest
+}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -22,10 +36,40 @@ export default function SubjectSelect({ value, onChange, disabled = false, class
     return () => { ignore = true; };
   }, []);
 
+  const options = (items || []).map((s) => ({
+    value: s._id,
+    label: s.name,
+  }));
+
+  if (searchable) {
+    return (
+      <SearchableSelect
+        value={value}
+        onChange={onChange}
+        options={options}
+        placeholder={placeholder}
+        maxVisible={maxVisible}
+        searchPlaceholder={searchPlaceholder}
+        disabled={disabled || loading}
+        className={className}
+        id={id}
+        name={name}
+        {...rest}
+      />
+    );
+  }
+
   return (
-    <select value={value} onChange={(e)=>onChange?.(e.target.value)} disabled={disabled || loading} className={`border rounded px-2 py-1 ${className}`}>
-      <option value="">{placeholder}</option>
-      {items.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-    </select>
+    <DropdownSelect
+      value={value}
+      onChange={onChange}
+      options={options}
+      placeholder={placeholder}
+      disabled={disabled || loading}
+      className={className}
+      id={id}
+      name={name}
+      {...rest}
+    />
   );
 }

@@ -111,7 +111,7 @@ export default function AttendanceStatusPills({
                   `px-2.5 py-1 text-xs font-medium ` +
                   (!isLast ? 'border-r border-gray-300 ' : '') +
                   (active
-                    ? 'bg-[color:var(--nb-color-brand)] text-white border-[color:var(--nb-color-brand)]'
+                    ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)'
                     : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')
                 }
               >
@@ -131,7 +131,7 @@ export default function AttendanceStatusPills({
           ref={moreBtnRef}
           className={
             `inline-flex items-center justify-center h-7 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-2 ` +
-            (isExtraSelected ? 'bg-[color:var(--nb-color-brand)] text-white border-[color:var(--nb-color-brand)]' : '') +
+            (isExtraSelected ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)' : '') +
             (disabled ? ' opacity-60 cursor-not-allowed' : '')
           }
         >

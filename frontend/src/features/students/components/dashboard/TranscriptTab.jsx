@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import Spinner from '../../../../shared/components/feedback/Spinner.jsx';
 import LoadingState from '../../../../shared/components/feedback/LoadingState.jsx';
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
@@ -9,6 +8,9 @@ import { getStudentHistory, getStudentTranscript } from '../../../../api';
 import { useAuth } from '../../../../auth/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
+import Card from '../../../../shared/components/ui/Card.jsx';
+import Alert from '../../../../shared/components/ui/Alert.jsx';
+import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 
 export default function TranscriptTab() {
   const { studentId: paramStudentId } = useParams();
@@ -108,7 +110,7 @@ export default function TranscriptTab() {
   const overallSummary = overallSummaryQuery.data || null;
 
   return (
-    <div className="bg-white p-4 rounded shadow with-print-header with-print-footer">
+    <Card className="p-4 with-print-header with-print-footer">
       <PrintHeader />
 
       <div className="mb-4">
@@ -117,8 +119,12 @@ export default function TranscriptTab() {
           <div className="text-xs text-blue-800/80 mt-0.5">Your results by level</div>
         </div>
       </div>
-      {enrLoading && <div className="py-6 text-gray-600 flex items-center gap-2"><Spinner size={20} /> Loading…</div>}
-      {enrError && <div className="py-4 text-red-600 text-sm">{enrError}</div>}
+      {enrLoading && (
+        <div className="py-6">
+          <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+        </div>
+      )}
+      {enrError && <Alert variant="danger" title={enrError} className="py-3" />}
       {!enrLoading && !enrError && (
         <div className="space-y-4">
           {enrollments.length === 0 && (
@@ -135,13 +141,13 @@ export default function TranscriptTab() {
           )}
 
           {activeTab === 'summary' ? (
-            <div className="p-4 border rounded-lg">
+            <Card className="p-4 shadow-none">
               <div className="flex items-center justify-between bg-gray-50 text-gray-700 border border-gray-200 px-3 py-2 rounded">
                 <div className="text-sm font-medium">Overall Summary</div>
-                {overallLoading && <div className="text-xs text-gray-500 flex items-center gap-2"><Spinner size={14} /> Loading…</div>}
+                {overallLoading && <span className="text-xs text-slate-500">Loading…</span>}
               </div>
               <div className="mt-3">
-                {overallError && <div className="py-2 text-red-600 text-sm">{overallError}</div>}
+                {overallError && <Alert variant="danger" title={overallError} className="mt-2" />}
                 {(() => {
                   const overallTotal = overallSummary?.overallTotal ?? 0;
                   const weightedAvg = overallSummary?.weightedAverage ?? 0;
@@ -164,14 +170,14 @@ export default function TranscriptTab() {
                   );
                 })()}
               </div>
-            </div>
+            </Card>
           ) : activeEnrId && (() => {
             const en = activeEnr;
             if (!en) return null;
             const t = txQuery.data;
             const orderedExamTypes = t ? orderExamTypes(t.examTypes) : [];
             return (
-              <div className="p-4 border border-blue-100 rounded-lg bg-white shadow-sm">
+              <Card className="p-4 border-blue-100 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 bg-blue-50 text-blue-900 border border-blue-100 px-3 py-3 rounded">
                   <div className="text-sm">
                     <span className="font-semibold text-blue-900">AY:</span>{' '}
@@ -203,7 +209,7 @@ export default function TranscriptTab() {
                     />
                   )}
                   {txError && !t && (
-                    <div className="py-4 text-red-600 text-sm">{txError}</div>
+                    <Alert variant="danger" title={txError} className="mt-2" />
                   )}
                   {t && (
                     t.subjects?.length === 0 || t.examTypes?.length === 0 ? (
@@ -239,13 +245,13 @@ export default function TranscriptTab() {
                     )
                   )}
                 </div>
-              </div>
+              </Card>
             );
           })()}
         </div>
       )}
       <PrintFooter />
-    </div>
+    </Card>
   );
 }
 
@@ -426,9 +432,9 @@ function FixedMenu({ btnRef, setMenuPos, menuPos, children }) {
   }, [btnRef, setMenuPos]);
   const style = menuPos ? { position: 'fixed', top: `${menuPos.top}px`, left: `${menuPos.left}px`, width: `${menuPos.width}px`, zIndex: 1000 } : { display: 'none' };
   return (
-    <div style={style} className="bg-white border rounded shadow-lg">
+    <Card style={style} className="shadow-lg">
       {children}
-    </div>
+    </Card>
   );
 }
 

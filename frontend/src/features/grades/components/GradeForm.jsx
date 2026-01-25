@@ -264,7 +264,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
 
       {showConfirm && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-md p-5 shadow-lg w-full max-w-sm">
+          <div className="bg-white border border-slate-200 rounded-(--nb-radius-md) p-5 shadow-(--nb-shadow-md) w-full max-w-sm">
             <h4 className="font-semibold mb-2">Change Grade?</h4>
             <p className="text-sm text-gray-600 mb-4">If you change the grade, all previously selected subjects will be cleared. Are you sure?</p>
             <div className="flex justify-end gap-2">

@@ -7,7 +7,7 @@ export default function Tabs({ value, options, onChange, className = '', tone = 
     },
     blue: {
       container: 'border-blue-200 bg-blue-50 shadow-sm',
-      active: 'bg-[color:var(--nb-color-brand)] text-white border-[color:var(--nb-color-brand)]',
+      active: 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)',
       inactive: 'bg-white text-blue-800 border-blue-200 hover:bg-blue-50',
     },
   };

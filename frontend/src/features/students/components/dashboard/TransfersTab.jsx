@@ -2,13 +2,15 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
-import Spinner from '../../../../shared/components/feedback/Spinner.jsx';
 import EmptyState from '../../../../shared/components/feedback/EmptyState.jsx';
 import { getStudentTransfers } from '../../../../api';
 import TransferTimeline from '../TransferTimeline';
 import { useAuth } from '../../../../auth/AuthContext';
 import { studentKeys } from '../../queryKeys';
 import Button from '../../../../shared/components/ui/Button.jsx';
+import Card from '../../../../shared/components/ui/Card.jsx';
+import Alert from '../../../../shared/components/ui/Alert.jsx';
+import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 
 export default function TransfersTab() {
   const { studentId: paramStudentId } = useParams();
@@ -32,20 +34,20 @@ export default function TransfersTab() {
   const error = transfersQuery.isError ? 'Failed to load transfers' : null;
 
   return (
-    <div className="bg-white p-4 rounded shadow">
+    <Card className="p-4">
       <h2 className="text-lg font-medium mb-2">Transfers</h2>
       {loading && (
-        <div className="py-6 text-gray-600 flex items-center gap-2">
-          <Spinner size={20} /> Loading…
+        <div className="py-6">
+          <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
         </div>
       )}
       {error && (
-        <div className="py-4 text-red-600 text-sm flex items-center gap-3">
+        <Alert variant="danger" className="py-3 flex items-center justify-between gap-3">
           <span>{error}</span>
           <Button type="button" size="sm" variant="brand" onClick={() => transfersQuery.refetch()}>
             Retry
           </Button>
-        </div>
+        </Alert>
       )}
       {!loading && !error && (
         items.length === 0 ? (
@@ -54,6 +56,6 @@ export default function TransfersTab() {
           <TransferTimeline logs={items} />
         )
       )}
-    </div>
+    </Card>
   );
 }
