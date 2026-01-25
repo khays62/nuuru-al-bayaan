@@ -78,7 +78,7 @@ Privileges waa la ballaarin karaa mustaqbalka.
 - **API Endpoints:**
 	- /api/users (CRUD, privileges)
 	- /api/auth/login, /api/auth/me
-	- /api/students, /api/gradesections, /api/subjects, iwm (CRUD, privilege check)
+	- /api/students, /api/grades/sections, /api/subjects, iwm (CRUD, privilege check)
 - **Frontend:**
 	- UserManagementPage: Add/Edit User (checkbox group), Table, Search, Sort
 	- Action buttons (Add/Edit/Delete) waxa la xakameeyaa privileges

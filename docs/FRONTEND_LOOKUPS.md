@@ -7,7 +7,7 @@ Qoraankan waxa uu sharxayaa components‑ka dib‑loogu‑adeego ee filtarrada (
 - `AcademicYearSelect` — soo bandhiga Academic Years
 - `GradeSelect` — soo bandhiga Grades
 - `ShiftSelect` — soo bandhiga Shifts
-- `GradeSectionSelect` — soo bandhiga Sections iyadoo ku xirnaanaysa AY + Grade + Shift
+- `GradeSectionSelect` — soo bandhiga Sections iyadoo ku xirnaanaysa Grade + Shift (AY looma baahna si sections loo soo qaado)
 
 Props muhiim ah (dhamaan waxay taageeraan):
 - `value` (string) iyo `onChange(newValue: string)` — xakamaynta xulashada
@@ -43,7 +43,8 @@ Tusaale (toolbar filters):
 />
 ```
 
-Fiiro: `GradeSectionSelect` wuxuu si toos ah u xiraa AY + Grade + Shift; haddii mid ka maqan yahay, wuu noqdaa disabled ilaa saddexdaas la xulo.
+Fiiro: `GradeSectionSelect` wuxuu si toos ah u xiraa Grade + Shift; haddii mid ka maqan yahay, wuu noqdaa disabled ilaa labadaas la xulo.
+  - `academicYearId` waxa uu yahay context (bogagga Results/Exams/Transcript), balse sections fetch-ka lama xiriiriyo AY.
 
 UX: toolbars‑ka waa placeholder‑only (labels muuqda ma jiraan) si ay ula egyihiin `StudentPage`. Si a11y loo hubiyo, had iyo jeer ku dar `aria-label` ama `aria-labelledby`.
 

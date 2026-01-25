@@ -6,16 +6,16 @@ La cusboonaysiiyay: 22 Oct 2025
 
 ## Dulmar
 - Dufcad = magac kooxeed (batch) loo wado ardayda inta ay ka socdaan heerarka dugsiga.
-- Dufcad waxaa lagu xiriyaa GradeSection (GS); ardayga ku jira GS wuu qaataa cohort-kaas.
+- Dufcad waxaa lagu keydiyaa Enrollment-ka ardayga (cohortId). Waxaa loo adeegsadaa filter/warbixin iyo studentId generation.
 - Dufcad waa la abuuri karaa wakhti kasta (bilow, mid-year, final-year) iyadoo ku xiran siyaasadda maamulka.
 
 ---
 
 ## Sida ay u shaqeyso
-- Assignment: GS → cohortId (source of truth); Enrollment → cohortId (denormalized) si filter/warbixin u sahlanaato.
-- Promotion: cohort ISMA beddelo; target GS waa inuu la mid noqdaa cohort-ka student-ka (ama cohort-less) — eeg PROMOTION.md.
-- Transfer: ardaygu wuxuu qaadanayaa cohort-ka target GS (overwrite).
-- Admin Update: Haddii cohortId laga beddelo GS oo arday active jiraan → samee resync si `Enrollment.cohort` loogu waafajiyo cohort-ka GS.
+- Assignment: cohort-ka waxaa la siiyaa marka Enrollment la abuuro (POST /api/students), waxaana hadda ku jira policy ah in cohortId uu REQUIRED yahay.
+- Promotion: cohort badanaa wuu raacaa Enrollment-ka cusub (default: preserve), iyadoo policy-ga promotion logic uu go'aaminayo.
+- Transfer: cross-AY transfer wuxuu copy-gareeyaa cohort-ka enrollment-kii hadda (si dufcadda u sii socoto) haddii policy-gaas la doorto.
+- Admin Update: Resync-cohort ee GradeSection hadda ma qaado cohort (GS cohort ma jiro); action-ku wuxuu u dejinayaa `Enrollment.cohort = null` ee active enrollments ee GS-kaas (haddii loo baahdo in “nadiifin” la sameeyo).
 - Graduation: marka terminal grade (tusaale Level 10) la gaaro year-end → Student.status=Graduated; TransferLog(type='GRADUATION', cohortId).
 
 ### Cohort + GS badan (Sections/Shifts)
@@ -27,10 +27,10 @@ La cusboonaysiiyay: 22 Oct 2025
 
 ## Model kooban
 - Cohort: { name, status, (ikhtiyaar: startAcademicYear, seq, notes) }
-- GradeSection: { gradeId, section, academicYear, shift, subjects[], capacity, cohortId? }
-- Enrollment: { studentId, gradeSectionId, academicYearId, gradeId, shiftId, cohortId?, sequenceInYear(1|2), status, joinedAt, leftAt }
-	- Unique composite index lagu taliyay: (academicYear, shiftId, gradeId, section) si looga hortago GS badan oo isku mid ah.
-- Student: { cohortId?, status }
+- GradeSection: { gradeId, section, shift, subjects[], capacity? }
+- Enrollment: { studentId?, gradeSectionId, academicYearId, gradeId, shiftId, cohortId, sequenceInYear(1|2), status, joinedAt, leftAt }
+	- Unique: (student, academicYear, sequenceInYear)
+- Student: { studentId, status }
 
 Index talo: unique(name[, startAcademicYear]) iyo filter(status).
 
@@ -42,10 +42,9 @@ Index talo: unique(name[, startAcademicYear]) iyo filter(status).
 ---
 
 ## Denormalization & Sync
-- Source of truth: `GradeSection.cohort`.
-- `Enrollment.cohort`: waxa lagu dhigaa markasta oo enrollment la abuuro ama la wareejiyo (promotion/transfer) iyadoo laga nuugayo `gradeSection.cohort`.
-- Haddii `GradeSection.cohort` isbeddelo, samee “resync” batch: update all active enrollments of that GS → set `enrollment.cohort = gs.cohort`.
-- Note: resync ma aha transfer; waxay kaliya hagaajinaysaa calaamadda cohort si warbixinaha u saxnaadaan.
+- Source of truth: `Enrollment.cohort`.
+- `Enrollment.cohort` waxa la dhigaa marka enrollment la abuuro (students create/enroll flows), ama marka promotion/transfer uu sameeyo enrollment cusub.
+- Resync endpoint-ka GS wuxuu u adeegaa kaliya nadiifin: `POST /api/grades/sections/:id/resync-cohort` → set `Enrollment.cohort = null` (active) ee GS-kaas.
 
 ---
 
@@ -60,11 +59,11 @@ Index talo: unique(name[, startAcademicYear]) iyo filter(status).
 	- Body: { name?, startAcademicYear?, status?, notes? }
 	- 200: updated doc
 - DELETE /api/cohorts/:id
-	- Guard: 409 if referenced by any GradeSection/Enrollment
-- GET /api/grade-sections?ay=&grade=&shift=&section=&cohort=
-	- Includes cohort in payload; unique guard on (ay,shift,grade,section)
-- POST /api/grade-sections/:id/resync-cohort
-	- Action: Updates active enrollments of this GS → set enrollment.cohort = gs.cohort
+	- Guard: 409 if referenced by any Enrollment
+- GET /api/grades/sections?grade=&shift=&section=
+	- GradeSection list (AY-agnostic)
+- POST /api/grades/sections/:id/resync-cohort
+	- Action: Updates active enrollments of this GS → set enrollment.cohort = null
 - GET /api/enrollments?cohort=&status=&page=&limit=
 	- For listings and reports.
 
@@ -74,23 +73,21 @@ Index talo: unique(name[, startAcademicYear]) iyo filter(status).
 	- Table: Name, Status, Start AY?, CreatedAt, Actions (edit, archive, delete if safe).
 	- Modal (Create/Edit): name (required), start AY (optional), status, notes.
 - GradeSection Form (existing):
-	- Add Cohort selector (searchable dropdown fed from GET /api/cohorts?status=active).
-	- On save, GS stores cohort; server guard ensures uniqueness of GS identity.
+	- GS cohort uma laha (AY/Cohort waxay ku jiraan Enrollment).
+	- Sidaa darteed cohort selection waxa ay ka dhacdaa Student Registration / Promotion (Enrollment).
 - Student List/Profile:
 	- Show current cohort chip from active Enrollment.cohort; filter by cohort in list view.
 - Promotion Dialog:
-	- Show “Cohort (preserved)” and target GS preview; show warning if mismatch; if missing GS, show auto-create with preserved cohort.
+	- Show “Cohort (preserved)” and target GS preview; if missing GS, show auto-create (subjects ka imanaya Grade curriculum).
 
 ## Edge kooban
-- COHORT_MISMATCH_TARGET (promotion): target GS cohort ka duwan.
-- COHORT_TARGET_MISSING: lama helin GS isla cohort (haddii auto-provision OFF/FAIL).
 - CURRICULUM_MISSING_FOR_GRADE: curriculum ee Grade target ma dhamma.
-- Delete guard: cohort lama tirtiri karo haddii students/GS ay ku xiran yihiin.
+- Delete guard: cohort lama tirtiri karo haddii enrollments ay ku xiran yihiin.
 
 ---
 
 ## Guul (Success)
-- Promotion preserve Cohort; Transfer overwrite Cohort sida GS.
-- Graduation qabsanaysa cohort sax ah (GS-kii ugu dambeeyay) oo leh log.
+- Promotion preserve Cohort; Transfer default preserve Cohort.
+- Graduation qabsanaysa cohort sax ah (Enrollment-ka ugu dambeeyay) oo leh log.
 - Auto-provision waxay ka ilaalisaa target-missing iyadoo ixtiraameysa xeerarka.
 

@@ -28,7 +28,7 @@ Input body:
 
 Tallaabooyinka:
 1. Xaqiiji IDs: studentId iyo gradeSectionId sax ma yihiin?
-2. Soo hel target GradeSection + populate (academicYear, grade, shift). Haddii la waayo → 404.
+2. Soo hel target GradeSection + populate (grade, shift). Haddii la waayo → 404.
 3. Haddii target.capacity > 0 → tirso active enrollments ee halkaas; buuxo? → 409.
 4. Dooro enrollment: explicit enrollmentId ama kii ugu dambeeyay ee ardayga.
 5. Xeer: enrollment.status waa inuu yahay 'active' → haddii kale 400.
@@ -39,7 +39,7 @@ Tallaabooyinka:
   - Haddii isla section la doortay → no-op response (wax isbeddel ah ma jiro).
   - Update enrollment: gradeSection, grade, shift → keydi.
 8. Scores relink (kaliya haddii AY + Grade isku mid yihiin):
-   - EnsureExams: abuuri exams per examType ee target haddii aysan jirin.
+  - EnsureExams: abuuri exams per examType (templateVersion active/default) ee target haddii aysan jirin.
    - Hel exams-ka source vs target (isla AY, sections kala duwan) → map by examType → ExamScore.updateMany: exam:sourceExam → exam:targetExam.
 9. Audit: TransferLog.create(). Haddii A→B hore u jirto oo hadda B→A la sameeyay → log cusub wuxuu helaa revertOf, labadana reverted=true.
 10. Response: { message, enrollment, transferLog }.
@@ -84,7 +84,7 @@ Tallaabooyinka:
 ---
 
 ## 6) Data Models (Quick Snapshot)
-- Enrollment: { student, gradeSection, academicYear, grade, shift, status: 'active'|'inactive'|'transferred'|'promoted'|'graduated'|'withdrawn', joinedAt, leftAt }
+- Enrollment: { student, gradeSection, academicYear, grade, shift, cohort?, sequenceInYear, status: 'active'|'inactive'|'transferred'|'promoted'|'graduated'|'withdrawn', joinedAt, leftAt }
 - TransferLog: { student, fromGradeSection, toGradeSection?, byUser?, date, reason?, notes?, reverted, revertOf? }
 - Exam/ExamType/ExamScore: relink waxay ku saleysan tahay examType mapping ee isla AY.
 

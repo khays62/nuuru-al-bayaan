@@ -122,10 +122,10 @@ API Layer:
 
 | Endpoint | Change | Note |
 |---|---|---|
-| POST /api/grade-sections | Remove AY/Cohort fields | Body: { gradeId, shiftId, section, capacity?, subjects[] }
-| PUT /api/grade-sections/:id | Remove AY/Cohort fields | Same as create |
-| GET /api/grade-sections | AY filter no longer native | Optional future: counts by AY via Enrollment |
-| POST /api/students | Accept embedded enrollment | Body includes { enrollment: { academicYearId, cohortId?, gradeSectionId } } |
+| POST /api/grades/sections | Remove AY/Cohort fields | Body: { gradeId, shiftId, section, capacity?, subjects[] } |
+| PUT /api/grades/sections/:id | Remove AY/Cohort fields | Same as create |
+| GET /api/grades/sections | AY filter no longer native | Optional future: counts by AY via Enrollment |
+| POST /api/students | Require AY + Cohort at intake | Body includes { academicYearId, cohortId, gradeSectionId, ...studentFields } |
 | POST /api/promotions/execute | Reuse GS by grade/shift/section | Auto‑create if missing; AY moves forward |
 | Exams endpoints | No change | Ensure queries use Enrollment, not GS.AY |
 

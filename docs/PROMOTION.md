@@ -14,10 +14,10 @@ Last updated: 27 Nov 2025
 
 ## Qeexitaan muhiim ah
 - Grade: Heerka waxbarasho (Level 1 → Level 10); wuxuu siddaa curriculum (Associated Subjects).
-- GradeSection (GS): isku darka AcademicYear, Shift, Grade, Section, iyo Subjects.
-  - Aqoonsiga GS waa isku-dar (AY, Shift, Grade, Section). Marka Grade ama AY isbeddelo → GS cusub ayuu noqonayaa (inkastoo Section/Shift/Cohort ay ahaadaan sidii hore).
-- Enrollment: mar walba hal enrollment oo active; waxa kale oo uu sita `cohort` (denormalized) oo laga qaato GS.
-- Cohort (Dufcad): magac kooxeed ku xiran GS; ardaygu wuxuu ka dhaxlaa cohort-ka GS-ka uu ku qoran yahay (waxaa lagu stamp gareeyaa Enrollment.cohort).
+- GradeSection (GS): isku darka Shift, Grade, Section, iyo Subjects (GS waa reusable across sanadaha).
+  - Fiiro: AcademicYear iyo Cohort hadda waxay ku jiraan Enrollment, ma aha GS.
+- Enrollment: mar walba hal enrollment oo active; waxa kale oo uu sita `academicYear` iyo `cohort`.
+- Cohort (Dufcad): magac kooxeed ku xiran AcademicYear; waxaa lagu kaydiyaa `Enrollment.cohort` si filters/warbixin u fududaadaan.
 
 ---
 
@@ -25,7 +25,7 @@ Last updated: 27 Nov 2025
 - Invariants: Section iyo Shift isma beddelaan; 1 active enrollment had iyo jeer; Cohort preserve.
 - Mid-Year (seq 1 → seq 2):
   - Grade → ++ (tusaale: Level 1 → Level 2) isla AcademicYear.
-  - Close old enrollment → Create new enrollment to Target GS (AY: isla sanadka, Section/Shift/Cohort sidii).
+  - Close old enrollment → Create new enrollment to Target GS (AcademicYear isla sanadka, Cohort preserve).
 - Year-End (non-terminal):
   - Grade → ++, AcademicYear → AY+1; Section/Shift/Cohort sidii.
   - Close old → Create new enrollment to Target GS.
@@ -33,39 +33,38 @@ Last updated: 27 Nov 2025
   - Graduation: Close enrollment (status='graduated'). Student.status policy waxay ku xirnaan kartaa deployment-ka (haddii la doonayo in si toos ah loo dhigo “Graduated”).
   - Ma abuurayo enrollment cusub.
 
-Xusuusin: Inkastoo Section/Shift/Cohort aysan isbeddelayn, promotion-ku had iyo jeer wuxuu tilmaamayaa GS KALE (sababtoo ah Grade/AY ayaa isbeddelaya). Taasi waa sababta aan u xirno enrollment-kii hore una abuurno enrollment cusub.
+Xusuusin: Inkastoo Section/Shift/Cohort aysan isbeddelayn, promotion-ku had iyo jeer wuxuu tilmaamayaa GS KALE (sababtoo ah Grade ayaa isbeddelaya). Taasi waa sababta aan u xirno enrollment-kii hore una abuurno enrollment cusub.
 
 ---
 
 ## Kaydinta iyo Taariikhda (Enrollment)
-- GS waa document la aqoonsado (AY, Shift, Grade, Section). Markuu Grade ama AY isbeddelo → GS cusub ayuu noqdaa.
+- GS waa document la aqoonsado (Shift, Grade, Section). Markuu Grade isbeddelo → GS cusub ayuu noqonayaa.
 - Taariikhda waxaa lagu hayaa Enrollment:
   - Close old enrollment (effectiveTo);
   - Create new enrollment oo tilmaamaya target GS (effectiveFrom).
-  - Stamp `enrollment.cohort = targetGS.cohort` si warbixin/filters ay u fududaadaan.
+  - Set `enrollment.cohort` (policy-ga promotion-ku go'aamiyo: preserve ama new).
 - Tani waxay damaanad qaadaysaa in taariikhda safarka ardayga (timeline) la raaci karo fasal-illaa-fasal, iyadoo aan wax ka beddel lagu samayn GS-kii hore.
 
 Admin Flow kooban (intake → safar):
-- Bilowga: Admin wuxuu abuuraa GS-yada Level 1 ee sanadka (AY) per Shift/Section, waxa la siiyaa Cohort (tusaale Dufcada 1aad) iyo capacity.
-- Inta kale: Promotion ayaa u qaabilsan Level 2…10 (AY kama beddelanto mid-year; AY+1 at year-end). Haddii target GS maqan yahay → auto-create (haddii policy ON).
-- Intake cusub (Dufcada 2aad): Admin wuxuu si gaar ah u abuuraa GS-yada Level 1 (AY) per Shift/Section oo ku magacaaban Cohort cusub; tan kama saameyneyso dufcadihii hore ee sii socda.
+- Bilowga: Admin wuxuu abuuraa GS-yada Level 1 (Grade+Shift+Section) hal mar; waxaa la dejin karaa capacity iyo subjects.
+- Sanad walba: Admin wuxuu abuuraa AcademicYear cusub + Cohort cusub (AY-gaas).
+- Intake: Add Student → Enrollment cusub (AY + Cohort + GS la doortay).
+- Promotion: u qaabilsan Level 2…10 (AY kama beddelanto mid-year; AY+1 at year-end). Haddii target GS maqan yahay → auto-create (haddii policy ON).
 
 ---
 
 ## Cohort (Dufcad) — Iswaafajin
-- Promotion: Cohort ISMA beddelo; target GS waa inuu leeyahay isla cohort (ama cohort-less).
-- Transfer: Waxaa go'aamiya target GS (overwrite) — ardaygu toos ayuu u qaataa cohort-ka GS-ka cusub (ku saabsan Transfer, eeg `TRANSFER.md`).
-- Admin Update: Haddii cohortId laga beddelo GS oo arday active jiraan, samee resync si `Enrollment.cohort` loogu waafajiyo cohort-ka GS.
+- Promotion: Cohort ISMA beddelo (waxaa lagu ilaalinayaa Enrollment.cohort).
+- Transfer: Cohort default waa preserve (Enrollment.cohort lama beddelo transfer-ka caadiga ah).
+- Admin Update: Cohort waxa lagu maareeyaa Enrollment/AY context; GS cohort uma laha.
 
 ---
 
 ## Auto-Create GradeSection (Target maqan)
 - Haddii target GS uusan jirin xilliga promotion-ka, server-ku WAA UU ABUURI KARAA GS cusub isagoo ilaalinaya:
   - Section/Shift: sidii,
-  - Cohort: isla cohort-kii ardayga (promotion preserve),
-  - AY: Mid-Year → isla AY; Year-End → AY+1,
   - Subjects: laga soo qaado Associated Grades ee Grade-ka la beegsanayo.
-  - Enrollment cusub: stamp `cohort = targetGS.cohort`.
+  - Enrollment cusub: wuxuu qaataa AY-ga target-ka (mid-year: isla AY, year-end: AY+1) iyo Cohort preserve.
 - Haddii curriculum-ka (Associated Subjects ee Grade-ka target) uusan dhammaystirnayn → lama abuuri karo → error: CURRICULUM_MISSING_FOR_GRADE.
 
 ---
@@ -73,13 +72,11 @@ Admin Flow kooban (intake → safar):
 ## Khaladaad (Error Codes)
 - ACTIVE_ENROLLMENT_MISSING
 - GRADESECTION_MISSING (haddii auto-create OFF ama fashilmo)
-- COHORT_MISMATCH_TARGET (target GS cohort kala duwan — promotion waa preserve)
-- COHORT_TARGET_MISSING (lama helin GS isla cohort — marka auto-create OFF/FAIL)
 - CAPACITY_FULL (haddii la adeegsado)
 - SHIFT_CHANGE_NOT_ALLOWED (shift beddelid = Transfer)
 - TERMINAL_GRADE_GRADUATION_ONLY (terminal year-end → graduation kaliya)
 - CURRICULUM_MISSING_FOR_GRADE (curriculum-ka Grade target ma dhammaystirna)
-- MULTIPLE_TARGET_GS (waxaa jira GS badan oo buuxinaya (AY, Shift, Grade, Section, Cohort) — waa in index-ka unique laga ilaaliyo tan).
+- MULTIPLE_TARGET_GS (waxaa jira GS badan oo buuxinaya (Shift, Grade, Section) — waa in index-ka unique laga ilaaliyo tan).
 
 ---
 
@@ -101,28 +98,11 @@ Admin Flow kooban (intake → safar):
 ---
 
 ## API faahfaahin (Server)
-- POST /api/students/:studentId/promote
-  - Body: {
-      timing: 'mid-year' | 'year-end',
-      autoCreate?: boolean
-    }
-  - Server algorithm (kooban):
-    1) Load active enrollment E (guard ACTIVE_ENROLLMENT_MISSING)
-    2) Determine target Grade (E.grade+1) and AY (same if mid-year, +1 if year-end)
-    3) Resolve target GS by (AY, E.shift, targetGrade, E.section, cohort preserve)
-    4) If missing:
-       - if autoCreate: create GS with subjects from targetGrade curriculum and cohort = E.cohort
-       - else 409 (COHORT_TARGET_MISSING | GRADESECTION_MISSING)
-    5) Close E (leftAt=now, status='promoted');
-       Create E2 with sequenceInYear (2 mid-year else 1 next AY), cohort=targetGS.cohort, status='active'
-    6) Return { fromGS, toGS, enrollment: E2 }
-  - Responses:
-    - 200 { fromGS, toGS, enrollment }
-    - 409 { code, message }
-- GET /api/students/:studentId/enrollments
-  - Returns timeline (recent first) with GS + cohort populated
-- GET /api/grade-sections?ay=&grade=&shift=&section=&cohort=
-  - For client-side discovery of potential targets (optional)
+- Promotions waxay ku socdaan endpoints-ka cusub:
+  - GET /api/promotions/preview
+  - POST /api/promotions/execute
+
+Fiiro: Promotion logic wuxuu ka shaqeeyaa Enrollment-ka (academicYear + cohort) iyo GradeSection (grade+shift+section).
 
 ### Promotion (bulk)
 - GET /api/promotions/preview

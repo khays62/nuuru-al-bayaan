@@ -12,7 +12,7 @@ Qoraalkan wuxuu sharxayaa qaabka, xogta (models), API-yada, UI/flow, iyo xuquuqd
 
 ## Eray-bixin
 - **Roster:** Liiska ardayda ee fasal (GradeSection) xilligan AY-ga. Wuxuu ka yimaadaa `Enrollment` (student ↔ AY+GS). Default: arday **active**.
-- **Teacher Assignment:** Xiriirka macallin ↔ AY+GS+Subject, qeexaya fasalka iyo maaddada uu hayo (main/assistant).
+- **Teacher Assignment:** Xiriirka macallin ↔ GS+Subject, qeexaya fasalka iyo maaddada uu hayo (main/assistant).
 - **Timetable:** Jadwal usbuucle: maalinta, waqtiga, room, subject, teacher, GS.
 - **Lesson Plan:** Qorshe cashar taariikhaysan: mawduuc, ujeeddo, agab, qoraal.
 - **Attendance Record:** Diiwaan xaadirin (date, period, student, status, markedBy).
@@ -21,17 +21,18 @@ Qoraalkan wuxuu sharxayaa qaabka, xogta (models), API-yada, UI/flow, iyo xuquuqd
 - **Teacher**
   - `fullName`, `employeeId`, `email`, `phone`, `status` (active/inactive), `specializations` (subjects), `shifts`.
 - **TeacherAssignment**
-  - `teacher`, `academicYear`, `gradeSection`, `subject`, `role` (main/assistant), `createdAt`.
-  - Index: `(teacher, academicYear, gradeSection, subject)`.
+  - `teacher`, `gradeSection`, `subject`, `role` (main/assistant), `createdAt`.
+  - Index: `(teacher, gradeSection, subject)`.
 - **Timetable**
-  - `academicYear`, `gradeSection`, `subject`, `teacher`, `dayOfWeek` (0-6), `startTime`, `endTime`, `room`, `periodCode`.
-  - Index: `(teacher, academicYear, dayOfWeek, startTime)`.
+  - `gradeSection`, `subject`, `teacher`, `isBreak`, `dayOfWeek` (0-6), `startTime`, `endTime`, `room`.
+  - Index: `(teacher, dayOfWeek, startTime)`.
 - **LessonPlan**
   - `teacher`, `academicYear`, `gradeSection`, `subject`, `date`, `topic`, `objectives`, `materials`, `notes`, `attachments?`.
   - Index: `(teacher, academicYear, gradeSection, subject, date)`.
 - **AttendanceRecord**
-  - `date`, `academicYear`, `gradeSection`, `periodCode?`, `student`, `status` (present/absent/late/excused), `markedBy` (teacher), `remarks`.
-  - Index: `(academicYear, gradeSection, date, periodCode, student)`; `(markedBy, date)`.
+  - `date`, `gradeSection`, `periodCode?`, `student`, `status` (present/absent/late/excused/...), `markedBy` (Teacher optional).
+  - Metadata: `markedByUser`, `markedByRole`, `updatedByUser`, `updatedByRole`, `remarks`.
+  - Index: `(gradeSection, date, periodCode, student)`.
 
 Ku tiirsanaanta jira: `Enrollment`, `GradeSection` (leh `subjects`), `Subject`, `AcademicYear`, `Student`.
 
@@ -40,16 +41,17 @@ Ku tiirsanaanta jira: `Enrollment`, `GradeSection` (leh `subjects`), `Subject`, 
   - `GET /api/teachers?status&subject&shift`
   - `POST /api/teachers`, `PATCH /api/teachers/:id`, `DELETE (soft)`
 - **Assignments**
-  - `GET /api/teachers/:id/assignments?ay`
-  - `POST /api/teachers/:id/assignments` ({ ayId, gsId, subjectId })
+  - `GET /api/teachers/:id/assignments`
+  - `POST /api/teachers/:id/assignments` ({ gsId, subjectId, role? })
   - `DELETE /api/teachers/:id/assignments/:assignmentId`
 - **Timetable**
-  - `GET /api/teachers/:id/timetable?ay&weekStart`
+  - `GET /api/timetable/slots?gs&day&from&to&mine=1`
+    - Teacher scope: haddii `mine=1` → slots-ka teacher-ka; haddii kale → timetable-ka fasallada uu assigned u yahay.
 - **Roster**
   - `GET /api/teachers/:id/roster?ay&gs` (default active students)
 - **Attendance**
-  - `POST /api/attendance/mark` → `{ date, ayId, gsId, periodCode, markedBy, records:[{studentId,status,remarks}] }`
-  - `GET /api/attendance?ay&gs&dateRange&status`
+  - `POST /api/attendance/mark` → `{ date, gradeSectionId, periodCode, markedBy?, items:[{studentId,status,remarks?}] }`
+  - `GET /api/attendance?gradeSectionId&date&periodCode&rosterScope`
 - **Lesson Plans**
   - `GET /api/lesson-plans?teacher&ay&gs&subject&dateRange`
   - `POST /api/lesson-plans`, `PATCH /api/lesson-plans/:id`, `DELETE`
