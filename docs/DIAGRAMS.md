@@ -26,15 +26,25 @@ flowchart LR
   ST[Students]:::en
   EN[Enrollments]:::en
   GS[Grade Sections]:::en
+  CO[Cohorts]:::en
   SB[Subjects]:::en
+  TC[Teachers]:::en
+  TT[Timetable]:::en
+  AT[Attendance]:::en
   EX[Exams]:::en
   SC[Exam Scores]:::en
+  TR[Transfers]:::en
   BE <---> ST
   BE <---> EN
   BE <---> GS
+  BE <---> CO
   BE <---> SB
+  BE <---> TC
+  BE <---> TT
+  BE <---> AT
   BE <---> EX
   BE <---> SC
+  BE <---> TR
 
   classDef lk fill:#eef,stroke:#88a;
   classDef en fill:#efe,stroke:#8a8;
@@ -45,13 +55,17 @@ flowchart LR
 erDiagram
   STUDENT ||--o{ ENROLLMENT : has
   GRADE_SECTION ||--o{ ENROLLMENT : receives
-  ACADEMIC_YEAR ||--o{ GRADE_SECTION : groups
+  ACADEMIC_YEAR ||--o{ ENROLLMENT : occurs_in
   GRADE ||--o{ GRADE_SECTION : organizes
   SHIFT ||--o{ GRADE_SECTION : schedules
   GRADE ||--o{ SUBJECT : includes
   EXAM_TYPE ||--o{ EXAM : defines
+  ACADEMIC_YEAR ||--o{ EXAM : in_year
+  GRADE_SECTION ||--o{ EXAM : for_section
   EXAM ||--o{ EXAM_SCORE : records
   STUDENT ||--o{ EXAM_SCORE : attempts
+  COHORT ||--o{ ENROLLMENT : groups
+  STUDENT ||--o{ TRANSFER_LOG : moved
 
   STUDENT {
     string _id PK
@@ -66,6 +80,7 @@ erDiagram
     string academicYearId FK
     string gradeId FK
     string shiftId FK
+    string cohortId FK
     string status
     date joinedAt
     date leftAt
@@ -73,7 +88,6 @@ erDiagram
   GRADE_SECTION {
     string _id PK
     string gradeId FK
-    string academicYearId FK
     string shiftId FK
     string section
   }
@@ -103,6 +117,7 @@ erDiagram
     string examTypeId FK
     string academicYearId FK
     string gradeSectionId FK
+    number templateVersion
   }
   EXAM_SCORE {
     string _id PK
@@ -121,16 +136,18 @@ sequenceDiagram
   participant API as Backend API
   participant DB as MongoDB
 
-  U->>FE: Click "Reassign"
-  FE->>API: GET /students/:id (prefill AY/Grade/Shift)
+  U->>FE: Click "Transfer/Reassign"
+  FE->>API: GET /api/students/:id (prefill latest enrollment)
   API->>DB: findOne Enrollment (latest) + populate
-  DB-->>API: enrollment
+  DB-->>API: latestEnrollment
   API-->>FE: latestEnrollment
-  U->>FE: Select AY, Grade, Shift, Section
-  FE->>API: PATCH /students/:id/enrollment/reassign {gradeSectionId}
-  API->>DB: validate & update enrollment (same AY)
+  U->>FE: Select Target Grade/Shift/Section (optional: Target AY)
+  FE->>API: GET /api/grades/sections?grade=...&shift=...
+  API-->>FE: section options
+  FE->>API: PATCH /api/transfers/:id { gradeSectionId, targetAcademicYear? }
+  API->>DB: validate capacity + update Enrollment + create TransferLog
   DB-->>API: OK
-  API-->>FE: { message: 'Enrollment reassigned' }
+  API-->>FE: { message: 'Transferred' }
   FE->>FE: Refresh table + toast success
 ```
 
@@ -161,7 +178,7 @@ sequenceDiagram
   U->>FE: Select Academic Year
   U->>FE: Select Grade
   U->>FE: Select Shift
-  FE->>API: GET /api/grades/sections?academicYearId=...&gradeId=...&shiftId=...
+  FE->>API: GET /api/grades/sections?grade=...&shift=...
   API->>DB: find GradeSections by parents
   DB-->>API: sections
   API-->>FE: section options
@@ -169,7 +186,7 @@ sequenceDiagram
   note over FE: Section dropdown enabled once parents chosen
 
   U->>FE: Apply filters (any combination)
-  FE->>API: GET /api/students?academicYearId=...&gradeId=...&shiftId=...&gradeSectionId=...
+  FE->>API: GET /api/students?academicYear=...&grade=...&shift=...&gradeSectionId=...
   API->>DB: Aggregate students with active enrollments
   DB-->>API: filtered students
   API-->>FE: paginated results
@@ -185,21 +202,21 @@ sequenceDiagram
   participant DB as MongoDB
 
   U->>FE: Select AY, Grade, Shift, Section, Subject
-  FE->>API: GET /api/exams/grid?academicYearId=&gradeSectionId=&subjectId=
+  FE->>API: GET /api/exams/grid?academicYearId=&gradeSectionId=&subjectId=&templateVersion=
   API->>DB: aggregate enrolled students + exam type for section
   DB-->>API: grid
   API-->>FE: { ok, data: grid }
 
   U->>FE: Enter scores
   loop for each student
-    FE->>API: POST /api/exams/scores { studentId, examId, subjectId, scoreObtained }
+    FE->>API: PUT /api/exams/score { studentId, examId, subjectId, scoreObtained }
     API->>DB: upsert ExamScore (unique by student+exam+subject)
     DB-->>API: OK
     API-->>FE: { ok: true }
   end
 
   U->>FE: View summary
-  FE->>API: GET /api/exams/summary?academicYearId=&gradeSectionId=&subjectId=
+  FE->>API: GET /api/exams/summary?academicYearId=&gradeSectionId=&subjectId=&templateVersion=
   API->>DB: aggregate scores
   DB-->>API: summary
   API-->>FE: { ok, data: summary }
@@ -218,5 +235,4 @@ sequenceDiagram
   DB-->>API: transcript data
   API-->>FE: { ok, data: transcript }
   FE->>FE: Render printable transcript (header/footer)
-```
 ```

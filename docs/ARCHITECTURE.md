@@ -3,56 +3,67 @@
 Dukumentigan wuxuu daboolayaa Frontend + Backend, qaabka xogta, socodka xogta, iyo go’aannada naqshadeynta ee hadda jira.
 
 ## 1) Stack iyo Qawaaniinta Guud
-- Frontend: React 19 + Vite 7, React Router 7, Tailwind CSS v4 (plugin), lucide-react, react-hot-toast
-- Backend: Node.js (Express 5), MongoDB (Mongoose 8), ESM imports
-- Qaab FE: Hooks iyo components reusable; API layer modular (http.js + modules + barrel)
+- Frontend: React + Vite + Tailwind (feature-based folders)
+- Backend: Node.js (Express, ESM) + MongoDB (Mongoose)
+- Auth: cookie-based JWT (`auth_token`) + CSRF protection (double-submit)
+- UI: Design System (tokens + UI primitives) + shared table pattern
 - Luqad: UI English; Docs Somali
 
 ## 2) Frontend
-- Pages: Dashboard, Students, Student Profile, Grades (Grade Sections), Subjects, Results, Exams, Transcript, User Management (sii diyaarsan)
-- Components: DataToolbar (Search/Filters/Sort), PaginationControls, Modal, Loading/Empty/Spinner, 404 page (standalone, no app chrome)
-- Hooks: useEntityList (search/sort/pagination/filters/debounce + resetAndReload), useCascadingFilters, useDebounce
-- API Layer: `src/api/http.js` (apiUrl + fetchJson), `src/api/modules/*` (lookups, students, gradeSections, subjects, exams), `src/api/index.js` (barrel). Import pattern: `import { listStudents } from '../api'`.
-- Env: `VITE_API_BASE_URL` (frontend). `.env.example` la socda; `.env.development`/`.env.production` optional. Vite dev proxy: `/api` → `http://localhost:7000`.
-- Routing: createBrowserRouter; `/404` top-level, child wildcard → Navigate to `/404` si 404 u ahaato standalone.
+
+### 2.1 Folder structure (current)
+- `frontend/src/features/*` — pages + feature APIs + feature-only components
+- `frontend/src/shared/*` — reusable UI/components/utils
+  - `shared/api/http.js` — `fetchJson` + `apiUrl`, defaults to same-origin `/api`
+  - `shared/components/ui/*` — Design System primitives (Button/Input/Select/Checkbox/...)
+  - `shared/components/table/*` — table stack (StandardTable/DataTable/TableState/Pagination)
+
+### 2.2 Env + networking
+- Default dev strategy: frontend calls `/api/*` and Vite proxies to backend (so cookies work).
+- Optional override: `VITE_API_BASE_URL` (see `frontend/.env.example`).
+
+### 2.3 Table UX
+- Instant sorting is client-side (where applicable) via shared hooks/utilities.
+- Column visibility can be persisted via `storageKey` on shared table components.
 
 ## 3) Backend
 - Routes:
-  - `/api/lookups` — grades, academicYears, shifts
-  - `/api/students` — list/create/profile/history/reassign/deactivate/reactivate/transfer
+  - `/api/lookups` — academic-years, grades, shifts, exam-types
+  - `/api/students` — list/create/profile/history/password reset/deactivate/reactivate
+  - `/api/transfers` — candidates, perform transfer, logs
   - `/api/subjects` — CRUD + filter by grade
-  - `/api/grades` — grade sections CRUD/list + fetch by id
-  - `/api/exams` — exam types, grid, scores, summary, transcripts
-- Server entry: `backend/server.js` → `.env` load → connect Mongo → ensureIndexes() → create express app → JSON + CORS → mount routes → listen on `PORT || 7000`.
-- Env: `MONG_URL` (Mongo URI), `PORT` (7000 default in code if unset). See `docs/SETUP.md` for exact steps.
+  - `/api/grades` — grade sections CRUD/list + fetch by id (+ resync-cohort)
+  - `/api/exams` — exam types, grid, score (upsert), summary, transcripts, template versions
+- Server entry: `backend/server.js` → dotenv → connect Mongo → ensureIndexes() → middleware (helmet/cors/limits/cookies/csrf) → mount routes → listen.
+- Env: `backend/.env` (recommended). Required keys are documented in `docs/SETUP.md` and `backend/.env.example`.
 
 ## 4) Data Models (Kooban)
 - Student: { studentId, fullName, gender, dob, guardianName, contactNumber, address?, admissionDate, status }, text index: (fullName, studentId)
-- Enrollment: { student, gradeSection, academicYear, grade, shift, status, joinedAt, leftAt? }, unique (student, academicYear)
-- GradeSection: { section, capacity?, grade, academicYear, shift, subjects[] }, unique (grade+year+shift+section)
+- Enrollment: { student, gradeSection, academicYear, grade, shift, cohort?, sequenceInYear, status, joinedAt, leftAt? }, unique (student, academicYear, sequenceInYear)
+- GradeSection: { section, capacity?, grade, shift, subjects[] }, unique (grade+shift+section)
 - Subject: { subjectName, subjectCode, grades[] }, indexes: subjectCode (unique), subjectName (1)
 - Grade, AcademicYear, Shift: { name } unique
-- ExamType, Exam, ExamScore: types, exam instance per (type+year+section), score per (student+exam+subject)
-- TransferLog: reassign/transfer audit trail (with optional revert links)
+- ExamType, Exam, ExamScore: types, exam instance per (type+year+section+templateVersion), score per (student+exam+subject)
+- TransferLog: transfer audit trail (with optional revert links)
 
 Faahfaahinta dhamaystiran: `docs/DATA_MODELS.md`.
 
 ## 5) Socodka Xogta (Flow)
-- Students List → useEntityList → `listStudents(params)` → backend aggregation → `{ data, meta }` → UI table
-- Reassign/Transfer → modal (cascading filters) → backend validates (AY same, active only) → success → refresh + toast
+- Students List → feature hooks/state → feature API (`features/*/api/*`) → backend → `{ data, meta }` → shared table UI
+- Reassign/Transfer → modal (cascading filters) → `/api/transfers` validates capacity/enrollment → success → refresh + toast
 - Exams → `getExamGrid` → `saveExamScore` → `getExamSummary`/`getStudentTranscript`
 
 ## 6) Go'aamo Muhiim ah
 - “Class” → “GradeSection” beddelid dhammaystiran (frontend + backend). Collection: `gradesections`.
-- API layer modularization: dhammaan calls ka soo mara `../api` barrel, legacy `apiService.js` la saaray.
+- Frontend API: feature-level API modules (`frontend/src/features/*/api/*`) oo wada adeegsada `frontend/src/shared/api/http.js` (fetchJson + apiUrl).
 - 404 UX gooni ah (outside app chrome) si uusan u qabsan Sidebar/Navbar.
 - Env: Vite vars (public) vs Backend secrets (private) kala saarid cad.
 
 ## 7) Amniga & Tayada
-- Search sanitization (text index + regex handling FE)
-- Pagination limits (max 100) iyo status guards
-- 409 Conflicts (duplicates: studentId, enrollment per year; examScore per triplet)
-- ESLint 9 hooks rules; modular components/hooks; ensureIndexes on boot
+- Cookie auth + CSRF protection (double-submit token)
+- Rate limiting + progressive login cooldown/lock (see `docs/DEPLOY_SECURITY_FLOW_SOOMAALI.md`)
+- Helmet security headers, x-powered-by disabled
+- Unique constraints + conflict handling (409) + indexes ensured on boot
 
 ## 8) Mustaqbal
 - Promotions endpoints (preview/execute) — `docs/PROMOTION.md`
