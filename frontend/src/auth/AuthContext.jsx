@@ -8,7 +8,9 @@ const AuthContext = createContext();
 
 const AUTH_LOGOUT_KEY = 'auth:logout';
 const AUTH_LAST_ACTIVITY_KEY = 'auth:lastActivity';
-const IDLE_TIMEOUT_MS = 30_000;
+// Auto-logout after user inactivity (shared across tabs via localStorage).
+// 30 minutes
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ColumnVisibilityMenu from './ColumnVisibilityMenu.jsx';
+import DropdownSelect from '../ui/DropdownSelect.jsx';
 
 export default function StickyTableControls({
 	columns = [],
@@ -27,35 +28,40 @@ export default function StickyTableControls({
 
 	const selectValue = allSelected ? 'all' : String(lim);
 
+	const rowLimitOptions = (limits || []).map((v) => {
+		const raw = String(v);
+		const isAll = raw.toLowerCase() === 'all';
+		return { value: isAll ? 'all' : raw, label: isAll ? 'All' : raw };
+	});
+
 	return (
 		<div className={`no-print sticky top-0 z-20 bg-white pt-2 pb-2 border-b border-gray-200 ${className}`.trim()}>
 			<div className="flex items-center justify-between gap-3">
 				{showRows ? (
 					<div className="flex items-center gap-2 text-sm text-slate-700">
 						<span className="text-slate-600">Rows</span>
-						<select
-							value={selectValue}
-							onChange={(e) => {
-								const v = e.target.value;
-								if (String(v).toLowerCase() === 'all') {
-									const allLimit = tot != null && tot > 0 ? tot : 1000;
-									setAllSelected(true);
-									onLimit?.(allLimit);
-									return;
-								}
-								setAllSelected(false);
-								const next = parseInt(v, 10);
-								if (!Number.isFinite(next)) return;
-								onLimit?.(next);
-							}}
-							className="border border-slate-300 rounded-md px-2 py-1.5 text-sm bg-white"
-						>
-							{(limits || []).map((v) => (
-								<option key={String(v)} value={String(v).toLowerCase() === 'all' ? 'all' : v}>
-									{String(v).toLowerCase() === 'all' ? 'All' : v}
-								</option>
-							))}
-						</select>
+						<div className="min-w-24">
+							<DropdownSelect
+								value={selectValue}
+								onChange={(v) => {
+									if (String(v).toLowerCase() === 'all') {
+										const allLimit = tot != null && tot > 0 ? tot : 1000;
+										setAllSelected(true);
+										onLimit?.(allLimit);
+										return;
+									}
+									setAllSelected(false);
+									const next = parseInt(String(v), 10);
+									if (!Number.isFinite(next)) return;
+									onLimit?.(next);
+								}}
+								options={rowLimitOptions}
+								placeholder="Rows"
+								clearable={false}
+								hideSelectedOption={false}
+								className="w-auto"
+							/>
+						</div>
 					</div>
 				) : (
 					<div />

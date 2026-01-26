@@ -3,9 +3,9 @@ import TableShell from './TableShell.jsx';
 import SortableTh from './SortableTh.jsx';
 import StickyTableControls from './StickyTableControls.jsx';
 
-const TH_BASE = 'px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700';
+const TH_BASE = 'px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-white/20';
 const TD_BASE = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200';
-const TR_BASE = 'odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors';
+const TR_BASE = 'border-t border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors';
 
 function readVisibility(storageKey) {
   if (!storageKey) return {};
@@ -89,6 +89,11 @@ export default function DataTable({
               const align = c.align === 'right' ? 'right' : 'left';
               const noPrint = c.noPrint ? 'no-print' : '';
 
+			  const alignClass = align === 'right' ? 'text-right ' : 'text-left ';
+			  const baseThClass = useDefaultHeaderStyles
+				? (`${TH_BASE} ` + alignClass)
+				: alignClass;
+
               if (c.sortable && c.field && typeof onSort === 'function') {
                 return (
                   <SortableTh
@@ -99,12 +104,11 @@ export default function DataTable({
                     sortDir={sortDir}
                     onSort={onSort}
                     align={align}
-                    className={`${c.thClassName || ''} ${noPrint}`.trim()}
+					baseClassName={baseThClass}
+					className={`${c.thClassName || ''} ${noPrint}`.trim()}
                   />
                 );
               }
-
-              const alignClass = align === 'right' ? 'text-right ' : 'text-left ';
               const thClass = useDefaultHeaderStyles
                 ? (`${TH_BASE} ` + alignClass + `${c.thClassName || ''} ${noPrint}`)
                 : (alignClass + `${c.thClassName || ''} ${noPrint}`);
@@ -122,7 +126,7 @@ export default function DataTable({
           </tr>
         </thead>
 
-        <tbody className="divide-y divide-gray-200">
+    		<tbody>
           {(rows || []).map((row, idx) => {
             const key = typeof getRowKey === 'function'
               ? getRowKey(row, idx)

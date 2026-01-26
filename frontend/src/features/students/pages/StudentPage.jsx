@@ -44,7 +44,8 @@ export default function StudentPage() {
     const [gradeSectionFilter, setGradeSectionFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     // Enrollment status tabs (active/inactive/promoted/graduated/transferred/withdrawn/all)
-    const [enrollmentStatus, setEnrollmentStatus] = useState('active');
+    // 'open' means: show active + inactive enrollments (default)
+    const [enrollmentStatus, setEnrollmentStatus] = useState('open');
     const [cohortId, setCohortId] = useState('');
     // Toolbar cascading filters
     const [yearFilter, setYearFilter] = useState('');
@@ -69,7 +70,7 @@ export default function StudentPage() {
             shift: shiftFilter,
             cohortId,
             // Always include keys (may be empty string) so stale values are overwritten
-            enrollmentStatus: enrollmentStatus || '',
+            enrollmentStatus: enrollmentStatus === 'open' ? '' : (enrollmentStatus || ''),
             includeClosed,
         };
         return ef;
@@ -380,7 +381,7 @@ export default function StudentPage() {
         setShiftFilter('');
         setGradeSectionFilter('');
         setStatusFilter('');
-        setEnrollmentStatus('active');
+        setEnrollmentStatus('open');
         setCohortId('');
         resetAndReload({ filters: {}, search: '' });
     };
@@ -392,7 +393,17 @@ export default function StudentPage() {
 
             <EnrollmentCohortToolbar
                 enrollmentStatus={enrollmentStatus}
-                onEnrollmentStatusChange={(v) => { setEnrollmentStatus(v || 'active'); setPage(1); }}
+                enrollmentStatusOptions={[
+                    { value: 'open', label: 'Open' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'inactive', label: 'Inactive' },
+                    { value: 'promoted', label: 'Promoted' },
+                    { value: 'graduated', label: 'Graduated' },
+                    { value: 'transferred', label: 'Transferred' },
+                    { value: 'withdrawn', label: 'Withdrawn' },
+                    { value: 'all', label: 'All' },
+                ]}
+                onEnrollmentStatusChange={(v) => { setEnrollmentStatus(v || 'open'); setPage(1); }}
                 cohortId={cohortId}
                 onCohortChange={(v) => {
                     const next = v || '';
@@ -400,7 +411,7 @@ export default function StudentPage() {
                     setPage(1);
                     // When selecting a cohort, default to showing the full cohort (all statuses)
                     // so users don't see an empty table if everyone is graduated/transferred/etc.
-                    if (next && enrollmentStatus === 'active') {
+                    if (next && enrollmentStatus === 'open') {
                         setEnrollmentStatus('all');
                     }
                 }}
@@ -486,7 +497,11 @@ export default function StudentPage() {
                                     value={statusFilter}
                                     onChange={(v) => { setStatusFilter(v); setPage(1); }}
                                     placeholder="Status"
-                                    options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
+                                    options={[
+                                        { value: '', label: 'All' },
+                                        { value: 'Active', label: 'Active' },
+                                        { value: 'Inactive', label: 'Inactive' },
+                                    ]}
                                 />
                             </FilterItem>
                         </FilterRow>

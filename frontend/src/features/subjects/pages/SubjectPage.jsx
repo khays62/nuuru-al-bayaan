@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import SubjectForm from '../components/SubjectForm';
@@ -12,8 +12,8 @@ import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx'
 import GradeSelect from '../../lookups/components/GradeSelect';
 import SortControls from '../../../shared/components/DataToolbar/SortControls.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
-import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { useClientSort } from '../../../shared/hooks/useClientSort';
+import SubjectTable from '../components/SubjectTable.jsx';
 
 // API services (existing ones for now)
 import { getSubjects, addSubject, updateSubject, deleteSubject } from '../api/subjects';
@@ -80,35 +80,7 @@ export default function SubjectPage() {
     },
   });
 
-  const columns = useMemo(() => ([
-    {
-      key: 'subjectName',
-      label: 'Subject Name',
-      sortable: true,
-      field: 'subjectName',
-      tdClassName: 'px-6 py-4 whitespace-nowrap font-medium text-gray-900 border-x border-gray-200',
-    },
-    {
-      key: 'subjectCode',
-      label: 'Subject Code',
-      sortable: true,
-      field: 'subjectCode',
-      tdClassName: 'px-6 py-4 whitespace-nowrap text-gray-600 border-x border-gray-200',
-    },
-    {
-      key: 'grades',
-      label: 'Associated Grades',
-      tdClassName: 'px-6 py-4 text-gray-600 border-x border-gray-200',
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      align: 'right',
-      noPrint: true,
-      locked: false,
-      tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200',
-    },
-  ]), []);
+  // columns live in SubjectTable (feature component)
 
   // --- Load Grades (lookup) ---
   useEffect(() => {
@@ -252,82 +224,20 @@ export default function SubjectPage() {
         }
       />
 
-      <StandardTable
+      <SubjectTable
+        items={subjects}
+        rows={sortedSubjectsForView}
         isLoading={isLoading}
         error={error}
-        items={subjects}
-        loadingVariant="table"
-        loadingMessage="Loading subjects..."
-        loadingRows={6}
-        loadingColumns={5}
-        emptyTitle="No subjects found"
-        emptyDescription="Try adjusting search or add a new subject."
-        emptyActionLabel="Add Subject"
-        onEmptyAction={handleAddNew}
-        onRetry={refresh}
-        topSlot={
-          <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
-            <div>
-              Page {meta.page} of {meta.totalPages} — {meta.total} total
-            </div>
-          </div>
-        }
-        rows={sortedSubjectsForView}
-        columns={columns}
-        storageKey="subjects:columns:v1"
         sortBy={sortBy}
         sortDir={sortDir}
         onSort={onSort}
-        controlsProps={{
-          limit: meta.limit || 10,
-          total: meta.total || 0,
-          onLimit: (l) => { setLimit(l); setPage(1); },
-          limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
-        }}
-        getRowKey={(s) => s._id}
-        renderCell={(subject, col) => {
-          switch (col.key) {
-            case 'subjectName':
-              return subject.subjectName;
-            case 'subjectCode':
-              return subject.subjectCode;
-            case 'grades':
-              return (
-                <div className="flex flex-wrap gap-1 max-w-xs">
-                  {(subject.grades || []).map((grade) => (
-                    <span key={grade._id} className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-md">
-                      {grade.gradeName}
-                    </span>
-                  ))}
-                </div>
-              );
-            case 'actions':
-              return (
-                <>
-                  <button
-                    onClick={() => handleEdit(subject)}
-                    className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-green-100 transition-colors"
-                    title="Edit Subject"
-                  >
-                    <Pencil size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(subject._id)}
-                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100 transition-colors"
-                    title="Delete Subject"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </>
-              );
-            default:
-              return '';
-          }
-        }}
         meta={meta}
         onPage={(p) => setPage(p)}
         onLimit={(l) => setLimit(l)}
-        showRowsSelector={false}
+        onAdd={handleAddNew}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
       />
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingSubject ? 'Edit Subject' : 'Add New Subject'}>

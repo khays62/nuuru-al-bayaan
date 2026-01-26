@@ -1,5 +1,5 @@
 import express from 'express';
-import { listTeachers, createTeacher, updateTeacher, deleteTeacher, getAssignments, addAssignment, removeAssignment, getRoster, createTeacherLoginUser } from '../controllers/teacherController.js';
+import { listTeachers, createTeacher, updateTeacher, deleteTeacher, deactivateTeacher, reactivateTeacher, getAssignments, addAssignment, removeAssignment, getRoster, createTeacherLoginUser } from '../controllers/teacherController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
 import { teacherOr, requireTeacherSelf } from '../middleware/teacherScope.js';
@@ -11,6 +11,8 @@ router.post('/', protect, checkPermission('teachers', 'add'), createTeacher);
 router.post('/:id/create-login', protect, checkPermission('teachers', 'edit'), createTeacherLoginUser);
 router.patch('/:id', protect, checkPermission('teachers', 'edit'), updateTeacher);
 router.put('/:id', protect, checkPermission('teachers', 'edit'), updateTeacher);
+router.patch('/:id/deactivate', protect, checkPermission('teachers', 'deactivate'), deactivateTeacher);
+router.patch('/:id/reactivate', protect, checkPermission('teachers', 'reactivate'), reactivateTeacher);
 router.delete('/:id', protect, checkPermission('teachers', 'delete'), deleteTeacher);
 
 router.get(

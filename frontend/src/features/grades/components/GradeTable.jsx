@@ -1,9 +1,26 @@
 import React, { useMemo } from 'react';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
-import DataTable from '../../../shared/components/table/DataTable.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 
 // GradeTable shows section + grade + shift + subjects count; no AY/Cohort columns
-const GradeTable = ({ classes, onEdit, onDelete, onView, sortBy, sortDir, onSort, limit, total, onLimit }) => {
+const GradeTable = ({
+  items,
+  rows,
+  meta,
+  isLoading,
+  error,
+  onRetry,
+  onAdd,
+  onEdit,
+  onDelete,
+  onView,
+  sortBy,
+  sortDir,
+  onSort,
+  onPage,
+  onLimit,
+}) => {
   const STORAGE_KEY = 'gradeSections:columns:v1';
 
   const columns = useMemo(() => ([
@@ -16,18 +33,31 @@ const GradeTable = ({ classes, onEdit, onDelete, onView, sortBy, sortDir, onSort
   ]), []);
 
   return (
-    <DataTable
-      rows={classes}
-      columns={columns}
+    <StandardTable
+      isLoading={isLoading && (items || []).length === 0}
+      error={error}
+      items={items}
+      loadingMessage="Loading..."
+      loadingVariant="table"
+      loadingRows={6}
+      loadingColumns={5}
+      emptyTitle="No grade sections found"
+      emptyDescription="Try adjusting filters or create a new one."
+      emptyActionLabel="Add"
+      onEmptyAction={onAdd}
+      onRetry={onRetry}
+
+      rows={rows}
       storageKey={STORAGE_KEY}
+      columns={columns}
       sortBy={sortBy}
       sortDir={sortDir}
       onSort={onSort}
       getRowKey={(cls) => cls._id}
       controlsProps={{
-        limit,
-        total,
-        onLimit,
+        limit: meta?.limit || 10,
+        total: meta?.total || 0,
+        onLimit: (v) => onLimit?.(v),
         limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
       }}
       renderCell={(cls, col) => {
@@ -47,22 +77,43 @@ const GradeTable = ({ classes, onEdit, onDelete, onView, sortBy, sortDir, onSort
             return cls.capacity ?? '—';
           case 'actions':
             return (
-              <>
-                <button onClick={() => onView?.(cls)} className="text-blue-700 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100 transition-colors" title="View Students">
-                  <Eye size={18} />
-                </button>
-                <button onClick={() => onEdit(cls)} className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-green-100 transition-colors" title="Edit">
-                  <Pencil size={18} />
-                </button>
-                <button onClick={() => onDelete(cls._id)} className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100 transition-colors" title="Delete">
-                  <Trash2 size={18} />
-                </button>
-              </>
+              <RowActionButtons
+                actions={[
+                  {
+                    key: 'view',
+                    label: 'View',
+                    title: 'View Students',
+                    tone: 'view',
+                    icon: <Eye size={18} />,
+                    onClick: () => onView?.(cls),
+                  },
+                  {
+                    key: 'edit',
+                    label: 'Edit',
+                    tone: 'edit',
+                    icon: <Pencil size={18} />,
+                    onClick: () => onEdit?.(cls),
+                  },
+                  {
+                    key: 'delete',
+                    label: 'Delete',
+                    tone: 'delete',
+                    icon: <Trash2 size={18} />,
+                    onClick: () => onDelete?.(cls._id),
+                  },
+                ]}
+              />
             );
           default:
             return '';
         }
       }}
+
+      meta={meta}
+      onPage={onPage}
+      onLimit={onLimit}
+      showRowsSelector={false}
+      paginationProps={{ className: 'no-print', infoVariant: 'page' }}
     />
   );
 };

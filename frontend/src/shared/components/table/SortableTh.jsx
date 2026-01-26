@@ -7,6 +7,7 @@ export default function SortableTh({
 	sortBy,
 	sortDir,
 	onSort,
+	baseClassName = '',
 	className = '',
 	align = 'left',
 }) {
@@ -19,15 +20,20 @@ export default function SortableTh({
 		<th
 			scope="col"
 			className={
-				`px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700 ` +
-				(align === 'right' ? 'text-right ' : 'text-left ') +
-				className
+				(baseClassName
+					? `${baseClassName} ${className}`
+					: (
+						`px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700 ` +
+						(align === 'right' ? 'text-right ' : 'text-left ') +
+						className
+					)
+				).trim()
 			}
 		>
 			<button
 				type="button"
 				onClick={() => onSort?.(field)}
-				className="inline-flex items-center gap-1.5 hover:opacity-90 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400 rounded-sm"
+				className="inline-flex items-center gap-1.5 hover:opacity-90 active:opacity-80 select-none focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 rounded-sm"
 				title={`Sort by ${label}`}
 			>
 				<span>{label}</span>

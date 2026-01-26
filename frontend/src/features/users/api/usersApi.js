@@ -86,41 +86,30 @@ export async function toggleUserStatus(id) {
 
 export const getUserById = async (id) => {
 	try {
-		const res = await fetch(apiUrl(`/users/${id}`), {
-			credentials: 'include',
-		});
-
-		if (!res.ok) {
-			return { ok: false, error: `User not found (status ${res.status})` };
-		}
-
-		const data = await res.json();
-		if (!data || !data.data) {
-			return { ok: false, error: 'User not found' };
-		}
-
-		return { ok: true, data: data.data };
+		const data = await fetchJson(`/users/${id}`);
+		return { ok: true, data: data?.data || data };
 	} catch (err) {
-		return { ok: false, error: err.message };
+		return { ok: false, error: err?.data?.message || err?.message || 'Failed to fetch user' };
 	}
 };
 
 export const getUserAuditLogs = async (id) => {
 	try {
-		const res = await fetch(apiUrl(`/users/${id}/logs`), {
-			credentials: 'include',
-		});
-
-		if (!res.ok) {
-			return { ok: false, error: `Failed to fetch logs (status ${res.status})` };
-		}
-
-		const data = await res.json();
-		return { ok: true, data: data.data || [] };
+		const data = await fetchJson(`/users/${id}/logs`);
+		return { ok: true, data: Array.isArray(data?.data) ? data.data : [] };
 	} catch (err) {
-		return { ok: false, error: err.message };
+		return { ok: false, error: err?.data?.message || err?.message || 'Failed to fetch logs' };
 	}
 };
+
+export async function resetUserLoginLockout(userId) {
+	try {
+		const data = await fetchJson(`/auth/users/${userId}/reset-lockout`, { method: 'PATCH' });
+		return { ok: true, data };
+	} catch (error) {
+		return { ok: false, error: error?.data?.message || error?.message || 'Failed to reset lockout' };
+	}
+}
 
 export async function exportUserAuditCSV(userId) {
 	return fetch(apiUrl(`/audit/logs/${userId}/export`), {

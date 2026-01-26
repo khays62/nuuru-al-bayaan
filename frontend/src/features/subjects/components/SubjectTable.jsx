@@ -1,8 +1,24 @@
 import React, { useMemo } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
-import DataTable from '../../../shared/components/table/DataTable.jsx';
 
-export default function SubjectTable({ subjects, onEdit, onDelete, sortBy, sortDir, onSort, limit, total, onLimit }) {
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+
+export default function SubjectTable({
+    items = [],
+    rows = [],
+    isLoading = false,
+    error = null,
+    sortBy,
+    sortDir,
+    onSort,
+    meta,
+    onPage,
+    onLimit,
+    onAdd,
+    onEdit,
+    onDelete,
+}) {
     const STORAGE_KEY = 'subjects:columns:v1';
 
     const columns = useMemo(() => ([
@@ -31,24 +47,40 @@ export default function SubjectTable({ subjects, onEdit, onDelete, sortBy, sortD
             align: 'right',
             noPrint: true,
             locked: false,
-            tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium border-x border-gray-200',
         },
     ]), []);
 
     return (
-        <DataTable
-            rows={subjects}
+        <StandardTable
+            isLoading={isLoading}
+            error={error}
+            items={items}
+            loadingVariant="table"
+            loadingMessage="Loading subjects..."
+            loadingRows={6}
+            loadingColumns={5}
+            emptyTitle="No subjects found"
+            emptyDescription="Try adjusting search or add a new subject."
+            emptyActionLabel="Add Subject"
+            onEmptyAction={onAdd}
+
+            rows={rows}
             columns={columns}
             storageKey={STORAGE_KEY}
             sortBy={sortBy}
             sortDir={sortDir}
             onSort={onSort}
-            controlsProps={{
-                limit,
-                total,
-                onLimit,
-                limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
-            }}
+            controlsProps={
+                meta
+                    ? {
+                            limit: meta.limit || 10,
+                            total: meta.total || 0,
+                            onLimit: (l) => onLimit?.(l),
+                            limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
+                        }
+                    : undefined
+            }
             getRowKey={(s) => s._id}
             renderCell={(subject, col) => {
                 switch (col.key) {
@@ -68,27 +100,35 @@ export default function SubjectTable({ subjects, onEdit, onDelete, sortBy, sortD
                         );
                     case 'actions':
                         return (
-                            <>
-                                <button
-                                    onClick={() => onEdit(subject)}
-                                    className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-green-100 transition-colors"
-                                    title="Edit Subject"
-                                >
-                                    <Pencil size={18} />
-                                </button>
-                                <button
-                                    onClick={() => onDelete(subject._id)}
-                                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100 transition-colors"
-                                    title="Delete Subject"
-                                >
-                                    <Trash2 size={18} />
-                                </button>
-                            </>
+                            <RowActionButtons
+                                actions={[
+                                    {
+                                        key: 'edit',
+                                        label: 'Edit',
+                                        title: 'Edit Subject',
+                                        tone: 'edit',
+                                        icon: <Pencil size={16} />,
+                                        onClick: () => onEdit?.(subject),
+                                    },
+                                    {
+                                        key: 'delete',
+                                        label: 'Delete',
+                                        title: 'Delete Subject',
+                                        tone: 'delete',
+                                        icon: <Trash2 size={16} />,
+                                        onClick: () => onDelete?.(subject._id),
+                                    },
+                                ]}
+                            />
                         );
                     default:
                         return '';
                 }
             }}
+            meta={meta}
+            onPage={onPage}
+            onLimit={onLimit}
+            showRowsSelector={false}
         />
     );
 }

@@ -30,6 +30,16 @@ export const updateTeacher = (id, payload) =>
     body: JSON.stringify(payload),
   });
 
+export const deactivateTeacher = (id) =>
+  fetchJson(`teachers/${id}/deactivate`, {
+    method: 'PATCH',
+  });
+
+export const reactivateTeacher = (id) =>
+  fetchJson(`teachers/${id}/reactivate`, {
+    method: 'PATCH',
+  });
+
 export const deleteTeacher = (id) =>
   fetchJson(`teachers/${id}`, { method: 'DELETE' });
 

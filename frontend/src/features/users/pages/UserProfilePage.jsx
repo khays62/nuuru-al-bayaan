@@ -20,6 +20,8 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
 import LoadingState from '../../../shared/components/feedback/LoadingState.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import { useClientSort } from '../../../shared/hooks/useClientSort.js';
 import { getUserById, getUserAuditLogs } from '../api/usersApi';
 
 export default function UserProfilePage() {
@@ -52,6 +54,29 @@ export default function UserProfilePage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const {
+    sortBy,
+    sortDir,
+    onSort,
+    sortedRows: sortedLogs,
+  } = useClientSort(logs, {
+    initialSortBy: 'timestamp',
+    initialSortDir: 'desc',
+    getValue: (row, field) => {
+      switch (field) {
+        case 'action':
+          return String(row?.action || '').toLowerCase();
+        case 'ip':
+          return String(row?.ip || '').toLowerCase();
+        case 'device':
+          return String(row?.device || '').toLowerCase();
+        case 'timestamp':
+        default:
+          return new Date(row?.timestamp || 0).getTime();
+      }
+    },
+  });
 
   if (loading) return <LoadingState message="Loading user details…" />;
 
@@ -102,34 +127,44 @@ export default function UserProfilePage() {
         <div className="border-t border-slate-200 px-6 py-6">
           <h2 className="text-lg font-semibold mb-4">Audit History</h2>
 
-          {logs.length === 0 ? (
-            <p className="text-slate-500 text-sm">No audit history available.</p>
-          ) : (
-            <div className="space-y-3">
-              {logs.map((log, index) => (
-                <Card key={index} className="p-4 bg-slate-50 flex flex-col md:flex-row md:justify-between md:items-center">
-                  <div>
-                    <p className="font-medium">{log.action}</p>
-                    <p className="text-sm text-slate-600">{log.description}</p>
-
-                    <div className="flex gap-3 mt-2 text-xs text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <Clock size={13} /> {format(log.timestamp)}
-                      </span>
-
-                      <span className="flex items-center gap-1">
-                        <Laptop size={13} /> {log.device || 'Unknown device'}
-                      </span>
-
-                      <span className="flex items-center gap-1">
-                        <Globe size={13} /> IP {log.ip}
-                      </span>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
+          <StandardTable
+            isLoading={false}
+            items={sortedLogs}
+            rows={sortedLogs}
+            emptyTitle="No audit history."
+            emptyDescription="This user has no recorded actions yet."
+            loadingVariant="table"
+            columns={[
+              { key: 'action', label: 'Action', sortable: true, field: 'action', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+              { key: 'description', label: 'Description', sortable: false, field: 'description' },
+              { key: 'ip', label: 'IP', sortable: true, field: 'ip' },
+              { key: 'device', label: 'Device', sortable: true, field: 'device' },
+              { key: 'timestamp', label: 'Time', sortable: true, field: 'timestamp' },
+            ]}
+            storageKey="users:auditLogs:columns:v1"
+            sortBy={sortBy}
+            sortDir={sortDir}
+            onSort={onSort}
+            showRowsSelector={false}
+            paginationProps={{ className: 'no-print', infoVariant: 'count' }}
+            getRowKey={(r) => `${r.timestamp || ''}-${r.action || ''}-${r.ip || ''}`}
+            renderCell={(r, col) => {
+              switch (col.key) {
+                case 'action':
+                  return r.action || '-';
+                case 'description':
+                  return r.description || '-';
+                case 'ip':
+                  return r.ip || '-';
+                case 'device':
+                  return r.device || 'Unknown device';
+                case 'timestamp':
+                  return r.timestamp ? new Date(r.timestamp).toLocaleString() : '-';
+                default:
+                  return '';
+              }
+            }}
+          />
         </div>
       </Card>
     </div>

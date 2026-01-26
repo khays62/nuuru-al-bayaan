@@ -31,9 +31,17 @@ export default function PaginationControls({
   const lim = Math.max(1, Number(limit) || 10);
   const tot = total == null ? null : Math.max(0, Number(total) || 0);
 
-  const start = tot != null && tot > 0 ? (p - 1) * lim + 1 : null;
-  const end = tot != null && tot > 0 ? Math.min(p * lim, tot) : null;
-  const items = buildPageItems(p, tp);
+  // Optimistic UI: some pages (e.g. Students) drive `page` from server meta,
+  // so the active highlight can lag until fetch completes. Keep UI responsive
+  // by updating the active page immediately on click, then sync back when
+  // the real `page` prop updates.
+  const [uiPage, setUiPage] = React.useState(p);
+  React.useEffect(() => { setUiPage(p); }, [p]);
+
+  const effectivePage = Math.min(tp, Math.max(1, Number(uiPage) || 1));
+  const start = tot != null && tot > 0 ? (effectivePage - 1) * lim + 1 : null;
+  const end = tot != null && tot > 0 ? Math.min(effectivePage * lim, tot) : null;
+  const items = buildPageItems(effectivePage, tp);
 
   const hasAll = Array.isArray(limits) && limits.some((v) => String(v).toLowerCase() === 'all');
   const [allSelected, setAllSelected] = React.useState(false);
@@ -52,8 +60,12 @@ export default function PaginationControls({
       <div className="inline-flex items-stretch rounded-md border border-slate-300 overflow-hidden shadow-sm bg-white">
         <button
           type="button"
-          disabled={p <= 1}
-          onClick={() => onPage(p - 1)}
+          disabled={effectivePage <= 1}
+          onClick={() => {
+            const next = effectivePage - 1;
+            setUiPage(next);
+            onPage(next);
+          }}
           className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed border-r border-slate-300"
           aria-label="Previous page"
           title="Previous"
@@ -73,12 +85,15 @@ export default function PaginationControls({
             );
           }
           const num = Number(it);
-          const active = num === p;
+          const active = num === effectivePage;
           return (
             <button
               key={num}
               type="button"
-              onClick={() => onPage(num)}
+              onClick={() => {
+                setUiPage(num);
+                onPage(num);
+              }}
               className={
                 'min-w-9 px-3 py-2 text-sm border-r border-slate-300 ' +
                 (active
@@ -94,8 +109,12 @@ export default function PaginationControls({
 
         <button
           type="button"
-          disabled={p >= tp}
-          onClick={() => onPage(p + 1)}
+          disabled={effectivePage >= tp}
+          onClick={() => {
+            const next = effectivePage + 1;
+            setUiPage(next);
+            onPage(next);
+          }}
           className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Next page"
           title="Next"
@@ -111,11 +130,11 @@ export default function PaginationControls({
             start != null && end != null ? (
               <span>Showing <span className="font-medium text-slate-800">{start}–{end}</span> of <span className="font-medium text-slate-800">{tot}</span> Rows</span>
             ) : (
-              <span>Page <span className="font-medium text-slate-800">{p}</span> of <span className="font-medium text-slate-800">{tp}</span></span>
+              <span>Page <span className="font-medium text-slate-800">{effectivePage}</span> of <span className="font-medium text-slate-800">{tp}</span></span>
             )
           ) : infoVariant === 'page' ? (
             <span>
-              Page <span className="font-medium text-slate-800">{p}</span> of <span className="font-medium text-slate-800">{tp}</span>
+              Page <span className="font-medium text-slate-800">{effectivePage}</span> of <span className="font-medium text-slate-800">{tp}</span>
               {tot != null ? (
                 <>
                   {' '}
@@ -127,7 +146,7 @@ export default function PaginationControls({
             start != null && end != null ? (
               <span>Showing <span className="font-medium text-slate-800">{start}–{end}</span> of <span className="font-medium text-slate-800">{tot}</span></span>
             ) : (
-              <span>Page <span className="font-medium text-slate-800">{p}</span> of <span className="font-medium text-slate-800">{tp}</span></span>
+              <span>Page <span className="font-medium text-slate-800">{effectivePage}</span> of <span className="font-medium text-slate-800">{tp}</span></span>
             )
           )}
         </div>

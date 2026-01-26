@@ -1,17 +1,19 @@
-import React, { useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, Pencil, Trash2, RotateCcw, Repeat } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusBadge from '../../../shared/components/ui/badges/StatusBadge.jsx';
-import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
-import Button from '../../../shared/components/ui/Button.jsx';
 import { deactivateStudentApi, reactivateStudentApi } from '../api/studentsApi';
 import { emitStudentsChanged } from '../../../utils/events';
 import DataTable from '../../../shared/components/table/DataTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 
 // Displays students returned by backend list endpoint
 const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total, onLimit }) => {
+    const navigate = useNavigate();
     const STORAGE_KEY = 'students:columns:v1';
+    const [optimisticStatusById, setOptimisticStatusById] = useState({});
+    const [pendingId, setPendingId] = useState(null);
 
     const columns = useMemo(() => ([
         { key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
@@ -51,52 +53,90 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                     case 'academicYear': return st.academicYear || '-';
                     case 'shift': return st.shift || '-';
                     case 'status':
-                        return <StatusBadge status={st.status} />;
+                        return <StatusBadge status={optimisticStatusById[st._id] || st.status} />;
                     case 'contact': return st.contactNumber || '-';
                     case 'actions':
-                        return (
-                            <>
-                                <Button as={Link} to={`/students/${st._id}`} title="View Profile" variant="primary" icon={<Eye size={16} />}>
-                                    <span className="hidden sm:inline">View</span>
-                                </Button>
-                                <ActionButton variant="neutral" title="Edit Student" onClick={() => onEdit(st)} icon={<Pencil size={16} />}>
-                                    <span className="hidden sm:inline">Edit</span>
-                                </ActionButton>
-                                {/* Transfer button removed; use dedicated Transfers page */}
-                                {st.status === 'Active' ? (
-                                    <ActionButton
-                                        variant="danger"
-                                        title="Deactivate Student"
-                                        onClick={async () => {
-                                            if (!window.confirm('Are you sure you want to deactivate this student?')) return;
-                                            try {
-                                                const { ok, data } = await deactivateStudentApi(st._id);
-                                                if (ok) { toast.success('Student deactivated'); emitStudentsChanged(); }
-                                                else { toast.error(data?.message || 'Failed to deactivate'); }
-                                            } catch (e) { console.error(e); toast.error('Network error'); }
-                                        }}
-                                        icon={<Trash2 size={16} />}
-                                    >
-                                        <span className="hidden sm:inline">Deactivate</span>
-                                    </ActionButton>
-                                ) : (
-                                    <ActionButton
-                                        variant="primary"
-                                        title="Reactivate Student"
-                                        onClick={async () => {
-                                            try {
-                                                const { ok, data } = await reactivateStudentApi(st._id);
-                                                if (ok) { toast.success('Student reactivated'); emitStudentsChanged(); }
-                                                else { toast.error(data?.message || 'Failed to reactivate'); }
-                                            } catch (e) { console.error(e); toast.error('Network error'); }
-                                        }}
-                                        icon={<RotateCcw size={16} />}
-                                    >
-                                        <span className="hidden sm:inline">Reactivate</span>
-                                    </ActionButton>
-                                )}
-                            </>
-                        );
+                        return (() => {
+                            const effectiveStatus = optimisticStatusById[st._id] || st.status;
+                            const isPending = pendingId === st._id;
+
+                            return (
+                                <RowActionButtons
+                                    actions={[
+                                    {
+                                        key: 'view',
+                                        label: 'View',
+                                        title: 'View Profile',
+                                        tone: 'view',
+                                        icon: <Eye size={16} />,
+                                        onClick: () => navigate(`/students/${st._id}`),
+                                    },
+                                    {
+                                        key: 'edit',
+                                        label: 'Edit',
+                                        title: 'Edit Student',
+                                        tone: 'edit',
+                                        icon: <Pencil size={16} />,
+                                        onClick: () => onEdit(st),
+                                    },
+                                    effectiveStatus === 'Active'
+                                        ? {
+                                              key: 'deactivate',
+                                              label: 'Deactivate',
+                                              title: 'Deactivate Student',
+                                              tone: 'delete',
+                                              icon: <Trash2 size={16} />,
+                                              disabled: isPending,
+                                              onClick: async () => {
+                                                  if (!window.confirm('Are you sure you want to deactivate this student?')) return;
+                                                  setPendingId(st._id);
+                                                  try {
+                                                      const { ok, data } = await deactivateStudentApi(st._id);
+                                                      if (ok) {
+                                                          setOptimisticStatusById((prev) => ({ ...prev, [st._id]: 'Inactive' }));
+                                                          toast.success('Student deactivated');
+                                                          emitStudentsChanged();
+                                                      } else {
+                                                          toast.error(data?.message || 'Failed to deactivate');
+                                                      }
+                                                  } catch (e) {
+                                                      console.error(e);
+                                                      toast.error('Network error');
+                                                  } finally {
+                                                      setPendingId(null);
+                                                  }
+                                              },
+                                          }
+                                        : {
+                                              key: 'reactivate',
+                                              label: 'Reactivate',
+                                              title: 'Reactivate Student',
+                                              tone: 'view',
+                                              icon: <RotateCcw size={16} />,
+                                              disabled: isPending,
+                                              onClick: async () => {
+                                                  setPendingId(st._id);
+                                                  try {
+                                                      const { ok, data } = await reactivateStudentApi(st._id);
+                                                      if (ok) {
+                                                          setOptimisticStatusById((prev) => ({ ...prev, [st._id]: 'Active' }));
+                                                          toast.success('Student reactivated');
+                                                          emitStudentsChanged();
+                                                      } else {
+                                                          toast.error(data?.message || 'Failed to reactivate');
+                                                      }
+                                                  } catch (e) {
+                                                      console.error(e);
+                                                      toast.error('Network error');
+                                                  } finally {
+                                                      setPendingId(null);
+                                                  }
+                                              },
+                                          },
+                                    ]}
+                                />
+                            );
+                        })();
                     default:
                         return '';
                 }

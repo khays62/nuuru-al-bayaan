@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 
-import { createTeacher, deleteTeacher, listTeachers, updateTeacher } from '../api/teachersApi';
+import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, updateTeacher } from '../api/teachersApi';
 
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
@@ -10,8 +10,8 @@ import SortControls from '../../../shared/components/DataToolbar/SortControls.js
 import Button from '../../../shared/components/ui/Button.jsx';
 
 import TeacherForm from '../components/TeacherForm';
-import TeacherTable from '../components/TeacherTable';
 import TeacherAssignmentsModal from '../components/TeacherAssignmentsModal';
+import TeacherTable from '../components/TeacherTable.jsx';
 
 export default function TeachersPage() {
 	const [items, setItems] = useState([]);
@@ -24,6 +24,10 @@ export default function TeachersPage() {
 	const [assignTeacher, setAssignTeacher] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
 	const [sortDir, setSortDir] = useState('desc');
+	const [page, setPage] = useState(1);
+	const [limit, setLimit] = useState(10);
+	const [statusOverrides, setStatusOverrides] = useState({});
+	const [pendingById, setPendingById] = useState({});
 
 	useEffect(() => {
 		setLoading(true);
@@ -34,8 +38,18 @@ export default function TeachersPage() {
 			.finally(() => setLoading(false));
 	}, [search]);
 
+	const viewItems = React.useMemo(() => {
+		if (!Array.isArray(items)) return [];
+		return items.map((t) => {
+			const id = t?._id || t?.id;
+			if (!id) return t;
+			const override = statusOverrides[id];
+			return override ? { ...t, status: override } : t;
+		});
+	}, [items, statusOverrides]);
+
 	const sortedItems = React.useMemo(() => {
-		const arr = [...items];
+		const arr = [...viewItems];
 		const dir = sortDir === 'asc' ? 1 : -1;
 		const key = sortBy;
 		arr.sort((a, b) => {
@@ -53,7 +67,7 @@ export default function TeachersPage() {
 			return 0;
 		});
 		return arr;
-	}, [items, sortBy, sortDir]);
+	}, [viewItems, sortBy, sortDir]);
 
 	const onSort = (field) => {
 		if (sortBy === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -67,6 +81,8 @@ export default function TeachersPage() {
 		setSearch('');
 		setSortBy('createdAt');
 		setSortDir('desc');
+		setPage(1);
+		setLimit(10);
 	};
 
 	const onAdd = () => {
@@ -77,17 +93,60 @@ export default function TeachersPage() {
 		setEditing(row);
 		setShowForm(true);
 	};
-	const onDelete = async (row) => {
-		if (!confirm('Delete this teacher?')) return;
+	const onToggleStatus = async (row) => {
+		const id = row?._id || row?.id;
+		if (!id) return;
+		if (pendingById[id]) return;
+
+		const currentStatus = (statusOverrides[id] ?? row?.status ?? 'active') === 'inactive' ? 'inactive' : 'active';
+		const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
+		const verb = nextStatus === 'inactive' ? 'Deactivate' : 'Reactivate';
+		if (!confirm(`${verb} this teacher?`)) return;
+
+		setPendingById((prev) => ({ ...prev, [id]: true }));
+		setStatusOverrides((prev) => ({ ...prev, [id]: nextStatus }));
 		try {
-			await deleteTeacher(row._id || row.id);
-			setItems((prev) => prev.filter((x) => (x._id || x.id) !== (row._id || row.id)));
-			toast.success('Teacher deleted');
+			if (nextStatus === 'inactive') await deactivateTeacher(id);
+			else await reactivateTeacher(id);
+			setItems((prev) => prev.map((x) => ((x._id || x.id) === id ? { ...x, status: nextStatus } : x)));
+			setStatusOverrides((prev) => {
+				const copy = { ...prev };
+				delete copy[id];
+				return copy;
+			});
+			toast.success(nextStatus === 'inactive' ? 'Teacher deactivated' : 'Teacher reactivated');
 		} catch (e) {
-			const msg = e?.message || 'Delete failed';
-			toast.error(msg);
+			setStatusOverrides((prev) => {
+				const copy = { ...prev };
+				delete copy[id];
+				return copy;
+			});
+			toast.error(e?.message || 'Update failed');
+		} finally {
+			setPendingById((prev) => {
+				const copy = { ...prev };
+				delete copy[id];
+				return copy;
+			});
 		}
 	};
+
+	// Keep page in range if total shrinks (delete/search)
+	useEffect(() => {
+		const total = sortedItems.length;
+		const tp = total <= 0 ? 1 : (limit >= total ? 1 : Math.ceil(total / limit));
+		if (page > tp) setPage(tp);
+	}, [sortedItems.length, limit, page]);
+
+	const total = sortedItems.length;
+	const totalPages = total <= 0 ? 1 : (limit >= total ? 1 : Math.ceil(total / limit));
+	const currentRows = useMemo(() => {
+		if (!Array.isArray(sortedItems)) return [];
+		if (total <= 0) return [];
+		if (limit >= total) return sortedItems;
+		const start = (Math.max(1, page) - 1) * limit;
+		return sortedItems.slice(start, start + limit);
+	}, [sortedItems, page, limit, total]);
 
 	const onSave = async (payload) => {
 		try {
@@ -120,23 +179,26 @@ export default function TeachersPage() {
 				</Button>
 			</div>
 			<DataToolbar
-				searchSlot={<SearchInput value={search} onChange={setSearch} placeholder="Search teachers..." />}
+				searchSlot={<SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search teachers..." />}
 				sortSlot={<SortControls currentField={sortBy} currentDir={sortDir} fields={[{ field: 'fullName', label: 'Name' }, { field: 'teacherId', label: 'ID' }, { field: 'createdAt', label: 'Created' }]} onSort={onSort} />}
 				onReset={onReset}
 			/>
+
 			<TeacherTable
 				items={sortedItems}
-				loading={loading}
+				rows={currentRows}
+				isLoading={loading}
 				error={error}
 				sortBy={sortBy}
 				sortDir={sortDir}
 				onSort={onSort}
-				onAssign={(t) => {
-					setAssignTeacher(t);
-					setShowAssign(true);
-				}}
+				meta={{ page, totalPages, limit, total }}
+				onPage={setPage}
+				onLimit={(v) => { setLimit(v); setPage(1); }}
+				onAssign={(t) => { setAssignTeacher(t); setShowAssign(true); }}
 				onEdit={onEdit}
-				onDelete={onDelete}
+				onToggleStatus={onToggleStatus}
+				pendingById={pendingById}
 			/>
 
 			<Modal isOpen={showForm} onClose={() => {
@@ -149,7 +211,7 @@ export default function TeachersPage() {
 				}} onSave={onSave} />
 			</Modal>
 
-			<TeacherAssignmentsModal isOpen={showAssign} onClose={() => {
+			<TeacherAssignmentsModal key={assignTeacher?._id || assignTeacher?.id || 'teacher-assignments'} isOpen={showAssign} onClose={() => {
 				setShowAssign(false);
 				setAssignTeacher(null);
 			}} teacher={assignTeacher || {}} />

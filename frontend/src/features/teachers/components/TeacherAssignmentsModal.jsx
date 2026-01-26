@@ -20,6 +20,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
   const [subjectId, setSubjectId] = useState('');
   const [assignments, setAssignments] = useState([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [shifts, setShifts] = useState([]);
   const [shiftId, setShiftId] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -50,20 +51,52 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
 
   useEffect(() => {
     if (!isOpen) return;
+    const teacherId = teacher?._id;
+
+    // Reset UI immediately so previous teacher data doesn't flash.
     setError('');
+    setLoading(true);
+    setAssignments([]);
+    setGradeId('');
+    setShiftId('');
+    setSectionId('');
+    setSubjectId('');
+    setSections([]);
+    setSubjects([]);
+
+    let ignore = false;
     Promise.all([
       getGrades(),
       getShifts(),
-      getAssignments(teacher._id),
-    ]).then(([gradesData, shiftsData, aData]) => {
-      const g = Array.isArray(gradesData?.data) ? gradesData.data : gradesData;
-      const sortedG = Array.isArray(g) ? [...g].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)) : [];
-      setGrades(sortedG);
-      const sh = Array.isArray(shiftsData?.data) ? shiftsData.data : shiftsData;
-      setShifts(sh || []);
-      const a = Array.isArray(aData?.data) ? aData.data : (Array.isArray(aData) ? aData : []);
-      setAssignments(a);
-    }).catch(() => setError('Failed to load data'));
+      teacherId ? getAssignments(teacherId) : Promise.resolve([]),
+    ])
+      .then(([gradesData, shiftsData, aData]) => {
+        if (ignore) return;
+
+        const g = Array.isArray(gradesData?.data) ? gradesData.data : gradesData;
+        const sortedG = Array.isArray(g)
+          ? [...g].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+          : [];
+        setGrades(sortedG);
+
+        const sh = Array.isArray(shiftsData?.data) ? shiftsData.data : shiftsData;
+        setShifts(sh || []);
+
+        const a = Array.isArray(aData?.data) ? aData.data : Array.isArray(aData) ? aData : [];
+        setAssignments(a);
+      })
+      .catch(() => {
+        if (ignore) return;
+        setError('Failed to load data');
+      })
+      .finally(() => {
+        if (ignore) return;
+        setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, [isOpen, teacher?._id]);
 
   useEffect(() => {
@@ -119,7 +152,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
       await removeAssignment(teacher._id, assignment._id);
       setAssignments((prev) => prev.filter((x) => x._id !== assignment._id));
     } catch (e) {
-      alert(e.message || 'Failed to remove');
+      toast.error(e?.message || 'Failed to remove assignment', { position: 'top-center' });
     }
   };
 
@@ -127,6 +160,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
     <Modal isOpen={isOpen} onClose={onClose} title={`Assignments • ${teacher?.fullName || teacher?.teacherId || ''}`}>
       <div className="space-y-4">
         {error && <div className="text-red-600 text-sm">{error}</div>}
+        {loading && <div className="text-sm text-gray-600">Loading assignments...</div>}
         <FilterRow>
           <FilterItem>
             <DropdownSelect

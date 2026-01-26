@@ -5,6 +5,7 @@ import Enrollment from '../models/Enrollment.js';
 import Student from '../models/Student.js';
 import Counter from '../models/Counter.js';
 import User from '../models/User.js';
+import Timetable from '../models/Timetable.js';
 import bcrypt from 'bcryptjs';
 import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
 
@@ -175,7 +176,7 @@ export const updateTeacher = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
     const { fullName, teacherId, email, phone, status } = req.body;
 
-    const existingTeacher = await Teacher.findById(id).select('teacherId email').lean();
+    const existingTeacher = await Teacher.findById(id).select('teacherId email status').lean();
     if (!existingTeacher) return res.status(404).json({ message: 'Not found' });
 
     // Uniqueness validation excluding current doc
@@ -217,8 +218,23 @@ export const updateTeacher = async (req, res) => {
       if (nextTeacherId) patch.username = nextTeacherId;
       if (email !== undefined) patch.email = nextEmail || undefined;
       if (phone !== undefined) patch.phone = phone || undefined;
-      if (Object.keys(patch).length) {
-        await User.updateOne({ teacherRef: id }, { $set: patch });
+
+      const statusChanged =
+        status !== undefined &&
+        String(existingTeacher.status || '').toLowerCase() !== String(updated.status || '').toLowerCase();
+
+      if (status !== undefined) {
+        patch.status = updated.status || 'active';
+      }
+      if (fullName !== undefined) {
+        patch.fullName = updated.fullName;
+      }
+
+      if (Object.keys(patch).length || statusChanged) {
+        const update = {};
+        if (Object.keys(patch).length) update.$set = patch;
+        if (statusChanged) update.$inc = { tokenVersion: 1 };
+        await User.updateOne({ teacherRef: id }, update);
       }
     } catch {
       // non-blocking
@@ -243,6 +259,66 @@ export const deleteTeacher = async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+export const deactivateTeacher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
+
+    const updated = await Teacher.findByIdAndUpdate(
+      id,
+      { $set: { status: 'inactive' } },
+      { new: true }
+    )
+      .select('fullName teacherId email phone status lastAcademicYear createdAt')
+      .lean();
+    if (!updated) return res.status(404).json({ message: 'Not found' });
+
+    // Best-effort: block further logins + invalidate existing tokens
+    try {
+      await User.updateOne(
+        { teacherRef: id },
+        { $set: { status: 'inactive' }, $inc: { tokenVersion: 1 } }
+      );
+    } catch {
+      // non-blocking
+    }
+
+    return res.json({ data: updated });
+  } catch {
+    return res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+export const reactivateTeacher = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
+
+    const updated = await Teacher.findByIdAndUpdate(
+      id,
+      { $set: { status: 'active' } },
+      { new: true }
+    )
+      .select('fullName teacherId email phone status lastAcademicYear createdAt')
+      .lean();
+    if (!updated) return res.status(404).json({ message: 'Not found' });
+
+    // Best-effort: allow logins + invalidate existing tokens
+    try {
+      await User.updateOne(
+        { teacherRef: id },
+        { $set: { status: 'active' }, $inc: { tokenVersion: 1 } }
+      );
+    } catch {
+      // non-blocking
+    }
+
+    return res.json({ data: updated });
+  } catch {
+    return res.status(500).json({ message: 'Server Error' });
   }
 };
 
@@ -290,6 +366,25 @@ export const removeAssignment = async (req, res) => {
   try {
     const { id, assignmentId } = req.params;
     if (![id, assignmentId].every(mongoose.isValidObjectId)) return res.status(400).json({ message: 'Invalid ids' });
+
+    const assignment = await TeacherAssignment.findOne({ _id: assignmentId, teacher: id })
+      .select('gradeSection subject')
+      .lean();
+    if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+
+    // Block removal if a timetable already references this assignment.
+    const hasTimetable = await Timetable.exists({
+      gradeSection: assignment.gradeSection,
+      teacher: id,
+      subject: assignment.subject,
+      isBreak: false,
+    });
+    if (hasTimetable) {
+      return res.status(409).json({
+        message: 'Cannot remove assignment: timetable exists for this class/subject. Remove timetable entries first.',
+      });
+    }
+
     await TeacherAssignment.deleteOne({ _id: assignmentId, teacher: id });
     res.json({ ok: true });
   } catch (e) {

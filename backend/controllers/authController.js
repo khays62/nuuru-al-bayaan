@@ -449,6 +449,10 @@ export const resetLoginLockout = async (req, res) => {
     principal.failedLoginAttempts = 0;
     principal.lockUntil = null;
     principal.loginCooldownLevel = 0;
+
+    // Invalidate all existing JWT sessions for this account.
+    // This forces logout on all devices/tabs on the next request.
+    principal.tokenVersion = Number(principal.tokenVersion || 0) + 1;
     await principal.save();
 
     res.json({ success: true, message: "Login lockout reset successfully" });

@@ -5,7 +5,8 @@ import {
   updateUser,
   deleteUser,
   toggleUserStatus,
-  getUserById
+  getUserById,
+  getUserAuditLogs
 } from "../controllers/userController.js";
 
 import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
@@ -67,6 +68,15 @@ router.get(
   "/:id",
   validate({ params: z.object({ id: z.string().min(1) }).strip() }),
   getUserById
+);
+
+router.get(
+  "/:id/logs",
+  validate({
+    params: z.object({ id: z.string().min(1) }).strip(),
+    query: z.object({ limit: z.coerce.number().optional() }).strip().optional(),
+  }),
+  getUserAuditLogs
 );
 
 export default router;

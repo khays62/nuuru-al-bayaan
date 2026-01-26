@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Eye, Pencil, Trash2, RotateCcw, Repeat } from "lucide-react";
 // import { useAuth } from "../contexts/AuthContext";
 import {
   listUsers,
@@ -9,22 +7,18 @@ import {
   updateUser,
   toggleUserStatus,
   getUserById,
+  resetUserLoginLockout,
 } from "../api/usersApi";
 
-import Modal from "../../../shared/components/ui/Modal.jsx";
 import SearchInput from "../../../shared/components/DataToolbar/SearchInput.jsx";
-import StatusBadge from "../../../shared/components/ui/badges/StatusBadge.jsx";
-import ActionButton from "../../../shared/components/ui/ActionButton.jsx";
 import DataToolbar from "../../../shared/components/DataToolbar/DataToolbar.jsx";
 import { FilterItem, FilterRow } from "../../../shared/components/DataToolbar/FilterLayout.jsx";
 import FilterDropdownSelect from "../../../shared/components/DataToolbar/FilterDropdownSelect.jsx";
 import ListPageShell from "../../../shared/components/ui/ListPageShell.jsx";
-import StandardTable from "../../../shared/components/table/StandardTable.jsx";
 import { useClientSort } from "../../../shared/hooks/useClientSort";
 import Button from "../../../shared/components/ui/Button.jsx";
-import Checkbox from "../../../shared/components/ui/Checkbox.jsx";
-import Input from "../../../shared/components/ui/Input.jsx";
-import Select from "../../../shared/components/ui/Select.jsx";
+import UserTable from "../components/UserTable.jsx";
+import UserFormModal from "../components/UserFormModal.jsx";
 
 /* ---------------- MODULE -> allowed permissions ---------------- */
 const MODULE_PERMISSIONS = {
@@ -88,6 +82,9 @@ export default function UserManagementPage() {
   const [limit, setLimit] = useState(10);
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+
+  const [statusOverrides, setStatusOverrides] = useState({});
+  const [pendingById, setPendingById] = useState({});
 
   const [form, setForm] = useState({
     fullName: "",
@@ -385,13 +382,48 @@ export default function UserManagementPage() {
   // };
 
   const handleToggleStatus = async (id) => {
-    setIsLoading(true);
-    try { await toggleUserStatus(id); fetchUsers(); toast.success("Status updated"); }
-    catch (err) { console.error(err); toast.error("Failed to update status"); }
-    finally { setIsLoading(false); }
+    if (!id) return;
+    if (pendingById[id]) return;
+
+    const currentUser = users.find((u) => u?._id === id);
+    const currentStatus = (statusOverrides[id] ?? currentUser?.status ?? 'active') === 'inactive' ? 'inactive' : 'active';
+    const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const verb = nextStatus === 'inactive' ? 'Deactivate' : 'Activate';
+    if (!confirm(`${verb} this user?`)) return;
+
+    setPendingById((prev) => ({ ...prev, [id]: true }));
+    setStatusOverrides((prev) => ({ ...prev, [id]: nextStatus }));
+
+    try {
+      const res = await toggleUserStatus(id);
+      if (res?.error) throw new Error(res.error);
+
+      setUsers((prev) => prev.map((u) => (u?._id === id ? { ...u, status: nextStatus } : u)));
+      toast.success('Status updated');
+    } catch (err) {
+      console.error(err);
+      setStatusOverrides((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+      toast.error(err?.message || 'Failed to update status');
+    } finally {
+      setPendingById((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
+    }
   };
   /* ---------------- Filtering & Pagination ---------------- */
-  const filteredUsers = users.filter((u) => {
+  const viewUsers = users.map((u) => {
+    const id = u?._id;
+    const override = id ? statusOverrides[id] : null;
+    return override ? { ...u, status: override } : u;
+  });
+
+  const filteredUsers = viewUsers.filter((u) => {
     const roleMatch = roleFilter ? u.role === roleFilter : true;
     const statusMatch = statusFilter ? u.status === statusFilter : true;
     const searchMatch = search ? (u.fullName.toLowerCase().includes(search.toLowerCase()) || u.username.toLowerCase().includes(search.toLowerCase())) : true;
@@ -435,23 +467,25 @@ export default function UserManagementPage() {
 
 
   const handleResetLockout = async (id) => {
-    setIsLoading(true);
+    if (!id) return;
+    if (pendingById[id]) return;
 
+    if (!confirm('Reset login lockout for this user?')) return;
+
+    setPendingById((prev) => ({ ...prev, [id]: true }));
     try {
-      await fetch(`/api/auth/users/${id}/reset-lockout`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-      });
-      // alert("Login lockout reset successfully");
-      toast.success("Login lockout reset successfully")
-      fetchUsers();
+      const res = await resetUserLoginLockout(id);
+      if (!res?.ok) throw new Error(res?.error || 'Failed to reset lockout');
+      toast.success('Login lockout reset successfully');
     } catch (err) {
-      console.error("Reset lockout failed", err);
-      // alert("Failed to reset lockout");
-      toast.error("Failed to reset lockout")
-    }  finally {
-      setIsLoading(false);
+      console.error('Reset lockout failed', err);
+      toast.error(err?.message || 'Failed to reset lockout');
+    } finally {
+      setPendingById((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
     }
   };
 
@@ -517,100 +551,14 @@ export default function UserManagementPage() {
       )}
     >
 
-      <StandardTable
+      <UserTable
         isLoading={isLoading}
         items={sortedUsersForView}
-        loadingMessage="Loading users..."
-        loadingVariant="table"
-        loadingRows={6}
-        loadingColumns={7}
-        emptyTitle="No users found"
-        emptyDescription="Try adjusting filters or add a new user."
-
         rows={currentUsers}
-        columns={[
-          { key: 'fullName', label: 'Full Name', sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-          { key: 'username', label: 'Username', sortable: true, field: 'username' },
-          { key: 'email', label: 'Email', sortable: true, field: 'email' },
-          { key: 'phone', label: 'Phone', sortable: true, field: 'phone' },
-          { key: 'role', label: 'Role', sortable: true, field: 'role' },
-          { key: 'status', label: 'Status', sortable: true, field: 'status', tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
-          { key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-gray-200 no-print' },
-        ]}
-        storageKey="users:columns:v1"
+        allCount={sortedUsersForView.length}
         sortBy={sortBy}
         sortDir={sortDir}
         onSort={onSort}
-        controlsProps={{
-          limit,
-          total: sortedUsersForView.length,
-          onLimit: (newLimit) => {
-            setLimit(newLimit);
-            setCurrentPage(1);
-          },
-          limits: [5, 10, 20, 50, 100, 'all'],
-        }}
-        getRowKey={(u) => u._id}
-        renderCell={(u, col) => {
-          switch (col.key) {
-            case 'fullName':
-              return u.fullName;
-            case 'username':
-              return u.username;
-            case 'email':
-              return u.email;
-            case 'phone':
-              return u.phone;
-            case 'role':
-              return u.role;
-            case 'status':
-              return <StatusBadge status={u.status} />;
-            case 'actions':
-              return (
-                <>
-                  <Link
-                    to={`/users/${u._id}`}
-                    title="View User"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-white hover:bg-gray-50 shadow-sm text-blue-700 border-blue-300"
-                  >
-                    <Eye size={16} /> <span className="hidden sm:inline">View</span>
-                  </Link>
-
-                  <ActionButton
-                    variant="neutral"
-                    title="Edit User"
-                    onClick={() => handleEditUser(u)}
-                    icon={<Pencil size={16} />}
-                  >
-                    <span className="hidden sm:inline">Edit</span>
-                  </ActionButton>
-
-                  <ActionButton
-                    variant={u.status === "active" ? "danger" : "primary"}
-                    title={u.status === "active" ? "Deactivate User" : "Activate User"}
-                    onClick={() => handleToggleStatus(u._id)}
-                    icon={u.status === "active" ? (<Trash2 size={16} />) : (<RotateCcw size={16} />)}
-                  >
-                    <span className="hidden sm:inline">
-                      {u.status === "active" ? "Deactivate" : "Activate"}
-                    </span>
-                  </ActionButton>
-
-                  <ActionButton
-                    variant="info"
-                    title="Reset Login Lockout"
-                    onClick={() => handleResetLockout(u._id)}
-                    icon={<Repeat size={16} />}
-                  >
-                    <span className="hidden sm:inline">Reset Lockout</span>
-                  </ActionButton>
-                </>
-              );
-            default:
-              return '';
-          }
-        }}
-
         page={currentPage}
         totalPages={Math.ceil(sortedUsersForView.length / limit)}
         limit={limit}
@@ -619,196 +567,35 @@ export default function UserManagementPage() {
           setLimit(newLimit);
           setCurrentPage(1);
         }}
-        showRowsSelector={false}
+        onEdit={handleEditUser}
+        onToggleStatus={handleToggleStatus}
+        onResetLockout={handleResetLockout}
+        pendingById={pendingById}
       />
 
-      {/* Modal */}
-<Modal
-  isOpen={showModal}
-  onClose={() => {
-    setShowModal(false);
-    resetForm();
-  }}
-  title={editingUser ? "Edit User" : "Create User"}
->
-  <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4" autoComplete="off">
-
-    {/*
-      Prevent Chrome/password managers from autofilling this modal.
-      These hidden fields act as a sink for saved credentials.
-    */}
-    {!editingUser && (
-      <>
-        <input
-          type="text"
-          name="fake_username"
-          autoComplete="username"
-          tabIndex={-1}
-          className="hidden"
-          aria-hidden="true"
-        />
-        <input
-          type="password"
-          name="fake_password"
-          autoComplete="current-password"
-          tabIndex={-1}
-          className="hidden"
-          aria-hidden="true"
-        />
-      </>
-    )}
-
-    {isFormLoading && (
-      <div className="col-span-full text-sm text-gray-600">Loading user details...</div>
-    )}
-
-    {["fullName", "username", "email", "phone", "password", "confirmPassword"].map((field) => {
-      const isPassword = field.toLowerCase().includes("password");
-      const isConfirm = field === "confirmPassword";
-      const passwordsMismatch =
-        form.confirmPassword && form.password !== form.confirmPassword;
-
-      return (
-        <div key={field}>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {field.replace(/([A-Z])/g, " $1")}
-          </label>
-
-          <Input
-            type={
-              field === "email"
-                ? "email"
-                : isPassword
-                ? "password"
-                : "text"
-            }
-            name={field}
-            value={form[field]}
-            onChange={handleChange}
-            placeholder={editingUser && field === "password" ? "New Password (optional)" : ""}
-            disabled={isFormLoading || isSaving}
-            readOnly={!editingUser && ["username", "password", "confirmPassword"].includes(field) ? !!createReadOnly[field] : false}
-            onFocus={() => {
-              if (!editingUser && ["username", "password", "confirmPassword"].includes(field)) {
-                setCreateReadOnly((r) => ({ ...r, [field]: false }));
-              }
-            }}
-            autoComplete={
-              editingUser
-                ? (field === 'password' || field === 'confirmPassword' ? 'new-password' : 'off')
-                : (field === 'password' || field === 'confirmPassword' ? 'new-password' : (field === 'username' ? 'off' : 'off'))
-            }
-            className={isConfirm && passwordsMismatch ? 'border-red-500 focus-visible:ring-red-500' : ''}
-            required={
-              ["fullName", "username"].includes(field) ||
-              (!editingUser && ["email", "password", "confirmPassword"].includes(field))
-            }
-          />
-
-          {/* Password mismatch error */}
-          {isConfirm && passwordsMismatch && (
-            <p className="text-red-500 text-sm mt-1">
-              Passwords do not match
-            </p>
-          )}
-        </div>
-      );
-    })}
-
-    {/* Role */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-      <Select
-        name="role"
-        value={form.role}
-        onChange={handleChange}
-        disabled={isFormLoading || isSaving}
-      >
-        <option value="staff">Staff</option>
-        <option value="admin">Admin</option>
-      </Select>
-    </div>
-
-    {/* Module + Permissions */}
-    {form.role === "staff" && (
-      <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Select Module
-          </label>
-          <Select
-            name="selectedModule"
-            value={form.selectedModule}
-            onChange={handleChange}
-            disabled={isFormLoading || isSaving}
-            required={!editingUser}
-
-          >
-            <option value="">-- Choose Module --</option>
-            {MODULES.map((mod) => (
-              <option key={mod} value={mod}>
-                {mod.charAt(0).toUpperCase() + mod.slice(1)}
-              </option>
-            ))}
-          </Select>
-        </div>
-
-        {form.selectedModule && (
-          <div className="col-span-full p-4 border rounded bg-white">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-semibold">
-                Permissions for {form.selectedModule}
-              </h3>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              
-{MODULE_PERMISSIONS[form.selectedModule].map((perm) => (
-  <label key={perm} className="flex items-center gap-2 border p-2 rounded">
-    <Checkbox
-      checked={!!form.permissions[form.selectedModule][perm]}
-      onChange={() => togglePermission(form.selectedModule, perm)}
-      disabled={isFormLoading || isSaving}
-    />
-    {perm === "full" ? "Full Access (Select All)" : perm}
-  </label>
-))}
-
-            </div>
-          </div>
-        )}
-      </>
-    )}
-
-    {/* Actions */}
-    <div className="col-span-full flex justify-end gap-2 mt-2">
-      <Button
-        type="button"
-        variant="neutral"
-        onClick={() => {
+      <UserFormModal
+        isOpen={showModal}
+        onClose={() => {
           setShowModal(false);
           resetForm();
         }}
-        disabled={isSaving}
-      >
-        Cancel
-      </Button>
-
-      <Button
-        type="submit"
-        variant="brand"
-        disabled={
-          isFormLoading ||
-          isSaving ||
-          (form.confirmPassword && form.password !== form.confirmPassword)
-        }
-      >
-        {isSaving ? (editingUser ? "Updating..." : "Saving...") : (editingUser ? "Update" : "Save")}
-      </Button>
-    </div>
-
-  </form>
-</Modal>
+        title={editingUser ? "Edit User" : "Create User"}
+        editingUser={editingUser}
+        isFormLoading={isFormLoading}
+        isSaving={isSaving}
+        form={form}
+        createReadOnly={createReadOnly}
+        setCreateReadOnly={setCreateReadOnly}
+        handleSubmit={handleSubmit}
+        handleChange={handleChange}
+        togglePermission={togglePermission}
+        MODULES={MODULES}
+        MODULE_PERMISSIONS={MODULE_PERMISSIONS}
+        onCancel={() => {
+          setShowModal(false);
+          resetForm();
+        }}
+      />
 
 
 

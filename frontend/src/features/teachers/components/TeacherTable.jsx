@@ -1,73 +1,137 @@
 import React, { useMemo } from 'react';
-import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
-import DataTable from '../../../shared/components/table/DataTable.jsx';
-import TableState from '../../../shared/components/table/TableState.jsx';
+import { ListChecks, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 
-export default function TeacherTable({ items = [], loading = false, error = '', sortBy, sortDir, onSort, onAssign, onEdit, onDelete }) {
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+
+export default function TeacherTable({
+  items = [],
+  rows = [],
+  isLoading = false,
+  error = null,
+  sortBy,
+  sortDir,
+  onSort,
+  meta,
+  onPage,
+  onLimit,
+  onAssign,
+  onEdit,
+  onToggleStatus,
+  pendingById,
+}) {
+  const STORAGE_KEY = 'teachers:columns:v1';
+
   const columns = useMemo(() => ([
-    { key: 'name', label: 'Name', sortable: true, field: 'fullName', thClassName: 'text-left px-3 py-2 border-r border-white/20', tdClassName: 'px-3 py-2 border-r' },
-    { key: 'teacherId', label: 'Teacher ID', sortable: true, field: 'teacherId', thClassName: 'text-left px-3 py-2 border-r border-white/20', tdClassName: 'px-3 py-2 border-r' },
-    { key: 'email', label: 'Email', sortable: true, field: 'email', thClassName: 'text-left px-3 py-2 border-r border-white/20', tdClassName: 'px-3 py-2 border-r' },
-    { key: 'phone', label: 'Phone', sortable: true, field: 'phone', thClassName: 'text-left px-3 py-2 border-r border-white/20', tdClassName: 'px-3 py-2 border-r' },
-    { key: 'createdAt', label: 'Created', sortable: true, field: 'createdAt', thClassName: 'text-left px-3 py-2 border-r border-white/20', tdClassName: 'px-3 py-2 border-r' },
-    { key: 'status', label: 'Status', sortable: true, field: 'status', thClassName: 'text-left px-3 py-2 border-r border-white/20', tdClassName: 'px-3 py-2 border-r' },
-    { key: 'actions', label: '', thClassName: 'text-left px-3 py-2', tdClassName: 'px-3 py-2 text-right' },
+    { key: 'name', label: 'Name', sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+    { key: 'teacherId', label: 'Teacher ID', sortable: true, field: 'teacherId' },
+    { key: 'email', label: 'Email', sortable: true, field: 'email' },
+    { key: 'phone', label: 'Phone', sortable: true, field: 'phone' },
+    { key: 'createdAt', label: 'Created', sortable: true, field: 'createdAt' },
+    { key: 'status', label: 'Status', sortable: true, field: 'status', tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
+    { key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
   ]), []);
 
   return (
-    <TableState
-      isLoading={loading}
+    <StandardTable
+      isLoading={isLoading}
       error={error}
       items={items}
-      loadingMessage="Loading…"
+      loadingMessage="Loading teachers..."
       loadingVariant="table"
       loadingRows={6}
       loadingColumns={7}
       emptyTitle="No teachers."
-      emptyDescription=""
-    >
-      <DataTable
-        rows={items}
-        columns={columns}
-        sortBy={sortBy}
-        sortDir={sortDir}
-        onSort={onSort}
-        getRowKey={(t) => t._id || t.id}
-        theadClassName=""
-        headerRowClassName="bg-black text-white"
-        baseRowClassName="border-t"
-        useDefaultHeaderStyles={false}
-        renderCell={(t, col) => {
-          switch (col.key) {
-            case 'name':
-              return t.fullName || `${t.firstName || ''} ${t.lastName || ''}`.trim();
-            case 'teacherId':
-              return t.teacherId || '-';
-            case 'email':
-              return t.email || '-';
-            case 'phone':
-              return t.phone || '-';
-            case 'createdAt':
-              return t.createdAt
-                ? new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(t.createdAt))
-                : '-';
-            case 'status':
-              return (
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ring-1 ${t.status === 'active' ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>{t.status || '-'}</span>
-              );
-            case 'actions':
-              return (
-                <>
-                  <ActionButton variant="info" onClick={() => onAssign && onAssign(t)}>Assignments</ActionButton>
-                  <ActionButton className="ml-2" onClick={() => onEdit && onEdit(t)}>Edit</ActionButton>
-                  <ActionButton variant="danger" className="ml-2" onClick={() => onDelete && onDelete(t)}>Delete</ActionButton>
-                </>
-              );
-            default:
-              return '';
-          }
-        }}
-      />
-    </TableState>
+      emptyDescription="Try adjusting search or add a new teacher."
+
+      rows={rows}
+      columns={columns}
+      storageKey={STORAGE_KEY}
+      sortBy={sortBy}
+      sortDir={sortDir}
+      onSort={onSort}
+      controlsProps={
+        meta
+          ? {
+              limit: meta.limit,
+              total: meta.total,
+              onLimit: (v) => onLimit?.(v),
+              limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
+            }
+          : undefined
+      }
+      getRowKey={(t) => t._id || t.id}
+      renderCell={(t, col) => {
+        switch (col.key) {
+          case 'name':
+            return t.fullName || `${t.firstName || ''} ${t.lastName || ''}`.trim() || '-';
+          case 'teacherId':
+            return t.teacherId || '-';
+          case 'email':
+            return t.email || '-';
+          case 'phone':
+            return t.phone || '-';
+          case 'createdAt':
+            return t.createdAt
+              ? new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(t.createdAt))
+              : '-';
+          case 'status':
+            return (
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ring-1 ${t.status === 'active' ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>{t.status || '-'}</span>
+            );
+          case 'actions':
+            return (
+              <RowActionButtons
+                actions={[
+                  {
+                    key: 'assign',
+                    label: 'Assignments',
+                    title: 'Assignments',
+                    tone: 'view',
+                    showLabel: true,
+                    icon: <ListChecks size={16} />,
+                    onClick: () => onAssign?.(t),
+                  },
+                  {
+                    key: 'edit',
+                    label: 'Edit',
+                    title: 'Edit Teacher',
+                    tone: 'edit',
+                    icon: <Pencil size={16} />,
+                    onClick: () => onEdit?.(t),
+                  },
+                  t.status === 'inactive'
+                    ? {
+                        key: 'reactivate',
+                        label: 'Reactivate',
+                        title: 'Reactivate Teacher',
+                        tone: 'view',
+                        icon: <RotateCcw size={16} />,
+                        disabled: Boolean(pendingById?.[t._id || t.id]),
+                        onClick: () => onToggleStatus?.(t),
+                      }
+                    : {
+                        key: 'deactivate',
+                        label: 'Deactivate',
+                        title: 'Deactivate Teacher',
+                        tone: 'delete',
+                        icon: <Trash2 size={16} />,
+                        disabled: Boolean(pendingById?.[t._id || t.id]),
+                        onClick: () => onToggleStatus?.(t),
+                      },
+                ]}
+              />
+            );
+          default:
+            return '';
+        }
+      }}
+
+      meta={meta}
+      onPage={onPage}
+      onLimit={onLimit}
+      showRowsSelector={false}
+      paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+    />
   );
 }

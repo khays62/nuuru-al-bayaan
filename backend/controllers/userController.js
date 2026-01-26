@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import Admin from "../models/Admin.js";
 import { writeAuditLog } from "../services/auditService.js";
+import AuditLog from "../models/AuditLog.js";
 
 
 
@@ -235,6 +236,26 @@ export const getUserById = async (req, res) => {
     res.json({ data: user });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch user" });
+  }
+};
+
+export const getUserAuditLogs = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(200, Math.max(1, Number(req.query?.limit || 50)));
+
+    const exists = await User.exists({ _id: id });
+    if (!exists) return res.status(404).json({ message: 'User not found' });
+
+    const logs = await AuditLog.find({ user: id })
+      .select('action description ip device timestamp')
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.json({ data: logs });
+  } catch (error) {
+    return res.status(500).json({ message: error?.message || 'Failed to fetch logs' });
   }
 };
 
