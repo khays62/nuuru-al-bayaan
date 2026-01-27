@@ -74,7 +74,7 @@ router.get(
   "/:id/logs",
   validate({
     params: z.object({ id: z.string().min(1) }).strip(),
-    query: z.object({ limit: z.coerce.number().optional() }).strip().optional(),
+    query: z.object({ page: z.coerce.number().optional(), limit: z.coerce.number().optional() }).strip().optional(),
   }),
   getUserAuditLogs
 );

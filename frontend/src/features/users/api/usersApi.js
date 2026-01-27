@@ -93,10 +93,16 @@ export const getUserById = async (id) => {
 	}
 };
 
-export const getUserAuditLogs = async (id) => {
+export const getUserAuditLogs = async (id, params = {}) => {
 	try {
-		const data = await fetchJson(`/users/${id}/logs`);
-		return { ok: true, data: Array.isArray(data?.data) ? data.data : [] };
+		const qs = new URLSearchParams(params).toString();
+		const path = qs ? `/users/${id}/logs?${qs}` : `/users/${id}/logs`;
+		const data = await fetchJson(path);
+		return {
+			ok: true,
+			data: Array.isArray(data?.data) ? data.data : [],
+			meta: data?.meta || null,
+		};
 	} catch (err) {
 		return { ok: false, error: err?.data?.message || err?.message || 'Failed to fetch logs' };
 	}

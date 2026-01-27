@@ -254,6 +254,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'teachers/:teacherId',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={teachersAny}>
+            <TeacherProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'announcements',
         element: (
           <ProtectedRoute allowedRoles={['admin', 'staff', 'teacher', 'student']}>

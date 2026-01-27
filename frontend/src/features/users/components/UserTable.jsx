@@ -122,8 +122,8 @@ export default function UserTable({
               },
               {
                 key: 'resetLockout',
-                label: 'Reset Lockout',
-                title: 'Reset login lockout',
+                label: 'Unlock',
+                title: 'Unlock login (clear lockout)',
                 tone: 'neutral',
                 icon: <Repeat size={16} />,
                 disabled: isPending,

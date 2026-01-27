@@ -8,6 +8,12 @@ const AuthContext = createContext();
 
 const AUTH_LOGOUT_KEY = 'auth:logout';
 const AUTH_LAST_ACTIVITY_KEY = 'auth:lastActivity';
+const AUTH_VERIFY_INTERVAL_MS = (() => {
+  const raw = import.meta?.env?.VITE_AUTH_VERIFY_INTERVAL_MS;
+  const n = Number(raw);
+  // Default: fast enough to enforce deactivation within seconds.
+  return Number.isFinite(n) && n > 0 ? n : 3000;
+})();
 // Auto-logout after user inactivity (shared across tabs via localStorage).
 // 30 minutes
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
@@ -90,7 +96,10 @@ export const AuthProvider = ({ children }) => {
   // Heartbeat: detect global logout (token invalidated) even if the tab isn't making API calls.
   useEffect(() => {
     if (!user) return;
+    let inFlight = false;
     const id = setInterval(async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const data = await fetchJson('/auth/verify');
         const ok = Boolean(data?.success && data?.user);
@@ -99,8 +108,10 @@ export const AuthProvider = ({ children }) => {
         }
       } catch {
         // ignore transient failures
+      } finally {
+        inFlight = false;
       }
-    }, 15_000);
+    }, AUTH_VERIFY_INTERVAL_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);

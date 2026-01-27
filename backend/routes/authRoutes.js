@@ -1,5 +1,5 @@
 import express from "express";
-import { login, logout, verifyUser, resetLoginLockout, changePassword, getCsrfToken } from "../controllers/authController.js";
+import { login, logout, verifyUser, resetLoginLockout, changePassword, getCsrfToken, getMyAuditLogs } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { checkPermission } from "../middleware/checkPermission.js";
 import { z } from 'zod';
@@ -38,5 +38,14 @@ router.post(
 	changePassword
 );
 router.patch("/users/:id/reset-lockout", protect, checkPermission('security', 'edit'), resetLoginLockout);
+
+router.get(
+	'/me/logs',
+	protect,
+	validate({
+		query: z.object({ limit: z.coerce.number().optional() }).strip().optional(),
+	}),
+	getMyAuditLogs
+);
 
 export default router;

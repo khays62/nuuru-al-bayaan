@@ -1,19 +1,24 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { Eye, KeyRound, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import StatusBadge from '../../../shared/components/ui/badges/StatusBadge.jsx';
-import { deactivateStudentApi, reactivateStudentApi } from '../api/studentsApi';
+import { deactivateStudentApi, reactivateStudentApi, resetStudentPassword } from '../api/studentsApi';
 import { emitStudentsChanged } from '../../../utils/events';
 import DataTable from '../../../shared/components/table/DataTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 // Displays students returned by backend list endpoint
 const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total, onLimit }) => {
     const navigate = useNavigate();
+    const { auth, hasPermission } = useAuth();
     const STORAGE_KEY = 'students:columns:v1';
     const [optimisticStatusById, setOptimisticStatusById] = useState({});
     const [pendingId, setPendingId] = useState(null);
+
+    const canResetPw = auth?.user?.role !== 'student'
+        && (hasPermission('students', 'resetPassword') || hasPermission('students', 'edit'));
 
     const columns = useMemo(() => ([
         { key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
@@ -63,6 +68,32 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                             return (
                                 <RowActionButtons
                                     actions={[
+                                    ...(canResetPw
+                                        ? [
+                                              {
+                                                  key: 'resetPassword',
+                                                  label: 'Reset Password',
+                                                  title: 'Reset password to default (clears 24h lock/cooldown)',
+                                                  tone: 'edit',
+                                                  icon: <KeyRound size={16} />,
+                                                  disabled: isPending || String(effectiveStatus || '').toLowerCase() === 'inactive',
+                                                  onClick: async () => {
+                                                      const ok = window.confirm('Reset this student\'s password to the default password and clear the 24h lock/cooldown?');
+                                                      if (!ok) return;
+                                                      setPendingId(st._id);
+                                                      try {
+                                                          const res = await resetStudentPassword(st._id);
+                                                          if (!res.ok) throw new Error(res?.data?.message || 'Failed to reset password');
+                                                          toast.success('Password reset to default. Student must change it after login.');
+                                                      } catch (e) {
+                                                          toast.error(e?.message || 'Failed to reset password');
+                                                      } finally {
+                                                          setPendingId(null);
+                                                      }
+                                                  },
+                                              },
+                                          ]
+                                        : []),
                                     {
                                         key: 'view',
                                         label: 'View',

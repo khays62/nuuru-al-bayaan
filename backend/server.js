@@ -10,6 +10,7 @@ import { ensureIndexes } from './utils/indexMaintenance.js';
 import { getDefaultInitialPassword } from './utils/defaultPasswords.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { responseNormalize } from './middleware/responseNormalize.js';
+import { auditTrail } from './middleware/auditTrail.js';
 // import seedDatabase from './utils/seeder.js'; // Import the seeder function
 
 // Import routes
@@ -96,6 +97,10 @@ const startServer = async () => {
   // Normalize JSON responses so frontend can rely on { success: true|false, ... }
   // for common object responses, without breaking endpoints that return arrays or Mongoose documents.
   app.use(responseNormalize());
+
+  // Centralized audit trail for staff/admin actions.
+  // Logs successful mutating requests (POST/PUT/PATCH/DELETE) with permission context.
+  app.use('/api', auditTrail());
 
   // CSRF protection for cookie-based auth (double-submit token).
   app.use('/api', csrfProtection);

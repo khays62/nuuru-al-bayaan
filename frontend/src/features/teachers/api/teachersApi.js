@@ -6,6 +6,16 @@ export const listTeachers = (params = {}) => {
   return fetchJson(path);
 };
 
+export const getTeacherProfile = (teacherId, options = {}) => {
+  return fetchJson(`teachers/${teacherId}`, options);
+};
+
+export const getTeacherAuditLogs = (teacherId, params = {}, options = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  const path = qs ? `teachers/${teacherId}/logs?${qs}` : `teachers/${teacherId}/logs`;
+  return fetchJson(path, options);
+};
+
 export const getAssignments = (teacherId, params = {}, options = {}) => {
   const qs = new URLSearchParams(params).toString();
   const path = qs ? `teachers/${teacherId}/assignments?${qs}` : `teachers/${teacherId}/assignments`;
@@ -37,6 +47,11 @@ export const deactivateTeacher = (id) =>
 
 export const reactivateTeacher = (id) =>
   fetchJson(`teachers/${id}/reactivate`, {
+    method: 'PATCH',
+  });
+
+export const resetTeacherPassword = (id) =>
+  fetchJson(`teachers/${id}/reset-password`, {
     method: 'PATCH',
   });
 

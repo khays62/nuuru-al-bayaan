@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ListChecks, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { Eye, KeyRound, ListChecks, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
@@ -15,9 +15,11 @@ export default function TeacherTable({
   meta,
   onPage,
   onLimit,
+  onView,
   onAssign,
   onEdit,
   onToggleStatus,
+  onResetPassword,
   pendingById,
 }) {
   const STORAGE_KEY = 'teachers:columns:v1';
@@ -83,6 +85,23 @@ export default function TeacherTable({
             return (
               <RowActionButtons
                 actions={[
+                  {
+                    key: 'view',
+                    label: 'View',
+                    title: 'View teacher profile & audit history',
+                    tone: 'view',
+                    icon: <Eye size={16} />,
+                    onClick: () => onView?.(t),
+                  },
+                  {
+                    key: 'resetPassword',
+                    label: 'Reset Password',
+                    title: 'Reset password to default (clears 24h lock/cooldown)',
+                    tone: 'edit',
+                    icon: <KeyRound size={16} />,
+                    disabled: Boolean(pendingById?.[t._id || t.id]) || String(t.status || '').toLowerCase() === 'inactive',
+                    onClick: () => onResetPassword?.(t),
+                  },
                   {
                     key: 'assign',
                     label: 'Assignments',

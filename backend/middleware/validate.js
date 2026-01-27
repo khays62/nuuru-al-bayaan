@@ -46,9 +46,15 @@ export const validate = (schemas = {}) => {
       return next();
     } catch (err) {
       if (err instanceof ZodError) {
+        const first = Array.isArray(err.issues) && err.issues.length ? err.issues[0] : null;
+        const path = first?.path?.length ? first.path.join('.') : '';
+        const firstMessage = first?.message ? String(first.message) : '';
+        const message = first
+          ? `${path ? `${path}: ` : ''}${firstMessage || 'Invalid value'}`
+          : 'Validation error';
         const payload = {
           success: false,
-          message: 'Validation error',
+          message,
         };
         if (!isProd()) {
           payload.issues = err.issues;

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 import { useAuth } from '../../../auth/AuthContext';
-import { getStudentProfile, resetStudentPassword } from '../api/studentsApi';
+import { getStudentProfile } from '../api/studentsApi';
 import { studentKeys } from '../queryKeys';
 import Card from '../../../shared/components/ui/Card.jsx';
 
@@ -140,8 +140,6 @@ function StudentDashboardInner({ studentId }) {
     return actions.some((a) => hasPermission(module, a));
   };
 
-  const canResetPw = hasPermission('students', 'resetPassword') || hasPermission('students', 'edit');
-
   const profileQuery = useQuery({
     queryKey: studentKeys.profile(studentId),
     queryFn: async () => {
@@ -183,20 +181,6 @@ function StudentDashboardInner({ studentId }) {
     return out;
   }, [base, hasPermission]);
 
-  const handleResetPassword = async () => {
-    if (!canResetPw) return;
-    const ok = window.confirm('Reset this student\'s password to the default password?');
-    if (!ok) return;
-
-    try {
-      const res = await resetStudentPassword(studentId);
-      if (!res.ok) throw new Error(res?.data?.message || 'Failed to reset password');
-      toast.success('Password reset to default. Student must change it after login.');
-    } catch (e) {
-      toast.error(e?.message || 'Failed to reset password');
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
@@ -206,17 +190,6 @@ function StudentDashboardInner({ studentId }) {
             {profileQuery.isLoading ? 'Loading student…' : studentName}
           </div>
         </div>
-        {auth?.user?.role !== 'student' && canResetPw && (
-          <button
-            type="button"
-            onClick={handleResetPassword}
-            className="px-3 py-2 text-sm rounded border bg-white hover:bg-gray-50"
-            disabled={profileQuery.isLoading}
-            title="Reset password to default"
-          >
-            Reset Password
-          </button>
-        )}
       </div>
 
       <TabNav tabs={tabs} />

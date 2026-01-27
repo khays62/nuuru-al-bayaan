@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
-import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, updateTeacher } from '../api/teachersApi';
+import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, resetTeacherPassword, updateTeacher } from '../api/teachersApi';
 
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
@@ -12,8 +13,10 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import TeacherForm from '../components/TeacherForm';
 import TeacherAssignmentsModal from '../components/TeacherAssignmentsModal';
 import TeacherTable from '../components/TeacherTable.jsx';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function TeachersPage() {
+	const navigate = useNavigate();
 	const [items, setItems] = useState([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState(null);
@@ -29,14 +32,29 @@ export default function TeachersPage() {
 	const [statusOverrides, setStatusOverrides] = useState({});
 	const [pendingById, setPendingById] = useState({});
 
-	useEffect(() => {
-		setLoading(true);
-		setError(null);
-		listTeachers({ search })
-			.then((data) => setItems(Array.isArray(data) ? data : (data.items || data?.data || [])))
-			.catch(() => setError('Failed to load teachers'))
-			.finally(() => setLoading(false));
+	const fetchTeachers = useCallback(async ({ silent = false } = {}) => {
+		if (!silent) setLoading(true);
+		if (!silent) setError(null);
+		try {
+			const data = await listTeachers({ search });
+			setItems(Array.isArray(data) ? data : (data.items || data?.data || []));
+		} catch {
+			if (!silent) setError('Failed to load teachers');
+		} finally {
+			if (!silent) setLoading(false);
+		}
 	}, [search]);
+
+	useEffect(() => {
+		fetchTeachers();
+	}, [fetchTeachers]);
+
+	// Live refresh: when bell actions mark a teacher active/inactive
+	useEffect(() => {
+		const handler = () => fetchTeachers({ silent: true });
+		onEvent(EVENTS.TEACHERS_CHANGED, handler);
+		return () => offEvent(EVENTS.TEACHERS_CHANGED, handler);
+	}, [fetchTeachers]);
 
 	const viewItems = React.useMemo(() => {
 		if (!Array.isArray(items)) return [];
@@ -131,6 +149,28 @@ export default function TeachersPage() {
 		}
 	};
 
+	const onResetPassword = async (row) => {
+		const id = row?._id || row?.id;
+		if (!id) return;
+		if (pendingById[id]) return;
+		if (String(row?.status || '').toLowerCase() === 'inactive') return;
+		if (!confirm('Reset this teacher\'s password to the default password and clear the 24h lock/cooldown?')) return;
+
+		setPendingById((prev) => ({ ...prev, [id]: true }));
+		try {
+			await resetTeacherPassword(id);
+			toast.success('Password reset to default. Teacher must change it after login.');
+		} catch (e) {
+			toast.error(e?.data?.message || e?.message || 'Reset failed');
+		} finally {
+			setPendingById((prev) => {
+				const copy = { ...prev };
+				delete copy[id];
+				return copy;
+			});
+		}
+	};
+
 	// Keep page in range if total shrinks (delete/search)
 	useEffect(() => {
 		const total = sortedItems.length;
@@ -195,9 +235,15 @@ export default function TeachersPage() {
 				meta={{ page, totalPages, limit, total }}
 				onPage={setPage}
 				onLimit={(v) => { setLimit(v); setPage(1); }}
+				onView={(t) => {
+					const id = t?._id || t?.id;
+					if (!id) return;
+					navigate(`/teachers/${id}`);
+				}}
 				onAssign={(t) => { setAssignTeacher(t); setShowAssign(true); }}
 				onEdit={onEdit}
 				onToggleStatus={onToggleStatus}
+				onResetPassword={onResetPassword}
 				pendingById={pendingById}
 			/>
 

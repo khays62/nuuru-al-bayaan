@@ -1,7 +1,22 @@
 import express from 'express';
-import { listTeachers, createTeacher, updateTeacher, deleteTeacher, deactivateTeacher, reactivateTeacher, getAssignments, addAssignment, removeAssignment, getRoster, createTeacherLoginUser } from '../controllers/teacherController.js';
+import {
+	listTeachers,
+	createTeacher,
+	updateTeacher,
+	deleteTeacher,
+	deactivateTeacher,
+	reactivateTeacher,
+	getAssignments,
+	addAssignment,
+	removeAssignment,
+	getRoster,
+	createTeacherLoginUser,
+	resetTeacherPassword,
+	getTeacherProfile,
+	getTeacherAuditLogs,
+} from '../controllers/teacherController.js';
 import { protect } from '../middleware/authMiddleware.js';
-import { checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+import { checkAnyPermission, checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
 import { teacherOr, requireTeacherSelf } from '../middleware/teacherScope.js';
 
 const router = express.Router();
@@ -13,6 +28,15 @@ router.patch('/:id', protect, checkPermission('teachers', 'edit'), updateTeacher
 router.put('/:id', protect, checkPermission('teachers', 'edit'), updateTeacher);
 router.patch('/:id/deactivate', protect, checkPermission('teachers', 'deactivate'), deactivateTeacher);
 router.patch('/:id/reactivate', protect, checkPermission('teachers', 'reactivate'), reactivateTeacher);
+router.patch(
+	'/:id/reset-password',
+	protect,
+	checkAnyPermission([
+		{ module: 'security', action: 'resetPassword' },
+		{ module: 'security', action: 'edit' },
+	]),
+	resetTeacherPassword
+);
 router.delete('/:id', protect, checkPermission('teachers', 'delete'), deleteTeacher);
 
 router.get(
@@ -29,5 +53,9 @@ router.get(
 	teacherOr(checkModuleAnyPermission('teachers'), requireTeacherSelf('id')),
 	getRoster
 );
+
+// Admin/staff teacher profile + audit history (teachers should not access)
+router.get('/:id', protect, checkModuleAnyPermission('teachers'), getTeacherProfile);
+router.get('/:id/logs', protect, checkModuleAnyPermission('teachers'), getTeacherAuditLogs);
 
 export default router;

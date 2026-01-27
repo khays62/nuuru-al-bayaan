@@ -19,6 +19,7 @@ import { useClientSort } from "../../../shared/hooks/useClientSort";
 import Button from "../../../shared/components/ui/Button.jsx";
 import UserTable from "../components/UserTable.jsx";
 import UserFormModal from "../components/UserFormModal.jsx";
+import { on as onEvent, off as offEvent, EVENTS } from "../../../utils/events";
 
 /* ---------------- MODULE -> allowed permissions ---------------- */
 const MODULE_PERMISSIONS = {
@@ -101,8 +102,8 @@ export default function UserManagementPage() {
 //   const { hasPermission } = useAuth();
 
   
-  const fetchUsers = useCallback(async () => {
-    setIsLoading(true); // start loading
+  const fetchUsers = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true); // start loading
   
     try {
       const data = await listUsers({ search, role: roleFilter, status: statusFilter });
@@ -122,12 +123,12 @@ export default function UserManagementPage() {
       );
 
       setUsers(sortedUsers);
-      setCurrentPage(1);
+      if (!silent) setCurrentPage(1);
     } catch (err) {
       console.error("Failed to fetch users", err);
-      setUsers([]);
+      if (!silent) setUsers([]);
     } finally {
-      setIsLoading(false); // stop loading
+      if (!silent) setIsLoading(false); // stop loading
     }
   }, [search, roleFilter, statusFilter]);
   
@@ -136,6 +137,13 @@ export default function UserManagementPage() {
     setCurrentPage(1);
     fetchUsers();
   }, [limit, fetchUsers]);
+
+  // Live refresh: when another part of the app changes user status (e.g. bell actions)
+  useEffect(() => {
+    const handler = () => fetchUsers({ silent: true });
+    onEvent(EVENTS.USERS_CHANGED, handler);
+    return () => offEvent(EVENTS.USERS_CHANGED, handler);
+  }, [fetchUsers]);
 
    
 
@@ -235,6 +243,10 @@ export default function UserManagementPage() {
       toast.error("Password is required for new users");
       return;
     }
+    if (!editingUser && String(form.password || '').trim().length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
     if (form.password || form.confirmPassword) {
       if (form.password !== form.confirmPassword) {
         toast.error("Passwords do not match");
@@ -303,10 +315,18 @@ export default function UserManagementPage() {
   
       // Create or update
       if (editingUser) {
-        await updateUser(editingUser._id, payload);
+        const res = await updateUser(editingUser._id, payload);
+        if (res?.error) {
+          toast.error(res.error);
+          return;
+        }
         toast.success("User updated successfully");
       } else {
-        await createUser(payload);
+        const res = await createUser(payload);
+        if (res?.error) {
+          toast.error(res.error);
+          return;
+        }
         toast.success("User created successfully");
       }
   
@@ -510,7 +530,7 @@ export default function UserManagementPage() {
           searchSlot={
             <SearchInput
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(v) => setSearch(v)}
               placeholder="Search by name or username..."
             />
           }

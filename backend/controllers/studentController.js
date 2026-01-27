@@ -618,6 +618,16 @@ export const deactivateStudent = async (req, res) => {
     if (student.status === 'Inactive') return res.status(200).json({ message: 'Already deactivated', student });
         student.status = 'Inactive';
         await student.save();
+
+        // Cutover: students authenticate via User accounts. Ensure login is blocked and active sessions are invalidated.
+        try {
+            await User.updateOne(
+                { studentRef: id },
+                { $set: { status: 'inactive' }, $inc: { tokenVersion: 1 } }
+            );
+        } catch {
+            // non-blocking
+        }
         // Policy update (2025-10-15): Also set latest enrollment to 'inactive' (soft lock)
         // Somali: Marka ardayga la deactive gareeyo, enrollment-kiisii ugu dambeeyay haddii uu 'active' yahay
         // waxa loo rogaa 'inactive' si loo joojiyo dhaqdhaqaaqyada sida transfer/promote inta uu maqanyahay.
@@ -652,6 +662,17 @@ export const reactivateStudent = async (req, res) => {
     if (student.status === 'Active') return res.status(200).json({ message: 'Already active', student });
         student.status = 'Active';
         await student.save();
+
+        // Cutover: students authenticate via User accounts.
+        // Allow login again and invalidate any stale tokens.
+        try {
+            await User.updateOne(
+                { studentRef: id },
+                { $set: { status: 'active' }, $inc: { tokenVersion: 1 } }
+            );
+        } catch {
+            // non-blocking
+        }
         // Policy update (2025-10-15): If latest enrollment is 'inactive', flip it back to 'active'.
         // Somali: Marka ardayga dib loo hawlgeliyo, enrollment-kii ugu dambeeyay haddii uu 'inactive' yahay
         // waxaa loo celinayaa 'active'. Lama beddelo haddii uu yahay terminal state ama horeyba 'active' u ahaa.

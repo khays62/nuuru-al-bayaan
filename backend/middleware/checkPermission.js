@@ -24,6 +24,9 @@ export const checkPermission = (module, action) => {
       });
     }
 
+    // Attach audit context for downstream middleware/logging.
+    req.audit = { module, action };
+
     return next();
   };
 };
@@ -39,8 +42,14 @@ export const checkAnyPermission = (requirements = []) => {
     // ADMIN ALWAYS ALLOWED
     if (req.user.role === "admin") return next();
 
+    let matched = null;
     const ok = Array.isArray(requirements)
-      && requirements.some((r) => r?.module && r?.action && hasPermission(req.user, r.module, r.action));
+      && requirements.some((r) => {
+        if (!r?.module || !r?.action) return false;
+        const allowed = hasPermission(req.user, r.module, r.action);
+        if (allowed && !matched) matched = r;
+        return allowed;
+      });
 
     if (!ok) {
       const expected = (Array.isArray(requirements) ? requirements : [])
@@ -54,6 +63,10 @@ export const checkAnyPermission = (requirements = []) => {
           ? `Missing required permission: ${expected}`
           : "Missing required permission"
       });
+    }
+
+    if (matched) {
+      req.audit = { module: matched.module, action: matched.action };
     }
 
     return next();
@@ -84,7 +97,10 @@ export const checkModuleAnyPermission = (module, actions = []) => {
     // before iterating over keys/values.
     const permObj = typeof modulePerm?.toObject === 'function' ? modulePerm.toObject() : modulePerm;
 
-    if (permObj?.full === true) return next();
+    if (permObj?.full === true) {
+      req.audit = { module, action: 'full' };
+      return next();
+    }
 
     const allow = Array.isArray(actions) && actions.length
       ? actions.some((a) => permObj?.[a] === true)
@@ -93,6 +109,9 @@ export const checkModuleAnyPermission = (module, actions = []) => {
     if (!allow) {
       return res.status(403).json({ success: false, message: `You do not have permission to access ${module}` });
     }
+
+    // We don't know which specific action was intended; mark as module access.
+    req.audit = { module, action: 'access' };
 
     return next();
   };

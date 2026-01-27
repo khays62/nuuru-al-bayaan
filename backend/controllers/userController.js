@@ -3,6 +3,35 @@ import bcrypt from "bcryptjs";
 import Admin from "../models/Admin.js";
 import { writeAuditLog } from "../services/auditService.js";
 import AuditLog from "../models/AuditLog.js";
+import { parsePagination } from '../utils/pagination.js';
+
+
+const summarizePermissions = (permissions) => {
+  try {
+    const p = permissions && typeof permissions === 'object' ? permissions : {};
+    const parts = [];
+    for (const [module, permObj] of Object.entries(p)) {
+      if (!permObj || typeof permObj !== 'object') continue;
+      if (permObj.full === true) {
+        parts.push(`${module}:full`);
+        continue;
+      }
+      const enabled = Object.entries(permObj)
+        .filter(([k, v]) => k !== 'full' && v === true)
+        .map(([k]) => k);
+      if (enabled.length) parts.push(`${module}:${enabled.join('|')}`);
+    }
+    const out = parts.join(', ');
+    return out.length > 350 ? `${out.slice(0, 347)}...` : out;
+  } catch {
+    return '';
+  }
+};
+
+const safeActorLabel = (req) => {
+  const u = req?.user;
+  return String(u?.fullName || u?.name || u?.username || u?._id || 'unknown');
+};
 
 
 
@@ -35,12 +64,22 @@ export const createUser = async (req, res) => {
       role: normalizedRole,
       permissions,
       password: hashedPassword,
+      // Treat admin-set password as a default; force user to change after first login.
+      mustChangePassword: true,
     });
 
     await writeAuditLog({
       userId: req.user?._id,
       action: 'users.create',
       description: `created user=${newUser._id} role=${normalizedRole}`,
+      req,
+    });
+
+    // Also write into the created user's own audit history (so their profile shows who assigned permissions).
+    await writeAuditLog({
+      userId: newUser._id,
+      action: 'account.created',
+      description: `created by=${safeActorLabel(req)} role=${normalizedRole}${permissions ? ` perms=${summarizePermissions(permissions)}` : ''}`,
       req,
     });
 
@@ -58,6 +97,10 @@ export const updateUser = async (req, res) => {
 
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    const beforeRole = String(user.role || '').toLowerCase();
+    const beforeStatus = String(user.status || '').toLowerCase();
+    const beforePerms = user.permissions ? JSON.parse(JSON.stringify(user.permissions)) : null;
 
     const { fullName, username, email, phone, role, permissions, password } = req.body;
 
@@ -82,6 +125,14 @@ export const updateUser = async (req, res) => {
 
     if (password && password.trim() !== "") {
       user.password = await bcrypt.hash(password, 10);
+      // Admin-set password becomes the current "default"; force user to change after login.
+      user.mustChangePassword = true;
+      // Also clear lockouts so the user can log in with the newly set password.
+      user.failedLoginAttempts = 0;
+      user.lockUntil = null;
+      user.loginCooldownLevel = 0;
+      // Invalidate existing sessions (old JWTs/cookies) so the new password takes effect everywhere.
+      user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     }
 
     await user.save();
@@ -92,6 +143,53 @@ export const updateUser = async (req, res) => {
       description: `updated user=${user._id} role=${normalizedRole}`,
       req,
     });
+
+    // Write audit entries into the target user's own history for key account-affecting changes.
+    const actor = safeActorLabel(req);
+    if (beforeRole !== normalizedRole) {
+      await writeAuditLog({
+        userId: user._id,
+        action: 'account.roleChanged',
+        description: `role changed by=${actor} ${beforeRole} -> ${normalizedRole}`,
+        req,
+      });
+    }
+
+    const afterStatus = String(user.status || '').toLowerCase();
+    if (beforeStatus !== afterStatus) {
+      await writeAuditLog({
+        userId: user._id,
+        action: 'account.statusChanged',
+        description: `status changed by=${actor} ${beforeStatus} -> ${afterStatus}`,
+        req,
+      });
+    }
+
+    try {
+      const afterPerms = user.permissions ? JSON.parse(JSON.stringify(user.permissions)) : null;
+      const beforeStr = JSON.stringify(beforePerms || {});
+      const afterStr = JSON.stringify(afterPerms || {});
+      if (beforeStr !== afterStr) {
+        await writeAuditLog({
+          userId: user._id,
+          action: 'account.permissionsUpdated',
+          description: `permissions updated by=${actor} perms=${summarizePermissions(afterPerms)}`,
+          req,
+        });
+      }
+    } catch {
+      // ignore
+    }
+
+    if (password && password.trim() !== "") {
+      await writeAuditLog({
+        userId: user._id,
+        action: 'account.passwordSet',
+        description: `password set by=${actor} (mustChangePassword=true)`,
+        req,
+      });
+    }
+
     res.json({ message: "User updated successfully", user });
   } catch (error) {
     console.error("❌ Update user error:", error);
@@ -182,6 +280,14 @@ export const deleteUser = async (req, res) => {
       description: `deleted user=${target._id} role=${target.role}`,
       req,
     });
+
+    // Best-effort: record deletion in the target user's own history.
+    await writeAuditLog({
+      userId: target._id,
+      action: 'account.deleted',
+      description: `deleted by=${safeActorLabel(req)} role=${String(target.role || '')}`,
+      req,
+    });
     res.json({ message: "User deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -211,12 +317,22 @@ export const toggleUserStatus = async (req, res) => {
     }
 
     user.status = nextStatus;
+    // Invalidate all active sessions for this user so they get logged out quickly.
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
 
     await writeAuditLog({
       userId: req.user?._id,
       action: 'users.toggleStatus',
       description: `user=${user._id} status=${nextStatus}`,
+      req,
+    });
+
+    // Also show in the target user's audit history.
+    await writeAuditLog({
+      userId: user._id,
+      action: 'account.statusChanged',
+      description: `status changed by=${safeActorLabel(req)} -> ${nextStatus}`,
       req,
     });
 
@@ -242,18 +358,29 @@ export const getUserById = async (req, res) => {
 export const getUserAuditLogs = async (req, res) => {
   try {
     const { id } = req.params;
-    const limit = Math.min(200, Math.max(1, Number(req.query?.limit || 50)));
+    const { pageNum, limitNum, skip } = parsePagination(req.query, { defaultPage: 1, defaultLimit: 10, maxLimit: 100 });
 
     const exists = await User.exists({ _id: id });
     if (!exists) return res.status(404).json({ message: 'User not found' });
 
+    const total = await AuditLog.countDocuments({ user: id });
     const logs = await AuditLog.find({ user: id })
       .select('action description ip device timestamp')
       .sort({ timestamp: -1 })
-      .limit(limit)
+      .skip(skip)
+      .limit(limitNum)
       .lean();
 
-    return res.json({ data: logs });
+    const totalPages = Math.max(1, Math.ceil(total / limitNum));
+    return res.json({
+      data: logs,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+      },
+    });
   } catch (error) {
     return res.status(500).json({ message: error?.message || 'Failed to fetch logs' });
   }

@@ -7,7 +7,10 @@ import Counter from '../models/Counter.js';
 import User from '../models/User.js';
 import Timetable from '../models/Timetable.js';
 import bcrypt from 'bcryptjs';
+import AuthLockEvent from '../models/AuthLockEvent.js';
 import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
+import AuditLog from '../models/AuditLog.js';
+import { parsePagination } from '../utils/pagination.js';
 
 function getDefaultTeacherPassword() {
   return getDefaultInitialPassword();
@@ -322,6 +325,51 @@ export const reactivateTeacher = async (req, res) => {
   }
 };
 
+// Staff/admin: reset a teacher's password to the default password and clear lockout.
+// @route PATCH /api/teachers/:id/reset-password
+export const resetTeacherPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
+
+    const teacher = await Teacher.findById(id).select('_id teacherId').lean();
+    if (!teacher) return res.status(404).json({ message: 'Not found' });
+
+    // Teachers login through linked User account (preferred), using teacherRef.
+    // Fallback to username=teacherId for older data.
+    const username = String(teacher.teacherId || '').trim();
+    const user = await User.findOne({ $or: [{ teacherRef: teacher._id }, ...(username ? [{ username }] : [])] });
+    if (!user) return res.status(404).json({ message: 'Teacher login user not found' });
+
+    const defaultPw = getDefaultInitialPassword();
+    user.password = await bcrypt.hash(String(defaultPw), 10);
+    user.mustChangePassword = true;
+    user.failedLoginAttempts = 0;
+    user.lockUntil = null;
+    user.loginCooldownLevel = 0;
+    // Invalidate sessions on reset.
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1;
+    await user.save();
+
+    // Resolve any open AuthLockEvent for this principal.
+    await AuthLockEvent.updateMany(
+      { principalModel: 'User', principalId: user._id, resolvedAt: null },
+      {
+        $set: {
+          resolvedAt: new Date(),
+          resolvedBy: req.user?._id || null,
+          resolution: 'reset',
+          isRead: true,
+        },
+      }
+    );
+
+    return res.json({ ok: true, message: 'Password reset to default and lock cleared.' });
+  } catch (e) {
+    return res.status(500).json({ message: e?.message || 'Server Error' });
+  }
+};
+
 export const getAssignments = async (req, res) => {
   try {
     const { id } = req.params;
@@ -413,5 +461,65 @@ export const getRoster = async (req, res) => {
     res.json({ data: roster });
   } catch (e) {
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// Admin/staff: fetch a teacher profile (Teacher + linked User account)
+// @route GET /api/teachers/:id
+export const getTeacherProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
+
+    const teacher = await Teacher.findById(id)
+      .select('fullName teacherId email phone status lastAcademicYear createdAt')
+      .populate({ path: 'lastAcademicYear', select: 'yearName' })
+      .lean();
+    if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
+
+    const user = await User.findOne({ teacherRef: id })
+      .select('_id fullName username email phone role status lastLogin mustChangePassword')
+      .lean();
+
+    return res.json({ data: { teacher, user } });
+  } catch (e) {
+    return res.status(500).json({ message: e?.message || 'Server Error' });
+  }
+};
+
+// Admin/staff: fetch audit logs for a teacher's linked User account
+// @route GET /api/teachers/:id/logs?page=1&limit=10
+export const getTeacherAuditLogs = async (req, res) => {
+  try {
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role === 'teacher') return res.status(403).json({ message: 'Forbidden' });
+
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
+
+    const loginUser = await User.findOne({ teacherRef: id }).select('_id').lean();
+    if (!loginUser?._id) return res.json({ data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 1 } });
+
+    const { pageNum, limitNum, skip } = parsePagination(req.query, { defaultPage: 1, defaultLimit: 10, maxLimit: 100 });
+    const total = await AuditLog.countDocuments({ user: loginUser._id });
+    const logs = await AuditLog.find({ user: loginUser._id })
+      .select('action description ip device timestamp')
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    const totalPages = Math.max(1, Math.ceil(total / limitNum));
+    return res.json({
+      data: logs,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ message: e?.message || 'Server Error' });
   }
 };

@@ -10,6 +10,7 @@ import { CSRF_COOKIE_NAME, generateCsrfToken, setCsrfCookie } from "../middlewar
 import { writeAuditLog } from "../services/auditService.js";
 import { recordUnknownLoginAttempt } from "../utils/loginThrottleMemory.js";
 import AuthLockEvent from "../models/AuthLockEvent.js";
+import AuditLog from "../models/AuditLog.js";
 
 
 // Progressive throttling config (requested schedule)
@@ -680,5 +681,28 @@ export const changePassword = async (req, res) => {
   } catch (err) {
     console.error('❌ changePassword error:', err);
     return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getMyAuditLogs = async (req, res) => {
+  try {
+    const limit = Math.min(200, Math.max(1, Number(req.query?.limit || 50)));
+    const uid = req.user?._id;
+    if (!uid) return res.status(401).json({ message: 'Unauthorized' });
+
+    const role = String(req.user?.role || '').toLowerCase();
+    if (!['admin', 'staff'].includes(role)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const logs = await AuditLog.find({ user: uid })
+      .select('action description ip device timestamp')
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.json({ data: logs });
+  } catch (error) {
+    return res.status(500).json({ message: error?.message || 'Failed to fetch logs' });
   }
 };

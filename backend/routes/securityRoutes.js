@@ -7,8 +7,12 @@ import {
   getAuthLockUnreadCount,
   listAuthLockEvents,
   markAuthLockEventRead,
+  markAllAuthLockEventsRead,
+  clearAuthLockEvent,
   resetPasswordAndUnlock,
-  lockUser24h,
+  unlockUserLogin,
+  deactivateUserAccount,
+  activateUserAccount,
 } from '../controllers/securityController.js';
 
 const router = express.Router();
@@ -30,6 +34,15 @@ router.patch(
   markAuthLockEventRead
 );
 
+router.patch('/auth-locks/read-all', checkPermission('security', 'view'), markAllAuthLockEventsRead);
+
+router.post(
+  '/auth-locks/:id/clear',
+  validate({ params: z.object({ id: z.string().min(1) }).strip() }),
+  checkPermission('security', 'view'),
+  clearAuthLockEvent
+);
+
 router.post(
   '/users/:id/reset-password',
   validate({ params: z.object({ id: z.string().min(1) }).strip() }),
@@ -41,10 +54,24 @@ router.post(
 );
 
 router.post(
-  '/users/:id/lock-24h',
+  '/users/:id/unlock',
   validate({ params: z.object({ id: z.string().min(1) }).strip() }),
   checkPermission('security', 'edit'),
-  lockUser24h
+  unlockUserLogin
+);
+
+router.post(
+  '/users/:id/deactivate',
+  validate({ params: z.object({ id: z.string().min(1) }).strip() }),
+  checkPermission('security', 'edit'),
+  deactivateUserAccount
+);
+
+router.post(
+  '/users/:id/activate',
+  validate({ params: z.object({ id: z.string().min(1) }).strip() }),
+  checkPermission('security', 'edit'),
+  activateUserAccount
 );
 
 export default router;
