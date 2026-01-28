@@ -13,6 +13,11 @@ const announcementSchema = new mongoose.Schema({
 
   // Optional creator reference (best-effort; admin accounts may not be a User model)
   createdById: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+
+  // Edit metadata (optional)
+  updatedBy: { type: String, default: null },
+  updatedByRole: { type: String, default: null },
+  updatedAt: { type: Date, default: null },
   date: { type: Date, default: Date.now },
 });
 

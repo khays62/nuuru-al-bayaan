@@ -5,6 +5,18 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Select from '../../../shared/components/ui/Select.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+
+function formatModuleLabel(mod) {
+  const s = String(mod || '');
+  if (!s) return '';
+  // Split camelCase + underscores into human labels.
+  const spaced = s
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
 
 export default function UserFormModal({
   isOpen,
@@ -110,26 +122,22 @@ export default function UserFormModal({
           <>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Select Module</label>
-              <Select
+              <DropdownSelect
                 name="selectedModule"
                 value={form.selectedModule}
-                onChange={handleChange}
+                onChange={(v) => handleChange({ target: { name: 'selectedModule', value: v } })}
                 disabled={isFormLoading || isSaving}
-                required={!editingUser}
-              >
-                <option value="">-- Choose Module --</option>
-                {MODULES.map((mod) => (
-                  <option key={mod} value={mod}>
-                    {mod.charAt(0).toUpperCase() + mod.slice(1)}
-                  </option>
-                ))}
-              </Select>
+                placeholder="-- Choose Module --"
+                options={MODULES.map((mod) => ({ value: mod, label: formatModuleLabel(mod) }))}
+                clearable={!editingUser}
+                hideSelectedOption={false}
+              />
             </div>
 
             {form.selectedModule && (
               <div className="col-span-full p-4 border rounded bg-white">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-semibold">Permissions for {form.selectedModule}</h3>
+                  <h3 className="font-semibold">Permissions for {formatModuleLabel(form.selectedModule)}</h3>
                 </div>
 
                 <div className="flex flex-wrap gap-3">

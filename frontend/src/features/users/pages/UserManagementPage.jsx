@@ -253,6 +253,13 @@ export default function UserManagementPage() {
         return;
       }
     }
+
+    // Module selection is a UI dropdown (not a native required select anymore).
+    // Keep the previous rule: when creating a staff user, pick a module before saving.
+    if (!editingUser && String(form.role || '').toLowerCase() === 'staff' && !String(form.selectedModule || '').trim()) {
+      toast.error('Please select a module before saving');
+      return;
+    }
   
     // Clean permissions
     const cleanedPermissions = {};

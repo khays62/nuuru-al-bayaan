@@ -38,7 +38,11 @@ async function getTeacherAssignedGradeSectionIds(teacherRefId) {
 
 function buildVisibilityQueryForUser({ role, studentGradeSectionId, teacherGradeSectionIds }) {
   const r = String(role || '').toLowerCase();
-  if (r === 'admin' || r === 'staff') return {}; // see all
+  // Admin/Staff: for this workflow, they should NOT see teacher-scoped announcements.
+  // Only show global announcements.
+  if (r === 'admin' || r === 'staff') {
+    return { audienceType: { $in: [null, 'all'] } };
+  }
 
   const base = [{ audienceType: { $in: [null, 'all'] } }];
 
@@ -148,9 +152,13 @@ export const getAnnouncementsUnreadCount = async (req, res) => {
       teacherGradeSectionIds: teacherGradeSections,
     });
 
+    // Don't notify the actor about their own announcements.
+    const selfId = normalizeId(req.user?._id);
+    const qNoSelf = selfId ? { $and: [q, { $or: [{ createdById: { $ne: selfId } }, { createdById: null }] }] } : q;
+
     const lastSeenAt = req.user?.announcementsLastSeenAt ? new Date(req.user.announcementsLastSeenAt) : null;
     const since = (lastSeenAt && !Number.isNaN(lastSeenAt.getTime())) ? lastSeenAt : null;
-    const qWithDate = since ? { ...q, date: { $gt: since } } : q;
+    const qWithDate = since ? { ...qNoSelf, date: { $gt: since } } : qNoSelf;
 
     const count = await Announcement.countDocuments(qWithDate);
     res.json({ count });
@@ -178,9 +186,31 @@ export const updateAnnouncement = async (req, res) => {
     const { id } = req.params;
     const { title, body } = req.body;
 
+    const actorName = req.user?.username || null;
+    const actorRole = String(req.user?.role || '').toLowerCase() || null;
+
+    // Ownership rule: teacher-authored announcements are only editable by their owning teacher.
+    const existing = await Announcement.findById(id);
+    if (!existing) return res.status(404).json({ message: "Announcement not found" });
+
+    const existingRole = String(existing?.role || '').toLowerCase();
+    // Teachers may only modify teacher-authored announcements (and only their own).
+    if (actorRole === 'teacher' && existingRole !== 'teacher') {
+      return res.status(403).json({ message: 'Teachers cannot edit admin/staff announcements' });
+    }
+    if (existingRole === 'teacher') {
+      const selfId = normalizeId(req.user?._id);
+      const ownsById = selfId && normalizeId(existing?.createdById) === selfId;
+      const ownsByAuthor = actorName && String(existing?.author || '') === String(actorName);
+      const isTeacherOwner = (actorRole === 'teacher') && (ownsById || ownsByAuthor);
+      if (!isTeacherOwner) {
+        return res.status(403).json({ message: 'Only the posting teacher can edit this announcement' });
+      }
+    }
+
     const updated = await Announcement.findByIdAndUpdate(
-      id,
-      { title, body },
+      existing._id,
+      { title, body, updatedBy: actorName, updatedByRole: actorRole, updatedAt: new Date() },
       { new: true }
     );
 
@@ -197,11 +227,43 @@ export const updateAnnouncement = async (req, res) => {
 export const deleteAnnouncement = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await Announcement.findByIdAndDelete(id);
+
+    const actorName = req.user?.username || null;
+    const actorRole = String(req.user?.role || '').toLowerCase() || null;
+
+    const existing = await Announcement.findById(id);
+    if (!existing) return res.status(404).json({ message: "Announcement not found" });
+
+    const existingRole = String(existing?.role || '').toLowerCase();
+    // Teachers may only delete teacher-authored announcements (and only their own).
+    if (actorRole === 'teacher' && existingRole !== 'teacher') {
+      return res.status(403).json({ message: 'Teachers cannot delete admin/staff announcements' });
+    }
+    if (existingRole === 'teacher') {
+      const selfId = normalizeId(req.user?._id);
+      const ownsById = selfId && normalizeId(existing?.createdById) === selfId;
+      const ownsByAuthor = actorName && String(existing?.author || '') === String(actorName);
+      const isTeacherOwner = (actorRole === 'teacher') && (ownsById || ownsByAuthor);
+      if (!isTeacherOwner) {
+        return res.status(403).json({ message: 'Only the posting teacher can delete this announcement' });
+      }
+    }
+
+    const deleted = await Announcement.findByIdAndDelete(existing._id);
 
     if (!deleted) return res.status(404).json({ message: "Announcement not found" });
 
-    broadcastAnnouncementEvent({ type: 'deleted', id });
+    broadcastAnnouncementEvent({
+      type: 'deleted',
+      id,
+      // Include scope so SSE can filter deletes correctly.
+      announcement: {
+        _id: existing._id,
+        role: existing.role,
+        audienceType: existing.audienceType,
+        audienceGradeSections: existing.audienceGradeSections,
+      },
+    });
     res.json({ message: "Deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });

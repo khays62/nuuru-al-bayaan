@@ -34,7 +34,11 @@ function canUserSeeAnnouncement(clientCtx, announcement) {
   if (!clientCtx?.role) return false;
 
   const role = String(clientCtx.role || '').toLowerCase();
-  if (role === 'admin' || role === 'staff') return true;
+  if (role === 'admin' || role === 'staff') {
+    const raw = announcement?.audienceType;
+    if (raw == null) return true;
+    return String(raw) === 'all';
+  }
 
   const type = String(announcement?.audienceType || 'all');
   if (type === 'all') return true;
@@ -137,11 +141,13 @@ export function broadcastAnnouncementEvent(event) {
     try {
       if (!c?.res) continue;
       if (payload.type === 'deleted') {
-        // For deletes, we can't evaluate audience reliably without the old doc; broadcast to admins/staff and teachers/students as best-effort.
-        // The client will reconcile on next list fetch.
+        // If the controller provided the deleted document's audience fields,
+        // we can filter deletes just like creates/updates.
+        if (payload.announcement && !canUserSeeAnnouncement(c, payload.announcement)) continue;
         sseWrite(c.res, payload);
         continue;
       }
+
       if (!canUserSeeAnnouncement(c, payload.announcement)) continue;
       sseWrite(c.res, payload);
     } catch {

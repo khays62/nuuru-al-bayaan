@@ -56,7 +56,11 @@ export function useAnnouncementsStream({ user } = {}) {
             && typeof window.location?.pathname === 'string'
             && window.location.pathname.startsWith('/announcements');
 
-          if (!onAnnouncementsPage && username && String(announcement?.author || '') !== String(username)) {
+          const isSelfAuthored =
+            (username && String(announcement?.author || '') === String(username))
+            || (userKey && String(announcement?.createdById || '') === String(userKey));
+
+          if (!onAnnouncementsPage && !isSelfAuthored) {
             // Optimistic bump; periodic polling will reconcile.
             queryClient.setQueryData(['announcements', 'unreadCount', userKey], (prev) => {
               const cur = Number(prev || 0);
