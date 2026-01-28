@@ -141,3 +141,23 @@ export async function resetStudentPassword(id) {
     };
   }
 }
+
+export async function getStudentOverallSummary(studentId, opts = {}) {
+  try {
+    const data = await fetchJson(`/transcripts/students/${studentId}/overall-summary`, {
+      signal: opts?.signal,
+    });
+    return {
+      overallTotal: Number(data?.overallTotal || 0),
+      weightedAverage: Number(data?.weightedAverage || 0),
+      cumulativeRank: data?.cumulativeRank ?? null,
+      cumulativeRankOutOf: Number(data?.cumulativeRankOutOf || 0),
+      rankFromWeightedInLatest: data?.rankFromWeightedInLatest ?? null,
+      rankLatestOutOf: Number(data?.rankLatestOutOf || 0),
+    };
+  } catch (e) {
+    if (e?.name === 'AbortError') throw e;
+    // Let callers decide how to surface errors; keep API layer quiet.
+    throw e;
+  }
+}

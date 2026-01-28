@@ -15,6 +15,7 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox';
 import Chip from '../../../shared/components/ui/Chip.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 // Skeleton page for Promotions as a standalone tab per PROMOTION.md
 // This wires the layout and UX elements; API integration to be added next.
@@ -117,6 +118,42 @@ export default function PromotionPage() {
     if (next.has(id)) next.delete(id); else next.add(id);
     setSelectedIds(next);
   };
+
+  const studentsColumns = useMemo(() => ([
+    {
+      key: 'select',
+      label: '',
+      thClassName: 'p-2 border-b border-gray-200 w-10',
+      tdClassName: 'p-2',
+    },
+    {
+      key: 'student',
+      label: 'Student',
+      thClassName: 'p-2 text-left border-b border-gray-200',
+      tdClassName: 'p-2 whitespace-nowrap font-medium text-gray-700',
+    },
+    {
+      key: 'current',
+      label: 'Current',
+      thClassName: 'p-2 text-left border-b border-gray-200',
+      tdClassName: 'p-2 text-xs text-gray-600',
+    },
+    {
+      key: 'cohort',
+      label: 'Cohort',
+      thClassName: 'p-2 text-left border-b border-gray-200',
+      tdClassName: 'p-2',
+    },
+  ]), [filtersReady, selectedIds, students]);
+
+  const previewColumns = useMemo(() => ([
+    { key: 'student', label: 'Student', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
+    { key: 'from', label: 'From', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
+    { key: 'to', label: 'To', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
+    { key: 'avg', label: 'Avg', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2 text-xs' },
+    { key: 'failed', label: 'Failed', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2 text-xs' },
+    { key: 'status', label: 'Status', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
+  ]), []);
 
   // Helpers: consistent formatting for From/To/Current sections
   const label = (v) => (v === undefined || v === null || v === '' || v === '-') ? null : String(v);
@@ -363,39 +400,52 @@ export default function PromotionPage() {
               <span>Select All</span>
             </label>
           </div>
-          <div className="border rounded overflow-auto max-h-130">
-            <table className="min-w-full text-sm border border-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="p-2 border-b border-gray-200"></th>
-                  <th className="p-2 text-left border-b border-gray-200">Student</th>
-                  <th className="p-2 text-left border-b border-gray-200">Current</th>
-                  <th className="p-2 text-left border-b border-gray-200">Cohort</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {studentsLoading && (
-                  <tr><td colSpan={4} className="p-4 text-center text-gray-400">Loading students...</td></tr>
-                )}
-                {studentsError && (
-                  <tr><td colSpan={4} className="p-4 text-center text-red-500">{studentsError}</td></tr>
-                )}
-                {!studentsLoading && !studentsError && !filtersReady && (
-                  <tr><td colSpan={4} className="p-4 text-center text-gray-500">Select AY, Grade, Shift, Section and Cohort to load students</td></tr>
-                )}
-                {!studentsLoading && !studentsError && filtersReady && students.length === 0 && (
-                  <tr><td colSpan={4} className="p-4 text-center text-gray-500">No students found</td></tr>
-                )}
-                {students.map(s => (
-                  <tr key={s._id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-2"><Checkbox checked={selectedIds.has(s._id)} onChange={()=>toggleSelected(s._id)} disabled={!filtersReady} /></td>
-                    <td className="p-2 whitespace-nowrap font-medium text-gray-700">{s.studentId} — {s.fullName}</td>
-                    <td className="p-2 text-xs text-gray-600">{formatCurrent(s.current || {}) || '-'}</td>
-                    <td className="p-2"><Chip>{s.current?.cohort || '-'}</Chip></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="max-h-130 overflow-auto">
+            <StandardTable
+              isLoading={studentsLoading}
+              error={studentsError}
+              items={students}
+              isEmpty={!studentsLoading && !studentsError && (!filtersReady || students.length === 0)}
+              loadingMessage="Loading students..."
+              loadingVariant="table"
+              loadingRows={7}
+              loadingColumns={4}
+              emptyTitle={!filtersReady ? 'Select filters to load students' : 'No students found'}
+              emptyDescription={!filtersReady ? 'Select AY, Grade, Shift, Section and Cohort.' : ''}
+
+              rows={students}
+              columns={studentsColumns}
+              getRowKey={(s) => s._id}
+              renderCell={(s, col) => {
+                switch (col.key) {
+                  case 'select':
+                    return (
+                      <Checkbox
+                        checked={selectedIds.has(s._id)}
+                        onChange={() => toggleSelected(s._id)}
+                        disabled={!filtersReady}
+                      />
+                    );
+                  case 'student':
+                    return (
+                      <span className="whitespace-nowrap">
+                        {s.studentId} — {s.fullName}
+                      </span>
+                    );
+                  case 'current':
+                    return formatCurrent(s.current || {}) || '-';
+                  case 'cohort':
+                    return <Chip>{s.current?.cohort || '-'}</Chip>;
+                  default:
+                    return '';
+                }
+              }}
+              tableProps={{
+                theadClassName: 'bg-gray-50',
+                useDefaultHeaderStyles: false,
+                baseRowClassName: 'border-b border-gray-200 hover:bg-gray-50 transition-colors',
+              }}
+            />
           </div>
         </Card>
 
@@ -414,54 +464,55 @@ export default function PromotionPage() {
                 <div>Capacity Issues: <b className="text-red-700">{preview.summary.capacityIssues}</b></div>
               </div>
               <div className="border rounded max-h-130 overflow-auto">
-                <table className="min-w-full text-sm border border-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="p-2 text-left border-b border-gray-200">Student</th>
-                      <th className="p-2 text-left border-b border-gray-200">From</th>
-                      <th className="p-2 text-left border-b border-gray-200">To</th>
-                      <th className="p-2 text-left border-b border-gray-200">Avg</th>
-                      <th className="p-2 text-left border-b border-gray-200">Failed</th>
-                      <th className="p-2 text-left border-b border-gray-200">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {preview.items.map((it, idx) => {
-                      const from = it.fromGS || {};
-                      const target = it.target || {};
+                <StandardTable
+                  isLoading={false}
+                  error={null}
+                  items={preview.items}
+                  isEmpty={false}
+
+                  rows={preview.items}
+                  columns={previewColumns}
+                  getRowKey={(_, idx) => idx}
+                  renderCell={(it, col) => {
+                    const from = it.fromGS || {};
+                    const target = it.target || {};
+
+                    switch (col.key) {
+                      case 'student':
+                        return `${it.studentId} — ${it.fullName}`;
+                      case 'from':
+                        return formatFrom(from) || '-';
+                      case 'to':
+                        return formatTo(target) || '-';
+                      case 'avg':
+                        return typeof it.overallAvg === 'number' ? it.overallAvg.toFixed(1) : '-';
+                      case 'failed':
+                        return typeof it.failedSubjects === 'number' ? it.failedSubjects : '-';
+                      case 'status':
+                        return it.action === 'graduate' ? (
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">Graduate</span>
+                        ) : (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay' ? (
+                          <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded">Not eligible (avg &lt; 60)</span>
+                        ) : !it.toGS ? (
+                          <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded">Missing GS (will be auto-created on promote)</span>
+                        ) : (
+                          <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded">OK</span>
+                        );
+                      default:
+                        return '';
+                    }
+                  }}
+                  tableProps={{
+                    theadClassName: 'bg-gray-50',
+                    useDefaultHeaderStyles: false,
+                    baseRowClassName: 'border-b border-gray-200 hover:bg-gray-50 transition-colors',
+                    rowClassName: (it) => {
                       const failed = (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay';
                       const graduated = it.action === 'graduate';
-                      return (
-                        <tr key={idx} className={`${failed ? 'bg-red-50' : graduated ? 'bg-blue-50' : 'bg-white'} hover:bg-gray-50 transition-colors`}>
-                          <td className="p-2">{it.studentId} — {it.fullName}</td>
-                          <td className="p-2">
-                            {formatFrom(from) || '-'}
-                          </td>
-                          <td className="p-2">
-                            {formatTo(target) || '-'}
-                          </td>
-                          <td className="p-2 text-xs">
-                            {typeof it.overallAvg === 'number' ? it.overallAvg.toFixed(1) : '-'}
-                          </td>
-                          <td className="p-2 text-xs">
-                            {typeof it.failedSubjects === 'number' ? it.failedSubjects : '-'}
-                          </td>
-                          <td className="p-2">
-                            {it.action === 'graduate' ? (
-                              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">Graduate</span>
-                            ) : (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay' ? (
-                              <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded">Not eligible (avg &lt; 60)</span>
-                            ) : !it.toGS ? (
-                              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded">Missing GS (will be auto-created on promote)</span>
-                            ) : (
-                              <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded">OK</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      return failed ? 'bg-red-50' : (graduated ? 'bg-blue-50' : 'bg-white');
+                    },
+                  }}
+                />
               </div>
               {/* Promotion Results table removed per request */}
             </div>

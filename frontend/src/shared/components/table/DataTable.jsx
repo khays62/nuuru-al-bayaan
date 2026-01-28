@@ -38,8 +38,14 @@ export default function DataTable({
 
   theadClassName = 'bg-gray-800',
   headerRowClassName = '',
+  tbodyClassName = '',
   baseRowClassName = TR_BASE,
   useDefaultHeaderStyles = true,
+
+  shellClassName = '',
+
+  renderHeader,
+  renderBody,
 
   renderCell,
 }) {
@@ -82,78 +88,84 @@ export default function DataTable({
         />
       ) : null}
 
-      <TableShell>
+      <TableShell className={shellClassName}>
         <thead className={theadClassName}>
-          <tr className={headerRowClassName}>
-            {visibleCols.map((c) => {
-              const align = c.align === 'right' ? 'right' : 'left';
-              const noPrint = c.noPrint ? 'no-print' : '';
+          {typeof renderHeader === 'function' ? (
+            renderHeader({ columns: visibleCols, allColumns: cols })
+          ) : (
+            <tr className={headerRowClassName}>
+              {visibleCols.map((c) => {
+                const align = c.align === 'right' ? 'right' : 'left';
+                const noPrint = c.noPrint ? 'no-print' : '';
 
-			  const alignClass = align === 'right' ? 'text-right ' : 'text-left ';
-			  const baseThClass = useDefaultHeaderStyles
-				? (`${TH_BASE} ` + alignClass)
-				: alignClass;
+				const alignClass = align === 'right' ? 'text-right ' : 'text-left ';
+				const baseThClass = useDefaultHeaderStyles
+					? (`${TH_BASE} ` + alignClass)
+					: alignClass;
 
-              if (c.sortable && c.field && typeof onSort === 'function') {
+                if (c.sortable && c.field && typeof onSort === 'function') {
+                  return (
+                    <SortableTh
+                      key={String(c.key)}
+                      label={c.label}
+                      field={c.field}
+                      sortBy={sortBy}
+                      sortDir={sortDir}
+                      onSort={onSort}
+                      align={align}
+						baseClassName={baseThClass}
+						className={`${c.thClassName || ''} ${noPrint}`.trim()}
+                    />
+                  );
+                }
+                const thClass = useDefaultHeaderStyles
+                  ? (`${TH_BASE} ` + alignClass + `${c.thClassName || ''} ${noPrint}`)
+                  : (alignClass + `${c.thClassName || ''} ${noPrint}`);
+
                 return (
-                  <SortableTh
+                  <th
                     key={String(c.key)}
-                    label={c.label}
-                    field={c.field}
-                    sortBy={sortBy}
-                    sortDir={sortDir}
-                    onSort={onSort}
-                    align={align}
-					baseClassName={baseThClass}
-					className={`${c.thClassName || ''} ${noPrint}`.trim()}
-                  />
+                    scope="col"
+                    className={thClass}
+                  >
+                    {c.label}
+                  </th>
                 );
-              }
-              const thClass = useDefaultHeaderStyles
-                ? (`${TH_BASE} ` + alignClass + `${c.thClassName || ''} ${noPrint}`)
-                : (alignClass + `${c.thClassName || ''} ${noPrint}`);
-
-              return (
-                <th
-                  key={String(c.key)}
-                  scope="col"
-                  className={thClass}
-                >
-                  {c.label}
-                </th>
-              );
-            })}
-          </tr>
+              })}
+            </tr>
+          )}
         </thead>
 
-    		<tbody>
-          {(rows || []).map((row, idx) => {
-            const key = typeof getRowKey === 'function'
-              ? getRowKey(row, idx)
-              : (row?._id || row?.id || idx);
+		<tbody className={tbodyClassName}>
+          {typeof renderBody === 'function'
+            ? renderBody({ rows, columns: visibleCols, allColumns: cols })
+            : (rows || []).map((row, idx) => {
+              const key = typeof getRowKey === 'function'
+                ? getRowKey(row, idx)
+                : (row?._id || row?.id || idx);
 
-            const extraTr = typeof rowClassName === 'function' ? (rowClassName(row, idx) || '') : '';
+              const extraTr = typeof rowClassName === 'function' ? (rowClassName(row, idx) || '') : '';
 
-            const base = baseRowClassName || '';
+              const base = baseRowClassName || '';
 
-            return (
-              <tr key={String(key)} className={`${base} ${extraTr}`.trim()}>
-                {visibleCols.map((c) => {
-                  const noPrint = c.noPrint ? 'no-print' : '';
-                  const tdClass = (c.tdClassName || TD_BASE);
-                  const content = typeof c.render === 'function'
-                    ? c.render(row, idx)
-                    : (typeof renderCell === 'function' ? renderCell(row, c, idx) : (row?.[c.key] ?? ''));
+              return (
+                <tr key={String(key)} className={`${base} ${extraTr}`.trim()}>
+                  {visibleCols.map((c) => {
+                    const noPrint = c.noPrint ? 'no-print' : '';
+                    const tdClass = (c.tdClassName || TD_BASE);
+                    const content = typeof c.render === 'function'
+                      ? c.render(row, idx)
+                      : (typeof renderCell === 'function' ? renderCell(row, c, idx) : (row?.[c.key] ?? ''));
 
-                  return (
-                    <td key={String(c.key)} className={`${tdClass} ${noPrint}`.trim()}>
-                      {content}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
+                    return (
+                      <td key={String(c.key)} className={`${tdClass} ${noPrint}`.trim()}>
+                        {content}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
         </tbody>
       </TableShell>
     </div>

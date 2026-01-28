@@ -136,6 +136,53 @@ Ujeeddo: Doc-kan waa “hal meel” oo nadiif ah oo lagu caddeeyo 5-ta qodob ee 
 
 ---
 
+### Qodob 6: API Client Consistency + CSRF (hal HTTP pattern)
+
+**Waa maxay?**
+- API calls-ka frontend-ka ha noqdaan **hal qaab**: cookies + error handling + CSRF token + base URL (`/api`) → dhammaan hal meel.
+- Ujeeddo: in laga fogaado page kasta oo “fetch cusub” qorta, iyo in CSRF/401 behavior uusan is khilaafin.
+
+**Xaaladda hadda (waxa la arkay)**
+- Waxaa jira wrapper canonical ah: `frontend/src/shared/api/http.js` (`apiUrl`, `fetchJson`) oo:
+  - Automatic u dira `credentials: 'include'`
+  - Unsafe methods (POST/PUT/PATCH/DELETE) u dira `X-CSRF-Token` (ka akhriya `csrf_token` cookie)
+  - Haddii 403 CSRF ku dhacdo → wac `GET /api/auth/csrf` kadibna hal mar retry
+  - 401 ku dispatch-gareeya `auth:unauthorized` (si UI u react-gareyso)
+
+**Meelaha wali direct `fetch('/api/...')` isticmaala (in la nadiifiyo)**
+1) Announcements page:
+  - `frontend/src/features/announcements/pages/Announcements.jsx`
+  - Hadda wuxuu sameeyaa `/api/auth/verify` + `/api/announcements` (GET/POST/PUT/DELETE) isagoo aan marin `fetchJson`.
+2) Student transcript overall summary (tab):
+  - `frontend/src/features/students/components/dashboard/TranscriptTab.jsx`
+  - Hadda: `fetch(/api/transcripts/students/:id/overall-summary)`.
+3) Student self dashboard prefetch + another fetch:
+  - `frontend/src/features/students/components/dashboard/StudentSelfDashboardShell.jsx`
+  - Hadda: 2x `fetch(/api/transcripts/students/:id/overall-summary)` (prefetch + another query).
+
+**Folder/File structure (canonical)**
+- Shared HTTP wrapper:
+  - `frontend/src/shared/api/http.js`
+- Feature API modules (canonical):
+  - `frontend/src/features/<feature>/api/*`
+
+**Sida loogu dabaqo (page walba)**
+1) Page-ka ha wicin `fetch('/api/...')` si toos ah (marka laga reebo xaalad aad u gaar ah).
+2) Page-ka ha wicin **feature API** function (tusaale `getAnnouncements`, `createAnnouncement`, iwm) oo gudaha ka isticmaasha `fetchJson`.
+3) Haddii endpoint cusub la rabo:
+  - Ku dar `frontend/src/features/<feature>/api/*.js`
+  - U isticmaal `fetchJson('/path')` ama `apiUrl('/path')` (ha qorin `/api` hard-code).
+4) Verify/CSRF endpoints:
+  - CSRF bootstrap: `GET /api/auth/csrf` waxaa maamula `fetchJson` (retry flow).
+  - Auth verify: haddii loo baahan yahay, ka dhig feature API call (ha noqon direct fetch gudaha page).
+
+**Rollout (phase 1: quick wins)**
+1) Samee feature API module for announcements (ama ku dar haddii jiro) oo dhan CRUD + verify.
+2) Samee `getTranscriptOverallSummary(studentId)` (students/transcripts api) oo uu isticmaalo TranscriptTab + StudentSelfDashboardShell.
+3) Ka saar direct fetch 3-da meelood; kadib `npm run build`.
+
+---
+
 ## Rollout (si tartiib ah, laakiin page walba lagu dabaqo)
 
 1) Ku bilow 2–3 pages “reference” (kuwa ugu dayashada fiican).

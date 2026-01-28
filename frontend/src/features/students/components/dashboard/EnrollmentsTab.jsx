@@ -1,14 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import EmptyState from '../../../../shared/components/feedback/EmptyState.jsx';
-import TableShell from '../../../../shared/components/table/TableShell.jsx';
+import EmptyState from '../../../../shared/components/ui/EmptyState.jsx';
+import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
 import { getStudentHistory } from '../../../../api';
 import { useAuth } from '../../../../auth/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
-import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
+import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 
 function formatDate(value) {
   if (!value) return '-';
@@ -77,7 +77,7 @@ export default function EnrollmentsTab() {
       <h2 className="text-lg font-medium mb-2">Enrollments</h2>
       {loading && (
         <div className="py-6">
-          <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+          <LoadingState label="Loading enrollments…" className="border-0 bg-transparent p-0" />
         </div>
       )}
       {error && <Alert variant="danger" title={error} className="py-3" />}
@@ -85,60 +85,73 @@ export default function EnrollmentsTab() {
         items.length === 0 ? (
           <EmptyState title="No enrollment history" description="This student has no recorded enrollments yet." />
         ) : (
-          <TableShell>
-            <thead>
-              <tr className="border-b bg-gray-50 text-gray-700">
-                {header('academicYear', 'Academic Year', sort, setSort)}
-                {header('grade', 'Grade', sort, setSort)}
-                {header('section', 'Section', sort, setSort)}
-                {header('shift', 'Shift', sort, setSort)}
-                {header('cohort', 'Cohort', sort, setSort)}
-                {header('status', 'Status', sort, setSort)}
-                {header('joinedAt', 'Joined', sort, setSort)}
-                {header('leftAt', 'Left', sort, setSort)}
-                {header('sequenceInYear', 'Seq', sort, setSort)}
-              </tr>
-            </thead>
-            <tbody>
-              {stableSort(items, getComparator(sort)).map(e => (
-                <tr key={e._id} className="border-b last:border-0">
-                  <td className="px-3 py-2">{e.academicYear?.yearName || '-'}</td>
-                  <td className="px-3 py-2">{e.grade?.gradeName || e.gradeSection?.grade?.gradeName || '-'}</td>
-                  <td className="px-3 py-2">{e.gradeSection?.section || '-'}</td>
-                  <td className="px-3 py-2">{e.shift?.shiftName || '-'}</td>
-                  <td className="px-3 py-2">{e.cohort?.name || '-'}</td>
-                  <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 rounded text-xs ${statusClass(e.status)}`}>{e.status || '-'}</span>
-                  </td>
-                  <td className="px-3 py-2">{formatDate(e.joinedAt)}</td>
-                  <td className="px-3 py-2">{formatDate(e.leftAt)}</td>
-                  <td className="px-3 py-2">{e.sequenceInYear ?? '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </TableShell>
+          <StandardTable
+            isLoading={false}
+            items={items}
+            rows={stableSort(items, getComparator(sort))}
+            sortBy={sort.key}
+            sortDir={sort.dir}
+            onSort={(field) =>
+              setSort((s) => {
+                const key = String(field || 'joinedAt');
+                const nextDir = (s.key === key && s.dir === 'asc') ? 'desc' : 'asc';
+                return { key, dir: nextDir };
+              })
+            }
+            columns={[
+              { key: 'academicYear', label: 'Academic Year', field: 'academicYear', sortable: true },
+              { key: 'grade', label: 'Grade', field: 'grade', sortable: true },
+              { key: 'section', label: 'Section', field: 'section', sortable: true },
+              { key: 'shift', label: 'Shift', field: 'shift', sortable: true },
+              { key: 'cohort', label: 'Cohort', field: 'cohort', sortable: true },
+              { key: 'status', label: 'Status', field: 'status', sortable: true },
+              { key: 'joinedAt', label: 'Joined', field: 'joinedAt', sortable: true },
+              { key: 'leftAt', label: 'Left', field: 'leftAt', sortable: true },
+              { key: 'sequenceInYear', label: 'Seq', field: 'sequenceInYear', sortable: true },
+            ].map((c) => ({
+              ...c,
+              thClassName: 'px-3 py-2 text-left text-sm font-medium text-gray-700',
+              tdClassName: 'px-3 py-2 text-sm text-gray-700',
+            }))}
+            getRowKey={(e) => e._id}
+            renderCell={(e, col) => {
+              switch (col.key) {
+                case 'academicYear':
+                  return e.academicYear?.yearName || '-';
+                case 'grade':
+                  return e.grade?.gradeName || e.gradeSection?.grade?.gradeName || '-';
+                case 'section':
+                  return e.gradeSection?.section || '-';
+                case 'shift':
+                  return e.shift?.shiftName || '-';
+                case 'cohort':
+                  return e.cohort?.name || '-';
+                case 'status':
+                  return (
+                    <span className={`px-2 py-0.5 rounded text-xs ${statusClass(e.status)}`}>
+                      {e.status || '-'}
+                    </span>
+                  );
+                case 'joinedAt':
+                  return formatDate(e.joinedAt);
+                case 'leftAt':
+                  return formatDate(e.leftAt);
+                case 'sequenceInYear':
+                  return e.sequenceInYear ?? '-';
+                default:
+                  return '';
+              }
+            }}
+            tableProps={{
+              theadClassName: 'bg-gray-50',
+              headerRowClassName: 'border-b text-gray-700',
+              useDefaultHeaderStyles: false,
+              baseRowClassName: 'border-b last:border-0',
+            }}
+          />
         )
       )}
     </Card>
-  );
-}
-
-function header(key, label, sort, setSort) {
-  const active = sort.key === key;
-  const dir = active ? sort.dir : undefined;
-  return (
-    <th
-      className="text-left px-3 py-2 select-none cursor-pointer"
-      onClick={() => setSort(s => ({ key, dir: s.key === key && s.dir === 'asc' ? 'desc' : 'asc' }))}
-      title="Click to sort"
-    >
-      <div className="inline-flex items-center gap-1">
-        <span>{label}</span>
-        {active && (
-          <span className="text-xs text-gray-500">{dir === 'asc' ? '▲' : '▼'}</span>
-        )}
-      </div>
-    </th>
   );
 }
 

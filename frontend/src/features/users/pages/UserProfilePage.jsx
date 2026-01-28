@@ -17,7 +17,7 @@ import Badge from '../../../shared/components/ui/Badge.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
-import LoadingState from '../../../shared/components/feedback/LoadingState.jsx';
+import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
 import AuditHistoryTable from '../../../shared/components/audit/AuditHistoryTable.jsx';
 import { getUserById, getUserAuditLogs } from '../api/usersApi';
 

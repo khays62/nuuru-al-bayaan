@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
-import TableShell from '../../../shared/components/table/TableShell.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import MultiSelectDropdown from '../../../shared/components/DataToolbar/MultiSelectDropdown.jsx';
@@ -669,42 +669,54 @@ export default function TimetablePage() {
             />
           </div>
 
-          <TableShell>
-            <thead>
-              <tr className="bg-black text-white">
-                <th className="text-left px-3 py-2">Day</th>
-                {periods.length === 0 ? (
-                  <th className="text-left px-3 py-2">No periods</th>
-                ) : (
-                  periods.map((p, i) => (
-                    <th key={i} className="text-left px-3 py-2">
-                      {formatRangeWithAmPm(p.startTime, p.endTime)}
-                    </th>
-                  ))
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Loading slots…</td></tr>
-              )}
-              {!loading && error && (
-                <tr><td className="px-3 py-2 text-sm text-red-600" colSpan={2}>{String(error)}</td></tr>
-              )}
-              {!loading && !error && slots.length === 0 && (
-                (displayDays.length === 0 ? (
-                  <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>Select Days to show the grid.</td></tr>
-                ) : periods.length === 0 ? (
-                  <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Set a valid time range to show periods.</td></tr>
-                ) : (
-                  <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} />
-                ))
-              )}
-              {!loading && !error && slots.length > 0 && (
-                <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} />
-              )}
-            </tbody>
-          </TableShell>
+          <StandardTable
+            isLoading={false}
+            error={null}
+            items={['__timetable__']}
+            isEmpty={false}
+            rows={[]}
+            columns={[]}
+            tableProps={{
+              theadClassName: '',
+              useDefaultHeaderStyles: false,
+              renderHeader: () => (
+                <tr className="bg-black text-white">
+                  <th className="text-left px-3 py-2">Day</th>
+                  {periods.length === 0 ? (
+                    <th className="text-left px-3 py-2">No periods</th>
+                  ) : (
+                    periods.map((p, i) => (
+                      <th key={i} className="text-left px-3 py-2">
+                        {formatRangeWithAmPm(p.startTime, p.endTime)}
+                      </th>
+                    ))
+                  )}
+                </tr>
+              ),
+              renderBody: () => (
+                <>
+                  {loading && (
+                    <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Loading slots…</td></tr>
+                  )}
+                  {!loading && error && (
+                    <tr><td className="px-3 py-2 text-sm text-red-600" colSpan={2}>{String(error)}</td></tr>
+                  )}
+                  {!loading && !error && slots.length === 0 && (
+                    (displayDays.length === 0 ? (
+                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>Select Days to show the grid.</td></tr>
+                    ) : periods.length === 0 ? (
+                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Set a valid time range to show periods.</td></tr>
+                    ) : (
+                      <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} />
+                    ))
+                  )}
+                  {!loading && !error && slots.length > 0 && (
+                    <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} />
+                  )}
+                </>
+              ),
+            }}
+          />
         </>
       )}
     </div>

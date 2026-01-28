@@ -5,6 +5,8 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { navItems } from '../../../config/navigation';
 import logo from '../../../assets/nuuruBayaan.png';
 import { useAuth } from '../../../auth/AuthContext';
+import Badge from '../ui/Badge.jsx';
+import { useAnnouncementsUnread } from '../../../features/announcements/hooks/useAnnouncementsUnread';
 
 export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu }) {
   const navLinkClasses = ({ isActive }) =>
@@ -14,6 +16,9 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
 
   const { auth, hasPermission } = useAuth();
   const location = useLocation();
+
+  const userKey = auth?.user?._id || auth?.user?.username || null;
+  const announcementsUnread = useAnnouncementsUnread(userKey);
 
   const role = String(auth?.user?.role || '').toLowerCase();
   const homePath = role === 'student' ? '/student-dashboard' : (role === 'teacher' ? '/teacher-dashboard' : '/dashboard');
@@ -207,6 +212,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
       }
 
       const isDashboardPath = item.path === '/dashboard' || item.path === '/student-dashboard' || item.path === '/teacher-dashboard';
+      const isAnnouncements = item.path === '/announcements' || item.module === 'announcements';
 
       return (
         <NavLink
@@ -218,7 +224,19 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
           title={collapsed ? item.label : ''}
         >
           {Icon ? <Icon size={22} className="shrink-0" /> : null}
-          {!collapsed ? <span className="ml-4 whitespace-nowrap">{item.label}</span> : null}
+          {!collapsed ? (
+            <span className="ml-4 flex-1 flex items-center justify-between gap-2">
+              <span>{item.label}</span>
+              {isAnnouncements && announcementsUnread > 0 ? (
+                <Badge variant="danger" className="px-2 py-0.5 text-[11px]">{announcementsUnread}</Badge>
+              ) : null}
+            </span>
+          ) : (
+            // Collapsed: still show a tiny dot for unread
+            isAnnouncements && announcementsUnread > 0 ? (
+              <span className="ml-1 inline-block w-2 h-2 rounded-full bg-red-500" />
+            ) : null
+          )}
         </NavLink>
       );
     });

@@ -1,5 +1,5 @@
 import React from 'react';
-import PaginationControls from '../Pagination/PaginationControls.jsx';
+import PaginationControls from './PaginationControls.jsx';
 
 export default function PaginationBar({
   meta,

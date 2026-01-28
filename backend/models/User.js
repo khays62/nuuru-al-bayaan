@@ -84,6 +84,10 @@ const userSchema = new mongoose.Schema({
   // Resets on successful login.
   loginCooldownLevel: { type: Number, default: 0 },
 
+  // Announcements notifications: track the last time this user viewed announcements.
+  // Used to compute unread count across sessions/devices.
+  announcementsLastSeenAt: { type: Date, default: null },
+
   status: { type: String, enum: ["active", "inactive"], default: "active" }
 }, { timestamps: true });
 

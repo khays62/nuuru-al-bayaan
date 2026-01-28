@@ -17,6 +17,7 @@ import {
 import { emitUsersChanged, emitTeachersChanged, emitStudentsChanged } from '../../../utils/events';
 import Card from '../ui/Card.jsx';
 import UiLoadingState from '../ui/LoadingState.jsx';
+import { useAnnouncementsStream } from '../../../features/announcements/hooks/useAnnouncementsStream';
 
 // This is the updated Navbar component with a new design.
 const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
@@ -26,6 +27,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const [openLocks, setOpenLocks] = React.useState(false);
     const [pendingByKey, setPendingByKey] = React.useState({});
     const locksRef = React.useRef(null);
+
+    // Realtime Announcements (SSE)
+    useAnnouncementsStream({ user });
 
     // Close on click-outside
     React.useEffect(() => {

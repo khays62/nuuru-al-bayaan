@@ -12,7 +12,7 @@ import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import { RotateCcw, Printer } from 'lucide-react';
-import TableShell from '../../../shared/components/table/TableShell.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 import EnrollmentCohortToolbar from '../../../shared/components/filters/EnrollmentCohortToolbar.jsx';
@@ -682,34 +682,41 @@ export default function ResultPage() {
                                                     })()}
                                                 </div>
                                             )}
-                                            <TableShell>
-                                                <thead className="bg-gray-800">
-                                                    <tr>
-                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Rank</th>
-                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Mid-term</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Final</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Delta</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-700">
-                                                    {results.map(r => (
-                                                        <tr key={r.studentId} className="odd:bg-white even:bg-gray-50">
-                                                            <td className="px-4 py-3 text-right border-x border-gray-700">{r.rank}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap border-x border-gray-700">{r.fullName}</td>
-                                                            <td className="px-4 py-3 text-right border-x border-gray-700">{Number((r.mid ?? 0).toFixed?.(2))}</td>
-                                                            <td className="px-4 py-3 text-right border-x border-gray-700">{Number((r.final ?? 0).toFixed?.(2))}</td>
-                                                            <td className="px-4 py-3 text-right font-semibold border-x border-gray-700">{Number((r.delta ?? 0).toFixed?.(2))}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                                <tfoot className="border-t-2 border-gray-700">
-                                                    <tr className="font-medium">
-                                                        <td className="px-4 py-3 text-gray-700 border-b border-gray-700" colSpan={4}>Class Avg Delta</td>
-                                                        <td className="px-4 py-3 text-right font-semibold border-b border-gray-700">{Number((summary.classAverage ?? 0).toFixed?.(2))}</td>
-                                                    </tr>
-                                                </tfoot>
-                                            </TableShell>
+                                            <StandardTable
+                                                isLoading={false}
+                                                items={results}
+                                                emptyTitle="No results found for the selected filters."
+                                                rows={[...results, { __type: 'summary' }]}
+                                                columns={[
+                                                    { key: 'rank', label: 'Rank', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'student', label: 'Student', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
+                                                    { key: 'mid', label: 'Mid-term', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'final', label: 'Final', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'delta', label: 'Delta', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-gray-700' },
+                                                ]}
+                                                getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : r.studentId}
+                                                renderCell={(r, col) => {
+                                                    if (r?.__type === 'summary') {
+                                                        if (col.key === 'student') return <span className="font-medium">Class Avg Delta</span>;
+                                                        if (col.key === 'delta') return Number((summary.classAverage ?? 0).toFixed?.(2));
+                                                        return '';
+                                                    }
+                                                    switch (col.key) {
+                                                        case 'rank': return r.rank;
+                                                        case 'student': return r.fullName;
+                                                        case 'mid': return Number((r.mid ?? 0).toFixed?.(2));
+                                                        case 'final': return Number((r.final ?? 0).toFixed?.(2));
+                                                        case 'delta': return Number((r.delta ?? 0).toFixed?.(2));
+                                                        default: return '';
+                                                    }
+                                                }}
+                                                tableProps={{
+                                                    theadClassName: 'bg-gray-800',
+                                                    useDefaultHeaderStyles: false,
+                                                    baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
+                                                    rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-gray-700' : '',
+                                                }}
+                                            />
                                         </>
                                 ) : (mode === 'difficulty') ? (
                                         <>
@@ -733,31 +740,38 @@ export default function ResultPage() {
                                                     })()}
                                                 </div>
                                             )}
-                                            <TableShell>
-                                                <thead className="bg-gray-800">
-                                                    <tr>
-                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Subject</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Avg</th>
-                                                        <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Students</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-700">
-                                                    {(summary?.subjects || []).map(sc => (
-                                                        <tr key={String(sc._id)} className="odd:bg-white even:bg-gray-50">
-                                                            <td className="px-4 py-3 whitespace-nowrap border-x border-gray-700">{sc.subjectName}</td>
-                                                            <td className="px-4 py-3 text-right border-x border-gray-700">{Number((sc.average ?? 0).toFixed?.(2))}</td>
-                                                            <td className="px-4 py-3 text-right text-gray-700 border-x border-gray-700">{sc.count ?? '—'}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                                <tfoot className="border-t-2 border-gray-700">
-                                                    <tr className="font-medium">
-                                                        <td className="px-4 py-3 text-gray-700 border-b border-gray-700">Class Avg (subjects)</td>
-                                                        <td className="px-4 py-3 text-right font-semibold border-b border-gray-700">{Number((summary.classAverage ?? 0).toFixed?.(2))}</td>
-                                                        <td className="px-4 py-3 text-right text-gray-500 border-b border-gray-700">—</td>
-                                                    </tr>
-                                                </tfoot>
-                                            </TableShell>
+                                            <StandardTable
+                                                isLoading={false}
+                                                items={summary?.subjects || []}
+                                                emptyTitle="No results found for the selected filters."
+                                                rows={[...(summary?.subjects || []), { __type: 'summary' }]}
+                                                columns={[
+                                                    { key: 'subject', label: 'Subject', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
+                                                    { key: 'avg', label: 'Avg', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'students', label: 'Students', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right text-gray-700 border-x border-gray-700' },
+                                                ]}
+                                                getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : String(r._id)}
+                                                renderCell={(r, col) => {
+                                                    if (r?.__type === 'summary') {
+                                                        if (col.key === 'subject') return <span className="font-medium text-gray-700">Class Avg (subjects)</span>;
+                                                        if (col.key === 'avg') return Number((summary.classAverage ?? 0).toFixed?.(2));
+                                                        if (col.key === 'students') return '—';
+                                                        return '';
+                                                    }
+                                                    switch (col.key) {
+                                                        case 'subject': return r.subjectName;
+                                                        case 'avg': return Number((r.average ?? 0).toFixed?.(2));
+                                                        case 'students': return r.count ?? '—';
+                                                        default: return '';
+                                                    }
+                                                }}
+                                                tableProps={{
+                                                    theadClassName: 'bg-gray-800',
+                                                    useDefaultHeaderStyles: false,
+                                                    baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
+                                                    rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-gray-700' : '',
+                                                }}
+                                            />
                                         </>
                                 ) : (results.length === 0) ? (
                     <p className="text-sm text-gray-500">No results found for the selected filters.</p>
@@ -784,74 +798,99 @@ export default function ResultPage() {
                                                 })()}
                                             </div>
                                         )}
-                                        <TableShell>
-                            <thead className="bg-gray-800">
-                            <tr>
-                                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Rank</th>
-                                                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
-                                    {showSubjectTemplateCols ? (
-                                        overallExamTypeCols.map(et => (
-                                            <th key={String(et._id)} className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{et.typeName}</th>
-                                        ))
-                                    ) : (
-                                        visibleSubjectCols.map(sc => (
-                                            <th key={String(sc._id)} className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{sc.subjectName}</th>
-                                        ))
-                                    )}
-                                    <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total (100)</th>
-                                    <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Average</th>
-                            </tr>
-                        </thead>
-                                                <tbody className="divide-y divide-gray-700">
-                            {results.map(r => (
-                                                                <tr key={r.studentId} className="odd:bg-white even:bg-gray-50">
-                                                                        <td className="px-4 py-3 text-right border-x border-gray-700">{r.rank}</td>
-                                                                        <td className="px-4 py-3 whitespace-nowrap border-x border-gray-700">{r.fullName}</td>
-                                    {showSubjectTemplateCols ? (
-                                        overallExamTypeCols.map(et => (
-                                            <td key={String(et._id)} className="px-4 py-3 text-right border-x border-gray-700">{fmt2(r?.examTypeTotals?.[String(et._id)] ?? 0)}</td>
-                                        ))
-                                    ) : (
-                                        visibleSubjectCols.map(sc => {
-                                            const found = (r.subjectScores || []).find(s => String(s.subjectId) === String(sc._id));
-                                            return <td key={String(sc._id)} className="px-4 py-3 text-right border-x border-gray-700">{Number((found?.total ?? 0).toFixed?.(2) || (found?.total ?? 0))}</td>;
-                                        })
-                                    )}
-                                                                        <td className="px-4 py-3 text-right font-semibold border-x border-gray-700">{Number(r.total?.toFixed?.(2) ?? r.total)}</td>
-                                                                        <td className="px-4 py-3 text-right border-x border-gray-700">{Number((r.average ?? 0).toFixed?.(2))}</td>
-                                                                        
-                                </tr>
-                            ))}
-                        </tbody>
-                                                <tfoot className="border-t-2 border-gray-700">
-                                                        <tr className="font-medium">
-                                                                <td className="px-4 py-3 text-gray-700 text-right border-b border-gray-700" colSpan={2}>Class Average</td>
-                                                                {showSubjectTemplateCols ? (
-                                                                    overallExamTypeCols.map(et => {
-                                                                        let sum = 0; let count = 0;
-                                                                        for (const r of results) {
-                                                                            const v = r?.examTypeTotals?.[String(et._id)];
-                                                                            if (typeof v === 'number') { sum += v; count += 1; }
-                                                                        }
-                                                                        const avg = count ? fmt2(sum / count) : 0;
-                                                                        return <td key={String(et._id)} className="px-4 py-3 text-right font-medium border-b border-gray-700">{avg}</td>;
-                                                                    })
-                                                                ) : (
-                                                                    visibleSubjectCols.map(sc => {
-                                                                        let sum = 0; let count = 0;
-                                                                        for (const r of results) {
-                                                                            const found = (r.subjectScores || []).find(s => String(s.subjectId) === String(sc._id));
-                                                                            if (typeof found?.total === 'number') { sum += found.total; count += 1; }
-                                                                        }
-                                                                        const avg = count ? fmt2(sum / count) : 0;
-                                                                        return <td key={String(sc._id)} className="px-4 py-3 text-right font-medium border-b border-gray-700">{avg}</td>;
-                                                                    })
-                                                                )}
-                                                                <td className="px-4 py-3 text-right font-semibold border-b border-gray-700" colSpan={1}>{fmt2(summary.classAverage ?? 0)}</td>
-                                                                <td className="px-4 py-3 text-right text-gray-500 border-b border-gray-700">—</td>
-                                                        </tr>
-                                                </tfoot>
-                    </TableShell>
+                                        <StandardTable
+                                            isLoading={false}
+                                            items={results}
+                                            emptyTitle="No results found for the selected filters."
+                                            rows={[...results, { __type: 'summary' }]}
+                                            columns={(() => {
+                                                const base = [
+                                                    { key: 'rank', label: 'Rank', align: 'right', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'student', label: 'Student', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
+                                                ];
+
+                                                const dynamic = showSubjectTemplateCols
+                                                    ? overallExamTypeCols.map(et => ({
+                                                        key: `et:${String(et._id)}`,
+                                                        label: et.typeName,
+                                                        align: 'right',
+                                                        thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                                                        tdClassName: 'px-4 py-3 text-right border-x border-gray-700',
+                                                        _etId: String(et._id),
+                                                    }))
+                                                    : visibleSubjectCols.map(sc => ({
+                                                        key: `sub:${String(sc._id)}`,
+                                                        label: sc.subjectName,
+                                                        align: 'right',
+                                                        thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                                                        tdClassName: 'px-4 py-3 text-right border-x border-gray-700',
+                                                        _subId: String(sc._id),
+                                                    }));
+
+                                                const tail = [
+                                                    { key: 'total', label: 'Total (100)', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-gray-700' },
+                                                    { key: 'avg', label: 'Average', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                ];
+
+                                                return [...base, ...dynamic, ...tail];
+                                            })()}
+                                            getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : r.studentId}
+                                            renderCell={(r, col) => {
+                                                if (r?.__type === 'summary') {
+                                                    if (col.key === 'student') return <span className="block text-right text-gray-700">Class Average</span>;
+
+                                                    if (String(col.key).startsWith('et:')) {
+                                                        const etId = col._etId;
+                                                        let sumV = 0; let countV = 0;
+                                                        for (const rr of results) {
+                                                            const v = rr?.examTypeTotals?.[String(etId)];
+                                                            if (typeof v === 'number') { sumV += v; countV += 1; }
+                                                        }
+                                                        const avgV = countV ? fmt2(sumV / countV) : 0;
+                                                        return avgV;
+                                                    }
+
+                                                    if (String(col.key).startsWith('sub:')) {
+                                                        const subId = col._subId;
+                                                        let sumV = 0; let countV = 0;
+                                                        for (const rr of results) {
+                                                            const found = (rr.subjectScores || []).find(s => String(s.subjectId) === String(subId));
+                                                            if (typeof found?.total === 'number') { sumV += found.total; countV += 1; }
+                                                        }
+                                                        const avgV = countV ? fmt2(sumV / countV) : 0;
+                                                        return avgV;
+                                                    }
+
+                                                    if (col.key === 'total') return fmt2(summary.classAverage ?? 0);
+                                                    if (col.key === 'avg') return '—';
+                                                    return '';
+                                                }
+
+                                                if (col.key === 'rank') return r.rank;
+                                                if (col.key === 'student') return r.fullName;
+
+                                                if (String(col.key).startsWith('et:')) {
+                                                    const etId = col._etId;
+                                                    return fmt2(r?.examTypeTotals?.[String(etId)] ?? 0);
+                                                }
+
+                                                if (String(col.key).startsWith('sub:')) {
+                                                    const subId = col._subId;
+                                                    const found = (r.subjectScores || []).find(s => String(s.subjectId) === String(subId));
+                                                    return Number((found?.total ?? 0).toFixed?.(2) || (found?.total ?? 0));
+                                                }
+
+                                                if (col.key === 'total') return Number(r.total?.toFixed?.(2) ?? r.total);
+                                                if (col.key === 'avg') return Number((r.average ?? 0).toFixed?.(2));
+                                                return '';
+                                            }}
+                                            tableProps={{
+                                                theadClassName: 'bg-gray-800',
+                                                useDefaultHeaderStyles: false,
+                                                baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
+                                                rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-gray-700' : '',
+                                            }}
+                                        />
                     </>
                 )}
             </Card>

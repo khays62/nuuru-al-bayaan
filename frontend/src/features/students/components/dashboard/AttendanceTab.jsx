@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
-import LoadingState from '../../../../shared/components/feedback/LoadingState.jsx';
+import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import { useAuth } from '../../../../auth/AuthContext';
 import { getStudentAttendanceSelfWithOptions, getStudentSelfAttendanceWithOptions } from '../../../attendance/api/attendance';

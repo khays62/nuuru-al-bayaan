@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
-import EmptyState from '../../../../shared/components/feedback/EmptyState.jsx';
+import EmptyState from '../../../../shared/components/ui/EmptyState.jsx';
 import { getStudentTransfers } from '../../../../api';
 import TransferTimeline from '../TransferTimeline';
 import { useAuth } from '../../../../auth/AuthContext';
@@ -10,7 +10,7 @@ import { studentKeys } from '../../queryKeys';
 import Button from '../../../../shared/components/ui/Button.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
-import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
+import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 
 export default function TransfersTab() {
   const { studentId: paramStudentId } = useParams();
@@ -38,7 +38,7 @@ export default function TransfersTab() {
       <h2 className="text-lg font-medium mb-2">Transfers</h2>
       {loading && (
         <div className="py-6">
-          <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+          <LoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
         </div>
       )}
       {error && (

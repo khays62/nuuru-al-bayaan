@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
-import TableShell from '../../../shared/components/table/TableShell.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
@@ -465,162 +465,199 @@ export default function ExamSettingsPage() {
             ) : null}
 
             <div className="overflow-auto">
-              <TableShell>
-                <thead className="bg-gray-800">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Name</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Max Score</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Order</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {(templateDetail.components || []).map((c) => {
-                    const id = String(c._id);
-                    const draft = draftEdits?.[id] || {};
-                    const typeName = draft.typeName ?? c.typeName;
-                    const maxScore = draft.maxScore ?? c.maxScore;
-                    const order = draft.order ?? c.order;
-                    const isSavingRow = savingComponentIds.has(id);
-                    const isDeletingRow = deletingComponentIds.has(id);
-                    const isEditingMax = String(maxScore) !== String(c.maxScore);
-                    const maxInvalid = templateLocked ? false : draftValidation.sumExceedsTotal && isEditingMax;
-                    const orderInvalid = templateLocked ? false : draftValidation.duplicateOrderIds.has(id);
+              <StandardTable
+                isLoading={false}
+                items={templateDetail.components || []}
+                emptyTitle="No components."
+                emptyDescription="Add a component to this template."
+                rows={[...(templateDetail.components || []), { __type: 'new', _id: '__new' }]}
+                columns={[
+                  {
+                    key: 'typeName',
+                    label: 'Name',
+                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                    tdClassName: 'px-4 py-2 border-x border-gray-200',
+                  },
+                  {
+                    key: 'maxScore',
+                    label: 'Max Score',
+                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                    tdClassName: 'px-4 py-2 border-x border-gray-200',
+                  },
+                  {
+                    key: 'order',
+                    label: 'Order',
+                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                    tdClassName: 'px-4 py-2 border-x border-gray-200',
+                  },
+                  {
+                    key: 'actions',
+                    label: 'Actions',
+                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                    tdClassName: 'px-4 py-2 border-x border-gray-200',
+                  },
+                ]}
+                getRowKey={(c) => String(c?._id || c?.id || '__row')}
+                renderCell={(c, col) => {
+                  const isNew = c?.__type === 'new';
 
-                    return (
-                      <tr key={id}>
-                        <td className="px-4 py-2 border-x border-gray-200">
+                  if (isNew) {
+                    switch (col.key) {
+                      case 'typeName':
+                        return (
                           <input
                             type="text"
-                            value={typeName}
+                            placeholder="New column name"
+                            value={newComponent.typeName}
+                            onChange={(e) => setNewComponent((p) => ({ ...p, typeName: e.target.value }))}
                             disabled={savingTemplate || templateLocked}
-                            onChange={(e) =>
-                              setDraftEdits((prev) => ({
-                                ...prev,
-                                [id]: { ...prev[id], typeName: e.target.value, maxScore, order },
-                              }))
-                            }
                             className="w-56 border rounded-md px-2 py-1 text-sm border-gray-300 focus:border-gray-900 focus:outline-none focus:ring-0"
                           />
-                        </td>
-                        <td className="px-4 py-2 border-x border-gray-200">
+                        );
+                      case 'maxScore':
+                        return (
                           <input
                             type="number"
                             min={1}
-                            value={maxScore}
+                            placeholder="Max"
+                            value={newComponent.maxScore}
+                            onChange={(e) => setNewComponent((p) => ({ ...p, maxScore: e.target.value }))}
                             disabled={savingTemplate || templateLocked}
-                            onChange={(e) =>
-                              setDraftEdits((prev) => ({
-                                ...prev,
-                                [id]: { ...prev[id], typeName, maxScore: e.target.value, order },
-                              }))
-                            }
-                            className={`w-28 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
-                              maxInvalid ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
+                            className={`w-32 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
+                              draftValidation.newWouldExceed ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
                             }`}
                           />
-                        </td>
-                        <td className="px-4 py-2 border-x border-gray-200">
+                        );
+                      case 'order':
+                        return (
                           <input
                             type="number"
                             min={1}
-                            value={order}
+                            placeholder="Order"
+                            value={newComponent.order}
+                            onChange={(e) => setNewComponent((p) => ({ ...p, order: e.target.value }))}
                             disabled={savingTemplate || templateLocked}
-                            onChange={(e) =>
-                              setDraftEdits((prev) => ({
-                                ...prev,
-                                [id]: { ...prev[id], typeName, maxScore, order: e.target.value },
-                              }))
-                            }
-                            className={`w-20 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
-                              orderInvalid ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
+                            className={`w-24 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
+                              draftValidation.newOrderDuplicate ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
                             }`}
                           />
-                        </td>
-                        <td className="px-4 py-2 border-x border-gray-200">
-                          <div className="flex items-center gap-2">
-                            <ActionButton
-                              variant="primary"
-                              onClick={() => applyDraft(id)}
-                              disabled={
-                                savingTemplate ||
-                                isSavingRow ||
-                                isDeletingRow ||
-                                templateLocked ||
-                                draftValidation.sumExceedsTotal ||
-                                draftValidation.duplicateOrderIds.has(id)
-                              }
-                            >
-                              Save
-                            </ActionButton>
-                            <ActionButton
-                              variant="danger"
-                              onClick={() => handleDeleteComponent(id)}
-                              disabled={savingTemplate || isSavingRow || isDeletingRow || (c?.hasScores ?? false)}
-                            >
-                              Delete
-                            </ActionButton>
-                            {c?.hasScores ? <span className="text-xs text-gray-500">Has scores</span> : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        );
+                      case 'actions':
+                        return (
+                          <ActionButton
+                            variant="primary"
+                            onClick={addComponent}
+                            disabled={savingTemplate || templateLocked || draftValidation.newWouldExceed || draftValidation.newOrderDuplicate}
+                          >
+                            Add
+                          </ActionButton>
+                        );
+                      default:
+                        return '';
+                    }
+                  }
 
-                  <tr className="bg-gray-50">
-                    <td className="px-4 py-2 border-x border-gray-200">
-                      <input
-                        type="text"
-                        placeholder="New column name"
-                        value={newComponent.typeName}
-                        onChange={(e) => setNewComponent((p) => ({ ...p, typeName: e.target.value }))}
-                        disabled={savingTemplate || Boolean(templateDetail?.hasScores)}
-                        className="w-56 border rounded-md px-2 py-1 text-sm border-gray-300 focus:border-gray-900 focus:outline-none focus:ring-0"
-                      />
-                    </td>
-                    <td className="px-4 py-2 border-x border-gray-200">
-                      <input
-                        type="number"
-                        min={1}
-                        placeholder="Max"
-                        value={newComponent.maxScore}
-                        onChange={(e) => setNewComponent((p) => ({ ...p, maxScore: e.target.value }))}
-                        disabled={savingTemplate || Boolean(templateDetail?.hasScores)}
-                        className={`w-32 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
-                          draftValidation.newWouldExceed ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
-                        }`}
-                      />
-                    </td>
-                    <td className="px-4 py-2 border-x border-gray-200">
-                      <input
-                        type="number"
-                        min={1}
-                        placeholder="Order"
-                        value={newComponent.order}
-                        onChange={(e) => setNewComponent((p) => ({ ...p, order: e.target.value }))}
-                        disabled={savingTemplate || Boolean(templateDetail?.hasScores)}
-                        className={`w-24 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
-                          draftValidation.newOrderDuplicate ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
-                        }`}
-                      />
-                    </td>
-                    <td className="px-4 py-2 border-x border-gray-200">
-                      <ActionButton
-                        variant="primary"
-                        onClick={addComponent}
-                        disabled={
-                          savingTemplate ||
-                          Boolean(templateDetail?.hasScores) ||
-                          draftValidation.newWouldExceed ||
-                          draftValidation.newOrderDuplicate
-                        }
-                      >
-                        Add
-                      </ActionButton>
-                    </td>
-                  </tr>
-                </tbody>
-              </TableShell>
+                  const id = String(c._id);
+                  const draft = draftEdits?.[id] || {};
+                  const typeName = draft.typeName ?? c.typeName;
+                  const maxScore = draft.maxScore ?? c.maxScore;
+                  const order = draft.order ?? c.order;
+                  const isSavingRow = savingComponentIds.has(id);
+                  const isDeletingRow = deletingComponentIds.has(id);
+                  const isEditingMax = String(maxScore) !== String(c.maxScore);
+                  const maxInvalid = templateLocked ? false : draftValidation.sumExceedsTotal && isEditingMax;
+                  const orderInvalid = templateLocked ? false : draftValidation.duplicateOrderIds.has(id);
+
+                  switch (col.key) {
+                    case 'typeName':
+                      return (
+                        <input
+                          type="text"
+                          value={typeName}
+                          disabled={savingTemplate || templateLocked}
+                          onChange={(e) =>
+                            setDraftEdits((prev) => ({
+                              ...prev,
+                              [id]: { ...prev[id], typeName: e.target.value, maxScore, order },
+                            }))
+                          }
+                          className="w-56 border rounded-md px-2 py-1 text-sm border-gray-300 focus:border-gray-900 focus:outline-none focus:ring-0"
+                        />
+                      );
+                    case 'maxScore':
+                      return (
+                        <input
+                          type="number"
+                          min={1}
+                          value={maxScore}
+                          disabled={savingTemplate || templateLocked}
+                          onChange={(e) =>
+                            setDraftEdits((prev) => ({
+                              ...prev,
+                              [id]: { ...prev[id], typeName, maxScore: e.target.value, order },
+                            }))
+                          }
+                          className={`w-28 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
+                            maxInvalid ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
+                          }`}
+                        />
+                      );
+                    case 'order':
+                      return (
+                        <input
+                          type="number"
+                          min={1}
+                          value={order}
+                          disabled={savingTemplate || templateLocked}
+                          onChange={(e) =>
+                            setDraftEdits((prev) => ({
+                              ...prev,
+                              [id]: { ...prev[id], typeName, maxScore, order: e.target.value },
+                            }))
+                          }
+                          className={`w-20 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
+                            orderInvalid ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
+                          }`}
+                        />
+                      );
+                    case 'actions':
+                      return (
+                        <div className="flex items-center gap-2">
+                          <ActionButton
+                            variant="primary"
+                            onClick={() => applyDraft(id)}
+                            disabled={
+                              savingTemplate ||
+                              isSavingRow ||
+                              isDeletingRow ||
+                              templateLocked ||
+                              draftValidation.sumExceedsTotal ||
+                              draftValidation.duplicateOrderIds.has(id)
+                            }
+                          >
+                            Save
+                          </ActionButton>
+                          <ActionButton
+                            variant="danger"
+                            onClick={() => handleDeleteComponent(id)}
+                            disabled={savingTemplate || isSavingRow || isDeletingRow || (c?.hasScores ?? false)}
+                          >
+                            Delete
+                          </ActionButton>
+                          {c?.hasScores ? <span className="text-xs text-gray-500">Has scores</span> : null}
+                        </div>
+                      );
+                    default:
+                      return '';
+                  }
+                }}
+                tableProps={{
+                  theadClassName: 'bg-gray-800',
+                  useDefaultHeaderStyles: false,
+                  baseRowClassName: 'border-t border-gray-200 bg-white hover:bg-gray-50 transition-colors',
+                  rowClassName: (row) => (row?.__type === 'new' ? 'bg-gray-50' : ''),
+                }}
+              />
             </div>
           </>
         )}

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { listStudents } from '../../../../api';
 import Modal from '../../../../shared/components/ui/Modal.jsx';
-import TableShell from '../../../../shared/components/table/TableShell.jsx';
+import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
 import { useAuth } from '../../../../auth/AuthContext';
 import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { teacherKeys } from '../../queryKeys';
@@ -250,24 +250,50 @@ export default function TeacherClassesPage() {
 					<div className="text-sm text-gray-600">No active students found.</div>
 				) : (
 					<div className="max-h-[65vh] overflow-auto">
-						<TableShell>
-							<thead>
-								<tr className="bg-black text-white">
-									<th className="text-left px-3 py-2">Student ID</th>
-									<th className="text-left px-3 py-2">Full Name</th>
-									<th className="text-left px-3 py-2">Gender</th>
-								</tr>
-							</thead>
-							<tbody>
-								{students.map((st) => (
-									<tr key={st?._id || st?.studentId} className="border-t">
-										<td className="px-3 py-2 text-sm text-gray-700">{st?.studentId || '—'}</td>
-										<td className="px-3 py-2 text-sm text-gray-900">{st?.fullName || '—'}</td>
-										<td className="px-3 py-2 text-sm text-gray-700">{st?.gender || '—'}</td>
-									</tr>
-								))}
-							</tbody>
-						</TableShell>
+						<StandardTable
+							isLoading={false}
+							items={students}
+							rows={students}
+							emptyTitle="No active students found."
+							columns={[
+								{
+									key: 'studentId',
+									label: 'Student ID',
+									thClassName: 'text-left px-3 py-2',
+									tdClassName: 'px-3 py-2 text-sm text-gray-700',
+								},
+								{
+									key: 'fullName',
+									label: 'Full Name',
+									thClassName: 'text-left px-3 py-2',
+									tdClassName: 'px-3 py-2 text-sm text-gray-900',
+								},
+								{
+									key: 'gender',
+									label: 'Gender',
+									thClassName: 'text-left px-3 py-2',
+									tdClassName: 'px-3 py-2 text-sm text-gray-700',
+								},
+							]}
+							getRowKey={(st) => st?._id || st?.studentId}
+							renderCell={(st, col) => {
+								switch (col.key) {
+									case 'studentId':
+										return st?.studentId || '—';
+									case 'fullName':
+										return st?.fullName || '—';
+									case 'gender':
+										return st?.gender || '—';
+									default:
+										return '';
+								}
+							}}
+							tableProps={{
+								theadClassName: 'bg-black text-white',
+								useDefaultHeaderStyles: false,
+								baseRowClassName: 'border-t',
+							}}
+						/>
 					</div>
 				))) }
 			</Modal>

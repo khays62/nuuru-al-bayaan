@@ -1,16 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import LoadingState from '../../../../shared/components/feedback/LoadingState.jsx';
+import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
-import TableShell from '../../../../shared/components/table/TableShell.jsx';
-import { getStudentHistory, getStudentTranscript } from '../../../../api';
+import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
+import { getStudentHistory, getStudentTranscript, getStudentOverallSummary } from '../../../../api';
 import { useAuth } from '../../../../auth/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
-import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 
 export default function TranscriptTab() {
   const { studentId: paramStudentId } = useParams();
@@ -91,17 +90,7 @@ export default function TranscriptTab() {
     queryKey: studentKeys.overallSummary(studentId),
     enabled: !!studentId,
     queryFn: async ({ signal }) => {
-      const res = await fetch(`/api/transcripts/students/${studentId}/overall-summary`, { signal, credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch overall summary');
-      const data = await res.json();
-      return {
-        overallTotal: Number(data?.overallTotal || 0),
-        weightedAverage: Number(data?.weightedAverage || 0),
-        cumulativeRank: data?.cumulativeRank ?? null,
-        cumulativeRankOutOf: Number(data?.cumulativeRankOutOf || 0),
-        rankFromWeightedInLatest: data?.rankFromWeightedInLatest ?? null,
-        rankLatestOutOf: Number(data?.rankLatestOutOf || 0),
-      };
+      return await getStudentOverallSummary(studentId, { signal });
     },
   });
 
@@ -121,7 +110,7 @@ export default function TranscriptTab() {
       </div>
       {enrLoading && (
         <div className="py-6">
-          <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+          <LoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
         </div>
       )}
       {enrError && <Alert variant="danger" title={enrError} className="py-3" />}
@@ -216,31 +205,48 @@ export default function TranscriptTab() {
                       <div className="text-sm text-gray-500">No exams recorded for this enrollment.</div>
                     ) : (
                       <div className="space-y-3">
-                        <TableShell className="shadow-sm ring-blue-100">
-                          <thead>
-                            <tr className="bg-gray-800 text-white border-b border-gray-700">
-                              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Subject</th>
-                              {orderedExamTypes.map(et => (
-                                <th key={String(et._id)} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap">{et.typeName || 'Exam'}</th>
-                              ))}
-                              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {t.rows.map((r, idx) => (
-                              <tr key={String(r.subjectId)} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'} hover:bg-blue-50 transition-colors border-b last:border-0`}>
-                                <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{r.subjectName}</td>
-                                {orderedExamTypes.map(et => {
-                                  const cell = r.exams.find(x => String(x.examTypeId) === String(et._id));
-                                  return (
-                                    <td key={String(et._id)} className="px-4 py-3 text-gray-800">{formatNumber(cell ? cell.score : 0)}</td>
-                                  );
-                                })}
-                                <td className="px-4 py-3 font-semibold text-gray-900">{formatNumber(r.total || 0)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </TableShell>
+                        <StandardTable
+                          isLoading={false}
+                          items={t.rows}
+                          rows={t.rows}
+                          columns={[
+                            {
+                              key: 'subject',
+                              label: 'Subject',
+                              thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide',
+                              tdClassName: 'px-4 py-3 font-medium text-gray-900 whitespace-nowrap',
+                            },
+                            ...orderedExamTypes.map((et) => ({
+                              key: `et:${String(et._id)}`,
+                              label: et.typeName || 'Exam',
+                              examTypeId: String(et._id),
+                              thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap',
+                              tdClassName: 'px-4 py-3 text-gray-800',
+                            })),
+                            {
+                              key: 'total',
+                              label: 'Total',
+                              thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide',
+                              tdClassName: 'px-4 py-3 font-semibold text-gray-900',
+                            },
+                          ]}
+                          getRowKey={(r) => String(r.subjectId)}
+                          renderCell={(r, col) => {
+                            if (col.key === 'subject') return r.subjectName;
+                            if (col.key === 'total') return formatNumber(r.total || 0);
+                            if (String(col.key).startsWith('et:')) {
+                              const examTypeId = col.examTypeId;
+                              const cell = (r.exams || []).find((x) => String(x.examTypeId) === String(examTypeId));
+                              return formatNumber(cell ? cell.score : 0);
+                            }
+                            return '';
+                          }}
+                          tableProps={{
+                            theadClassName: 'bg-gray-800 text-white border-b border-gray-700',
+                            useDefaultHeaderStyles: false,
+                            baseRowClassName: 'odd:bg-white even:bg-gray-50/40 hover:bg-blue-50 transition-colors border-b last:border-0',
+                          }}
+                        />
                       </div>
                     )
                   )}

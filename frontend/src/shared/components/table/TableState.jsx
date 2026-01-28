@@ -1,6 +1,6 @@
 import React from 'react';
-import LoadingState from '../feedback/LoadingState.jsx';
-import EmptyState from '../feedback/EmptyState.jsx';
+import LoadingState from '../ui/LoadingState.jsx';
+import EmptyState from '../ui/EmptyState.jsx';
 import Button from '../ui/Button.jsx';
 import Alert from '../ui/Alert.jsx';
 

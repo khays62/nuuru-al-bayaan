@@ -9,7 +9,7 @@ import { useCascadingFilters } from '../../../hooks/useCascadingFilters';
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import { Printer, RotateCcw } from 'lucide-react';
-import TableShell from '../../../shared/components/table/TableShell.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 
@@ -20,7 +20,7 @@ import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
 import Radio from '../../../shared/components/ui/Radio.jsx';
 import Chip from '../../../shared/components/ui/Chip.jsx';
 import FormField from '../../../shared/components/ui/FormField.jsx';
-import LoadingState from '../../../shared/components/feedback/LoadingState.jsx';
+import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
 
 export default function TranscriptPage() {
@@ -502,53 +502,86 @@ export default function TranscriptPage() {
                         <span><span className="font-medium">Status:</span> {en.status}</span>
                       </div>
                       <div className="overflow-x-auto mt-3">
-                        <TableShell>
-                            <thead className="bg-gray-800">
-                            <tr>
-                              <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Subject</th>
-                              {[...(en.transcript?.examTypes || [])]
-                                .sort((a, b) => {
-                                  const ao = Number(a?.order || 0);
-                                  const bo = Number(b?.order || 0);
-                                  if (ao !== bo) return ao - bo;
-                                  return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
-                                })
-                                .map(et => (
-                                  <th key={et._id} className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{et.typeName}</th>
-                                ))}
-                              <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total</th>
-                              <th className="text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Average</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-700">
-                            {(en.transcript?.rows || []).map(row => (
-                              <tr key={String(row.subjectId)} className="odd:bg-white even:bg-gray-50">
-                                <td className="px-4 py-3 border-x border-gray-700">{row.subjectName}</td>
-                                {[...(en.transcript?.examTypes || [])]
-                                  .sort((a, b) => {
-                                    const ao = Number(a?.order || 0);
-                                    const bo = Number(b?.order || 0);
-                                    if (ao !== bo) return ao - bo;
-                                    return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
-                                  })
-                                  .map(et => {
-                                    const cell = (row.exams || []).find(x => String(x.examTypeId) === String(et._id));
-                                    return <td key={et._id} className="text-right px-4 py-3 border-x border-gray-700">{Number(cell?.score || 0).toFixed(2)}</td>;
-                                  })}
-                                <td className="text-right px-4 py-3 border-x border-gray-700">{Number(row.total || 0).toFixed(2)}</td>
-                                <td className="text-right px-4 py-3 border-x border-gray-700">{Number(row.average || 0).toFixed(2)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot className="border-t-2 border-gray-700">
-                            <tr className="font-medium">
-                              <td className="text-right px-4 py-3 border-b border-gray-700">Overall</td>
-                              <td colSpan={(en.transcript?.examTypes?.length || 0)} className="border-b border-gray-700"></td>
-                              <td className="text-right px-4 py-3 border-b border-gray-700">{Number(en.transcript?.overall?.total || 0).toFixed(2)}</td>
-                              <td className="text-right px-4 py-3 border-b border-gray-700">{Number(en.transcript?.overall?.average || 0).toFixed(2)}</td>
-                            </tr>
-                          </tfoot>
-                        </TableShell>
+                        {(() => {
+                          const examTypesSorted = [...(en.transcript?.examTypes || [])].sort((a, b) => {
+                            const ao = Number(a?.order || 0);
+                            const bo = Number(b?.order || 0);
+                            if (ao !== bo) return ao - bo;
+                            return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
+                          });
+
+                          const transcriptRows = en.transcript?.rows || [];
+                          const rowsWithOverall = [...transcriptRows, { __type: 'overall' }];
+
+                          const columns = [
+                            {
+                              key: 'subject',
+                              label: 'Subject',
+                              thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                              tdClassName: 'px-4 py-3 border-x border-gray-700',
+                            },
+                            ...examTypesSorted.map((et) => ({
+                              key: `et:${String(et._id)}`,
+                              label: et.typeName,
+                              align: 'right',
+                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                              tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                              _etId: String(et._id),
+                            })),
+                            {
+                              key: 'total',
+                              label: 'Total',
+                              align: 'right',
+                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                              tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                            },
+                            {
+                              key: 'avg',
+                              label: 'Average',
+                              align: 'right',
+                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                              tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                            },
+                          ];
+
+                          return (
+                            <StandardTable
+                              isLoading={false}
+                              items={transcriptRows}
+                              emptyTitle="No transcript rows"
+                              rows={rowsWithOverall}
+                              columns={columns}
+                              getRowKey={(row) => row?.__type === 'overall' ? 'overall' : String(row.subjectId)}
+                              renderCell={(row, col) => {
+                                if (row?.__type === 'overall') {
+                                  if (col.key === 'subject') return <span className="block text-right">Overall</span>;
+                                  if (String(col.key).startsWith('et:')) return '';
+                                  if (col.key === 'total') return Number(en.transcript?.overall?.total || 0).toFixed(2);
+                                  if (col.key === 'avg') return Number(en.transcript?.overall?.average || 0).toFixed(2);
+                                  return '';
+                                }
+
+                                if (col.key === 'subject') return row.subjectName;
+
+                                if (String(col.key).startsWith('et:')) {
+                                  const etId = col._etId;
+                                  const cell = (row.exams || []).find(x => String(x.examTypeId) === String(etId));
+                                  return Number(cell?.score || 0).toFixed(2);
+                                }
+
+                                if (col.key === 'total') return Number(row.total || 0).toFixed(2);
+                                if (col.key === 'avg') return Number(row.average || 0).toFixed(2);
+                                return '';
+                              }}
+                              tableProps={{
+                                theadClassName: 'bg-gray-800',
+                                useDefaultHeaderStyles: false,
+                                baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
+                                rowClassName: (row) => row?.__type === 'overall' ? 'font-medium border-t-2 border-gray-700' : '',
+                              }}
+                            />
+                          );
+                        })()}
                       </div>
                     </section>
                   ))}

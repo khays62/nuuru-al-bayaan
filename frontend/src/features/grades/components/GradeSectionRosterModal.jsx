@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '../../../shared/components/ui/Modal.jsx';
-import TableShell from '../../../shared/components/table/TableShell.jsx';
-import SortableTh from '../../../shared/components/table/SortableTh.jsx';
-import StickyTableControls from '../../../shared/components/table/StickyTableControls.jsx';
-import PaginationControls from '../../../shared/components/Pagination/PaginationControls.jsx';
-import LoadingState from '../../../shared/components/feedback/LoadingState.jsx';
-import EmptyState from '../../../shared/components/feedback/EmptyState.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
+import EmptyState from '../../../shared/components/ui/EmptyState.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
 import PdfDownloadButton from '../../../shared/components/exports/downloadButtons/PdfDownloadButton.jsx';
 import ExcelDownloadButton from '../../../shared/components/exports/downloadButtons/ExcelDownloadButton.jsx';
@@ -108,37 +105,14 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
 
   const STORAGE_KEY = 'gradeSections:roster:columns:v1';
   const columns = useMemo(() => ([
-    { key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId' },
-    { key: 'fullName', label: 'Full Name', sortable: true, field: 'fullName' },
-    { key: 'gender', label: 'Gender' },
-    { key: 'grade', label: 'Grade' },
-    { key: 'section', label: 'Section' },
-    { key: 'shift', label: 'Shift' },
-    { key: 'status', label: 'Status' },
+    { key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'fullName', label: 'Full Name', sortable: true, field: 'fullName', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+    { key: 'gender', label: 'Gender', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
+    { key: 'grade', label: 'Grade', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'section', label: 'Section', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
+    { key: 'shift', label: 'Shift', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
+    { key: 'status', label: 'Status', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
   ]), []);
-
-  const [visible, setVisible] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : {};
-    } catch {
-      return {};
-    }
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(visible || {})); } catch { /* ignore */ }
-  }, [visible]);
-
-  const isVisible = (key) => visible?.[String(key)] !== false;
-  const toggle = (key) => setVisible((prev) => {
-    const next = { ...(prev || {}) };
-    const k = String(key);
-    next[k] = !(prev?.[k] !== false);
-    return next;
-  });
 
   const outlineBtn = 'bg-white! text-blue-700! border-blue-400! hover:bg-blue-50!';
   const canExport = Boolean(!isLoading && Array.isArray(students) && students.length > 0);
@@ -222,81 +196,44 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
           <EmptyState title="No students in this section" description="No active students found for this grade section." />
         ) : (
           <>
-            <StickyTableControls
+            <StandardTable
+              isLoading={isLoading}
+              error={error}
+              items={students}
+              rows={students}
               columns={columns}
-              visible={visible}
-              onToggle={toggle}
-              limit={meta.limit || 10}
-              total={meta.total || 0}
-              onLimit={(v) => { setLimit(v); setPage(1); }}
-              limits={[10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all']}
-            />
-
-            <TableShell>
-              <thead className="bg-gray-800">
-                <tr>
-                  {isVisible('studentId') && (
-                    <SortableTh label="Student ID" field="studentId" sortBy={meta.sortBy} sortDir={meta.sortDir} onSort={toggleSort} />
-                  )}
-                  {isVisible('fullName') && (
-                    <SortableTh label="Full Name" field="fullName" sortBy={meta.sortBy} sortDir={meta.sortDir} onSort={toggleSort} />
-                  )}
-                  {isVisible('gender') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Gender</th>
-                  )}
-                  {isVisible('grade') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Grade</th>
-                  )}
-                  {isVisible('section') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Section</th>
-                  )}
-                  {isVisible('shift') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Shift</th>
-                  )}
-                  {isVisible('status') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Status</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {students.map((st) => (
-                  <tr key={st._id} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors">
-                    {isVisible('studentId') && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200">{st.studentId}</td>
-                    )}
-                    {isVisible('fullName') && (
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200">{st.fullName}</td>
-                    )}
-                    {isVisible('gender') && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200">{st.gender || '-'}</td>
-                    )}
-                    {isVisible('grade') && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200">{st.grade || '-'}</td>
-                    )}
-                    {isVisible('section') && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200">{st.section ? `Sec ${st.section}` : '-'}</td>
-                    )}
-                    {isVisible('shift') && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200">{st.shift || '-'}</td>
-                    )}
-                    {isVisible('status') && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200">{st.status || '-'}</td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </TableShell>
-
-            <PaginationControls
-              className="no-print"
-              page={meta.page}
-              totalPages={meta.totalPages || meta.pages || 1}
-              limit={meta.limit}
-              total={meta.total || 0}
+              storageKey={STORAGE_KEY}
+              sortBy={meta.sortBy}
+              sortDir={meta.sortDir}
+              onSort={toggleSort}
+              controlsProps={{
+                limit: meta.limit || 10,
+                total: meta.total || 0,
+                onLimit: (v) => { setLimit(v); setPage(1); },
+                limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
+              }}
+              meta={meta}
               onPage={(p) => setPage(p)}
               onLimit={(l) => setLimit(l)}
               showRowsSelector={false}
-              infoVariant="range"
+              paginationProps={{ infoVariant: 'range', className: 'no-print' }}
+              tableProps={{
+                theadClassName: 'bg-gray-800',
+                useDefaultHeaderStyles: false,
+                tbodyClassName: 'divide-y divide-gray-200',
+                baseRowClassName: 'odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors',
+              }}
+              getRowKey={(st) => st?._id}
+              renderCell={(st, col) => {
+                if (col.key === 'studentId') return st?.studentId;
+                if (col.key === 'fullName') return st?.fullName;
+                if (col.key === 'gender') return st?.gender || '-';
+                if (col.key === 'grade') return st?.grade || '-';
+                if (col.key === 'section') return st?.section ? `Sec ${st.section}` : '-';
+                if (col.key === 'shift') return st?.shift || '-';
+                if (col.key === 'status') return st?.status || '-';
+                return '';
+              }}
             />
           </>
         )}

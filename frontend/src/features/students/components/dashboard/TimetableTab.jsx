@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
-import LoadingState from '../../../../shared/components/feedback/LoadingState.jsx';
+import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
-import TableShell from '../../../../shared/components/table/TableShell.jsx';
+import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
 import TimetableGrid from '../../../timetable/components/TimetableGrid.jsx';
 import { getStudentHistory } from '../../../../api';
 import { getSlotsWithOptions } from '../../../timetable/api/timetable';
@@ -210,23 +210,38 @@ export default function TimetableTab() {
           {slots.length === 0 ? (
             <div className="text-lg font-semibold text-gray-800">No timetable has been created for your class yet.</div>
           ) : (
-            <TableShell className="shadow-sm ring-blue-100">
-              <thead>
-                <tr className="bg-gray-800 text-white border-b border-gray-700">
-                  <th className="text-left px-3 py-2 whitespace-nowrap sticky left-0 z-10 bg-gray-800">Day</th>
-                  {periods.length === 0 ? (
-                    <th className="text-left px-3 py-2">No periods</th>
-                  ) : (
-                    periods.map((p, i) => (
-                      <th key={i} className="text-left px-3 py-2 whitespace-nowrap min-w-40">{formatPeriodLabel(p)}</th>
-                    ))
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                <TimetableGrid slots={slots} daysFilter={days.length ? days : [0, 1, 2, 3, 4, 5, 6]} periods={periods} />
-              </tbody>
-            </TableShell>
+            <StandardTable
+              isLoading={false}
+              error={null}
+              items={['__timetable__']}
+              isEmpty={false}
+              rows={[]}
+              columns={[]}
+              tableProps={{
+                shellClassName: 'shadow-sm ring-blue-100',
+                theadClassName: '',
+                useDefaultHeaderStyles: false,
+                renderHeader: () => (
+                  <tr className="bg-gray-800 text-white border-b border-gray-700">
+                    <th className="text-left px-3 py-2 whitespace-nowrap sticky left-0 z-10 bg-gray-800">Day</th>
+                    {periods.length === 0 ? (
+                      <th className="text-left px-3 py-2">No periods</th>
+                    ) : (
+                      periods.map((p, i) => (
+                        <th key={i} className="text-left px-3 py-2 whitespace-nowrap min-w-40">{formatPeriodLabel(p)}</th>
+                      ))
+                    )}
+                  </tr>
+                ),
+                renderBody: () => (
+                  <TimetableGrid
+                    slots={slots}
+                    daysFilter={days.length ? days : [0, 1, 2, 3, 4, 5, 6]}
+                    periods={periods}
+                  />
+                ),
+              }}
+            />
           )}
 
           {slots.length > 0 && (
@@ -261,22 +276,37 @@ export default function TimetableTab() {
               return (
                 <div className="mt-4">
                   <div className="mb-2 text-sm font-semibold text-gray-900">Teachers & Subjects</div>
-                  <TableShell className="shadow-sm ring-blue-100">
-                    <thead>
-                      <tr className="bg-blue-50 text-blue-900 border-b border-blue-100">
-                        <th className="text-left px-3 py-2 whitespace-nowrap">Teacher</th>
-                        <th className="text-left px-3 py-2">Subjects</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((r) => (
-                        <tr key={r.teacherName} className="border-t">
-                          <td className="px-3 py-2 font-medium text-gray-900 whitespace-nowrap">{r.teacherName}</td>
-                          <td className="px-3 py-2 text-sm text-gray-700">{r.subjects || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </TableShell>
+                  <StandardTable
+                    isLoading={false}
+                    items={rows}
+                    rows={rows}
+                    emptyTitle="No teachers found."
+                    columns={[
+                      {
+                        key: 'teacherName',
+                        label: 'Teacher',
+                        thClassName: 'text-left px-3 py-2 whitespace-nowrap',
+                        tdClassName: 'px-3 py-2 font-medium text-gray-900 whitespace-nowrap',
+                      },
+                      {
+                        key: 'subjects',
+                        label: 'Subjects',
+                        thClassName: 'text-left px-3 py-2',
+                        tdClassName: 'px-3 py-2 text-sm text-gray-700',
+                      },
+                    ]}
+                    getRowKey={(r) => r.teacherName}
+                    renderCell={(r, col) => {
+                      if (col.key === 'teacherName') return r.teacherName;
+                      if (col.key === 'subjects') return r.subjects || '—';
+                      return '';
+                    }}
+                    tableProps={{
+                      theadClassName: 'bg-blue-50 text-blue-900 border-b border-blue-100',
+                      useDefaultHeaderStyles: false,
+                      baseRowClassName: 'border-t',
+                    }}
+                  />
                 </div>
               );
             })()

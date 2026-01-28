@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import { RotateCcw, Check, Loader2, AlertCircle, Lock } from 'lucide-react';
-import TableShell from '../../../shared/components/table/TableShell.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { getExamGrid, saveExamScore, getExamTemplateVersions } from '../api/exams';
 import { getGradeSectionById, listGradeSections } from '../../grades/api/gradeSections';
 import { getGrades, getShifts } from '../../lookups/api/lookups';
@@ -726,8 +726,139 @@ export default function ExamManagementPage() {
                                 ? 'Some students are locked because they already have scores saved under another template.'
                                 : 'Some students are locked because they already have scores under another template. Use the Template dropdown above to switch to the version shown in the error.'}
                         </div>
-                        <TableShell>
-                            <thead className="bg-gray-800">
+                        <StandardTable
+                            isLoading={false}
+                            error={null}
+                            items={['__exam_grid__']}
+                            isEmpty={false}
+                            rows={[]}
+                            columns={[]}
+                            tableProps={{
+                                theadClassName: 'bg-gray-800',
+                                tbodyClassName: 'divide-y divide-gray-200',
+                                useDefaultHeaderStyles: false,
+                                renderHeader: () => (
+                                    <tr>
+                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
+                                        {[...grid.columns]
+                                            .sort((a, b) => {
+                                                const ao = Number(a?.order || 0);
+                                                const bo = Number(b?.order || 0);
+                                                if (ao !== bo) return ao - bo;
+                                                return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
+                                            })
+                                            .map(col => (
+                                                <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <span className="font-medium text-white">{col.typeName}</span>
+                                                        <span className="text-xs text-gray-200">({maxScoreMap[col.examId] ?? '-'})</span>
+                                                    </div>
+                                                </th>
+                                            ))}
+                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total ({totalMax})</th>
+                                    </tr>
+                                ),
+                                renderBody: () => (
+                                    <>
+                                        {grid.students.map(st => {
+                                            const locked = isStudentLocked(st.studentId);
+                                            const rowTotal = grid.columns.reduce((sum, col) => {
+                                                const raw = getInputValue(st.studentId, col.examId);
+                                                const n = Number(raw);
+                                                const weight = maxScoreMap[col.examId] ?? 100;
+                                                const clamped = Number.isFinite(n) ? clamp(n, 0, weight) : 0;
+                                                return sum + clamped;
+                                            }, 0);
+                                            return (
+                                                <tr key={st.studentId} className={`odd:bg-white even:bg-gray-50 hover:bg-gray-50 ${locked ? 'opacity-70' : ''}`}>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">
+                                                        <span>{st.fullName}</span>
+                                                        {locked ? (
+                                                            <span className="inline-flex items-center gap-1 ml-2 text-amber-600" title={`Locked${formatLockedVersions(st.studentId) ? ` (${formatLockedVersions(st.studentId)})` : ''}`}>
+                                                                <Lock size={14} />
+                                                            </span>
+                                                        ) : null}
+                                                    </td>
+                                                    {[...grid.columns]
+                                                        .sort((a, b) => {
+                                                            const ao = Number(a?.order || 0);
+                                                            const bo = Number(b?.order || 0);
+                                                            if (ao !== bo) return ao - bo;
+                                                            return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
+                                                        })
+                                                        .map(col => {
+                                                            const key = getCellKey(st.studentId, col.examId);
+                                                            const weight = maxScoreMap[col.examId] ?? 100;
+                                                            const val = getInputValue(st.studentId, col.examId);
+                                                            const isSaving = savingCells.has(key);
+                                                            const hasError = errorCells.has(key);
+                                                            const isInvalid = invalidKeys.has(key);
+                                                            return (
+                                                                <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
+                                                                    <div className="relative inline-flex items-center">
+                                                                        <input
+                                                                            type="number"
+                                                                            inputMode="decimal"
+                                                                            min={0}
+                                                                            max={weight}
+                                                                            step="0.5"
+                                                                            className={`w-24 pr-7 rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-gray-300')} ${locked ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                                                            value={val}
+                                                                            onChange={(e) => handleChange(st.studentId, col.examId, e.target.value, weight)}
+                                                                            disabled={locked}
+                                                                            title={`Max: ${weight}`}
+                                                                        />
+                                                                        {/* Status overlay inside input (no layout shift) */}
+                                                                        <span className="pointer-events-none absolute right-2 text-gray-400">
+                                                                            {hasError ? (
+                                                                                <AlertCircle size={16} className="text-red-500" title="Save failed" />
+                                                                            ) : isSaving ? (
+                                                                                (() => {
+                                                                                    const started = savingStartTimesRef.current.get(key) || 0;
+                                                                                    const show = Date.now() - started >= 250;
+                                                                                    return show ? <Loader2 size={16} className="animate-spin" title="Saving…" /> : null;
+                                                                                })()
+                                                                            ) : (recentlySaved.has(key) ? (
+                                                                                <Check size={16} className="text-emerald-600" title="Saved" />
+                                                                            ) : null)}
+                                                                        </span>
+                                                                    </div>
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </>
+                                ),
+                            }}
+                        />
+                        <div className="flex justify-end mt-3">
+                            <ActionButton
+                                variant="primary"
+                                onClick={handleSaveAll}
+                                title="Save all pending entries"
+                                disabled={!hasUnsavedChanges || savingAll}
+                            >
+                                {savingAll ? 'Saving…' : saveButtonLabel}
+                            </ActionButton>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                    <StandardTable
+                        isLoading={false}
+                        error={null}
+                        items={['__exam_grid__']}
+                        isEmpty={false}
+                        rows={[]}
+                        columns={[]}
+                        tableProps={{
+                            theadClassName: 'bg-gray-800',
+                            tbodyClassName: 'divide-y divide-gray-200',
+                            useDefaultHeaderStyles: false,
+                            renderHeader: () => (
                                 <tr>
                                     <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
                                     {[...grid.columns]
@@ -747,167 +878,62 @@ export default function ExamManagementPage() {
                                         ))}
                                     <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total ({totalMax})</th>
                                 </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {grid.students.map(st => {
-                                    const locked = isStudentLocked(st.studentId);
-                                    const rowTotal = grid.columns.reduce((sum, col) => {
-                                        const raw = getInputValue(st.studentId, col.examId);
-                                        const n = Number(raw);
-                                        const weight = maxScoreMap[col.examId] ?? 100;
-                                        const clamped = Number.isFinite(n) ? clamp(n, 0, weight) : 0;
-                                        return sum + clamped;
-                                    }, 0);
-                                    return (
-                                        <tr key={st.studentId} className={`odd:bg-white even:bg-gray-50 hover:bg-gray-50 ${locked ? 'opacity-70' : ''}`}>
-                                            <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">
-                                                <span>{st.fullName}</span>
-                                                {locked ? (
-                                                    <span className="inline-flex items-center gap-1 ml-2 text-amber-600" title={`Locked${formatLockedVersions(st.studentId) ? ` (${formatLockedVersions(st.studentId)})` : ''}`}>
-                                                        <Lock size={14} />
-                                                    </span>
-                                                ) : null}
-                                            </td>
-                                            {[...grid.columns]
-                                                .sort((a, b) => {
-                                                    const ao = Number(a?.order || 0);
-                                                    const bo = Number(b?.order || 0);
-                                                    if (ao !== bo) return ao - bo;
-                                                    return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
-                                                })
-                                                .map(col => {
-                                                    const key = getCellKey(st.studentId, col.examId);
-                                                    const weight = maxScoreMap[col.examId] ?? 100;
-                                                    const val = getInputValue(st.studentId, col.examId);
-                                                    const isSaving = savingCells.has(key);
-                                                    const hasError = errorCells.has(key);
-                                                    const isInvalid = invalidKeys.has(key);
-                                                    return (
-                                                        <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
-                                                            <div className="relative inline-flex items-center">
-                                                                <input
-                                                                    type="number"
-                                                                    inputMode="decimal"
-                                                                    min={0}
-                                                                    max={weight}
-                                                                    step="0.5"
-                                                                    className={`w-24 pr-7 rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-gray-300')} ${locked ? 'cursor-not-allowed bg-gray-100' : ''}`}
-                                                                    value={val}
-                                                                    onChange={(e) => handleChange(st.studentId, col.examId, e.target.value, weight)}
-                                                                    disabled={locked}
-                                                                    title={`Max: ${weight}`}
-                                                                />
-                                                                {/* Status overlay inside input (no layout shift) */}
-                                                                <span className="pointer-events-none absolute right-2 text-gray-400">
-                                                                    {hasError ? (
-                                                                        <AlertCircle size={16} className="text-red-500" title="Save failed" />
-                                                                    ) : isSaving ? (
-                                                                        (() => {
-                                                                            const started = savingStartTimesRef.current.get(key) || 0;
-                                                                            const show = Date.now() - started >= 250;
-                                                                            return show ? <Loader2 size={16} className="animate-spin" title="Saving…" /> : null;
-                                                                        })()
-                                                                    ) : (recentlySaved.has(key) ? (
-                                                                        <Check size={16} className="text-emerald-600" title="Saved" />
-                                                                    ) : null)}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                    );
-                                                })}
-                                            <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </TableShell>
-                        <div className="flex justify-end mt-3">
-                            <ActionButton
-                                variant="primary"
-                                onClick={handleSaveAll}
-                                title="Save all pending entries"
-                                disabled={!hasUnsavedChanges || savingAll}
-                            >
-                                {savingAll ? 'Saving…' : saveButtonLabel}
-                            </ActionButton>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                    <TableShell>
-                        <thead className="bg-gray-800">
-                            <tr>
-                                <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
-                                {[...grid.columns]
-                                    .sort((a, b) => {
-                                        const ao = Number(a?.order || 0);
-                                        const bo = Number(b?.order || 0);
-                                        if (ao !== bo) return ao - bo;
-                                        return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
-                                    })
-                                    .map(col => (
-                                        <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <span className="font-medium text-white">{col.typeName}</span>
-                                                <span className="text-xs text-gray-200">({maxScoreMap[col.examId] ?? '-'})</span>
-                                            </div>
-                                        </th>
-                                    ))}
-                                <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total ({totalMax})</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                            {grid.students.map(st => {
-                                const locked = isStudentLocked(st.studentId);
-                                const rowTotal = grid.columns.reduce((sum, col) => {
-                                    const raw = getInputValue(st.studentId, col.examId);
-                                    const n = Number(raw);
-                                    const weight = maxScoreMap[col.examId] ?? 100;
-                                    const clamped = Number.isFinite(n) ? clamp(n, 0, weight) : 0;
-                                    return sum + clamped;
-                                }, 0);
-                                return (
-                                    <tr key={st.studentId} className={`odd:bg-white even:bg-gray-50 hover:bg-gray-50 ${locked ? 'opacity-70' : ''}`}>
-                                        <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">{st.fullName}</td>
-                                        {[...grid.columns]
-                                            .sort((a, b) => {
-                                                const ao = Number(a?.order || 0);
-                                                const bo = Number(b?.order || 0);
-                                                if (ao !== bo) return ao - bo;
-                                                return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
-                                            })
-                                            .map(col => {
-                                                const key = getCellKey(st.studentId, col.examId);
-                                                const weight = maxScoreMap[col.examId] ?? 100;
-                                                const val = getInputValue(st.studentId, col.examId);
-                                                const hasError = errorCells.has(key);
-                                                const isInvalid = invalidKeys.has(key);
-                                                return (
-                                                    <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
-                                                        <div className="relative inline-flex items-center gap-2">
-                                                            <input
-                                                                type="number"
-                                                                inputMode="decimal"
-                                                                min={0}
-                                                                max={weight}
-                                                                step="0.5"
-                                                                className={`w-24 rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-gray-300')} ${locked ? 'cursor-not-allowed bg-gray-100' : ''}`}
-                                                                value={val}
-                                                                onChange={(e) => handleChange(st.studentId, col.examId, e.target.value)}
-                                                                disabled={locked}
-                                                                title={`Max: ${weight}`}
-                                                            />
-                                                            {/* Per-cell saving text removed; saving is manual via button */}
-                                                        </div>
-                                                    </td>
-                                                );
-                                            })}
-                                        <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </TableShell>
+                            ),
+                            renderBody: () => (
+                                <>
+                                    {grid.students.map(st => {
+                                        const locked = isStudentLocked(st.studentId);
+                                        const rowTotal = grid.columns.reduce((sum, col) => {
+                                            const raw = getInputValue(st.studentId, col.examId);
+                                            const n = Number(raw);
+                                            const weight = maxScoreMap[col.examId] ?? 100;
+                                            const clamped = Number.isFinite(n) ? clamp(n, 0, weight) : 0;
+                                            return sum + clamped;
+                                        }, 0);
+                                        return (
+                                            <tr key={st.studentId} className={`odd:bg-white even:bg-gray-50 hover:bg-gray-50 ${locked ? 'opacity-70' : ''}`}>
+                                                <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">{st.fullName}</td>
+                                                {[...grid.columns]
+                                                    .sort((a, b) => {
+                                                        const ao = Number(a?.order || 0);
+                                                        const bo = Number(b?.order || 0);
+                                                        if (ao !== bo) return ao - bo;
+                                                        return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
+                                                    })
+                                                    .map(col => {
+                                                        const key = getCellKey(st.studentId, col.examId);
+                                                        const weight = maxScoreMap[col.examId] ?? 100;
+                                                        const val = getInputValue(st.studentId, col.examId);
+                                                        const hasError = errorCells.has(key);
+                                                        const isInvalid = invalidKeys.has(key);
+                                                        return (
+                                                            <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
+                                                                <div className="relative inline-flex items-center gap-2">
+                                                                    <input
+                                                                        type="number"
+                                                                        inputMode="decimal"
+                                                                        min={0}
+                                                                        max={weight}
+                                                                        step="0.5"
+                                                                        className={`w-24 rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-gray-300')} ${locked ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                                                        value={val}
+                                                                        onChange={(e) => handleChange(st.studentId, col.examId, e.target.value)}
+                                                                        disabled={locked}
+                                                                        title={`Max: ${weight}`}
+                                                                    />
+                                                                    {/* Per-cell saving text removed; saving is manual via button */}
+                                                                </div>
+                                                            </td>
+                                                        );
+                                                    })}
+                                                <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </>
+                            ),
+                        }}
+                    />
                     <div className="flex justify-end mt-3">
                         <ActionButton
                             variant="primary"

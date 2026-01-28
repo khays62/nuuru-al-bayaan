@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { BarChart2, ClipboardList, BookOpenCheck, Users, CalendarDays } from 'lucide-react';
 import { useAuth } from '../../../../auth/AuthContext';
-import { getStudentHistory } from '../../../../api';
+import { getStudentHistory, getStudentOverallSummary } from '../../../../api';
 import { getSlotsWithOptions } from '../../../timetable/api/timetable';
 import { getStudentAttendanceSelfWithOptions, getStudentSelfAttendanceWithOptions } from '../../../attendance/api/attendance';
 import { getStudentTranscript } from '../../../exams/api/exams';
@@ -545,15 +545,7 @@ function StudentSelfPrefetcher() {
     queryClient.ensureQueryData({
       queryKey: studentKeys.overallSummary(studentId),
       queryFn: async () => {
-        const res = await fetch(`/api/transcripts/students/${studentId}/overall-summary`, { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to fetch overall summary');
-        const data = await res.json();
-        return {
-          overallTotal: Number(data?.overallTotal || 0),
-          weightedAverage: Number(data?.weightedAverage || 0),
-          cumulativeRank: data?.cumulativeRank ?? null,
-          cumulativeRankOutOf: Number(data?.cumulativeRankOutOf || 0),
-        };
+        return await getStudentOverallSummary(studentId);
       },
     }).catch(() => {});
   }, [queryClient, studentId, canPrefetchSelfAttendance, from, to]);
@@ -735,15 +727,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
     queryKey: studentKeys.overallSummary(studentId),
     enabled: !!studentId,
     queryFn: async ({ signal }) => {
-      const res = await fetch(`/api/transcripts/students/${studentId}/overall-summary`, { signal, credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch overall summary');
-      const data = await res.json();
-      return {
-        overallTotal: Number(data?.overallTotal || 0),
-        weightedAverage: Number(data?.weightedAverage || 0),
-        cumulativeRank: data?.cumulativeRank ?? null,
-        cumulativeRankOutOf: Number(data?.cumulativeRankOutOf || 0),
-      };
+      return await getStudentOverallSummary(studentId, { signal });
     },
   });
 

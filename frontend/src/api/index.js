@@ -11,3 +11,4 @@ export { listCohorts, createCohort, updateCohort, deleteCohort, activateCohort, 
 export * from '../features/promotions/api/promotions.js';
 export * from '../features/transfers/api/transfers.js';
 export * from '../features/users/api/usersApi.js';
+export * from '../features/announcements/api/announcementsApi.js';
