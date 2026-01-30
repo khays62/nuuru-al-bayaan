@@ -29,9 +29,24 @@ import { getAttendanceReportDetailsWithOptions, getAttendanceReportSummaryWithOp
 import { teacherKeys } from '../../teachers/queryKeys.js';
 
 export default function AttendanceReportsPage() {
-  const { auth } = useAuth();
-  const isTeacher = String(auth?.user?.role || '').toLowerCase() === 'teacher';
+  const { auth, hasPermission } = useAuth();
+  const role = String(auth?.user?.role || '').toLowerCase();
+  const isTeacher = role === 'teacher';
+  const isAdmin = role === 'admin';
   const teacherRef = String(auth?.user?.teacherRef || '');
+
+  // Backward compatibility: older setups used `attendance.*` for reports.
+  const hasReportsPermission = (action) => {
+    if (isAdmin) return true;
+    if (isTeacher) return true;
+    return Boolean(
+      hasPermission('attendanceReports', action) ||
+      hasPermission('attendance', action)
+    );
+  };
+
+  const canPrint = hasReportsPermission('print');
+  const canDownload = hasReportsPermission('download');
 
   const todayUTC = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -1284,35 +1299,41 @@ export default function AttendanceReportsPage() {
         showReset={false}
         actionsSlot={(
           <div className="w-full flex flex-wrap items-center gap-2">
-            <ActionButton
-              variant="brand"
-              icon={<Printer size={16} />}
-              onClick={() => triggerPrint('table')}
-              disabled={isSummary ? !meta : !detailsGrid?.meta}
-              title="Print"
-            >
-              Print
-            </ActionButton>
+            {canPrint ? (
+              <ActionButton
+                variant="brand"
+                icon={<Printer size={16} />}
+                onClick={() => triggerPrint('table')}
+                disabled={isSummary ? !meta : !detailsGrid?.meta}
+                title="Print"
+              >
+                Print
+              </ActionButton>
+            ) : null}
 
-            <PdfDownloadButton
-              disabled={isSummary ? !meta : !detailsGrid?.meta}
-              getPayload={buildExportPayload}
-            />
+            {canDownload ? (
+              <>
+                <PdfDownloadButton
+                  disabled={isSummary ? !meta : !detailsGrid?.meta}
+                  getPayload={buildExportPayload}
+                />
 
-            <ExcelDownloadButton
-              disabled={isSummary ? !meta : !detailsGrid?.meta}
-              getPayload={buildExportPayload}
-            />
+                <ExcelDownloadButton
+                  disabled={isSummary ? !meta : !detailsGrid?.meta}
+                  getPayload={buildExportPayload}
+                />
 
-            <CsvDownloadButton
-              disabled={isSummary ? !meta : !detailsGrid?.meta}
-              getPayload={buildExportPayload}
-            />
+                <CsvDownloadButton
+                  disabled={isSummary ? !meta : !detailsGrid?.meta}
+                  getPayload={buildExportPayload}
+                />
 
-            <CopyTableButton
-              disabled={isSummary ? !meta : !detailsGrid?.meta}
-              getPayload={buildExportPayload}
-            />
+                <CopyTableButton
+                  disabled={isSummary ? !meta : !detailsGrid?.meta}
+                  getPayload={buildExportPayload}
+                />
+              </>
+            ) : null}
 
             <div className="ml-auto">
               <ActionButton
@@ -1392,17 +1413,19 @@ export default function AttendanceReportsPage() {
                 )}
 
                 <div className="flex justify-end">
-                  <ActionButton
-                    variant="brand"
-                    icon={<Printer size={16} />}
-                    onClick={() => {
-                      setStudentModalOpen(false);
-                      setSelectedStudent(null);
-                      triggerPrint('student', selectedStudent);
-                    }}
-                  >
-                    Print
-                  </ActionButton>
+                  {canPrint ? (
+                    <ActionButton
+                      variant="brand"
+                      icon={<Printer size={16} />}
+                      onClick={() => {
+                        setStudentModalOpen(false);
+                        setSelectedStudent(null);
+                        triggerPrint('student', selectedStudent);
+                      }}
+                    >
+                      Print
+                    </ActionButton>
+                  ) : null}
                 </div>
 
                 {renderStudentCards(selectedStudent)}

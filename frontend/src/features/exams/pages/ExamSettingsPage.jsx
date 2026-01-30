@@ -5,6 +5,7 @@ import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 import {
   getExamTemplateVersions,
   getExamTemplateDetail,
@@ -18,6 +19,11 @@ import {
 } from '../api/exams';
 
 export default function ExamSettingsPage() {
+  const { auth, hasPermission } = useAuth();
+  const role = String(auth?.user?.role || '').toLowerCase();
+  const isAdmin = role === 'admin';
+  const canEditTemplate = isAdmin || hasPermission('exams', 'input');
+
   const [templateVersions, setTemplateVersions] = useState([]);
   const [templateVersion, setTemplateVersion] = useState('');
 
@@ -149,6 +155,10 @@ export default function ExamSettingsPage() {
   }, [templateDetail, draftEdits, templateTotalInput, newComponent]);
 
   const handleSaveTemplateTotal = async () => {
+    if (!canEditTemplate) {
+      toast.error('You do not have permission to edit exam templates');
+      return;
+    }
     if (!templateVersion) return;
     if (templateLocked) {
       toast.error('This template already has scores and is locked. Total cannot be edited.');
@@ -182,6 +192,10 @@ export default function ExamSettingsPage() {
   };
 
   const handleClone = async () => {
+    if (!canEditTemplate) {
+      toast.error('You do not have permission to edit exam templates');
+      return;
+    }
     if (!templateVersion) return;
     setSavingTemplate(true);
     const res = await cloneExamTemplateVersion(Number(templateVersion));
@@ -197,6 +211,10 @@ export default function ExamSettingsPage() {
   };
 
   const handleActivate = async () => {
+    if (!canEditTemplate) {
+      toast.error('You do not have permission to edit exam templates');
+      return;
+    }
     if (!templateVersion) return;
     setSavingTemplate(true);
     const res = await setActiveExamTemplateVersion(Number(templateVersion));
@@ -211,6 +229,10 @@ export default function ExamSettingsPage() {
   };
 
   const applyDraft = async (id) => {
+    if (!canEditTemplate) {
+      toast.error('You do not have permission to edit exam templates');
+      return;
+    }
     if (templateLocked) {
       toast.error('This template already has scores and is locked. Columns cannot be edited.');
       return;
@@ -265,6 +287,10 @@ export default function ExamSettingsPage() {
   };
 
   const addComponent = async () => {
+    if (!canEditTemplate) {
+      toast.error('You do not have permission to edit exam templates');
+      return;
+    }
     if (templateDetail?.hasScores) {
       toast.error('This template already has scores. Clone a new template to add columns.');
       return;
@@ -308,6 +334,10 @@ export default function ExamSettingsPage() {
   };
 
   const handleDeleteComponent = async (id) => {
+    if (!canEditTemplate) {
+      toast.error('You do not have permission to edit exam templates');
+      return;
+    }
     if (!id) return;
     const comp = templateDetail?.components?.find((c) => String(c._id) === String(id));
     if (comp?.hasScores) {
@@ -353,6 +383,10 @@ export default function ExamSettingsPage() {
   };
 
   const handleDeleteVersion = async () => {
+    if (!canEditTemplate) {
+      toast.error('You do not have permission to edit exam templates');
+      return;
+    }
     if (!templateVersion) return;
     if (templateDetail?.isActive) {
       toast.error('Cannot delete the default (active) template');
@@ -403,7 +437,7 @@ export default function ExamSettingsPage() {
               className={draftValidation.sumExceedsTotal ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-slate-900'}
               value={templateTotalInput}
               onChange={(e) => setTemplateTotalInput(e.target.value)}
-              disabled={savingTemplate || templateLocked}
+              disabled={savingTemplate || templateLocked || !canEditTemplate}
             />
           </div>
 
@@ -411,24 +445,24 @@ export default function ExamSettingsPage() {
             <ActionButton
               variant="primary"
               onClick={handleSaveTemplateTotal}
-              disabled={savingTemplate || !templateVersion || templateLocked || !isTotalDirty}
+              disabled={savingTemplate || !templateVersion || templateLocked || !isTotalDirty || !canEditTemplate}
             >
               Save Total
             </ActionButton>
-            <ActionButton variant="secondary" onClick={handleClone} disabled={savingTemplate || !templateVersion}>
+            <ActionButton variant="secondary" onClick={handleClone} disabled={savingTemplate || !templateVersion || !canEditTemplate}>
               Clone to New Template
             </ActionButton>
             <ActionButton
               variant="primary"
               onClick={handleActivate}
-              disabled={savingTemplate || !templateVersion || !canActivate || Boolean(templateDetail?.isActive)}
+              disabled={savingTemplate || !templateVersion || !canActivate || Boolean(templateDetail?.isActive) || !canEditTemplate}
             >
               Set as Default
             </ActionButton>
             <ActionButton
               variant="danger"
               onClick={handleDeleteVersion}
-              disabled={savingTemplate || deletingVersion || !templateVersion || templateDetail?.isActive || templateDetail?.hasScores}
+              disabled={savingTemplate || deletingVersion || !templateVersion || templateDetail?.isActive || templateDetail?.hasScores || !canEditTemplate}
             >
               Delete Template
             </ActionButton>
@@ -510,7 +544,7 @@ export default function ExamSettingsPage() {
                             placeholder="New column name"
                             value={newComponent.typeName}
                             onChange={(e) => setNewComponent((p) => ({ ...p, typeName: e.target.value }))}
-                            disabled={savingTemplate || templateLocked}
+                            disabled={savingTemplate || templateLocked || !canEditTemplate}
                             className="w-56 border rounded-md px-2 py-1 text-sm border-gray-300 focus:border-gray-900 focus:outline-none focus:ring-0"
                           />
                         );
@@ -522,7 +556,7 @@ export default function ExamSettingsPage() {
                             placeholder="Max"
                             value={newComponent.maxScore}
                             onChange={(e) => setNewComponent((p) => ({ ...p, maxScore: e.target.value }))}
-                            disabled={savingTemplate || templateLocked}
+                            disabled={savingTemplate || templateLocked || !canEditTemplate}
                             className={`w-32 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
                               draftValidation.newWouldExceed ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
                             }`}
@@ -536,7 +570,7 @@ export default function ExamSettingsPage() {
                             placeholder="Order"
                             value={newComponent.order}
                             onChange={(e) => setNewComponent((p) => ({ ...p, order: e.target.value }))}
-                            disabled={savingTemplate || templateLocked}
+                            disabled={savingTemplate || templateLocked || !canEditTemplate}
                             className={`w-24 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
                               draftValidation.newOrderDuplicate ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
                             }`}
@@ -547,7 +581,7 @@ export default function ExamSettingsPage() {
                           <ActionButton
                             variant="primary"
                             onClick={addComponent}
-                            disabled={savingTemplate || templateLocked || draftValidation.newWouldExceed || draftValidation.newOrderDuplicate}
+                            disabled={savingTemplate || templateLocked || draftValidation.newWouldExceed || draftValidation.newOrderDuplicate || !canEditTemplate}
                           >
                             Add
                           </ActionButton>
@@ -574,7 +608,7 @@ export default function ExamSettingsPage() {
                         <input
                           type="text"
                           value={typeName}
-                          disabled={savingTemplate || templateLocked}
+                          disabled={savingTemplate || templateLocked || !canEditTemplate}
                           onChange={(e) =>
                             setDraftEdits((prev) => ({
                               ...prev,
@@ -590,7 +624,7 @@ export default function ExamSettingsPage() {
                           type="number"
                           min={1}
                           value={maxScore}
-                          disabled={savingTemplate || templateLocked}
+                          disabled={savingTemplate || templateLocked || !canEditTemplate}
                           onChange={(e) =>
                             setDraftEdits((prev) => ({
                               ...prev,
@@ -608,7 +642,7 @@ export default function ExamSettingsPage() {
                           type="number"
                           min={1}
                           value={order}
-                          disabled={savingTemplate || templateLocked}
+                          disabled={savingTemplate || templateLocked || !canEditTemplate}
                           onChange={(e) =>
                             setDraftEdits((prev) => ({
                               ...prev,
@@ -632,7 +666,8 @@ export default function ExamSettingsPage() {
                               isDeletingRow ||
                               templateLocked ||
                               draftValidation.sumExceedsTotal ||
-                              draftValidation.duplicateOrderIds.has(id)
+                              draftValidation.duplicateOrderIds.has(id) ||
+                              !canEditTemplate
                             }
                           >
                             Save
@@ -640,7 +675,7 @@ export default function ExamSettingsPage() {
                           <ActionButton
                             variant="danger"
                             onClick={() => handleDeleteComponent(id)}
-                            disabled={savingTemplate || isSavingRow || isDeletingRow || (c?.hasScores ?? false)}
+                            disabled={savingTemplate || isSavingRow || isDeletingRow || (c?.hasScores ?? false) || !canEditTemplate}
                           >
                             Delete
                           </ActionButton>

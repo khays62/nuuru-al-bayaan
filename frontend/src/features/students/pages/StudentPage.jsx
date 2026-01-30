@@ -34,8 +34,17 @@ import { useClientSort } from '../../../shared/hooks/useClientSort';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 
+import { useAuth } from '../../../auth/AuthContext';
+
 // Student listing page using reusable entity list hook + pagination controls
 export default function StudentPage() {
+    const { auth, hasPermission } = useAuth();
+    const isAdmin = String(auth?.user?.role || '').toLowerCase() === 'admin';
+    const canAddStudent = isAdmin || hasPermission('students', 'add');
+    const canEditStudent = isAdmin || hasPermission('students', 'edit');
+    // Students module doesn't define a separate "print" action; treat printing/exports as data download.
+    const canDownloadStudents = isAdmin || hasPermission('students', 'download');
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
     const [loadingEdit, setLoadingEdit] = useState(false);
@@ -92,6 +101,7 @@ export default function StudentPage() {
         setPage,
         setLimit,
         refresh,
+        silentRefresh,
         resetAndReload
     } = useEntityList({
         fetchFn,
@@ -205,17 +215,20 @@ export default function StudentPage() {
         return () => { ignore = true; };
     }, [gradeFilter, shiftFilter]);
     useEffect(() => {
-        const handler = () => refresh();
-        const clearProfiles = () => { profileCacheRef.current = {}; };
-        onEvent(EVENTS.STUDENTS_CHANGED, handler);
-        onEvent(EVENTS.STUDENTS_CHANGED, clearProfiles);
-        return () => {
-            offEvent(EVENTS.STUDENTS_CHANGED, handler);
-            offEvent(EVENTS.STUDENTS_CHANGED, clearProfiles);
+        const handler = () => {
+            // Keep edit modal fast + consistent: clear cached profiles then refresh list silently.
+            profileCacheRef.current = {};
+            silentRefresh();
         };
-    }, [refresh]);
+        onEvent(EVENTS.STUDENTS_CHANGED, handler);
+        return () => offEvent(EVENTS.STUDENTS_CHANGED, handler);
+    }, [silentRefresh]);
 
     const handleAddNew = () => {
+        if (!canAddStudent) {
+            toast.error('You do not have permission to add students');
+            return;
+        }
         setEditingStudent(null);
         setIsModalOpen(true);
     };
@@ -228,6 +241,10 @@ export default function StudentPage() {
     // ------------------------------------------------------------
     const profileCacheRef = useRef({}); // { studentId: enrichedStudent }
     const handleEdit = async (student) => {
+        if (!canEditStudent) {
+            toast.error('You do not have permission to edit students');
+            return;
+        }
         // Step 1: Immediate open with basic row data
         setEditingStudent(student);
         setIsModalOpen(true);
@@ -263,6 +280,10 @@ export default function StudentPage() {
         try {
             setIsSaving(true);
             if (editingStudent) {
+                if (!canEditStudent) {
+                    toast.error('You do not have permission to edit students');
+                    return;
+                }
                 const { ok, status, data } = await updateStudentApi(editingStudent._id, payload);
                 if (ok) {
                     toast.success('Student updated');
@@ -285,6 +306,10 @@ export default function StudentPage() {
                     else toast.error(data.message || 'Update failed');
                 }
             } else {
+                if (!canAddStudent) {
+                    toast.error('You do not have permission to add students');
+                    return;
+                }
                 const { ok, status, data } = await createStudent(payload);
                 if (ok) {
                     toast.success('Student created');
@@ -314,11 +339,15 @@ export default function StudentPage() {
     // No transfer submit; handled by Transfers page
 
     const handlePrint = () => {
+        if (!canDownloadStudents) {
+            toast.error('You do not have permission to export/print students');
+            return;
+        }
         setTimeout(() => window.print(), 0);
     };
 
     const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
-    const canExport = Boolean(!isLoading && Array.isArray(students) && students.length > 0);
+    const canExport = Boolean(canDownloadStudents && !isLoading && Array.isArray(students) && students.length > 0);
     const buildExportPayload = useCallback(async () => {
         if (!canExport) return null;
 
@@ -509,31 +538,37 @@ export default function StudentPage() {
 
                     {/* Row 2: Add button (left) + Actions (right) */}
                     <div className="w-full flex items-center justify-between gap-2 flex-wrap">
-                        <Button
-                            variant="brand"
-                            size="lg"
-                            onClick={handleAddNew}
-                            icon={<Plus size={20} />}
-                            className="w-full sm:w-auto justify-center"
-                        >
-                            Add New Student
-                        </Button>
+                        {canAddStudent && (
+                            <Button
+                                variant="brand"
+                                size="lg"
+                                onClick={handleAddNew}
+                                icon={<Plus size={20} />}
+                                className="w-full sm:w-auto justify-center"
+                            >
+                                Add New Student
+                            </Button>
+                        )}
 
                         <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
-                            <ActionButton
-                                variant="neutral"
-                                className={outlineBtn}
-                                onClick={handlePrint}
-                                title="Print"
-                                icon={<Printer size={16} />}
-                            >
-                                Print
-                            </ActionButton>
+                            {canDownloadStudents && (
+                                <>
+                                    <ActionButton
+                                        variant="neutral"
+                                        className={outlineBtn}
+                                        onClick={handlePrint}
+                                        title="Print"
+                                        icon={<Printer size={16} />}
+                                    >
+                                        Print
+                                    </ActionButton>
 
-                            <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                            <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                            <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                            <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                    <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                    <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                    <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                    <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                </>
+                            )}
 
                             <ActionButton
                                 variant="neutral"
@@ -559,7 +594,7 @@ export default function StudentPage() {
                 emptyTitle="No students found"
                 emptyDescription="Try adjusting filters or add a new student."
                 emptyActionLabel="Add Student"
-                onEmptyAction={handleAddNew}
+                onEmptyAction={canAddStudent ? handleAddNew : undefined}
                 onRetry={refresh}
             >
                 <StudentTable

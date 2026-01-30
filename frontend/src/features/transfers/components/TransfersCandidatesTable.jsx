@@ -9,6 +9,7 @@ export default function TransfersCandidatesTable({
 	rows,
 	meta,
 	isLoading,
+	canTransfer,
 	sortBy,
 	sortDir,
 	onSort,
@@ -80,7 +81,7 @@ export default function TransfersCandidatesTable({
 								variant="info"
 								title="Transfer Section"
 								onClick={() => onOpen?.(st)}
-								disabled={openingId === st._id}
+								disabled={!canTransfer || openingId === st._id}
 							>
 								{openingId === st._id ? (
 									<>

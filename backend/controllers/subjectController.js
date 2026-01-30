@@ -1,6 +1,7 @@
 // This controller handles all real database operations for subjects.
 import Subject from '../models/Subject.js';
 import GradeSection from '../models/GradeSection.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 // @desc    Get subjects with pagination, search, grade filter, sorting
 // @route   GET /api/subjects
@@ -86,6 +87,8 @@ export const addSubject = async (req, res) => {
             subjectCode,
             grades
         });
+
+        publishRealtime({ type: 'subjects:changed', id: String(newSubject._id), ts: Date.now() });
         res.status(201).json(newSubject);
     } catch (error) {
         if (error.code === 11000) {
@@ -135,6 +138,8 @@ export const updateSubject = async (req, res) => {
 
         const updated = await subject.save();
         await updated.populate('grades', 'gradeName');
+
+        publishRealtime({ type: 'subjects:changed', id: String(updated._id), ts: Date.now() });
         res.json(updated);
     } catch (error) {
         if (error.code === 11000) {
@@ -162,6 +167,8 @@ export const deleteSubject = async (req, res) => {
             });
         }
         await subject.deleteOne();
+
+        publishRealtime({ type: 'subjects:changed', id: String(id), ts: Date.now() });
         res.json({ message: 'Subject removed' });
     } catch (error) {
         console.error(error);

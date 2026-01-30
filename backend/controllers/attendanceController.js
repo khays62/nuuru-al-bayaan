@@ -6,6 +6,7 @@ import Enrollment from '../models/Enrollment.js';
 import Timetable from '../models/Timetable.js';
 import Student from '../models/Student.js';
 import User from '../models/User.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 function parseISODateOnly(value) {
   if (!value) return null;
@@ -197,6 +198,13 @@ export const markAttendanceBulk = async (req, res) => {
       // ignore audit failures
     }
 
+    publishRealtime({
+      type: 'attendance:changed',
+      gradeSectionId: String(gradeSectionId),
+      date: dateToISODateOnlyUTC(when),
+      periodCode: String(pCode),
+      ts: Date.now(),
+    });
     res.json({ updated: (resBulk.upsertedCount || 0) + (resBulk.modifiedCount || 0) });
   } catch (e) {
     if (e && e.code === 11000) {

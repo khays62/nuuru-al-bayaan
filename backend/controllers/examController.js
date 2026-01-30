@@ -7,6 +7,7 @@ import Enrollment from '../models/Enrollment.js';
 import Student from '../models/Student.js';
 import Subject from '../models/Subject.js';
 import TeacherAssignment from '../models/TeacherAssignment.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 const isId = (id) => mongoose.isValidObjectId(id);
 
@@ -221,6 +222,7 @@ export const setExamTemplateTotal = async (req, res) => {
 
     await ExamType.updateMany({ templateVersion: version }, { $set: { templateTotal } });
     const detail = await computeTemplateTotals(version);
+    publishRealtime({ type: 'exams:changed', ts: Date.now() });
     res.json({ templateVersion: version, templateTotal, sumMaxScore: detail.sumMaxScore, isActive: detail.isActive });
   } catch (err) {
     console.error('setExamTemplateTotal error', err);
@@ -273,6 +275,7 @@ export const createExamTemplateComponent = async (req, res) => {
     });
 
     const detail = await computeTemplateTotals(version);
+    publishRealtime({ type: 'exams:changed', ts: Date.now() });
     res.status(201).json({ component: created, sumMaxScore: detail.sumMaxScore, templateTotal: detail.templateTotal });
   } catch (err) {
     console.error('createExamTemplateComponent error', err);
@@ -305,6 +308,7 @@ export const deleteExamTemplateComponent = async (req, res) => {
     await ExamType.deleteOne({ _id: current._id });
 
     const detail = await computeTemplateTotals(current.templateVersion);
+    publishRealtime({ type: 'exams:changed', ts: Date.now() });
     res.json({ message: 'Deleted', templateVersion: current.templateVersion, sumMaxScore: detail.sumMaxScore, templateTotal: detail.templateTotal });
   } catch (err) {
     console.error('deleteExamTemplateComponent error', err);
@@ -339,6 +343,7 @@ export const deleteExamTemplateVersion = async (req, res) => {
     // Safe to delete: remove Exams for this version (scores are guaranteed none), then remove template components.
     await Exam.deleteMany({ templateVersion: version });
     await ExamType.deleteMany({ templateVersion: version });
+    publishRealtime({ type: 'exams:changed', ts: Date.now() });
     res.json({ message: 'Deleted version', templateVersion: version });
   } catch (err) {
     console.error('deleteExamTemplateVersion error', err);
@@ -399,6 +404,7 @@ export const updateExamTemplateComponent = async (req, res) => {
     ).lean();
 
     const detail = await computeTemplateTotals(current.templateVersion);
+    publishRealtime({ type: 'exams:changed', ts: Date.now() });
     res.json({ component: updated, sumMaxScore: detail.sumMaxScore, templateTotal: detail.templateTotal });
   } catch (err) {
     console.error('updateExamTemplateComponent error', err);
@@ -429,6 +435,7 @@ export const cloneExamTemplateVersion = async (req, res) => {
     }));
 
     const created = await ExamType.insertMany(docs, { ordered: true });
+    publishRealtime({ type: 'exams:changed', ts: Date.now() });
     res.status(201).json({ templateVersion: nextVersion, components: created });
   } catch (err) {
     console.error('cloneExamTemplateVersion error', err);
@@ -455,6 +462,7 @@ export const setActiveExamTemplateVersion = async (req, res) => {
 
     await ExamType.updateMany({ isActive: true }, { $set: { isActive: false } });
     await ExamType.updateMany({ templateVersion: version }, { $set: { isActive: true } });
+    publishRealtime({ type: 'exams:changed', ts: Date.now() });
     res.json({ message: 'Active template updated', activeVersion: version });
   } catch (err) {
     console.error('setActiveExamTemplateVersion error', err);
@@ -535,6 +543,7 @@ export const ensureExams = async (req, res) => {
     const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: version })
       .populate('examType', 'typeName maxScore order templateVersion')
       .lean();
+    publishRealtime({ type: 'exams:changed', ts: Date.now() });
     res.json(exams.map(e => ({
       examId: e._id,
       examTypeId: e.examType?._id || e.examType,
@@ -712,6 +721,9 @@ export const upsertScore = async (req, res) => {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     ).lean();
 
+    // Scores affect Results + Transcript.
+    publishRealtime({ type: 'results:changed', ts: Date.now() });
+    publishRealtime({ type: 'transcript:changed', ts: Date.now() });
     res.json({ message: 'Saved', score: updated });
   } catch (err) {
     console.error('upsertScore error', err);

@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
+import { useAuth } from '../../../auth/AuthContext';
+
 import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, resetTeacherPassword, updateTeacher } from '../api/teachersApi';
 
 import Modal from '../../../shared/components/ui/Modal.jsx';
@@ -16,6 +18,15 @@ import TeacherTable from '../components/TeacherTable.jsx';
 import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function TeachersPage() {
+	const { auth, hasPermission } = useAuth();
+	const isAdmin = String(auth?.user?.role || '').toLowerCase() === 'admin';
+	const canAddTeacher = isAdmin || hasPermission('teachers', 'add');
+	const canEditTeacher = isAdmin || hasPermission('teachers', 'edit');
+	const canAssignTeacher = isAdmin || hasPermission('teachers', 'assign');
+	const canDeactivateTeacher = isAdmin || hasPermission('teachers', 'deactivate');
+	const canReactivateTeacher = isAdmin || hasPermission('teachers', 'reactivate');
+	const canResetTeacherPassword = isAdmin || hasPermission('teachers', 'resetPassword');
+
 	const navigate = useNavigate();
 	const [items, setItems] = useState([]);
 	const [loading, setLoading] = useState(false);
@@ -51,10 +62,10 @@ export default function TeachersPage() {
 
 	// Live refresh: when bell actions mark a teacher active/inactive
 	useEffect(() => {
-		const handler = () => fetchTeachers({ silent: true });
+		const handler = () => fetchTeachers({ silent: Array.isArray(items) && items.length > 0 });
 		onEvent(EVENTS.TEACHERS_CHANGED, handler);
 		return () => offEvent(EVENTS.TEACHERS_CHANGED, handler);
-	}, [fetchTeachers]);
+	}, [fetchTeachers, items]);
 
 	const viewItems = React.useMemo(() => {
 		if (!Array.isArray(items)) return [];
@@ -104,10 +115,18 @@ export default function TeachersPage() {
 	};
 
 	const onAdd = () => {
+		if (!canAddTeacher) {
+			toast.error('You do not have permission to add teachers');
+			return;
+		}
 		setEditing(null);
 		setShowForm(true);
 	};
 	const onEdit = (row) => {
+		if (!canEditTeacher) {
+			toast.error('You do not have permission to edit teachers');
+			return;
+		}
 		setEditing(row);
 		setShowForm(true);
 	};
@@ -118,6 +137,14 @@ export default function TeachersPage() {
 
 		const currentStatus = (statusOverrides[id] ?? row?.status ?? 'active') === 'inactive' ? 'inactive' : 'active';
 		const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
+		if (nextStatus === 'inactive' && !canDeactivateTeacher) {
+			toast.error('You do not have permission to deactivate teachers');
+			return;
+		}
+		if (nextStatus === 'active' && !canReactivateTeacher) {
+			toast.error('You do not have permission to reactivate teachers');
+			return;
+		}
 		const verb = nextStatus === 'inactive' ? 'Deactivate' : 'Reactivate';
 		if (!confirm(`${verb} this teacher?`)) return;
 
@@ -150,6 +177,10 @@ export default function TeachersPage() {
 	};
 
 	const onResetPassword = async (row) => {
+		if (!canResetTeacherPassword) {
+			toast.error('You do not have permission to reset passwords');
+			return;
+		}
 		const id = row?._id || row?.id;
 		if (!id) return;
 		if (pendingById[id]) return;
@@ -214,9 +245,11 @@ export default function TeachersPage() {
 		<div className="space-y-4">
 			<div className="flex items-center">
 				<h1 className="text-2xl font-semibold">Teacher Management</h1>
-				<Button variant="brand" size="lg" onClick={onAdd} className="ml-auto">
-					Add New Teacher
-				</Button>
+				{canAddTeacher && (
+					<Button variant="brand" size="lg" onClick={onAdd} className="ml-auto">
+						Add New Teacher
+					</Button>
+				)}
 			</div>
 			<DataToolbar
 				searchSlot={<SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search teachers..." />}
@@ -240,7 +273,14 @@ export default function TeachersPage() {
 					if (!id) return;
 					navigate(`/teachers/${id}`);
 				}}
-				onAssign={(t) => { setAssignTeacher(t); setShowAssign(true); }}
+				onAssign={(t) => {
+					if (!canAssignTeacher) {
+						toast.error('You do not have permission to assign teachers');
+						return;
+					}
+					setAssignTeacher(t);
+					setShowAssign(true);
+				}}
 				onEdit={onEdit}
 				onToggleStatus={onToggleStatus}
 				onResetPassword={onResetPassword}

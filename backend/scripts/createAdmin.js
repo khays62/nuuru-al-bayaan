@@ -49,6 +49,8 @@ async function createAdmin() {
         promotions: { full: true },
         timetable: { full: true },
         attendance: { full: true },
+        attendanceReports: { full: true },
+        security: { full: true },
         announcements: { full: true }
       },
       status: "active"

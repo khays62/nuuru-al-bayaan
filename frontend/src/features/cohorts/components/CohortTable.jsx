@@ -2,6 +2,7 @@ import React from 'react';
 import { Archive, ArchiveRestore, Edit, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function CohortTable({
   isLoading,
@@ -21,6 +22,14 @@ export default function CohortTable({
   onPage,
   onLimit,
 }) {
+  const { auth, hasPermission } = useAuth();
+  const roleLower = String(auth?.user?.role || '').toLowerCase();
+  const isAdmin = roleLower === 'admin';
+
+  const canAdd = isAdmin || hasPermission('cohorts', 'add');
+  const canEdit = isAdmin || hasPermission('cohorts', 'edit');
+  const canDelete = isAdmin || hasPermission('cohorts', 'delete');
+
   return (
     <StandardTable
       isLoading={isLoading}
@@ -32,8 +41,8 @@ export default function CohortTable({
       loadingColumns={5}
       emptyTitle="No cohorts found"
       emptyDescription="Try adjusting filters or create a new cohort."
-      emptyActionLabel="Add Cohort"
-      onEmptyAction={onEmptyAction}
+      emptyActionLabel={canAdd ? 'Add Cohort' : undefined}
+      onEmptyAction={canAdd ? onEmptyAction : undefined}
       onRetry={onRetry}
       topSlot={
         <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
@@ -92,39 +101,45 @@ export default function CohortTable({
             return row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-';
           case 'actions': {
             const actions = [
-              {
-                key: 'edit',
-                label: 'Edit',
-                title: 'Edit',
-                tone: 'edit',
-                icon: <Edit size={16} />,
-                onClick: () => onEdit(row),
-              },
-              row.status === 'active'
+              canEdit
                 ? {
-                    key: 'archive',
-                    label: 'Archive',
-                    title: 'Archive',
-                    tone: 'neutral',
-                    icon: <Archive size={16} />,
-                    onClick: () => onArchive(row),
+                    key: 'edit',
+                    label: 'Edit',
+                    title: 'Edit',
+                    tone: 'edit',
+                    icon: <Edit size={16} />,
+                    onClick: () => onEdit(row),
                   }
-                : {
-                    key: 'activate',
-                    label: 'Activate',
-                    title: 'Activate',
-                    tone: 'neutral',
-                    icon: <ArchiveRestore size={16} />,
-                    onClick: () => onActivate(row),
-                  },
-              {
-                key: 'delete',
-                label: 'Delete',
-                title: 'Delete',
-                tone: 'delete',
-                icon: <Trash2 size={16} />,
-                onClick: () => onDelete(row),
-              },
+                : null,
+              canEdit
+                ? (row.status === 'active'
+                    ? {
+                        key: 'archive',
+                        label: 'Archive',
+                        title: 'Archive',
+                        tone: 'neutral',
+                        icon: <Archive size={16} />,
+                        onClick: () => onArchive(row),
+                      }
+                    : {
+                        key: 'activate',
+                        label: 'Activate',
+                        title: 'Activate',
+                        tone: 'neutral',
+                        icon: <ArchiveRestore size={16} />,
+                        onClick: () => onActivate(row),
+                      })
+                : null,
+              canDelete
+                ? {
+                    key: 'delete',
+                    label: 'Delete',
+                    title: 'Delete',
+                    tone: 'delete',
+                    icon: <Trash2 size={16} />,
+                    onClick: () => onDelete(row),
+                  }
+                : null,
             ];
 
             return <RowActionButtons actions={actions} />;

@@ -33,10 +33,16 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import GradeTable from '../components/GradeTable.jsx';
 import GradeForm from '../components/GradeForm.jsx';
 import GradeSectionRosterModal from '../components/GradeSectionRosterModal.jsx';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function GradePage() {
-	const { auth } = useAuth();
+	const { auth, hasPermission } = useAuth();
 	const role = auth?.user?.role;
+	const isAdmin = String(role || '').toLowerCase() === 'admin';
+	const canView = isAdmin || hasPermission('grades', 'view');
+	const canAdd = isAdmin || hasPermission('grades', 'add');
+	const canEdit = isAdmin || hasPermission('grades', 'edit');
+	const canDelete = isAdmin || hasPermission('grades', 'delete');
 	// Safety: teachers should use the dedicated My Classes page.
 	if (role === 'teacher') return <Navigate to="/teacher-classes" replace />;
 
@@ -102,8 +108,18 @@ export default function GradePage() {
 		setPage,
 		setLimit,
 		refresh,
+		silentRefresh,
 		resetAndReload,
 	} = list;
+
+	// Live refresh: keep classes/grade-sections synced across browsers/tabs.
+	useEffect(() => {
+		const handler = () => {
+			silentRefresh();
+		};
+		onEvent(EVENTS.GRADE_SECTIONS_CHANGED, handler);
+		return () => offEvent(EVENTS.GRADE_SECTIONS_CHANGED, handler);
+	}, [silentRefresh]);
 
 	const {
 		sortBy,
@@ -126,19 +142,43 @@ export default function GradePage() {
 		},
 	});
 
-	const handleAddNew = () => { setEditingClass(null); setIsModalOpen(true); };
-	const handleEdit = (cls) => { setEditingClass(cls); setIsModalOpen(true); };
+	const handleAddNew = () => {
+		if (!canAdd) {
+			toast.error('You do not have permission to add grade sections');
+			return;
+		}
+		setEditingClass(null);
+		setIsModalOpen(true);
+	};
+	const handleEdit = (cls) => {
+		if (!canEdit) {
+			toast.error('You do not have permission to edit grade sections');
+			return;
+		}
+		setEditingClass(cls);
+		setIsModalOpen(true);
+	};
 	const handleView = (cls) => { setRosterClass(cls); setIsRosterOpen(true); };
 	const closeRoster = () => { setIsRosterOpen(false); setRosterClass(null); };
 	const closeModal = () => { setIsModalOpen(false); setEditingClass(null); };
-	const handlePrint = () => { setTimeout(() => window.print(), 0); };
+	const handlePrint = () => {
+		if (!canView) {
+			toast.error('You do not have permission to view/print grade sections');
+			return;
+		}
+		setTimeout(() => window.print(), 0);
+	};
 
 	const handleDelete = async (id) => {
+		if (!canDelete) {
+			toast.error('You do not have permission to delete grade sections');
+			return;
+		}
 		if (!window.confirm('Are you sure you want to delete this section?')) return;
 		const res = await deleteGradeSection(id);
 		if (res && res.ok) {
 			toast.success('Deleted successfully');
-			refresh();
+			silentRefresh();
 		} else {
 			toast.error(res?.error || 'Failed to delete');
 		}
@@ -152,7 +192,7 @@ export default function GradePage() {
 	};
 
 	const STORAGE_KEY = 'gradeSections:columns:v1';
-	const canExport = Boolean(!isLoading && Array.isArray(classes) && classes.length > 0);
+	const canExport = Boolean(canView && !isLoading && Array.isArray(classes) && classes.length > 0);
 	const sortedGrades = (grades || []).slice().sort((a, b) => new Date(a?.createdAt || 0) - new Date(b?.createdAt || 0));
 
 	const buildExportPayload = useCallback(async () => {
@@ -247,31 +287,37 @@ export default function GradePage() {
 					</div>
 
 					<div className="w-full flex items-center justify-between gap-2 flex-wrap">
-						<Button
-							variant="brand"
-							size="lg"
-							onClick={handleAddNew}
-							icon={<Plus className="w-5 h-5" />}
-							className="w-full sm:w-auto justify-center"
-						>
-							Add Grade Section
-						</Button>
+						{canAdd && (
+							<Button
+								variant="brand"
+								size="lg"
+								onClick={handleAddNew}
+								icon={<Plus className="w-5 h-5" />}
+								className="w-full sm:w-auto justify-center"
+							>
+								Add Grade Section
+							</Button>
+						)}
 
 						<div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
-							<ActionButton
-								variant="neutral"
-								className={outlineBtn}
-								onClick={handlePrint}
-								title="Print"
-								icon={<Printer size={16} />}
-							>
-								Print
-							</ActionButton>
+							{canView && (
+								<>
+									<ActionButton
+										variant="neutral"
+										className={outlineBtn}
+										onClick={handlePrint}
+										title="Print"
+										icon={<Printer size={16} />}
+									>
+										Print
+									</ActionButton>
 
-							<PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-							<ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-							<CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-							<CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+								</>
+							)}
 
 							<ActionButton
 								variant="neutral"
@@ -314,7 +360,7 @@ export default function GradePage() {
 				onClose={closeModal}
 				title={editingClass ? 'Edit Grade Section' : 'Add Grade Section'}
 			>
-				<GradeForm cls={editingClass} onClose={closeModal} onSuccess={() => refresh()} />
+				<GradeForm cls={editingClass} onClose={closeModal} onSuccess={() => silentRefresh()} />
 			</Modal>
 
 			<GradeSectionRosterModal isOpen={isRosterOpen} onClose={closeRoster} gradeSection={rosterClass} />

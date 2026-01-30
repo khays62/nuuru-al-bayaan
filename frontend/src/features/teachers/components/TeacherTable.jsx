@@ -3,6 +3,7 @@ import { Eye, KeyRound, ListChecks, Pencil, RotateCcw, Trash2 } from 'lucide-rea
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function TeacherTable({
   items = [],
@@ -23,6 +24,17 @@ export default function TeacherTable({
   pendingById,
 }) {
   const STORAGE_KEY = 'teachers:columns:v1';
+
+  const { auth, hasPermission } = useAuth();
+  const roleLower = String(auth?.user?.role || '').toLowerCase();
+  const isAdmin = roleLower === 'admin';
+
+  const canView = isAdmin || hasPermission('teachers', 'view');
+  const canAssign = isAdmin || hasPermission('teachers', 'assign');
+  const canEdit = isAdmin || hasPermission('teachers', 'edit');
+  const canDeactivate = isAdmin || hasPermission('teachers', 'deactivate');
+  const canReactivate = isAdmin || hasPermission('teachers', 'reactivate');
+  const canResetPassword = isAdmin || hasPermission('teachers', 'resetPassword');
 
   const columns = useMemo(() => ([
     { key: 'name', label: 'Name', sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
@@ -85,59 +97,73 @@ export default function TeacherTable({
             return (
               <RowActionButtons
                 actions={[
-                  {
-                    key: 'view',
-                    label: 'View',
-                    title: 'View teacher profile & audit history',
-                    tone: 'view',
-                    icon: <Eye size={16} />,
-                    onClick: () => onView?.(t),
-                  },
-                  {
-                    key: 'resetPassword',
-                    label: 'Reset Password',
-                    title: 'Reset password to default (clears 24h lock/cooldown)',
-                    tone: 'edit',
-                    icon: <KeyRound size={16} />,
-                    disabled: Boolean(pendingById?.[t._id || t.id]) || String(t.status || '').toLowerCase() === 'inactive',
-                    onClick: () => onResetPassword?.(t),
-                  },
-                  {
-                    key: 'assign',
-                    label: 'Assignments',
-                    title: 'Assignments',
-                    tone: 'view',
-                    showLabel: true,
-                    icon: <ListChecks size={16} />,
-                    onClick: () => onAssign?.(t),
-                  },
-                  {
-                    key: 'edit',
-                    label: 'Edit',
-                    title: 'Edit Teacher',
-                    tone: 'edit',
-                    icon: <Pencil size={16} />,
-                    onClick: () => onEdit?.(t),
-                  },
-                  t.status === 'inactive'
+                  canView
                     ? {
-                        key: 'reactivate',
-                        label: 'Reactivate',
-                        title: 'Reactivate Teacher',
+                        key: 'view',
+                        label: 'View',
+                        title: 'View teacher profile & audit history',
                         tone: 'view',
-                        icon: <RotateCcw size={16} />,
-                        disabled: Boolean(pendingById?.[t._id || t.id]),
-                        onClick: () => onToggleStatus?.(t),
+                        icon: <Eye size={16} />,
+                        onClick: () => onView?.(t),
                       }
-                    : {
-                        key: 'deactivate',
-                        label: 'Deactivate',
-                        title: 'Deactivate Teacher',
-                        tone: 'delete',
-                        icon: <Trash2 size={16} />,
-                        disabled: Boolean(pendingById?.[t._id || t.id]),
-                        onClick: () => onToggleStatus?.(t),
-                      },
+                    : null,
+                  canResetPassword
+                    ? {
+                        key: 'resetPassword',
+                        label: 'Reset Password',
+                        title: 'Reset password to default (clears 24h lock/cooldown)',
+                        tone: 'edit',
+                        icon: <KeyRound size={16} />,
+                        disabled:
+                          Boolean(pendingById?.[t._id || t.id]) ||
+                          String(t.status || '').toLowerCase() === 'inactive',
+                        onClick: () => onResetPassword?.(t),
+                      }
+                    : null,
+                  canAssign
+                    ? {
+                        key: 'assign',
+                        label: 'Assignments',
+                        title: 'Assignments',
+                        tone: 'view',
+                        showLabel: true,
+                        icon: <ListChecks size={16} />,
+                        onClick: () => onAssign?.(t),
+                      }
+                    : null,
+                  canEdit
+                    ? {
+                        key: 'edit',
+                        label: 'Edit',
+                        title: 'Edit Teacher',
+                        tone: 'edit',
+                        icon: <Pencil size={16} />,
+                        onClick: () => onEdit?.(t),
+                      }
+                    : null,
+                  t.status === 'inactive'
+                    ? (canReactivate
+                        ? {
+                            key: 'reactivate',
+                            label: 'Reactivate',
+                            title: 'Reactivate Teacher',
+                            tone: 'view',
+                            icon: <RotateCcw size={16} />,
+                            disabled: Boolean(pendingById?.[t._id || t.id]),
+                            onClick: () => onToggleStatus?.(t),
+                          }
+                        : null)
+                    : (canDeactivate
+                        ? {
+                            key: 'deactivate',
+                            label: 'Deactivate',
+                            title: 'Deactivate Teacher',
+                            tone: 'delete',
+                            icon: <Trash2 size={16} />,
+                            disabled: Boolean(pendingById?.[t._id || t.id]),
+                            onClick: () => onToggleStatus?.(t),
+                          }
+                        : null),
                 ]}
               />
             );

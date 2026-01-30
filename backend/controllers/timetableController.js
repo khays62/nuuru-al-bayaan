@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Timetable from '../models/Timetable.js';
 import TeacherAssignment from '../models/TeacherAssignment.js';
 import Enrollment from '../models/Enrollment.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 function buildTimeOverlapQuery({ startTime, endTime }) {
   return { startTime: { $lt: endTime }, endTime: { $gt: startTime } };
@@ -141,6 +142,8 @@ export const createSlot = async (req, res) => {
       room: room || undefined,
     });
 
+    publishRealtime({ type: 'timetable:changed', id: String(created._id), ts: Date.now() });
+
     res.status(201).json({ data: { _id: String(created._id), createdAt: created.createdAt } });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
@@ -189,6 +192,10 @@ export const createSlotsBulk = async (req, res) => {
 
       const doc = await Timetable.create({ gradeSection: gsId, isBreak: !!isBreak, subject: isBreak ? undefined : subjectId, teacher: isBreak ? undefined : teacher, dayOfWeek: d, startTime, endTime, room: room || undefined });
       created.push({ _id: String(doc._id), day: d });
+    }
+
+    if (created.length) {
+      publishRealtime({ type: 'timetable:changed', ts: Date.now() });
     }
 
     return res.status(200).json({ data: { created, conflicts } });
@@ -245,6 +252,8 @@ export const updateSlot = async (req, res) => {
     found.room = room;
     await found.save();
 
+    publishRealtime({ type: 'timetable:changed', id: String(found._id), ts: Date.now() });
+
     res.json({ data: { _id: String(found._id) } });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
@@ -256,6 +265,8 @@ export const deleteSlot = async (req, res) => {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid id' });
     await Timetable.findByIdAndDelete(id);
+
+    publishRealtime({ type: 'timetable:changed', id: String(id), ts: Date.now() });
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ message: 'Server Error' });
@@ -392,6 +403,7 @@ export const swapSlots = async (req, res) => {
       await b.save({ session });
     });
 
+    publishRealtime({ type: 'timetable:changed', ts: Date.now() });
     return res.json({ data: { aId: String(a._id), bId: String(b._id) } });
   } catch (e) {
     const status = e.statusCode || (e.message === 'Not found' ? 404 : 400);

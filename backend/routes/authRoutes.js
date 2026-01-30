@@ -1,7 +1,7 @@
 import express from "express";
 import { login, logout, verifyUser, resetLoginLockout, changePassword, getCsrfToken, getMyAuditLogs } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { checkPermission } from "../middleware/checkPermission.js";
+import { checkAnyPermission, checkPermission } from "../middleware/checkPermission.js";
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
 
@@ -37,7 +37,16 @@ router.post(
 	}),
 	changePassword
 );
-router.patch("/users/:id/reset-lockout", protect, checkPermission('security', 'edit'), resetLoginLockout);
+router.patch(
+	"/users/:id/reset-lockout",
+	protect,
+	checkAnyPermission([
+		{ module: 'security', action: 'resetLockout' },
+		// Backward compatibility
+		{ module: 'security', action: 'edit' },
+	]),
+	resetLoginLockout
+);
 
 router.get(
 	'/me/logs',

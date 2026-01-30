@@ -173,7 +173,7 @@ function StudentDashboardInner({ studentId }) {
       out.push({ to: `${base}/timetable`, label: 'Timetable' });
     }
 
-    if (canAny('transfers', ['view', 'transfer']) || hasPermission('students', 'transfer')) {
+    if (canAny('transfers', ['view', 'transfer'])) {
       out.push({ to: `${base}/transfers`, label: 'Transfers' });
     }
 

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
@@ -21,10 +21,20 @@ import { getSubjects } from '../../subjects/api/subjects';
 import { getSlots, getSlotsWithOptions, createSlot, createSlotsBulk, updateSlot, swapSlots, deleteSlot } from '../api/timetable';
 import TeacherTimetablePanel from '../../teachers/components/dashboard/TeacherTimetablePanel.jsx';
 import { teacherKeys } from '../../teachers/queryKeys.js';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function TimetablePage() {
-  const { auth } = useAuth();
-  const isTeacher = String(auth?.user?.role || '').toLowerCase() === 'teacher';
+  const { auth, hasPermission } = useAuth();
+  const queryClient = useQueryClient();
+  const role = String(auth?.user?.role || '').toLowerCase();
+  const isTeacher = role === 'teacher';
+  const isAdmin = role === 'admin';
+
+  const canTimetablePrint = !isTeacher && (isAdmin || hasPermission('timetable', 'print'));
+  const canTimetableDownload = !isTeacher && (isAdmin || hasPermission('timetable', 'download'));
+  const canTimetableAdd = !isTeacher && (isAdmin || hasPermission('timetable', 'add'));
+  const canTimetableEdit = !isTeacher && (isAdmin || hasPermission('timetable', 'edit'));
+  const canTimetableDelete = !isTeacher && (isAdmin || hasPermission('timetable', 'delete'));
 
   const [gradeId, setGradeId] = useState('');
   const [shiftId, setShiftId] = useState('');
@@ -49,6 +59,24 @@ export default function TimetablePage() {
 
   const [dndBusy, setDndBusy] = useState(false);
   const [swapUi, setSwapUi] = useState({ isOpen: false, aId: null, bId: null });
+
+  const refreshSlots = useCallback(async ({ silent = false } = {}) => {
+    if (isTeacher) return;
+    if (!sectionId) {
+      setSlots([]);
+      return;
+    }
+    try {
+      if (!silent) { setLoading(true); setError(''); }
+      const res = await getSlots({ gs: sectionId });
+      setSlots(res?.data || []);
+    } catch (err) {
+      console.warn('Failed to load timetable', err);
+      if (!silent) setError('Failed to load timetable');
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, [isTeacher, sectionId]);
 
   const dayNames = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
 
@@ -152,19 +180,29 @@ export default function TimetablePage() {
 
   useEffect(() => {
     if (isTeacher) return;
-    if (!sectionId) { setSlots([]); return; }
-    (async () => {
-      try {
-        setLoading(true); setError('');
-        const res = await getSlots({ gs: sectionId });
-        setSlots(res?.data || []);
-      } catch (err) {
-        console.warn('Failed to load timetable', err);
-        setError('Failed to load timetable');
+    refreshSlots({ silent: false });
+  }, [isTeacher, refreshSlots, sectionId]);
+
+  const todayIdx = useMemo(() => getTimetableDayIndexFromLocalDate(new Date()), []);
+
+  // Live refresh: keep timetable synced across browsers/tabs.
+  useEffect(() => {
+    const handler = () => {
+      if (isTeacher) {
+        try {
+          queryClient.invalidateQueries({ queryKey: teacherKeys.timetableSlots({ gradeSectionId: sectionId }) });
+          queryClient.invalidateQueries({ queryKey: teacherKeys.timetableTodayMine({ dayIndex: todayIdx }) });
+        } catch {
+          // ignore
+        }
+        return;
       }
-      finally { setLoading(false); }
-    })();
-  }, [sectionId, isTeacher]);
+      refreshSlots({ silent: true });
+    };
+
+    onEvent(EVENTS.TIMETABLE_CHANGED, handler);
+    return () => offEvent(EVENTS.TIMETABLE_CHANGED, handler);
+  }, [isTeacher, queryClient, refreshSlots, sectionId, todayIdx]);
 
   const teacherSlotsQuery = useQuery({
     queryKey: teacherKeys.timetableSlots({ gradeSectionId: sectionId }),
@@ -175,8 +213,6 @@ export default function TimetablePage() {
     },
     placeholderData: (prev) => prev,
   });
-
-  const todayIdx = useMemo(() => getTimetableDayIndexFromLocalDate(new Date()), []);
   const teacherTodayQuery = useQuery({
     queryKey: teacherKeys.timetableTodayMine({ dayIndex: todayIdx }),
     enabled: Boolean(isTeacher),
@@ -195,6 +231,10 @@ export default function TimetablePage() {
   const onMove = async (slotId, target, targetSlotId) => {
     if (isTeacher) {
       toast.error('Teachers can only view timetable');
+      return;
+    }
+    if (!canTimetableEdit) {
+      toast.error('You do not have permission to edit timetable');
       return;
     }
     if (!sectionId) return;
@@ -252,6 +292,11 @@ export default function TimetablePage() {
       closeSwap();
       return;
     }
+    if (!canTimetableEdit) {
+      toast.error('You do not have permission to edit timetable');
+      closeSwap();
+      return;
+    }
     if (!swapUi?.aId || !swapUi?.bId) return;
     try {
       const a = slots.find((s) => String(s._id) === String(swapUi.aId));
@@ -279,6 +324,10 @@ export default function TimetablePage() {
       toast.error('Teachers can only view timetable');
       return;
     }
+    if (!canTimetableAdd) {
+      toast.error('You do not have permission to add timetable slots');
+      return;
+    }
     if (!sectionId || (!isBreak && !subjectId) || !startTime || !endTime) { toast.error('Fill required fields'); return; }
     if (!Array.isArray(days) || days.length !== 1) { toast.error('Select exactly one day for Add Slot'); return; }
     try {
@@ -300,6 +349,10 @@ export default function TimetablePage() {
   const onAddBulk = async () => {
     if (isTeacher) {
       toast.error('Teachers can only view timetable');
+      return;
+    }
+    if (!canTimetableAdd) {
+      toast.error('You do not have permission to add timetable slots');
       return;
     }
     if (!sectionId || (!isBreak && !subjectId) || !startTime || !endTime || !days?.length) { toast.error('Fill required fields'); return; }
@@ -333,6 +386,10 @@ export default function TimetablePage() {
   const onDelete = async (slot) => {
     if (isTeacher) {
       toast.error('Teachers can only view timetable');
+      return;
+    }
+    if (!canTimetableDelete) {
+      toast.error('You do not have permission to delete timetable slots');
       return;
     }
     if (!confirm('Delete this slot?')) return;
@@ -384,6 +441,10 @@ export default function TimetablePage() {
   }, [sections, sectionId]);
 
   const handlePrint = () => {
+    if (!canTimetablePrint) {
+      toast.error('You do not have permission to print timetable');
+      return;
+    }
     window.print();
   };
 
@@ -417,6 +478,7 @@ export default function TimetablePage() {
   };
 
   const handleDownloadCsv = () => {
+    if (!canTimetableDownload) { toast.error('You do not have permission to download timetable'); return; }
     if (!sectionId) { toast.error('Select a section'); return; }
     const rows = getExportRows();
     if (!rows.length) { toast.error('No slots to export'); return; }
@@ -515,11 +577,15 @@ export default function TimetablePage() {
         <div className="ml-auto flex gap-2 items-center">
           {!isTeacher ? (
             <>
-              <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
-              <ActionButton variant="neutral" onClick={handleDownloadCsv} title="Download CSV" icon={<Download size={16} />}>CSV</ActionButton>
+              {canTimetablePrint ? (
+                <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+              ) : null}
+              {canTimetableDownload ? (
+                <ActionButton variant="neutral" onClick={handleDownloadCsv} title="Download CSV" icon={<Download size={16} />}>CSV</ActionButton>
+              ) : null}
             </>
           ) : null}
-          {!isTeacher ? (
+          {!isTeacher && canTimetableAdd ? (
             <>
               <ActionButton variant="brand" onClick={onAddSingle} disabled={addingSingle} className={addingSingle ? 'opacity-70 cursor-wait' : ''}>
                 {addingSingle ? 'Adding…' : 'Add Slot'}
@@ -707,11 +773,25 @@ export default function TimetablePage() {
                     ) : periods.length === 0 ? (
                       <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Set a valid time range to show periods.</td></tr>
                     ) : (
-                      <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} />
+                      <TimetableGrid
+                        slots={slots}
+                        daysFilter={displayDays}
+                        periods={periods}
+                        onDelete={canTimetableDelete ? onDelete : undefined}
+                        onMove={canTimetableEdit ? onMove : undefined}
+                        busy={dndBusy}
+                      />
                     ))
                   )}
                   {!loading && !error && slots.length > 0 && (
-                    <TimetableGrid slots={slots} daysFilter={displayDays} periods={periods} onDelete={onDelete} onMove={onMove} busy={dndBusy} />
+                    <TimetableGrid
+                      slots={slots}
+                      daysFilter={displayDays}
+                      periods={periods}
+                      onDelete={canTimetableDelete ? onDelete : undefined}
+                      onMove={canTimetableEdit ? onMove : undefined}
+                      busy={dndBusy}
+                    />
                   )}
                 </>
               ),

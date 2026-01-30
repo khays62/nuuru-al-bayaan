@@ -9,6 +9,7 @@ import Timetable from '../models/Timetable.js';
 import bcrypt from 'bcryptjs';
 import AuthLockEvent from '../models/AuthLockEvent.js';
 import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 import AuditLog from '../models/AuditLog.js';
 import { parsePagination } from '../utils/pagination.js';
 
@@ -289,6 +290,10 @@ export const deactivateTeacher = async (req, res) => {
       // non-blocking
     }
 
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+    publishRealtime({ type: 'users:changed', ts: Date.now() });
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+
     return res.json({ data: updated });
   } catch {
     return res.status(500).json({ message: 'Server Error' });
@@ -318,6 +323,10 @@ export const reactivateTeacher = async (req, res) => {
     } catch {
       // non-blocking
     }
+
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+    publishRealtime({ type: 'users:changed', ts: Date.now() });
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
 
     return res.json({ data: updated });
   } catch {
@@ -364,6 +373,10 @@ export const resetTeacherPassword = async (req, res) => {
       }
     );
 
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+    publishRealtime({ type: 'users:changed', ts: Date.now() });
+
     return res.json({ ok: true, message: 'Password reset to default and lock cleared.' });
   } catch (e) {
     return res.status(500).json({ message: e?.message || 'Server Error' });
@@ -404,6 +417,9 @@ export const addAssignment = async (req, res) => {
       return res.status(409).json({ message: 'Subject already assigned to another teacher.' });
     }
     const created = await TeacherAssignment.create({ teacher: id, gradeSection: gsId, subject: subjectId, role: role || 'main' });
+
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+    publishRealtime({ type: 'timetable:changed', ts: Date.now() });
     res.status(201).json({ data: { _id: String(created._id) } });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
@@ -434,6 +450,9 @@ export const removeAssignment = async (req, res) => {
     }
 
     await TeacherAssignment.deleteOne({ _id: assignmentId, teacher: id });
+
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+    publishRealtime({ type: 'timetable:changed', ts: Date.now() });
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ message: 'Server Error' });

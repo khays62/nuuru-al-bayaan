@@ -18,10 +18,13 @@ import AttendanceTable from '../components/AttendanceTable';
 import AttendanceFooter from '../components/AttendanceFooter';
 import { useAuth } from '../../../auth/AuthContext';
 import { teacherKeys } from '../../teachers/queryKeys.js';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function AttendancePage() {
-  const { auth } = useAuth();
-  const isTeacher = String(auth?.user?.role || '').toLowerCase() === 'teacher';
+  const { auth, hasPermission } = useAuth();
+  const role = String(auth?.user?.role || '').toLowerCase();
+  const isTeacher = role === 'teacher';
+  const isAdmin = role === 'admin';
   const teacherRef = String(auth?.user?.teacherRef || '');
 
   const todayUTC = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -182,6 +185,7 @@ export default function AttendancePage() {
   const [rows, setRows] = useState([]);
   const [attMeta, setAttMeta] = useState(null);
   const [attMetaKey, setAttMetaKey] = useState('');
+  const [realtimeTick, setRealtimeTick] = useState(0);
 
   const [selectionHasRecords, setSelectionHasRecords] = useState(false);
 
@@ -194,6 +198,35 @@ export default function AttendancePage() {
   useEffect(() => {
     dirtyRef.current = Boolean(dirty);
   }, [dirty]);
+
+  // Live refresh: keep attendance synced across browsers/tabs.
+  useEffect(() => {
+    const handler = (e) => {
+      const detail = e?.detail || {};
+      if (dirtyRef.current) return;
+      if (saving) return;
+
+      const eventGs = String(detail?.gradeSectionId || '');
+      const eventDate = String(detail?.date || '');
+      const eventPeriod = String(detail?.periodCode || '');
+
+      if (!eventGs) return;
+      if (String(sectionId || '') !== eventGs) return;
+
+      // If date is provided, only refresh when it matches current selection.
+      if (eventDate && String(selectedDate || '') !== eventDate) return;
+
+      // If period is provided, only refresh when it matches the current mode/period.
+      if (eventPeriod) {
+        const currentPeriod = mode === 'daily' ? 'DAY' : String(periodCodeRef.current || '');
+        if (currentPeriod && String(currentPeriod) !== String(eventPeriod)) return;
+      }
+
+      setRealtimeTick((t) => t + 1);
+    };
+    onEvent(EVENTS.ATTENDANCE_CHANGED, handler);
+    return () => offEvent(EVENTS.ATTENDANCE_CHANGED, handler);
+  }, [mode, saving, sectionId, selectedDate]);
 
   // Gate toasts by key to avoid duplicates during rapid rerenders.
   const toastGateRef = useRef(new Map());
@@ -536,11 +569,17 @@ export default function AttendancePage() {
 
   const canEdit = useMemo(() => {
     if (!canAct) return false;
+
+    // Staff/admin are permission-gated. Teachers are assignment-scoped (role-based).
+    if (!isAdmin && !isTeacher && !hasPermission('attendance', 'edit')) return false;
+
     // Teachers must be able to VIEW daily attendance, but not edit it.
+    if (isTeacher && mode === 'daily') return false;
+
     // Also prevent teachers from editing anything when a daily record exists.
     if (isTeacher && Boolean(attMeta?.hasDaily)) return false;
     return true;
-  }, [canAct, isTeacher, attMeta]);
+  }, [canAct, isTeacher, attMeta, isAdmin, hasPermission, mode]);
 
   // Auto-switch Mode to match existing attendance for selected GS+date.
   // This avoids the confusing "one mode is locked" feeling when viewing historical dates.
@@ -702,7 +741,7 @@ export default function AttendancePage() {
       }
     };
     load();
-  }, [querySectionId, queryMode, queryPeriodCode, queryDate, queryRosterScope, scheduleStatus]);
+  }, [querySectionId, queryMode, queryPeriodCode, queryDate, queryRosterScope, scheduleStatus, realtimeTick]);
 
   const handleAdminGradeChange = (v) => {
     // Clear downstream selections in the same tick to avoid transient grade+old-shift requests/toasts.
@@ -748,6 +787,11 @@ export default function AttendancePage() {
         ? 'Please select Level, Shift, Section, and Period.'
         : 'Please select Level, Shift and Section.';
       toast.error(msg);
+      return;
+    }
+
+    if (!canEdit) {
+      toast.error('You do not have permission to edit attendance');
       return;
     }
     if (blockNewAttendanceForInactive) {
@@ -1174,7 +1218,7 @@ export default function AttendancePage() {
       />
 
       <AttendanceFooter
-        canAct={canAct}
+        canAct={canEdit}
         isBusy={Boolean(loadingAttendance || detectingMode)}
         saving={saving}
         onSave={saveBulk}

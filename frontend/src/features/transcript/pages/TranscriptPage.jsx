@@ -22,8 +22,15 @@ import Chip from '../../../shared/components/ui/Chip.jsx';
 import FormField from '../../../shared/components/ui/FormField.jsx';
 import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
+import { useAuth } from '../../../auth/AuthContext';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function TranscriptPage() {
+  const { auth, hasPermission } = useAuth();
+  const role = String(auth?.user?.role || '').toLowerCase();
+  const isAdmin = role === 'admin';
+  const canPrintTranscript = isAdmin || hasPermission('transcript', 'print');
+
   // Lookups (for labels only)
   const [, setYears] = useState([]);
   // Grade/Shift data no longer displayed; timeline covers progression
@@ -59,6 +66,21 @@ export default function TranscriptPage() {
   // Data per student
   const [loading, setLoading] = useState(false);
   const [transcripts, setTranscripts] = useState({}); // { [studentId]: { ok, data, error } }
+  const [realtimeTick, setRealtimeTick] = useState(0);
+
+  // Live refresh: when results change elsewhere, re-fetch currently selected transcripts.
+  useEffect(() => {
+    const handler = () => {
+      if (!selectedStudents.length) return;
+      setRealtimeTick((t) => t + 1);
+    };
+    onEvent(EVENTS.RESULTS_CHANGED, handler);
+    onEvent(EVENTS.TRANSCRIPT_CHANGED, handler);
+    return () => {
+      offEvent(EVENTS.RESULTS_CHANGED, handler);
+      offEvent(EVENTS.TRANSCRIPT_CHANGED, handler);
+    };
+  }, [selectedStudents.length]);
 
   // Load lookups once for labels + levels
   useEffect(() => {
@@ -212,7 +234,7 @@ export default function TranscriptPage() {
     };
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStudents]);
+  }, [selectedStudents, realtimeTick]);
 
   // (Top/Bottom removed)
 
@@ -239,7 +261,13 @@ export default function TranscriptPage() {
     setTranscripts(prev => { const next = { ...prev }; delete next[id]; return next; });
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (!canPrintTranscript) {
+      toast.error('You do not have permission to print transcripts');
+      return;
+    }
+    window.print();
+  };
   const handleReset = () => {
     setSearch('');
     setDropdownSearch('');
@@ -452,7 +480,9 @@ export default function TranscriptPage() {
           </>
         )}
         <div className="mt-3 flex flex-row flex-wrap gap-2 items-center">
-          <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+          {canPrintTranscript ? (
+            <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+          ) : null}
           <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
         </div>
       </Card>

@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
-import { useQuery, useQueries } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 import { listStudents } from '../../../../api';
 import Modal from '../../../../shared/components/ui/Modal.jsx';
 import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
 import { useAuth } from '../../../../auth/AuthContext';
 import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { teacherKeys } from '../../queryKeys';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../../utils/events';
 
 const CARD_THEMES = [
 	{ header: 'bg-gradient-to-r from-blue-600 to-indigo-600' },
@@ -52,6 +53,7 @@ const buildSectionLabel = (gs) => {
 export default function TeacherClassesPage() {
 	const { auth } = useAuth();
 	const teacherRef = String(auth?.user?.teacherRef || '');
+	const queryClient = useQueryClient();
 
 	const [rosterUi, setRosterUi] = useState({ isOpen: false, sectionId: '', label: '' });
 	const assignmentsQuery = useQuery({
@@ -63,6 +65,28 @@ export default function TeacherClassesPage() {
 		},
 		placeholderData: (prev) => prev,
 	});
+
+	// Live refresh: keep My Classes in sync (assignments + rosters).
+	useEffect(() => {
+		if (!teacherRef) return;
+		const handler = () => {
+			try {
+				queryClient.invalidateQueries({ queryKey: teacherKeys.base });
+			} catch {
+				// ignore
+			}
+		};
+		onEvent(EVENTS.TEACHERS_CHANGED, handler);
+		onEvent(EVENTS.STUDENTS_CHANGED, handler);
+		onEvent(EVENTS.TRANSFERS_CHANGED, handler);
+		onEvent(EVENTS.PROMOTIONS_CHANGED, handler);
+		return () => {
+			offEvent(EVENTS.TEACHERS_CHANGED, handler);
+			offEvent(EVENTS.STUDENTS_CHANGED, handler);
+			offEvent(EVENTS.TRANSFERS_CHANGED, handler);
+			offEvent(EVENTS.PROMOTIONS_CHANGED, handler);
+		};
+	}, [queryClient, teacherRef]);
 
 	const teacherAssignments = assignmentsQuery.data || [];
 

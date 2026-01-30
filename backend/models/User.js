@@ -2,30 +2,27 @@
 
 import mongoose from "mongoose";
 
-const modulePermissionSchema = new mongoose.Schema({
-  view: { type: Boolean, default: false },
-  add: { type: Boolean, default: false },
-  edit: { type: Boolean, default: false },
-  delete: { type: Boolean, default: false },
-  // Students-specific action: reset a student's password to the default
-  resetPassword: { type: Boolean, default: false },
-  // Teacher-specific action: manage teacher assignments
-  assign: { type: Boolean, default: false },
-  // Extra actions used by some pages
-  input: { type: Boolean, default: false },
-  export: { type: Boolean, default: false },
-  preview: { type: Boolean, default: false },
-  promote: { type: Boolean, default: false },
-  deactivate: { type: Boolean, default: false },
-  reactivate: { type: Boolean, default: false }, 
-  transfer: { type: Boolean, default: false },
-  archive: { type: Boolean, default: false },
-  activate: { type: Boolean, default: false },
-  download: { type: Boolean, default: false },
-  print: { type: Boolean, default: false },   // ✅ ADD THIS
+import { PERMISSION_CONTRACT } from "../utils/permissions.js";
 
-  full: { type: Boolean, default: false }, // enables ALL
-}, { _id: false });
+const buildModulePermissionSchema = (actions = []) => {
+  const fields = {};
+
+  // Define only actions allowed for this module.
+  for (const actionName of actions) {
+    if (!actionName || actionName === 'full') continue;
+    fields[actionName] = { type: Boolean, default: false };
+  }
+
+  // 'full' enables ALL within a module.
+  fields.full = { type: Boolean, default: false };
+
+  return new mongoose.Schema(fields, { _id: false });
+};
+
+const modulePermissionSchemas = Object.keys(PERMISSION_CONTRACT).reduce((acc, moduleName) => {
+  acc[moduleName] = buildModulePermissionSchema(PERMISSION_CONTRACT[moduleName]);
+  return acc;
+}, {});
 
 const userSchema = new mongoose.Schema({
   fullName: String,
@@ -56,27 +53,10 @@ const userSchema = new mongoose.Schema({
     default: "staff",
   },
 
-  permissions: {
-    students: { type: modulePermissionSchema, default: () => ({}) },
-    teachers: { type: modulePermissionSchema, default: () => ({}) },
-    transfers: { type: modulePermissionSchema, default: () => ({}) },
-    subjects: { type: modulePermissionSchema, default: () => ({}) },
-    grades: { type: modulePermissionSchema, default: () => ({}) },
-    exams: { type: modulePermissionSchema, default: () => ({}) },
-    cohorts: { type: modulePermissionSchema, default: () => ({}) },
-    results: { type: modulePermissionSchema, default: () => ({}) },
-    transcript: { type: modulePermissionSchema, default: () => ({}) }, 
-    promotions: { type: modulePermissionSchema, default: () => ({}) }, // ✅ add this
-
-    timetable: { type: modulePermissionSchema, default: () => ({}) },
-    attendance: { type: modulePermissionSchema, default: () => ({}) },
-    attendanceReports: { type: modulePermissionSchema, default: () => ({}) },
-    announcements: { type: modulePermissionSchema, default: () => ({}) },
-
-    // Security / auth lock notifications (admin always allowed; staff needs explicit perms)
-    security: { type: modulePermissionSchema, default: () => ({}) },
-
-  },
+  permissions: Object.keys(PERMISSION_CONTRACT).reduce((acc, moduleName) => {
+    acc[moduleName] = { type: modulePermissionSchemas[moduleName], default: () => ({}) };
+    return acc;
+  }, {}),
 
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date, default: null },

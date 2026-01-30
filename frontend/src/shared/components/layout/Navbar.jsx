@@ -18,6 +18,7 @@ import { emitUsersChanged, emitTeachersChanged, emitStudentsChanged } from '../.
 import Card from '../ui/Card.jsx';
 import UiLoadingState from '../ui/LoadingState.jsx';
 import { useAnnouncementsStream } from '../../../features/announcements/hooks/useAnnouncementsStream';
+import { useRealtimeStream } from '../../realtime/useRealtimeStream';
 
 // This is the updated Navbar component with a new design.
 const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
@@ -30,6 +31,8 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
 
     // Realtime Announcements (SSE)
     useAnnouncementsStream({ user });
+    // Realtime cross-browser refresh (SSE)
+    useRealtimeStream({ user });
 
     // Close on click-outside
     React.useEffect(() => {
@@ -52,9 +55,6 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const isAdmin = roleLower === 'admin';
     const isStaff = roleLower === 'staff';
     const canSeeLocks = isAdmin || (isStaff && hasPermission('security', 'view'));
-    const canLockUsers = isAdmin || (isStaff && hasPermission('security', 'edit'));
-    const canUnlockUsers = canLockUsers; // reset-lockout is guarded by security.edit
-    const canResetUsers = isAdmin || (isStaff && (hasPermission('security', 'resetPassword') || hasPermission('security', 'edit')));
     const displayName = user?.fullName || user?.name || user?.username || '—';
     const displayRole = user?.role ? String(user.role).toUpperCase() : '';
     const displayEmail = user?.email || '';
@@ -104,12 +104,21 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         };
     }, [openLocks, queryClient]);
 
-    const doResetToDefault = async (principalId) => {
+    const doResetToDefault = async (principalId, principalRoleLower) => {
         const k = `reset:${principalId}`;
         try {
             setPending(k, true);
+
+            const r = String(principalRoleLower || '').toLowerCase();
+            // Auth-lock events use User/Admin principals. For teacher/student accounts, principalId is the User _id
+            // (NOT the Teacher/Student profile id), so we must use the security endpoints here.
             await resetUserPasswordAndUnlock(principalId);
-            toast.success('Password reset to default + unlocked');
+            toast.success(r === 'student'
+                ? 'Student password reset to default'
+                : r === 'teacher'
+                    ? 'Teacher password reset to default'
+                    : 'Password reset to default');
+
             await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
         } catch (e) {
             toast.error(e?.data?.message || e?.message || 'Reset failed');
@@ -139,16 +148,18 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         else emitUsersChanged({ source: 'security-bell' });
     };
 
-    const doDeactivate = async (principalId, roleLower) => {
+    const doDeactivate = async (principalId, principalRoleLower) => {
         const ok = window.confirm('Mark this account as Inactive? This will log them out within seconds.');
         if (!ok) return;
         const k = `inactive:${principalId}`;
         try {
             setPending(k, true);
+
             await deactivateUserAccount(principalId);
+
             toast.success('Account marked inactive');
             await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
-            emitPrincipalChanged(roleLower);
+            emitPrincipalChanged(principalRoleLower);
         } catch (e) {
             toast.error(e?.data?.message || e?.message || 'Inactive failed');
         } finally {
@@ -156,16 +167,18 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         }
     };
 
-    const doActivate = async (principalId, roleLower) => {
+    const doActivate = async (principalId, principalRoleLower) => {
         const ok = window.confirm('Mark this account as Active?');
         if (!ok) return;
         const k = `active:${principalId}`;
         try {
             setPending(k, true);
+
             await activateUserAccount(principalId);
+
             toast.success('Account marked active');
             await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
-            emitPrincipalChanged(roleLower);
+            emitPrincipalChanged(principalRoleLower);
         } catch (e) {
             toast.error(e?.data?.message || e?.message || 'Activate failed');
         } finally {
@@ -276,6 +289,35 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         const isAdminPrincipal = String(ev.principalModel || '') === 'Admin';
                                         const role = String(ev.role || '').toLowerCase();
                                         const isStudentOrTeacher = role === 'student' || role === 'teacher';
+
+                                        // Bell notification actions are controlled by the bell/security module permissions.
+                                        const canResetStudent = isAdmin || (isStaff && hasPermission('security', 'resetPassword'));
+                                        const canResetTeacher = isAdmin || (isStaff && hasPermission('security', 'resetPassword'));
+                                        const canDeactivateStudent = isAdmin || (isStaff && hasPermission('security', 'deactivate'));
+                                        const canReactivateStudent = isAdmin || (isStaff && hasPermission('security', 'activate'));
+                                        const canDeactivateTeacher = isAdmin || (isStaff && hasPermission('security', 'deactivate'));
+                                        const canReactivateTeacher = isAdmin || (isStaff && hasPermission('security', 'activate'));
+
+                                        const canResetThis = role === 'student'
+                                            ? canResetStudent
+                                            : role === 'teacher'
+                                                ? canResetTeacher
+                                                : isAdmin;
+
+                                        const canMarkInactiveThis = role === 'student'
+                                            ? canDeactivateStudent
+                                            : role === 'teacher'
+                                                ? canDeactivateTeacher
+                                                : isAdmin;
+
+                                        const canMarkActiveThis = role === 'student'
+                                            ? canReactivateStudent
+                                            : role === 'teacher'
+                                                ? canReactivateTeacher
+                                                : isAdmin;
+
+                                        // Policy: staff cannot unlock accounts from notifications.
+                                        const canUnlockThis = !isStudentOrTeacher && isAdmin;
                                         const accountStatusLower = String(ev.accountStatus || '').toLowerCase();
                                         const isInactiveAccount = accountStatusLower === 'inactive';
                                         const displayName = isUnknown
@@ -317,18 +359,18 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                     <div className="flex gap-2">
                                                         {!isUnknown && !isAdminPrincipal && (
                                                             isStudentOrTeacher
-                                                                ? (canResetUsers && (
+                                                                ? (canResetThis && (
                                                                     <button
                                                                         type="button"
                                                                         className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-100 disabled:opacity-60"
-                                                                        onClick={() => doResetToDefault(String(ev.principalId))}
+                                                                        onClick={() => doResetToDefault(String(ev.principalId), role)}
                                                                         title="Reset password to default + unlock"
                                                                         disabled={resetBusy || unlockBusy || disableSecurityActions}
                                                                     >
                                                                         {resetBusy ? 'Resetting…' : 'Reset Password'}
                                                                     </button>
                                                                 ))
-                                                                : (canUnlockUsers && (
+                                                                : (canUnlockThis && (
                                                                     <button
                                                                         type="button"
                                                                         className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-100 disabled:opacity-60"
@@ -340,8 +382,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                     </button>
                                                                 ))
                                                         )}
-                                                        {!isUnknown && !isAdminPrincipal && canLockUsers && (
+                                                        {!isUnknown && !isAdminPrincipal && (
                                                             isInactiveAccount ? (
+                                                                canMarkActiveThis ? (
                                                                 <button
                                                                     type="button"
                                                                     className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
@@ -351,7 +394,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                 >
                                                                     {activeBusy ? 'Activating…' : 'Active'}
                                                                 </button>
+                                                                ) : null
                                                             ) : (
+                                                                canMarkInactiveThis ? (
                                                                 <button
                                                                     type="button"
                                                                     className="px-2 py-1 text-xs rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60"
@@ -361,6 +406,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                 >
                                                                     {inactiveBusy ? 'Inactivating…' : 'Inactive'}
                                                                 </button>
+                                                                ) : null
                                                             )
                                                         )}
 

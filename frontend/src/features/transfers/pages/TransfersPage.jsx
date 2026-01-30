@@ -14,14 +14,21 @@ import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Spinner from '../../../shared/components/feedback/Spinner.jsx';
 import { useClientSort } from '../../../shared/hooks/useClientSort';
+import { useAuth } from '../../../auth/AuthContext';
 
 import { listTransferCandidates, performTransfer, listTransferLogs } from '../api/transfers';
 import { getStudentProfile } from '../../students/api/studentsApi';
 
 import TransfersCandidatesTable from '../components/TransfersCandidatesTable.jsx';
 import TransfersLogsTable from '../components/TransfersLogsTable.jsx';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function TransfersPage() {
+	const { auth, hasPermission } = useAuth();
+	const role = String(auth?.user?.role || '').toLowerCase();
+	const isAdmin = role === 'admin';
+	const canTransfer = isAdmin || hasPermission('transfers', 'transfer');
+
 	// Filters
 	const [search, setSearch] = useState('');
 	const [ay, setAy] = useState('');
@@ -72,7 +79,7 @@ export default function TransfersPage() {
 
 	const candidatesCoreApplied = Boolean(ay || grade || shift || search);
 
-	const load = async () => {
+	const load = async ({ silent = false } = {}) => {
 		// Gating: ha soo jiidin wax rows ilaa ugu yaraan mid ka mid ah filters (AY / Grade / Shift / Search) la doorto
 		const coreApplied = !!(params.academicYear || params.grade || params.shift || params.search);
 		if (!coreApplied) {
@@ -82,7 +89,8 @@ export default function TransfersPage() {
 			return;
 		}
 
-		setLoading(true);
+		const hasSomethingOnScreen = Array.isArray(rows) && rows.length > 0;
+		setLoading(!silent || !hasSomethingOnScreen);
 		try {
 			const res = await listTransferCandidates(params);
 			setRows(res.data || []);
@@ -96,7 +104,7 @@ export default function TransfersPage() {
 	};
 
 	useEffect(() => {
-		void load();
+		void load({ silent: false });
 	}, [params.limit, params.page, params.academicYear, params.grade, params.shift, params.gradeSectionId, params.search]);
 
 	const {
@@ -133,8 +141,9 @@ export default function TransfersPage() {
 		},
 	});
 
-	const loadLogs = async () => {
-		setLogsLoading(true);
+	const loadLogs = async ({ silent = false } = {}) => {
+		const hasSomethingOnScreen = Array.isArray(logs) && logs.length > 0;
+		setLogsLoading(!silent || !hasSomethingOnScreen);
 		try {
 			const res = await listTransferLogs({ page: logsPage, limit: logsLimit, search: logsSearch });
 			setLogs(res.data || []);
@@ -148,8 +157,18 @@ export default function TransfersPage() {
 	};
 
 	useEffect(() => {
-		void loadLogs();
+		void loadLogs({ silent: false });
 	}, [logsPage, logsLimit, logsSearch]);
+
+	// Live refresh: keep Transfers synced across browsers/tabs.
+	useEffect(() => {
+		const handler = () => {
+			void loadLogs({ silent: true });
+			if (candidatesCoreApplied) void load({ silent: true });
+		};
+		onEvent(EVENTS.TRANSFERS_CHANGED, handler);
+		return () => offEvent(EVENTS.TRANSFERS_CHANGED, handler);
+	}, [candidatesCoreApplied, params.limit, params.page, params.academicYear, params.grade, params.shift, params.gradeSectionId, params.search, logsPage, logsLimit, logsSearch]);
 
 	const {
 		sortBy: logsSortBy,
@@ -201,6 +220,10 @@ export default function TransfersPage() {
 	};
 
 	const openModal = async (st) => {
+		if (!canTransfer) {
+			toast.error('You do not have permission to transfer students');
+			return;
+		}
 		setOpeningId(st._id);
 		setModalLoading(true);
 		setSelected(st);
@@ -252,6 +275,10 @@ export default function TransfersPage() {
 	}, [selAy, selGrade, selShift, isOpen]);
 
 	const submit = async () => {
+		if (!canTransfer) {
+			toast.error('You do not have permission to transfer students');
+			return;
+		}
 		if (!selected || !selAy || !selGrade || !selShift || !selSection) {
 			toast.error('Please select Year, Grade, Shift and Section');
 			return;
@@ -297,6 +324,10 @@ export default function TransfersPage() {
 	};
 
 	const handleReturn = async (item) => {
+		if (!canTransfer) {
+			toast.error('You do not have permission to return transfers');
+			return;
+		}
 		try {
 			const { ok, data, status } = await performTransfer(item.studentId, {
 				academicYearId: item.from.academicYearId,
@@ -378,6 +409,7 @@ export default function TransfersPage() {
 					isLoading={candidatesCoreApplied && loading && rows.length === 0}
 					openingId={openingId}
 					candidatesCoreApplied={candidatesCoreApplied}
+					canTransfer={canTransfer}
 					sortBy={candSortBy}
 					sortDir={candSortDir}
 					onSort={onCandSort}
@@ -402,9 +434,11 @@ export default function TransfersPage() {
 									<div className="text-sm font-medium text-gray-800 truncate">{r.fullName || 'Student'}</div>
 									<div className="text-xs text-gray-600 truncate">From: {r.from?.label || 'Previous section'}</div>
 								</div>
-								<ActionButton variant="warning" title="Return" onClick={() => handleReturn(r)}>
-									Return
-								</ActionButton>
+								{canTransfer ? (
+									<ActionButton variant="warning" title="Return" onClick={() => handleReturn(r)}>
+										Return
+									</ActionButton>
+								) : null}
 							</div>
 						))}
 					</div>
@@ -466,7 +500,7 @@ export default function TransfersPage() {
 					</div>
 					<div className="flex justify-end gap-2">
 						<ActionButton variant="neutral" onClick={() => setIsOpen(false)} disabled={busy || modalLoading}>Cancel</ActionButton>
-						<ActionButton variant="brand" disabled={busy || modalLoading || !selSection} onClick={submit} className="inline-flex items-center gap-2">
+						<ActionButton variant="brand" disabled={!canTransfer || busy || modalLoading || !selSection} onClick={submit} className="inline-flex items-center gap-2">
 							{busy ? (
 								<>
 									<Spinner size={16} color="#fff" />

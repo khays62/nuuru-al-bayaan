@@ -5,6 +5,8 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import SubjectForm from '../components/SubjectForm';
 import { toast } from 'react-hot-toast';
 
+import { useAuth } from '../../../auth/AuthContext';
+
 // Reusable infrastructure
 import { useEntityList } from '../../../hooks/useEntityList';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
@@ -14,6 +16,7 @@ import SortControls from '../../../shared/components/DataToolbar/SortControls.js
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import { useClientSort } from '../../../shared/hooks/useClientSort';
 import SubjectTable from '../components/SubjectTable.jsx';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 // API services (existing ones for now)
 import { getSubjects, addSubject, updateSubject, deleteSubject } from '../api/subjects';
@@ -22,6 +25,12 @@ import { getGrades } from '../../lookups/api/lookups';
 // NOTE: getSubjects(apiService) returns { data, meta }. We'll wrap it in fetchFn signature.
 
 export default function SubjectPage() {
+  const { auth, hasPermission } = useAuth();
+  const isAdmin = String(auth?.user?.role || '').toLowerCase() === 'admin';
+  const canAdd = isAdmin || hasPermission('subjects', 'add');
+  const canEdit = isAdmin || hasPermission('subjects', 'edit');
+  const canDelete = isAdmin || hasPermission('subjects', 'delete');
+
   // --- Additional State Not Covered by useEntityList ---
   const [grades, setGrades] = useState([]); // For filter + form
   const [gradeFilter, setGradeFilter] = useState('');
@@ -56,6 +65,7 @@ export default function SubjectPage() {
     setPage,
     setLimit,
     refresh,
+    silentRefresh,
     resetAndReload
   } = list;
 
@@ -101,18 +111,30 @@ export default function SubjectPage() {
   };
 
   const handleAddNew = () => {
+    if (!canAdd) {
+      toast.error('You do not have permission to add subjects');
+      return;
+    }
     setEditingSubject(null);
     setFormError(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (subject) => {
+    if (!canEdit) {
+      toast.error('You do not have permission to edit subjects');
+      return;
+    }
     setEditingSubject(subject);
     setFormError(null);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (subjectId) => {
+    if (!canDelete) {
+      toast.error('You do not have permission to delete subjects');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this subject?')) return;
     const result = await deleteSubject(subjectId);
     if (result.error) {
@@ -123,11 +145,22 @@ export default function SubjectPage() {
       }
       return;
     }
-    refresh();
+    silentRefresh();
     toast.success('Subject deleted', { position: 'top-center' });
   };
 
   const handleFormSubmit = async (formData) => {
+    if (editingSubject) {
+      if (!canEdit) {
+        toast.error('You do not have permission to edit subjects');
+        return;
+      }
+    } else {
+      if (!canAdd) {
+        toast.error('You do not have permission to add subjects');
+        return;
+      }
+    }
     setFormError(null);
     setIsSubmitting(true);
     let result;
@@ -147,11 +180,18 @@ export default function SubjectPage() {
       return;
     }
     // Refresh only this list; GradeForm will refresh on demand via its refresh button or when grade changes
-    await refresh();
+    await silentRefresh();
     closeModal();
     toast.success(editingSubject ? 'Subject updated' : 'Subject created', { position: 'top-center' });
     setIsSubmitting(false);
   };
+
+  // Live refresh: keep list in sync across browsers/tabs.
+  useEffect(() => {
+    const handler = () => silentRefresh();
+    onEvent(EVENTS.SUBJECTS_CHANGED, handler);
+    return () => offEvent(EVENTS.SUBJECTS_CHANGED, handler);
+  }, [silentRefresh]);
 
   // --- Toolbar Slots ---
   const searchSlot = (
@@ -185,9 +225,11 @@ export default function SubjectPage() {
           <p className="mt-1 text-sm text-gray-600">Manage all subjects and assign them to grades.</p>
         </div>
         <div className="sm:self-auto">
-          <Button variant="brand" size="lg" onClick={handleAddNew} icon={<Plus className="w-4 h-4" />}>
-            Add New Subject
-          </Button>
+          {canAdd && (
+            <Button variant="brand" size="lg" onClick={handleAddNew} icon={<Plus className="w-4 h-4" />}>
+              Add New Subject
+            </Button>
+          )}
         </div>
       </div>
 

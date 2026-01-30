@@ -10,6 +10,7 @@ import Grade from '../models/Grade.js';
 import AcademicYear from '../models/AcademicYear.js';
 import Subject from '../models/Subject.js';
 import { computeOverallAverages, getMinAvgThreshold } from '../services/promotionEvaluation.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 // Helper: get next grade and AY
 // Helper: derive an ordering for grade names like "level one", "level 2", etc.
@@ -676,6 +677,10 @@ export async function executePromotion(req, res) {
       // ignore errors fetching created docs; ids are still useful
     }
   }
+  publishRealtime({ type: 'promotions:changed', ts: Date.now() });
+  // Promotions mutate enrollments and can affect student lists.
+  publishRealtime({ type: 'students:changed', ts: Date.now() });
+  publishRealtime({ type: 'transfers:changed', ts: Date.now() });
   res.json({ ok: true, results, summary, ...extra });
 }
 

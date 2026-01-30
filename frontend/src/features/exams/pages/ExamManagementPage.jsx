@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import { RotateCcw, Check, Loader2, AlertCircle, Lock } from 'lucide-react';
@@ -17,10 +17,35 @@ import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterD
 import { useAuth } from '../../../auth/AuthContext';
 import { getAssignments as getTeacherAssignments } from '../../teachers/api/teachersApi';
 import { teacherKeys } from '../../teachers/queryKeys.js';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function ExamManagementPage() {
-    const { auth } = useAuth();
-    const isTeacher = String(auth?.user?.role || '').toLowerCase() === 'teacher';
+    const { auth, hasPermission } = useAuth();
+    const queryClient = useQueryClient();
+    const role = String(auth?.user?.role || '').toLowerCase();
+    const isTeacher = role === 'teacher';
+    const isAdmin = role === 'admin';
+
+    // Live refresh: keep exam grids synced across browsers/tabs.
+    useEffect(() => {
+        const handler = () => {
+            try {
+                queryClient.invalidateQueries({ queryKey: ['teacher', 'examGrid'] });
+                queryClient.invalidateQueries({ queryKey: ['teacher', 'examTypes'] });
+            } catch {
+                // ignore
+            }
+        };
+        onEvent(EVENTS.EXAMS_CHANGED, handler);
+        onEvent(EVENTS.RESULTS_CHANGED, handler);
+        return () => {
+            offEvent(EVENTS.EXAMS_CHANGED, handler);
+            offEvent(EVENTS.RESULTS_CHANGED, handler);
+        };
+    }, [queryClient]);
+    const canInput = isTeacher || isAdmin || hasPermission('exams', 'input');
+
+    const noInputToastShownRef = useRef(false);
 
     // Scores-only page (Exam Settings lives in dedicated ExamSettingsPage)
     const [subjects, setSubjects] = useState([]);
@@ -306,6 +331,13 @@ export default function ExamManagementPage() {
     }, [localInputs, maxScoreMap]);
 
     const saveCell = async (studentId, examId, value, weight) => {
+        if (!canInput) {
+            if (!noInputToastShownRef.current) {
+                noInputToastShownRef.current = true;
+                toast.error('You do not have permission to input exam scores');
+            }
+            return;
+        }
         if (isStudentLocked(studentId)) {
             const k = String(studentId);
             if (!lockedToastShownRef.current.has(k)) {
@@ -345,6 +377,13 @@ export default function ExamManagementPage() {
     };
 
     const handleChange = (studentId, examId, value) => {
+        if (!canInput) {
+            if (!noInputToastShownRef.current) {
+                noInputToastShownRef.current = true;
+                toast.error('You do not have permission to input exam scores');
+            }
+            return;
+        }
         if (isStudentLocked(studentId)) {
             const k = String(studentId);
             if (!lockedToastShownRef.current.has(k)) {
@@ -381,6 +420,10 @@ export default function ExamManagementPage() {
     const saveButtonLabel = changedExistingCount > 0 ? 'Update' : 'Save';
 
     const handleSaveAll = async () => {
+        if (!canInput) {
+            toast.error('You do not have permission to input exam scores');
+            return;
+        }
         if (!hasUnsavedChanges) return;
         if (invalidKeys && invalidKeys.size > 0) {
             toast.error(`Fix ${invalidKeys.size} invalid entr${invalidKeys.size === 1 ? 'y' : 'ies'} before saving.`);
@@ -805,7 +848,7 @@ export default function ExamManagementPage() {
                                                                             className={`w-24 pr-7 rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-gray-300')} ${locked ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                                                             value={val}
                                                                             onChange={(e) => handleChange(st.studentId, col.examId, e.target.value, weight)}
-                                                                            disabled={locked}
+                                                                            disabled={locked || !canInput}
                                                                             title={`Max: ${weight}`}
                                                                         />
                                                                         {/* Status overlay inside input (no layout shift) */}
@@ -839,7 +882,7 @@ export default function ExamManagementPage() {
                                 variant="primary"
                                 onClick={handleSaveAll}
                                 title="Save all pending entries"
-                                disabled={!hasUnsavedChanges || savingAll}
+                                disabled={!canInput || !hasUnsavedChanges || savingAll}
                             >
                                 {savingAll ? 'Saving…' : saveButtonLabel}
                             </ActionButton>
@@ -918,7 +961,7 @@ export default function ExamManagementPage() {
                                                                         className={`w-24 rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-gray-300')} ${locked ? 'cursor-not-allowed bg-gray-100' : ''}`}
                                                                         value={val}
                                                                         onChange={(e) => handleChange(st.studentId, col.examId, e.target.value)}
-                                                                        disabled={locked}
+                                                                        disabled={locked || !canInput}
                                                                         title={`Max: ${weight}`}
                                                                     />
                                                                     {/* Per-cell saving text removed; saving is manual via button */}
@@ -939,7 +982,7 @@ export default function ExamManagementPage() {
                             variant="primary"
                             onClick={handleSaveAll}
                             title="Save all pending entries"
-                            disabled={!hasUnsavedChanges || savingAll}
+                            disabled={!canInput || !hasUnsavedChanges || savingAll}
                         >
                             {savingAll ? 'Saving…' : saveButtonLabel}
                         </ActionButton>

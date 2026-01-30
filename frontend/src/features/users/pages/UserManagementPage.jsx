@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 // import { useAuth } from "../contexts/AuthContext";
 import {
@@ -21,35 +21,11 @@ import UserTable from "../components/UserTable.jsx";
 import UserFormModal from "../components/UserFormModal.jsx";
 import { on as onEvent, off as offEvent, EVENTS } from "../../../utils/events";
 
-/* ---------------- MODULE -> allowed permissions ---------------- */
-const MODULE_PERMISSIONS = {
-  students: ["view", "add", "edit", "resetPassword", "transfer", "deactivate", "reactivate", "download", "full"],
-  // Teachers page actions: view list, add, edit, delete, manage assignments
-  teachers: ["view", "add", "edit", "delete", "assign", "full"],
-  transfers: ["view", "transfer", "full"],
-  // Security: view auth lock notifications, lock accounts, and reset passwords/unlock
-  security: ["view", "edit", "resetPassword", "full"],
-  // Timetable page actions: view grid, add slots, edit/move/swap slots, delete slots, print, export (CSV)
-  timetable: ["view", "add", "edit", "delete", "print", "download", "full"],
-  attendance: ["view", "edit", "full"],
-  attendanceReports: ["view", "print", "download", "full"],
-  announcements: ["view", "add", "edit", "delete", "full"],
-  cohorts: ["view", "add", "edit", "delete", "full"],
-  // promotions: ["preview", "promote", "view", "full"],
-  promotions: ["view", "preview", "promote", "full"], // ✅ order fixed
-  transcript: ["view", "print", "download", "full"],
-  // transcript: ["print", "download", "full"],
-  subjects: ["view", "add", "edit", "delete", "full"],
-  grades: ["view", "add", "edit", "delete", "full"],
-  exams: ["view", "input", "full"],
-  results: ["view", "download", "print", "full"],
-};
+import { MODULE_PERMISSIONS, MODULES } from "../../../shared/auth/permissionContract.js";
 
 /* ---------------- Role -> default permissions ---------------- */
 // NOTE: Permissions should be unchecked by default when creating users.
 // We keep a single empty template and let admins tick what they need.
-
-const MODULES = Object.keys(MODULE_PERMISSIONS);
 
 /* ---------------- Helpers ---------------- */
 const buildEmptyPermissions = () => {
@@ -86,6 +62,8 @@ export default function UserManagementPage() {
 
   const [statusOverrides, setStatusOverrides] = useState({});
   const [pendingById, setPendingById] = useState({});
+
+  const usersChangedDebounceRef = useRef(null);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -140,9 +118,15 @@ export default function UserManagementPage() {
 
   // Live refresh: when another part of the app changes user status (e.g. bell actions)
   useEffect(() => {
-    const handler = () => fetchUsers({ silent: true });
+    const handler = () => {
+      clearTimeout(usersChangedDebounceRef.current);
+      usersChangedDebounceRef.current = setTimeout(() => fetchUsers({ silent: true }), 150);
+    };
     onEvent(EVENTS.USERS_CHANGED, handler);
-    return () => offEvent(EVENTS.USERS_CHANGED, handler);
+    return () => {
+      clearTimeout(usersChangedDebounceRef.current);
+      offEvent(EVENTS.USERS_CHANGED, handler);
+    };
   }, [fetchUsers]);
 
    
@@ -255,11 +239,7 @@ export default function UserManagementPage() {
     }
 
     // Module selection is a UI dropdown (not a native required select anymore).
-    // Keep the previous rule: when creating a staff user, pick a module before saving.
-    if (!editingUser && String(form.role || '').toLowerCase() === 'staff' && !String(form.selectedModule || '').trim()) {
-      toast.error('Please select a module before saving');
-      return;
-    }
+    // Module selection is UI-only (used to show permission checkboxes). It must NOT block saving.
   
     // Clean permissions
     const cleanedPermissions = {};
@@ -310,7 +290,7 @@ export default function UserManagementPage() {
         if (editingUser && u._id === editingUser._id) return false; // skip current user when editing
         return (
           u.username === form.username ||
-          u.email === form.email ||
+          (form.email && u.email === form.email) ||
           (form.phone && u.phone === form.phone)
         );
       });
@@ -327,6 +307,10 @@ export default function UserManagementPage() {
           toast.error(res.error);
           return;
         }
+        const updated = res?.data?.user || res?.data;
+        if (updated && updated._id) {
+          setUsers((prev) => prev.map((u) => (u?._id === updated._id ? { ...u, ...updated } : u)));
+        }
         toast.success("User updated successfully");
       } else {
         const res = await createUser(payload);
@@ -334,12 +318,17 @@ export default function UserManagementPage() {
           toast.error(res.error);
           return;
         }
+        const created = res?.data?.user || res?.data;
+        if (created && created._id) {
+          setUsers((prev) => [created, ...prev]);
+        }
         toast.success("User created successfully");
       }
   
       setShowModal(false);
       resetForm();
-      fetchUsers();
+      // No explicit refetch here: usersApi dispatches USERS_CHANGED and SSE will also arrive.
+      // The debounced USERS_CHANGED handler will refresh silently when needed.
     } catch (err) {
       console.error("Failed to save user", err);
       toast.error("Failed to save user");

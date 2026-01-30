@@ -17,8 +17,14 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
     const [optimisticStatusById, setOptimisticStatusById] = useState({});
     const [pendingId, setPendingId] = useState(null);
 
-    const canResetPw = auth?.user?.role !== 'student'
-        && (hasPermission('students', 'resetPassword') || hasPermission('students', 'edit'));
+    const roleLower = String(auth?.user?.role || '').toLowerCase();
+    const isAdmin = roleLower === 'admin';
+    const canEdit = isAdmin || hasPermission('students', 'edit');
+    const canDeactivate = isAdmin || hasPermission('students', 'deactivate');
+    const canReactivate = isAdmin || hasPermission('students', 'reactivate');
+
+    const canResetPw = roleLower !== 'student'
+        && (isAdmin || hasPermission('students', 'resetPassword'));
 
     const columns = useMemo(() => ([
         { key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
@@ -102,68 +108,82 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                         icon: <Eye size={16} />,
                                         onClick: () => navigate(`/students/${st._id}`),
                                     },
-                                    {
-                                        key: 'edit',
-                                        label: 'Edit',
-                                        title: 'Edit Student',
-                                        tone: 'edit',
-                                        icon: <Pencil size={16} />,
-                                        onClick: () => onEdit(st),
-                                    },
-                                    effectiveStatus === 'Active'
-                                        ? {
-                                              key: 'deactivate',
-                                              label: 'Deactivate',
-                                              title: 'Deactivate Student',
-                                              tone: 'delete',
-                                              icon: <Trash2 size={16} />,
-                                              disabled: isPending,
-                                              onClick: async () => {
-                                                  if (!window.confirm('Are you sure you want to deactivate this student?')) return;
-                                                  setPendingId(st._id);
-                                                  try {
-                                                      const { ok, data } = await deactivateStudentApi(st._id);
-                                                      if (ok) {
-                                                          setOptimisticStatusById((prev) => ({ ...prev, [st._id]: 'Inactive' }));
-                                                          toast.success('Student deactivated');
-                                                          emitStudentsChanged();
-                                                      } else {
-                                                          toast.error(data?.message || 'Failed to deactivate');
-                                                      }
-                                                  } catch (e) {
-                                                      console.error(e);
-                                                      toast.error('Network error');
-                                                  } finally {
-                                                      setPendingId(null);
-                                                  }
+                                    ...(canEdit
+                                        ? [
+                                              {
+                                                  key: 'edit',
+                                                  label: 'Edit',
+                                                  title: 'Edit Student',
+                                                  tone: 'edit',
+                                                  icon: <Pencil size={16} />,
+                                                  onClick: () => onEdit(st),
                                               },
-                                          }
-                                        : {
-                                              key: 'reactivate',
-                                              label: 'Reactivate',
-                                              title: 'Reactivate Student',
-                                              tone: 'view',
-                                              icon: <RotateCcw size={16} />,
-                                              disabled: isPending,
-                                              onClick: async () => {
-                                                  setPendingId(st._id);
-                                                  try {
-                                                      const { ok, data } = await reactivateStudentApi(st._id);
-                                                      if (ok) {
-                                                          setOptimisticStatusById((prev) => ({ ...prev, [st._id]: 'Active' }));
-                                                          toast.success('Student reactivated');
-                                                          emitStudentsChanged();
-                                                      } else {
-                                                          toast.error(data?.message || 'Failed to reactivate');
-                                                      }
-                                                  } catch (e) {
-                                                      console.error(e);
-                                                      toast.error('Network error');
-                                                  } finally {
-                                                      setPendingId(null);
-                                                  }
-                                              },
-                                          },
+                                          ]
+                                        : []),
+                                    ...(
+                                        effectiveStatus === 'Active'
+                                            ? (canDeactivate
+                                                  ? [
+                                                        {
+                                                            key: 'deactivate',
+                                                            label: 'Deactivate',
+                                                            title: 'Deactivate Student',
+                                                            tone: 'delete',
+                                                            icon: <Trash2 size={16} />,
+                                                            disabled: isPending,
+                                                            onClick: async () => {
+                                                                if (!window.confirm('Are you sure you want to deactivate this student?')) return;
+                                                                setPendingId(st._id);
+                                                                try {
+                                                                    const { ok, data } = await deactivateStudentApi(st._id);
+                                                                    if (ok) {
+                                                                        setOptimisticStatusById((prev) => ({ ...prev, [st._id]: 'Inactive' }));
+                                                                        toast.success('Student deactivated');
+                                                                        emitStudentsChanged();
+                                                                    } else {
+                                                                        toast.error(data?.message || 'Failed to deactivate');
+                                                                    }
+                                                                } catch (e) {
+                                                                    console.error(e);
+                                                                    toast.error('Network error');
+                                                                } finally {
+                                                                    setPendingId(null);
+                                                                }
+                                                            },
+                                                        },
+                                                    ]
+                                                  : [])
+                                            : (canReactivate
+                                                  ? [
+                                                        {
+                                                            key: 'reactivate',
+                                                            label: 'Reactivate',
+                                                            title: 'Reactivate Student',
+                                                            tone: 'view',
+                                                            icon: <RotateCcw size={16} />,
+                                                            disabled: isPending,
+                                                            onClick: async () => {
+                                                                setPendingId(st._id);
+                                                                try {
+                                                                    const { ok, data } = await reactivateStudentApi(st._id);
+                                                                    if (ok) {
+                                                                        setOptimisticStatusById((prev) => ({ ...prev, [st._id]: 'Active' }));
+                                                                        toast.success('Student reactivated');
+                                                                        emitStudentsChanged();
+                                                                    } else {
+                                                                        toast.error(data?.message || 'Failed to reactivate');
+                                                                    }
+                                                                } catch (e) {
+                                                                    console.error(e);
+                                                                    toast.error('Network error');
+                                                                } finally {
+                                                                    setPendingId(null);
+                                                                }
+                                                            },
+                                                        },
+                                                    ]
+                                                  : [])
+                                    ),
                                     ]}
                                 />
                             );

@@ -4,6 +4,7 @@ import Student from '../models/Student.js';
 import GradeSection from '../models/GradeSection.js';
 import TransferLog from '../models/TransferLog.js';
 import { parsePagination } from '../utils/pagination.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 // GET /api/transfers/candidates
 // Lists only ACTIVE students with ACTIVE latest enrollment, with optional filters and search
@@ -238,6 +239,8 @@ export const performTransfer = async (req, res) => {
                 revertOf: last._id
               });
               await TransferLog.updateOne({ _id: last._id }, { $set: { reverted: true } });
+              publishRealtime({ type: 'transfers:changed', id: String(id), ts: Date.now() });
+              publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
               return res.json({ message: 'Returned to previous Academic Year.', enrollment: { ...existsInTargetAY.toObject?.() || existsInTargetAY, status: 'active' }, transferLog: created });
             } else {
               const created = await TransferLog.create({
@@ -248,10 +251,14 @@ export const performTransfer = async (req, res) => {
                 date: new Date(),
                 reason: req.body?.reason || 'Revert'
               });
+              publishRealtime({ type: 'transfers:changed', id: String(id), ts: Date.now() });
+              publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
               return res.json({ message: 'Returned to previous Academic Year.', enrollment: { ...existsInTargetAY.toObject?.() || existsInTargetAY, status: 'active' }, transferLog: created });
             }
           } catch (logErr) {
             console.warn('Return log warning:', logErr);
+            publishRealtime({ type: 'transfers:changed', id: String(id), ts: Date.now() });
+            publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
             return res.json({ message: 'Returned to previous Academic Year.', enrollment: { ...existsInTargetAY.toObject?.() || existsInTargetAY, status: 'active' } });
           }
         } catch (retErr) {
@@ -300,6 +307,8 @@ export const performTransfer = async (req, res) => {
           console.warn('Transfer log write warning (cross-AY):', logErr);
         }
 
+        publishRealtime({ type: 'transfers:changed', id: String(id), ts: Date.now() });
+        publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
         return res.json({ message: 'Enrollment transferred to future Academic Year (scores not migrated).', enrollment: created[0] });
       } catch (xErr) {
         await session.abortTransaction();
@@ -386,6 +395,8 @@ export const performTransfer = async (req, res) => {
       console.warn('Transfer log write warning:', logErr);
     }
 
+    publishRealtime({ type: 'transfers:changed', id: String(id), ts: Date.now() });
+    publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
     return res.json({ message: 'Enrollment transferred', enrollment, transferLog: transferLogDoc });
   } catch (err) {
     console.error('performTransfer error', err);

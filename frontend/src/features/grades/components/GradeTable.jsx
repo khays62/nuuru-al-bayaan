@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 // GradeTable shows section + grade + shift + subjects count; no AY/Cohort columns
 const GradeTable = ({
@@ -23,6 +24,14 @@ const GradeTable = ({
 }) => {
   const STORAGE_KEY = 'gradeSections:columns:v1';
 
+  const { auth, hasPermission } = useAuth();
+  const roleLower = String(auth?.user?.role || '').toLowerCase();
+  const isAdmin = roleLower === 'admin';
+  const canAdd = isAdmin || hasPermission('grades', 'add');
+  const canView = isAdmin || hasPermission('grades', 'view');
+  const canEdit = isAdmin || hasPermission('grades', 'edit');
+  const canDelete = isAdmin || hasPermission('grades', 'delete');
+
   const columns = useMemo(() => ([
     { key: 'section', label: 'Section', sortable: true, field: 'section', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
     { key: 'grade', label: 'Grade', sortable: true, field: 'gradeName', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
@@ -43,8 +52,8 @@ const GradeTable = ({
       loadingColumns={5}
       emptyTitle="No grade sections found"
       emptyDescription="Try adjusting filters or create a new one."
-      emptyActionLabel="Add"
-      onEmptyAction={onAdd}
+      emptyActionLabel={canAdd ? 'Add' : undefined}
+      onEmptyAction={canAdd ? onAdd : undefined}
       onRetry={onRetry}
 
       rows={rows}
@@ -79,28 +88,34 @@ const GradeTable = ({
             return (
               <RowActionButtons
                 actions={[
-                  {
-                    key: 'view',
-                    label: 'View',
-                    title: 'View Students',
-                    tone: 'view',
-                    icon: <Eye size={18} />,
-                    onClick: () => onView?.(cls),
-                  },
-                  {
-                    key: 'edit',
-                    label: 'Edit',
-                    tone: 'edit',
-                    icon: <Pencil size={18} />,
-                    onClick: () => onEdit?.(cls),
-                  },
-                  {
-                    key: 'delete',
-                    label: 'Delete',
-                    tone: 'delete',
-                    icon: <Trash2 size={18} />,
-                    onClick: () => onDelete?.(cls._id),
-                  },
+                  canView
+                    ? {
+                        key: 'view',
+                        label: 'View',
+                        title: 'View Students',
+                        tone: 'view',
+                        icon: <Eye size={18} />,
+                        onClick: () => onView?.(cls),
+                      }
+                    : null,
+                  canEdit
+                    ? {
+                        key: 'edit',
+                        label: 'Edit',
+                        tone: 'edit',
+                        icon: <Pencil size={18} />,
+                        onClick: () => onEdit?.(cls),
+                      }
+                    : null,
+                  canDelete
+                    ? {
+                        key: 'delete',
+                        label: 'Delete',
+                        tone: 'delete',
+                        icon: <Trash2 size={18} />,
+                        onClick: () => onDelete?.(cls._id),
+                      }
+                    : null,
                 ]}
               />
             );

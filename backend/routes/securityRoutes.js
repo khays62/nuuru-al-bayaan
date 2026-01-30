@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
-import { checkAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+import { checkPermission } from '../middleware/checkPermission.js';
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
 import {
@@ -45,32 +45,29 @@ router.post(
 
 router.post(
   '/users/:id/reset-password',
+  checkPermission('security', 'resetPassword'),
   validate({ params: z.object({ id: z.string().min(1) }).strip() }),
-  checkAnyPermission([
-    { module: 'security', action: 'resetPassword' },
-    { module: 'security', action: 'edit' },
-  ]),
   resetPasswordAndUnlock
 );
 
 router.post(
   '/users/:id/unlock',
+  checkPermission('security', 'unlock'),
   validate({ params: z.object({ id: z.string().min(1) }).strip() }),
-  checkPermission('security', 'edit'),
   unlockUserLogin
 );
 
 router.post(
   '/users/:id/deactivate',
+  checkPermission('security', 'deactivate'),
   validate({ params: z.object({ id: z.string().min(1) }).strip() }),
-  checkPermission('security', 'edit'),
   deactivateUserAccount
 );
 
 router.post(
   '/users/:id/activate',
+  checkPermission('security', 'activate'),
   validate({ params: z.object({ id: z.string().min(1) }).strip() }),
-  checkPermission('security', 'edit'),
   activateUserAccount
 );
 

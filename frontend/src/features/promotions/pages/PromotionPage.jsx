@@ -16,6 +16,8 @@ import Checkbox from '../../../shared/components/ui/Checkbox';
 import Chip from '../../../shared/components/ui/Chip.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import { useAuth } from '../../../auth/AuthContext';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 // Skeleton page for Promotions as a standalone tab per PROMOTION.md
 // This wires the layout and UX elements; API integration to be added next.
@@ -38,6 +40,12 @@ const TimingSelector = ({ value, onChange }) => (
 );
 
 export default function PromotionPage() {
+  const { auth, hasPermission } = useAuth();
+  const role = String(auth?.user?.role || '').toLowerCase();
+  const isAdmin = role === 'admin';
+  const canPreview = isAdmin || hasPermission('promotions', 'preview') || hasPermission('promotions', 'promote');
+  const canPromote = isAdmin || hasPermission('promotions', 'promote');
+
   const [timing, setTiming] = useState('mid-year');
   const initialFilters = { q: '', ay: '', grade: '', shift: '', section: '', cohort: '' };
   const [filters, setFilters] = useState(initialFilters);
@@ -92,6 +100,59 @@ export default function PromotionPage() {
       })
       .finally(() => setStudentsLoading(false));
   }, [filters, timing, filtersReady]);
+
+  // Live refresh: keep Promotions roster synced across browsers/tabs.
+  useEffect(() => {
+    const silentReload = async () => {
+      if (!filtersReady) return;
+      const params = {
+        search: filters.q,
+        academicYear: filters.ay,
+        grade: filters.grade,
+        shift: filters.shift,
+        gradeSectionId: filters.section,
+        cohort: filters.cohort,
+      };
+      const hasSomethingOnScreen = Array.isArray(students) && students.length > 0;
+      setStudentsLoading(!hasSomethingOnScreen);
+      setStudentsError(null);
+      try {
+        const res = await listStudents(params);
+        const raw = res?.data || [];
+        const mapped = raw.map(s => ({
+          ...s,
+          current: {
+            grade: s.grade || null,
+            ay: s.academicYear || null,
+            section: s.section || null,
+            shift: s.shift || null,
+            cohort: s.cohort || null,
+          }
+        }));
+        setStudents(mapped);
+        setSelectedIds((prev) => {
+          const next = new Set();
+          const allowed = new Set(mapped.map((s) => String(s._id)));
+          for (const id of prev) if (allowed.has(String(id))) next.add(id);
+          return next;
+        });
+      } catch {
+        // Non-blocking: keep current list
+      } finally {
+        setStudentsLoading(false);
+      }
+    };
+
+    const handler = () => {
+      void silentReload();
+    };
+    onEvent(EVENTS.PROMOTIONS_CHANGED, handler);
+    onEvent(EVENTS.STUDENTS_CHANGED, handler);
+    return () => {
+      offEvent(EVENTS.PROMOTIONS_CHANGED, handler);
+      offEvent(EVENTS.STUDENTS_CHANGED, handler);
+    };
+  }, [filtersReady, filters, students]);
 
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [preview, setPreview] = useState(null); // { items:[], summary:{} }
@@ -188,8 +249,12 @@ export default function PromotionPage() {
   };
 
   const handlePreview = async () => {
+    if (!canPreview) {
+      toast.error('You do not have permission: Promotions Preview');
+      return;
+    }
     if (!filtersReady) {
-      toast.error('Doora AY, Grade, Shift, Section iyo Cohort marka hore');
+      toast.error('Select AY, Grade, Shift, Section, and Cohort first');
       return;
     }
     if (students.length === 0 || selectedIds.size === 0) {
@@ -220,6 +285,10 @@ export default function PromotionPage() {
   };
 
   const handlePromote = async () => {
+    if (!canPromote) {
+      toast.error('You do not have permission: Promotions Promote');
+      return;
+    }
     if (!preview) { toast.error('Run preview first'); return; }
     // Prevent execute if preview already shows mid-year error
     if (preview && preview.items && preview.items.some(it => Array.isArray(it.errors) && it.errors.some(e => String(e).includes('Mid-year promotion already done')))) {
@@ -355,27 +424,31 @@ export default function PromotionPage() {
           </FilterRow>
         }
         actionsSlot={<div className="flex gap-2">
-          <Button
-            onClick={handlePreview}
-            disabled={!filtersReady || loadingPreview || loadingPromote}
-            aria-busy={loadingPreview}
-            variant="brand"
-            size="lg"
-            icon={loadingPreview ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
-          >
-            Preview
-          </Button>
+          {canPreview && (
+            <Button
+              onClick={handlePreview}
+              disabled={!filtersReady || loadingPreview || loadingPromote}
+              aria-busy={loadingPreview}
+              variant="brand"
+              size="lg"
+              icon={loadingPreview ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
+            >
+              Preview
+            </Button>
+          )}
 
-          <Button
-            onClick={handlePromote}
-            disabled={!preview || loadingPromote || loadingPreview}
-            aria-busy={loadingPromote}
-            variant="info"
-            size="lg"
-            icon={loadingPromote ? <Loader2 className="animate-spin" size={16} /> : <Rocket size={16} />}
-          >
-            Promote
-          </Button>
+          {canPromote && (
+            <Button
+              onClick={handlePromote}
+              disabled={!preview || loadingPromote || loadingPreview}
+              aria-busy={loadingPromote}
+              variant="info"
+              size="lg"
+              icon={loadingPromote ? <Loader2 className="animate-spin" size={16} /> : <Rocket size={16} />}
+            >
+              Promote
+            </Button>
+          )}
 
           <Button
             onClick={() => { setPreview(null); setSelectedIds(new Set()); setFilters(initialFilters); }}

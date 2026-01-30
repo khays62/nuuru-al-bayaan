@@ -87,25 +87,42 @@ export function useEntityList({
   const lastSignatureRef = useRef(null); // param signature request ugu dambeysay
   const inFlightRef = useRef(false);     // ka hortag overlapping requests isla signature
   const nextSignatureRef = useRef(null); // haddii param cusub yimaado inta request socdo, halkan ku qabo
+  const nextForceRef = useRef(false);    // haddii refresh(force) yimaado inta request socdo, halkan ku qabo
+  const requestSeqRef = useRef(0);
+  const activeRequestRef = useRef(0);
+  const nextSilentRef = useRef(null);
 
   const paramsSignature = buildSignature(effectiveParams);
 
-  const load = useCallback(async (force = false) => {
-    // Haddii request hore wali socoto ama signature isku mid yahay oo aan force ahayn -> qaab cusub: queue
-    if (!force) {
-      if (inFlightRef.current) {
-        // Ku qabo signature-gan si marka request-ka dhamaado aan u reload-gareyno
-        nextSignatureRef.current = paramsSignature;
-        return;
-      }
-      if (lastSignatureRef.current === paramsSignature) return; // duplicate identical
+  const load = useCallback(async (force = false, options = {}) => {
+    const { silent = false } = options || {};
+    // Prevent overlapping requests (they can race and overwrite newer results).
+    // Instead, coalesce: queue a follow-up load.
+    if (inFlightRef.current) {
+      nextSignatureRef.current = paramsSignature;
+      nextForceRef.current = nextForceRef.current || force;
+      nextSilentRef.current = nextSilentRef.current === null ? silent : (nextSilentRef.current && silent);
+      return;
     }
+
+    // Skip duplicate identical loads unless forced.
+    if (!force && lastSignatureRef.current === paramsSignature) return;
+
+    const reqId = (requestSeqRef.current += 1);
+    activeRequestRef.current = reqId;
     inFlightRef.current = true;
     lastSignatureRef.current = paramsSignature;
-    setIsLoading(true);
-    setError(null);
+    if (!silent) {
+      setIsLoading(true);
+      setError(null);
+    }
+
     try {
-  const result = await fetchRef.current(effectiveParams);
+      const result = await fetchRef.current(effectiveParams);
+
+      // Only apply results from the latest started request.
+      if (activeRequestRef.current !== reqId) return;
+
       setItems(result.data || []);
       if (result.meta) {
         if (result.meta.totalPages > 0 && page > result.meta.totalPages) {
@@ -114,21 +131,30 @@ export function useEntityList({
         }
         setMeta(result.meta);
       }
-  // Persist current sort values without expanding deps
-  localStorage.setItem(`${persistKey}.sortBy`, effectiveParams.sortBy || '');
-  localStorage.setItem(`${persistKey}.sortDir`, effectiveParams.sortDir || '');
+
+      // Persist current sort values without expanding deps
+      localStorage.setItem(`${persistKey}.sortBy`, effectiveParams.sortBy || '');
+      localStorage.setItem(`${persistKey}.sortDir`, effectiveParams.sortDir || '');
     } catch (e) {
+      if (activeRequestRef.current !== reqId) return;
       setError(e.message || 'Failed to load data');
     } finally {
+      // Only the latest request controls loading state.
+      if (activeRequestRef.current === reqId) {
+        if (!silent) setIsLoading(false);
+      }
       inFlightRef.current = false;
-      setIsLoading(false);
-      // Haddii inta uu socday la beddelay paramsSignature -> qasbo load cusub (coalesced)
-      if (nextSignatureRef.current && nextSignatureRef.current !== lastSignatureRef.current) {
-        nextSignatureRef.current = null;
-        // Isticmaal microtask si state updates u dhacaan ka hor load cusub
-        Promise.resolve().then(() => load(true));
-      } else {
-        nextSignatureRef.current = null;
+
+      const queuedSig = nextSignatureRef.current;
+      const queuedForce = nextForceRef.current;
+      const queuedSilent = nextSilentRef.current;
+      nextSignatureRef.current = null;
+      nextForceRef.current = false;
+      nextSilentRef.current = null;
+
+      // If anything was queued while we were loading, run one more load.
+      if (queuedSig && (queuedSig !== lastSignatureRef.current || queuedForce)) {
+        Promise.resolve().then(() => load(Boolean(queuedForce), { silent: Boolean(queuedSilent) }));
       }
     }
   }, [paramsSignature, persistKey, page]);
@@ -197,6 +223,8 @@ export function useEntityList({
     toggleSort,
     // refresh hadda wuxuu ku qasbayaa force=true si CRUD ka dib xogta cusub loo keeno
     refresh: () => load(true),
+    // silentRefresh wuxuu sameeyaa refetch force=true laakiin ma kicinayo isLoading (skeleton)
+    silentRefresh: () => load(true, { silent: true }),
     // Haddii aad rabto in aad isticmaasho behavior kii hore (no force) waxaad heli kartaa softRefresh
     softRefresh: () => load(false),
     currentParams: effectiveParams,

@@ -7,6 +7,7 @@ import Teacher from '../models/Teacher.js';
 import Student from '../models/Student.js';
 import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
 import { parseLimit } from '../utils/pagination.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 const objectId = (v) => (mongoose.isValidObjectId(v) ? String(v) : null);
 
@@ -121,6 +122,7 @@ export const markAllAuthLockEventsRead = async (req, res) => {
       },
       { $set: { isRead: true } }
     );
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, message: err?.message || 'Server error' });
@@ -147,6 +149,7 @@ export const clearAuthLockEvent = async (req, res) => {
     ).lean();
 
     if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, message: err?.message || 'Server error' });
@@ -191,6 +194,16 @@ export const resetPasswordAndUnlock = async (req, res) => {
     principal.tokenVersion = Number(principal.tokenVersion || 0) + 1;
     await principal.save();
 
+    // Realtime: refresh bell list + affected tables across browsers
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+    publishRealtime({ type: 'users:changed', id: String(principal._id), ts: Date.now() });
+    try {
+      if (roleLower === 'teacher') publishRealtime({ type: 'teachers:changed', ts: Date.now() });
+      if (roleLower === 'student') publishRealtime({ type: 'students:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     // Resolve any open AuthLockEvent
     await AuthLockEvent.updateMany(
       {
@@ -216,6 +229,12 @@ export const resetPasswordAndUnlock = async (req, res) => {
 
 export const unlockUserLogin = async (req, res) => {
   try {
+    const actorRole = String(req.user?.role || '').toLowerCase();
+    // Policy: only admins can unlock accounts.
+    if (actorRole !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
     const { id } = req.params;
     const oid = objectId(id);
     if (!oid) return res.status(400).json({ success: false, message: 'Invalid id' });
@@ -240,6 +259,9 @@ export const unlockUserLogin = async (req, res) => {
     principal.loginCooldownLevel = 0;
     principal.tokenVersion = Number(principal.tokenVersion || 0) + 1;
     await principal.save();
+
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+    publishRealtime({ type: 'users:changed', id: String(principal._id), ts: Date.now() });
 
     // Resolve any open AuthLockEvent for this principal so it disappears from the list.
     await AuthLockEvent.updateMany(
@@ -269,12 +291,22 @@ export const deactivateUserAccount = async (req, res) => {
     const user = await User.findById(oid);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
+    const actorRole = String(req.user?.role || '').toLowerCase();
+    const targetRole = String(user?.role || '').toLowerCase();
+    // Policy: staff can only deactivate teacher/student accounts.
+    if (actorRole !== 'admin' && (targetRole === 'staff' || targetRole === 'admin')) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
     user.status = 'inactive';
     // IMPORTANT: do NOT clear lockout fields here.
     // Policy: Only Reset Password / Unlock can remove 24h lock or cooldown.
     // Inactive is a separate status toggle and should not "unlock" the account.
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
+
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+    publishRealtime({ type: 'users:changed', id: String(user._id), ts: Date.now() });
 
     // Keep any current AuthLockEvent visible until explicitly cleared.
     await AuthLockEvent.updateMany(
@@ -292,9 +324,11 @@ export const deactivateUserAccount = async (req, res) => {
       const roleLower = String(user.role || '').toLowerCase();
       if (roleLower === 'teacher' && user.teacherRef) {
         await Teacher.updateOne({ _id: user.teacherRef }, { $set: { status: 'inactive' } });
+        publishRealtime({ type: 'teachers:changed', id: String(user.teacherRef), ts: Date.now() });
       }
       if (roleLower === 'student' && user.studentRef) {
         await Student.updateOne({ _id: user.studentRef }, { $set: { status: 'Inactive' } });
+        publishRealtime({ type: 'students:changed', id: String(user.studentRef), ts: Date.now() });
       }
     } catch {
       // non-blocking
@@ -317,20 +351,32 @@ export const activateUserAccount = async (req, res) => {
     const user = await User.findById(oid);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
+    const actorRole = String(req.user?.role || '').toLowerCase();
+    const targetRole = String(user?.role || '').toLowerCase();
+    // Policy: staff can only reactivate teacher/student accounts.
+    if (actorRole !== 'admin' && (targetRole === 'staff' || targetRole === 'admin')) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
     user.status = 'active';
     // IMPORTANT: do NOT clear lockout fields here.
     // Policy: Only Reset Password / Unlock can remove 24h lock or cooldown.
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
 
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+    publishRealtime({ type: 'users:changed', id: String(user._id), ts: Date.now() });
+
     // Best-effort: keep profile documents in sync.
     try {
       const roleLower = String(user.role || '').toLowerCase();
       if (roleLower === 'teacher' && user.teacherRef) {
         await Teacher.updateOne({ _id: user.teacherRef }, { $set: { status: 'active' } });
+        publishRealtime({ type: 'teachers:changed', id: String(user.teacherRef), ts: Date.now() });
       }
       if (roleLower === 'student' && user.studentRef) {
         await Student.updateOne({ _id: user.studentRef }, { $set: { status: 'Active' } });
+        publishRealtime({ type: 'students:changed', id: String(user.studentRef), ts: Date.now() });
       }
     } catch {
       // non-blocking

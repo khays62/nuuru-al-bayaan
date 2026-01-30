@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function SubjectTable({
     items = [],
@@ -20,6 +21,13 @@ export default function SubjectTable({
     onDelete,
 }) {
     const STORAGE_KEY = 'subjects:columns:v1';
+
+    const { auth, hasPermission } = useAuth();
+    const roleLower = String(auth?.user?.role || '').toLowerCase();
+    const isAdmin = roleLower === 'admin';
+    const canAdd = isAdmin || hasPermission('subjects', 'add');
+    const canEdit = isAdmin || hasPermission('subjects', 'edit');
+    const canDelete = isAdmin || hasPermission('subjects', 'delete');
 
     const columns = useMemo(() => ([
         {
@@ -62,8 +70,8 @@ export default function SubjectTable({
             loadingColumns={5}
             emptyTitle="No subjects found"
             emptyDescription="Try adjusting search or add a new subject."
-            emptyActionLabel="Add Subject"
-            onEmptyAction={onAdd}
+            emptyActionLabel={canAdd ? 'Add Subject' : undefined}
+            onEmptyAction={canAdd ? onAdd : undefined}
 
             rows={rows}
             columns={columns}
@@ -102,22 +110,26 @@ export default function SubjectTable({
                         return (
                             <RowActionButtons
                                 actions={[
-                                    {
-                                        key: 'edit',
-                                        label: 'Edit',
-                                        title: 'Edit Subject',
-                                        tone: 'edit',
-                                        icon: <Pencil size={16} />,
-                                        onClick: () => onEdit?.(subject),
-                                    },
-                                    {
-                                        key: 'delete',
-                                        label: 'Delete',
-                                        title: 'Delete Subject',
-                                        tone: 'delete',
-                                        icon: <Trash2 size={16} />,
-                                        onClick: () => onDelete?.(subject._id),
-                                    },
+                                    canEdit
+                                        ? {
+                                              key: 'edit',
+                                              label: 'Edit',
+                                              title: 'Edit Subject',
+                                              tone: 'edit',
+                                              icon: <Pencil size={16} />,
+                                              onClick: () => onEdit?.(subject),
+                                          }
+                                        : null,
+                                    canDelete
+                                        ? {
+                                              key: 'delete',
+                                              label: 'Delete',
+                                              title: 'Delete Subject',
+                                              tone: 'delete',
+                                              icon: <Trash2 size={16} />,
+                                              onClick: () => onDelete?.(subject._id),
+                                          }
+                                        : null,
                                 ]}
                             />
                         );

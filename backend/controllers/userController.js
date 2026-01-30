@@ -4,6 +4,8 @@ import Admin from "../models/Admin.js";
 import { writeAuditLog } from "../services/auditService.js";
 import AuditLog from "../models/AuditLog.js";
 import { parsePagination } from '../utils/pagination.js';
+import { sanitizePermissionsPayload } from '../utils/permissions.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 
 const summarizePermissions = (permissions) => {
@@ -54,6 +56,19 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid role", field: "role" });
     }
 
+    let safePermissions = undefined;
+    if (permissions !== undefined) {
+      const { sanitized, unknownModules, unknownActions } = sanitizePermissionsPayload(permissions);
+      if (unknownModules.length || unknownActions.length) {
+        return res.status(400).json({
+          message: 'Invalid permissions payload (unknown module/action)',
+          unknownModules,
+          unknownActions,
+        });
+      }
+      safePermissions = sanitized;
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
@@ -62,7 +77,7 @@ export const createUser = async (req, res) => {
       email,
       phone,
       role: normalizedRole,
-      permissions,
+      permissions: safePermissions,
       password: hashedPassword,
       // Treat admin-set password as a default; force user to change after first login.
       mustChangePassword: true,
@@ -82,6 +97,8 @@ export const createUser = async (req, res) => {
       description: `created by=${safeActorLabel(req)} role=${normalizedRole}${permissions ? ` perms=${summarizePermissions(permissions)}` : ''}`,
       req,
     });
+
+    publishRealtime({ type: 'users:changed', id: String(newUser._id), ts: Date.now() });
 
     res.status(201).json(newUser);
   } catch (error) {
@@ -116,12 +133,27 @@ export const updateUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid role", field: "role" });
     }
 
+    let safePermissions = null;
+    if (permissions !== undefined) {
+      const { sanitized, unknownModules, unknownActions } = sanitizePermissionsPayload(permissions);
+      if (unknownModules.length || unknownActions.length) {
+        return res.status(400).json({
+          message: 'Invalid permissions payload (unknown module/action)',
+          unknownModules,
+          unknownActions,
+        });
+      }
+      safePermissions = sanitized;
+    }
+
     user.fullName = fullName;
     user.username = username;
     user.email = email;
     user.phone = phone;
     user.role = normalizedRole;
-    user.permissions = permissions; // must be object matching schema
+    if (safePermissions !== null) {
+      user.permissions = safePermissions; // must be object matching schema
+    }
 
     if (password && password.trim() !== "") {
       user.password = await bcrypt.hash(password, 10);
@@ -189,6 +221,8 @@ export const updateUser = async (req, res) => {
         req,
       });
     }
+
+    publishRealtime({ type: 'users:changed', id: String(user._id), ts: Date.now() });
 
     res.json({ message: "User updated successfully", user });
   } catch (error) {
@@ -288,6 +322,8 @@ export const deleteUser = async (req, res) => {
       description: `deleted by=${safeActorLabel(req)} role=${String(target.role || '')}`,
       req,
     });
+
+    publishRealtime({ type: 'users:changed', id: String(target._id), ts: Date.now() });
     res.json({ message: "User deleted" });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -335,6 +371,8 @@ export const toggleUserStatus = async (req, res) => {
       description: `status changed by=${safeActorLabel(req)} -> ${nextStatus}`,
       req,
     });
+
+    publishRealtime({ type: 'users:changed', id: String(user._id), ts: Date.now() });
 
     res.json(user);
   } catch (err) {

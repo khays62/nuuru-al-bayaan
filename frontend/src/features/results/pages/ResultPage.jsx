@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
 import { getGradeSectionById, listGradeSections } from '../../grades/api/gradeSections';
@@ -24,14 +24,41 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
 import { teacherKeys } from '../../teachers/queryKeys.js';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 
 export default function ResultPage() {
-    const { auth } = useAuth();
-    const isTeacher = String(auth?.user?.role || '').toLowerCase() === 'teacher';
+    const { auth, hasPermission } = useAuth();
+    const queryClient = useQueryClient();
+    const role = String(auth?.user?.role || '').toLowerCase();
+    const isTeacher = role === 'teacher';
+    const isAdmin = role === 'admin';
+
+    // Requirement: teachers should be able to Print/Download results like admins.
+    const canPrintResults = isAdmin || isTeacher || hasPermission('results', 'print');
+    const canDownloadResults = isAdmin || isTeacher || hasPermission('results', 'download');
+
+    // Live refresh: keep results synced across browsers/tabs.
+    useEffect(() => {
+        const handler = () => {
+            try {
+                queryClient.invalidateQueries({ queryKey: ['teacher', 'examSummary'] });
+                queryClient.invalidateQueries({ queryKey: ['teacher', 'examTypes'] });
+                queryClient.invalidateQueries({ queryKey: ['teacher', 'gradeSection'] });
+            } catch {
+                // ignore
+            }
+        };
+        onEvent(EVENTS.RESULTS_CHANGED, handler);
+        onEvent(EVENTS.EXAMS_CHANGED, handler);
+        return () => {
+            offEvent(EVENTS.RESULTS_CHANGED, handler);
+            offEvent(EVENTS.EXAMS_CHANGED, handler);
+        };
+    }, [queryClient]);
 
     // Persist filters in sessionStorage (not URL)
     const SESSION_KEY = 'results:filters:v1';
@@ -191,6 +218,12 @@ export default function ResultPage() {
 
     const subjects = Array.isArray(gradeSectionQuery.data?.subjects) ? gradeSectionQuery.data.subjects : [];
 
+    const selectedSectionForLabels = useMemo(() => {
+        const byId = gradeSectionQuery.data;
+        if (byId && String(byId?._id) === String(gradeSectionId)) return byId;
+        return (sections || []).find(s => String(s._id) === String(gradeSectionId)) || null;
+    }, [gradeSectionId, gradeSectionQuery.data, sections]);
+
     const examTypesQuery = useQuery({
         queryKey: teacherKeys.examTypes({ academicYearId, gradeSectionId, templateVersion: resolvedTemplateVersion }),
         enabled: Boolean(academicYearId && gradeSectionId),
@@ -306,6 +339,10 @@ export default function ResultPage() {
 
     useEffect(() => {
         if (!summaryEnabled) return;
+        // Avoid toasting while loading a new key or while placeholder data is shown.
+        if (summaryQuery.isFetching) return;
+        if (summaryQuery.isPlaceholderData) return;
+        if (!summaryQuery.isSuccess) return;
         const key = [
             summaryParams?.academicYearId,
             summaryParams?.gradeSectionId,
@@ -322,7 +359,7 @@ export default function ResultPage() {
             lastNoMarksToastKeyRef.current = key;
             toast.error('No exam marks found for the selected class and filters.');
         }
-    }, [summary, summaryEnabled, summaryParams]);
+    }, [summary, summaryEnabled, summaryParams, summaryQuery.isFetching, summaryQuery.isPlaceholderData, summaryQuery.isSuccess]);
 
     const results = useMemo(() => summary?.results || [], [summary]);
     const subjectCols = useMemo(() => summary?.subjects || [], [summary]);
@@ -354,6 +391,10 @@ export default function ResultPage() {
     const fmt2 = (n) => Number((n ?? 0).toFixed?.(2));
 
     const handlePrint = () => {
+        if (!canPrintResults) {
+            toast.error('You do not have permission to print results');
+            return;
+        }
         // Give the browser a tick to apply any pending layout before printing.
         setTimeout(() => window.print(), 0);
     };
@@ -370,7 +411,7 @@ export default function ResultPage() {
     const buildExportPayload = async ({ forPdf = false, forExcel = false } = {}) => {
         if (!canExport) return null;
 
-        const selSec = (sections || []).find(s => String(s._id) === String(gradeSectionId));
+        const selSec = selectedSectionForLabels;
         const ayName = (years || []).find(y => String(y._id) === String(academicYearId))?.yearName || selSec?.academicYear?.yearName || '';
         const gName = (grades || []).find(g => String(g._id) === String(gradeId))?.gradeName || selSec?.grade?.gradeName || '';
         const shName = (shifts || []).find(s => String(s._id) === String(shiftId))?.shiftName || selSec?.shift?.shiftName || '';
@@ -591,20 +632,26 @@ export default function ResultPage() {
                     return (
                         <FilterItem className="sm:ml-auto">
                             <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
-                            <ActionButton
-                                variant="neutral"
-                                className={outlineBtn}
-                                onClick={handlePrint}
-                                title="Print"
-                                icon={<Printer size={16} />}
-                            >
-                                Print
-                            </ActionButton>
+                            {canPrintResults ? (
+                                <ActionButton
+                                    variant="neutral"
+                                    className={outlineBtn}
+                                    onClick={handlePrint}
+                                    title="Print"
+                                    icon={<Printer size={16} />}
+                                >
+                                    Print
+                                </ActionButton>
+                            ) : null}
 
-                            <PdfDownloadButton getPayload={getPdfPayload} disabled={!canExport} className={outlineBtn} />
-                            <ExcelDownloadButton getPayload={getExcelPayload} disabled={!canExport} className={outlineBtn} />
-                            <CsvDownloadButton getPayload={getExportPayload} disabled={!canExport} className={outlineBtn} />
-                            <CopyTableButton getPayload={getExportPayload} disabled={!canExport} className={outlineBtn} />
+                            {canDownloadResults ? (
+                                <>
+                                    <PdfDownloadButton getPayload={getPdfPayload} disabled={!canExport} className={outlineBtn} />
+                                    <ExcelDownloadButton getPayload={getExcelPayload} disabled={!canExport} className={outlineBtn} />
+                                    <CsvDownloadButton getPayload={getExportPayload} disabled={!canExport} className={outlineBtn} />
+                                    <CopyTableButton getPayload={getExportPayload} disabled={!canExport} className={outlineBtn} />
+                                </>
+                            ) : null}
 
                             <ActionButton
                                 variant="neutral"
@@ -666,7 +713,7 @@ export default function ResultPage() {
                                             {academicYearId && gradeSectionId && (
                                                 <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
                                                     {(() => {
-                                                        const selSec = (sections||[]).find(s => String(s._id) === String(gradeSectionId));
+                                                        const selSec = selectedSectionForLabels;
                                                         const ayName = (years||[]).find(y => String(y._id)===String(academicYearId))?.yearName || selSec?.academicYear?.yearName || '-';
                                                         const gName = (grades||[]).find(g => String(g._id)===String(gradeId))?.gradeName || selSec?.grade?.gradeName || '-';
                                                         const shName = (shifts||[]).find(s => String(s._id)===String(shiftId))?.shiftName || selSec?.shift?.shiftName || '-';
@@ -724,7 +771,7 @@ export default function ResultPage() {
                                             {academicYearId && gradeSectionId && (
                                                 <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
                                                     {(() => {
-                                                        const selSec = (sections||[]).find(s => String(s._id) === String(gradeSectionId));
+                                                        const selSec = selectedSectionForLabels;
                                                         const ayName = (years||[]).find(y => String(y._id)===String(academicYearId))?.yearName || selSec?.academicYear?.yearName || '-';
                                                         const gName = (grades||[]).find(g => String(g._id)===String(gradeId))?.gradeName || selSec?.grade?.gradeName || '-';
                                                         const shName = (shifts||[]).find(s => String(s._id)===String(shiftId))?.shiftName || selSec?.shift?.shiftName || '-';
@@ -782,7 +829,7 @@ export default function ResultPage() {
                                         {academicYearId && gradeSectionId && (
                                             <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
                                                 {(() => {
-                                                    const selSec = (sections||[]).find(s => String(s._id) === String(gradeSectionId));
+                                                    const selSec = selectedSectionForLabels;
                                                     const ayName = (years||[]).find(y => String(y._id)===String(academicYearId))?.yearName || selSec?.academicYear?.yearName || '-';
                                                     const gName = (grades||[]).find(g => String(g._id)===String(gradeId))?.gradeName || selSec?.grade?.gradeName || '-';
                                                     const shName = (shifts||[]).find(s => String(s._id)===String(shiftId))?.shiftName || selSec?.shift?.shiftName || '-';

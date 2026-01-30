@@ -10,6 +10,8 @@ export default function AttendanceStatusPills({
   onPickExcusedPreset,
   reasonWordLimit = 40,
 }) {
+  const showReasonInput = value === 'excused' || value === 'other';
+
   const opts = [
     { value: 'present', label: 'Present' },
     { value: 'absent', label: 'Absent' },
@@ -31,6 +33,9 @@ export default function AttendanceStatusPills({
 
   // Keep old prop name for compatibility; now it picks an extra status.
   const pickExtra = (nextValue) => {
+    // Primary: treat extras as real statuses (medical/family/sick/other)
+    if (typeof onChange === 'function') onChange(nextValue);
+    // Back-compat hook (older code used this to pick a preset reason)
     if (typeof onPickExcusedPreset === 'function') onPickExcusedPreset(nextValue);
   };
 
@@ -42,7 +47,7 @@ export default function AttendanceStatusPills({
     const el = moreBtnRef.current;
     if (!el) return null;
     const r = el.getBoundingClientRect();
-    const width = 240;
+    const width = Math.min(240, Math.max(180, window.innerWidth - 16));
     const gap = 6;
     const top = r.bottom + gap;
     const leftPreferred = r.right - width;
@@ -93,8 +98,8 @@ export default function AttendanceStatusPills({
   }, [moreOpen]);
 
   return (
-    <div className="inline-flex items-center gap-2">
-      <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white">
+    <div className="inline-flex flex-col sm:flex-row sm:items-center gap-2">
+      <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white flex-wrap">
         {opts.map((o, idx) => {
           const active = value === o.value;
           const isLast = idx === opts.length - 1;
@@ -130,14 +135,21 @@ export default function AttendanceStatusPills({
           onClick={toggleMenu}
           ref={moreBtnRef}
           className={
-            `inline-flex items-center justify-center h-7 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-2 ` +
-            (isExtraSelected ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)' : '') +
+            `inline-flex items-center justify-center h-7 rounded-md border px-2 ` +
+            (isExtraSelected
+              ? 'border-(--nb-color-brand) bg-(--nb-color-brand) text-white'
+              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50') +
             (disabled ? ' opacity-60 cursor-not-allowed' : '')
           }
         >
           <span className="text-xs font-semibold">⋮</span>
           {isExtraSelected && (
-            <span className="ml-1 text-xs font-medium whitespace-nowrap">{selectedExtraLabel}</span>
+            <span
+              className="ml-1 text-xs font-medium whitespace-nowrap max-w-32 truncate"
+              title={selectedExtraLabel}
+            >
+              {selectedExtraLabel}
+            </span>
           )}
         </button>
 
@@ -161,7 +173,9 @@ export default function AttendanceStatusPills({
                     }}
                     className={
                       `block w-full text-left px-3 py-2 text-sm ` +
-                      (active ? 'bg-blue-50 text-blue-800' : 'text-gray-700 hover:bg-gray-50')
+                      (active
+                        ? 'bg-(--nb-color-brand) text-white'
+                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900')
                     }
                     role="menuitem"
                   >
@@ -175,22 +189,24 @@ export default function AttendanceStatusPills({
         )}
       </div>
 
-      {(value === 'excused' || value === 'other') && (
-        <input
-          type="text"
-          value={remarks || ''}
-          disabled={disabled}
-          onChange={(e) => {
-            if (disabled) return;
-            onChangeRemarks(e.target.value);
-          }}
-          placeholder={`Reason (optional, max ${reasonWordLimit} words)`}
-          className={
-            "w-44 border rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 " +
-            (disabled ? 'opacity-60 cursor-not-allowed' : '')
-          }
-        />
-      )}
+      {/* Reserve space for remarks input to prevent layout shift when toggling Excused/Other */}
+      <input
+        type="text"
+        value={showReasonInput ? (remarks || '') : ''}
+        disabled={disabled || !showReasonInput}
+        tabIndex={showReasonInput ? 0 : -1}
+        aria-hidden={!showReasonInput}
+        onChange={(e) => {
+          if (disabled || !showReasonInput) return;
+          onChangeRemarks(e.target.value);
+        }}
+        placeholder={showReasonInput ? `Reason (optional, max ${reasonWordLimit} words)` : ''}
+        className={
+          "w-full sm:w-44 border rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 " +
+          (disabled ? 'opacity-60 cursor-not-allowed' : '') +
+          (!showReasonInput ? ' invisible pointer-events-none' : '')
+        }
+      />
     </div>
   );
 }

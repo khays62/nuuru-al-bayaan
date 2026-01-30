@@ -9,6 +9,7 @@ import TeacherAssignment from '../models/TeacherAssignment.js';
 import User from '../models/User.js';
 import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
 import { parsePagination } from '../utils/pagination.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 const normalizeStudentStatusToUserStatus = (studentStatus) => {
     const s = String(studentStatus || '').trim().toLowerCase();
@@ -520,6 +521,10 @@ export const resetStudentPassword = async (req, res) => {
             return res.status(409).json({ message: 'Student login account is missing. Contact admin to re-run migration.' });
         }
 
+        publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+        publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
+        publishRealtime({ type: 'users:changed', ts: Date.now() });
+
         return res.json({
             success: true,
             message: 'Password reset to default. Student must change it after login.',
@@ -644,6 +649,9 @@ export const deactivateStudent = async (req, res) => {
             // Best-effort only; don’t fail student deactivation if enrollment toggle fails
             console.warn('deactivateStudent enrollment toggle warning:', enrErr);
         }
+        publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
+        publishRealtime({ type: 'users:changed', ts: Date.now() });
+        publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
         res.json({ message: 'Student deactivated', student });
     } catch (err) {
         console.error('Deactivate student error', err);
@@ -687,6 +695,9 @@ export const reactivateStudent = async (req, res) => {
         } catch (enrErr) {
             console.warn('reactivateStudent enrollment toggle warning:', enrErr);
         }
+        publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
+        publishRealtime({ type: 'users:changed', ts: Date.now() });
+        publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
         res.json({ message: 'Student reactivated', student });
     } catch (err) {
         console.error('Reactivate student error', err);

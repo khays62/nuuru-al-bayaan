@@ -11,6 +11,7 @@ import RowActionButtons from "../../../shared/components/table/RowActionButtons.
 import { useAuth } from "../../../auth/AuthContext";
 import { getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, markAnnouncementsRead } from "../../../api";
 import { announcementKeys } from '../queryKeys';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function AnnouncementsPage() {
   const { auth, hasPermission } = useAuth();
@@ -57,6 +58,21 @@ export default function AnnouncementsPage() {
     })();
     return () => { cancelled = true; };
   }, [user?._id, user?.username]);
+
+  // Live refresh: keep announcements synced across browsers/tabs.
+  useEffect(() => {
+    const handler = () => {
+      try {
+        queryClient.invalidateQueries({ queryKey: announcementKeys.list() });
+        const userKey = user?._id || user?.username || null;
+        if (userKey) queryClient.invalidateQueries({ queryKey: ['announcements', 'unreadCount', userKey] });
+      } catch {
+        // ignore
+      }
+    };
+    onEvent(EVENTS.ANNOUNCEMENTS_CHANGED, handler);
+    return () => offEvent(EVENTS.ANNOUNCEMENTS_CHANGED, handler);
+  }, [queryClient, user?._id, user?.username]);
 
   const canPost = useMemo(() => {
     if (!user) return false;

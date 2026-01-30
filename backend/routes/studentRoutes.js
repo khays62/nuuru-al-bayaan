@@ -78,14 +78,14 @@ router.put(
     changeStudentPassword
 );
 
-// Staff/admin: reset student password (requires students:resetPassword; students:edit also allowed)
+// Staff/admin: reset student password (students.resetPassword OR security.resetPassword)
 router.patch(
     '/:id/reset-password',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
     checkAnyPermission([
         { module: 'students', action: 'resetPassword' },
-        { module: 'students', action: 'edit' },
+        { module: 'security', action: 'resetPassword' },
     ]),
     resetStudentPassword
 );
@@ -143,7 +143,10 @@ router.patch(
     '/:id/deactivate',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
-    checkPermission("students", "deactivate"),
+    checkAnyPermission([
+        { module: 'students', action: 'deactivate' },
+        { module: 'security', action: 'deactivate' },
+    ]),
     deactivateStudent
 ); // PATCH /api/students/:id/deactivate
 
@@ -151,7 +154,10 @@ router.patch(
     '/:id/reactivate',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
-    checkPermission("students", "reactivate"),
+    checkAnyPermission([
+        { module: 'students', action: 'reactivate' },
+        { module: 'security', action: 'activate' },
+    ]),
     reactivateStudent
 ); // PATCH /api/students/:id/reactivate
 // New transfer endpoint

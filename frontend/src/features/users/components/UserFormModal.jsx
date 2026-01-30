@@ -10,12 +10,27 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 function formatModuleLabel(mod) {
   const s = String(mod || '');
   if (!s) return '';
+
+  if (s === 'security') return 'Bell Notification';
+
   // Split camelCase + underscores into human labels.
   const spaced = s
     .replace(/_/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .trim();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function formatPermissionLabel(module, perm) {
+  if (perm === 'full') return 'Full Access (Select All)';
+  if (perm === 'resetPassword') return 'Reset Password';
+  if (perm === 'unlock') return 'Unlock';
+
+  // Bell notifications use account-status wording in the UI.
+  if (module === 'security' && perm === 'deactivate') return 'Inactive';
+  if (module === 'security' && perm === 'activate') return 'Active';
+
+  return perm;
 }
 
 export default function UserFormModal({
@@ -101,7 +116,7 @@ export default function UserFormModal({
                 className={isConfirm && passwordsMismatch ? 'border-red-500 focus-visible:ring-red-500' : ''}
                 required={
                   ['fullName', 'username'].includes(field) ||
-                  (!editingUser && ['email', 'password', 'confirmPassword'].includes(field))
+                  (!editingUser && ['password', 'confirmPassword'].includes(field))
                 }
               />
 
@@ -148,7 +163,7 @@ export default function UserFormModal({
                         onChange={() => togglePermission(form.selectedModule, perm)}
                         disabled={isFormLoading || isSaving}
                       />
-                      {perm === 'full' ? 'Full Access (Select All)' : perm}
+                      {formatPermissionLabel(form.selectedModule, perm)}
                     </label>
                   ))}
                 </div>

@@ -26,14 +26,30 @@ router.post('/', protect, checkPermission('teachers', 'add'), createTeacher);
 router.post('/:id/create-login', protect, checkPermission('teachers', 'edit'), createTeacherLoginUser);
 router.patch('/:id', protect, checkPermission('teachers', 'edit'), updateTeacher);
 router.put('/:id', protect, checkPermission('teachers', 'edit'), updateTeacher);
-router.patch('/:id/deactivate', protect, checkPermission('teachers', 'deactivate'), deactivateTeacher);
-router.patch('/:id/reactivate', protect, checkPermission('teachers', 'reactivate'), reactivateTeacher);
+router.patch(
+	'/:id/deactivate',
+	protect,
+	checkAnyPermission([
+		{ module: 'teachers', action: 'deactivate' },
+		{ module: 'security', action: 'deactivate' },
+	]),
+	deactivateTeacher
+);
+router.patch(
+	'/:id/reactivate',
+	protect,
+	checkAnyPermission([
+		{ module: 'teachers', action: 'reactivate' },
+		{ module: 'security', action: 'activate' },
+	]),
+	reactivateTeacher
+);
 router.patch(
 	'/:id/reset-password',
 	protect,
 	checkAnyPermission([
+		{ module: 'teachers', action: 'resetPassword' },
 		{ module: 'security', action: 'resetPassword' },
-		{ module: 'security', action: 'edit' },
 	]),
 	resetTeacherPassword
 );

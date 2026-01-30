@@ -7,6 +7,7 @@ import logo from '../../../assets/nuuruBayaan.png';
 import { useAuth } from '../../../auth/AuthContext';
 import Badge from '../ui/Badge.jsx';
 import { useAnnouncementsUnread } from '../../../features/announcements/hooks/useAnnouncementsUnread';
+import { MODULE_PERMISSIONS } from '../../auth/permissionContract.js';
 
 export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu }) {
   const navLinkClasses = ({ isActive }) =>
@@ -27,28 +28,14 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     if (role === 'admin') return true;
     if (!module) return false;
 
-    const actions = [
-      'view',
-      'add',
-      'edit',
-      'input',
-      'delete',
-      'download',
-      'export',
-      'transfer',
-      'deactivate',
-      'reactivate',
-      'assign',
-      'preview',
-      'promote',
-      'print',
-      'full',
-    ];
+    const actions = Array.isArray(MODULE_PERMISSIONS?.[module]) ? MODULE_PERMISSIONS[module] : [];
 
     // Backward compatibility: older setups used `attendance.*` for Attendance Reports
     if (module === 'attendanceReports') {
-      return actions.some((action) => hasPermission('attendanceReports', action))
-        || actions.some((action) => hasPermission('attendance', action));
+      const reportActions = Array.isArray(MODULE_PERMISSIONS?.attendanceReports) ? MODULE_PERMISSIONS.attendanceReports : actions;
+      const attendanceActions = Array.isArray(MODULE_PERMISSIONS?.attendance) ? MODULE_PERMISSIONS.attendance : [];
+      return reportActions.some((action) => hasPermission('attendanceReports', action))
+        || attendanceActions.some((action) => hasPermission('attendance', action));
     }
 
     return actions.some((action) => hasPermission(module, action));
@@ -83,7 +70,10 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     }
 
     if (role === 'teacher') {
-      return Array.isArray(item.roles) && item.roles.includes('teacher');
+      if (!Array.isArray(item.roles) || !item.roles.includes('teacher')) return false;
+      // Teachers are scoped by backend TeacherAssignment rules (not staff permission modules).
+      // So the teacher nav should be role-based and stable.
+      return true;
     }
 
     return false;

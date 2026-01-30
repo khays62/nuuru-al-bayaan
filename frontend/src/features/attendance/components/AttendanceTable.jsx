@@ -55,7 +55,7 @@ export default function AttendanceTable({
         key: 'status',
         label: 'Status',
         thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-        tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200',
+        tdClassName: 'px-6 py-4 whitespace-normal border-x border-gray-200',
       },
     ];
 

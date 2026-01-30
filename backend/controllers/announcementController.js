@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import TeacherAssignment from '../models/TeacherAssignment.js';
 import { registerAnnouncementStream, broadcastAnnouncementEvent } from '../services/announcementStream.js';
 import User from '../models/User.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 function normalizeId(v) {
   try {
@@ -103,6 +104,7 @@ export const createAnnouncement = async (req, res) => {
 
     await announcement.save();
     broadcastAnnouncementEvent({ type: 'created', announcement });
+    publishRealtime({ type: 'announcements:changed', ts: Date.now() });
     res.status(201).json(announcement);
   } catch (err) {
     console.error("Create announcement error:", err);
@@ -217,6 +219,7 @@ export const updateAnnouncement = async (req, res) => {
     if (!updated) return res.status(404).json({ message: "Announcement not found" });
 
     broadcastAnnouncementEvent({ type: 'updated', announcement: updated });
+    publishRealtime({ type: 'announcements:changed', ts: Date.now() });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -264,6 +267,7 @@ export const deleteAnnouncement = async (req, res) => {
         audienceGradeSections: existing.audienceGradeSections,
       },
     });
+    publishRealtime({ type: 'announcements:changed', ts: Date.now() });
     res.json({ message: "Deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });

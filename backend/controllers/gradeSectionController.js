@@ -6,6 +6,7 @@ import Grade from '../models/Grade.js';
 import Enrollment from '../models/Enrollment.js';
 import TeacherAssignment from '../models/TeacherAssignment.js';
 import { parsePagination } from '../utils/pagination.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 // Note: Cohort and AcademicYear are no longer part of GradeSection. Uniformity per AY
 // is enforced at Enrollment layer, not at GS layer.
 
@@ -165,6 +166,8 @@ export const createGradeSection = async (req, res) => {
       .populate('shift', 'shiftName')
       .populate('subjects', 'subjectName');
 
+    publishRealtime({ type: 'gradeSections:changed', id: String(created._id), ts: Date.now() });
+
     res.status(201).json({ data: populated, removedSubjects: req._removedSubjects || [] });
   } catch (err) {
     console.error('Create grade section error', err);
@@ -280,6 +283,8 @@ export const updateGradeSection = async (req, res) => {
       .populate('grade', 'gradeName')
       .populate('shift', 'shiftName')
       .populate('subjects', 'subjectName')
+
+    publishRealtime({ type: 'gradeSections:changed', id: String(cls._id), ts: Date.now() });
     res.json({ data: populated, removedSubjects, resyncNeeded: false });
   } catch (err) {
     console.error('Update grade section error', err);
@@ -300,6 +305,9 @@ export const resyncGradeSectionCohort = async (req, res) => {
       { gradeSection: id, status: 'active' },
       { $set: { cohort: targetCohort } }
     );
+
+    publishRealtime({ type: 'students:changed', ts: Date.now() });
+    publishRealtime({ type: 'gradeSections:changed', id: String(id), ts: Date.now() });
     res.json({ ok: true, matched: result.matchedCount ?? result.n, modified: result.modifiedCount ?? result.nModified, cohort: targetCohort });
   } catch (err) {
     console.error('Resync cohort error', err);
@@ -326,6 +334,7 @@ export const deleteGradeSection = async (req, res) => {
     }
 
   await GradeSection.deleteOne({ _id: id });
+    publishRealtime({ type: 'gradeSections:changed', id: String(id), ts: Date.now() });
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete grade section error', err);
