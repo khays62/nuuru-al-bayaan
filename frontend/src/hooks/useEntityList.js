@@ -1,7 +1,8 @@
 // useEntityList.js
 // Hook guud oo maareeya liis xog leh: search, filters, sort, pagination, loading.
 // Faa'iido: Ka saaraya logic-ka culus ee Page component-ka.
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDebounce } from './useDebounce';
 
 export function useEntityList({
@@ -11,7 +12,18 @@ export function useEntityList({
   initialLimit = 10,
   persistKey,         // furaha localStorage (tusaale 'subjects')
   extraFilters = {},  // object e.g. { grade: '' }
-  debounceSearchMs = 350 // waqtiga dib u dhigidda (debounce) ee search
+  debounceSearchMs = 350, // waqtiga dib u dhigidda (debounce) ee search
+
+  // Optional: if provided, use TanStack Query instead of local request state.
+  // This enables EDCI (Realtime -> Events -> invalidateQueries -> UI updated).
+  queryKeyBase = null,
+
+  // Optional: enable/disable fetching.
+  enabled = true,
+
+  // Optional: tweak query behavior.
+  staleTime = 30_000,
+  refetchOnWindowFocus = false,
 }) {
   // --- State Initialization ---
   const [items, setItems] = useState([]);
@@ -19,6 +31,7 @@ export function useEntityList({
   // Waxa aan kala saarnay search-ka la qorayo iyo midka la dirayo (debounced)
   const [searchTermRaw, setSearchTermRaw] = useState('');
   const debouncedSearch = useDebounce(searchTermRaw, debounceSearchMs);
+  const [immediateSearch, setImmediateSearch] = useState(null);
   const [filters, setFilters] = useState(extraFilters);
   const [sortBy, setSortBy] = useState(() => localStorage.getItem(`${persistKey}.sortBy`) || initialSortBy);
   const [sortDir, setSortDir] = useState(() => localStorage.getItem(`${persistKey}.sortDir`) || initialSortDir);
@@ -62,13 +75,95 @@ export function useEntityList({
   const effectiveParams = {
     page,
     limit,
-    search: debouncedSearch || undefined,
+    search: (immediateSearch != null ? immediateSearch : debouncedSearch) || undefined,
     sortBy,
     sortDir,
     ...Object.fromEntries(
       Object.entries(filters).filter(([, v]) => v !== '' && v !== undefined && v !== null)
     )
   };
+
+  // After a resetAndReload() that sets immediateSearch, clear it once debounce catches up.
+  useEffect(() => {
+    if (immediateSearch == null) return;
+    if (String(debouncedSearch || '') === String(immediateSearch || '')) {
+      setImmediateSearch(null);
+    }
+  }, [debouncedSearch, immediateSearch]);
+
+  const queryClient = useQueryClient();
+
+  // Stable key params: keep key order deterministic.
+  const stableKeyParams = useMemo(() => {
+    const src = effectiveParams || {};
+    const keys = Object.keys(src).sort();
+    const out = {};
+    for (const k of keys) {
+      const v = src[k];
+      if (v === undefined || v === null || v === '') continue;
+      out[k] = v;
+    }
+    return out;
+  }, [effectiveParams]);
+
+  const rqQueryKey = useMemo(() => {
+    if (!Array.isArray(queryKeyBase)) return null;
+    return [...queryKeyBase, stableKeyParams];
+  }, [queryKeyBase, stableKeyParams]);
+
+  const rqQuery = useQuery({
+    queryKey: rqQueryKey || ['__disabled_useEntityList__'],
+    enabled: Boolean(enabled && rqQueryKey),
+    queryFn: async ({ signal }) => fetchFn(effectiveParams, { signal }),
+    placeholderData: (prev) => prev,
+    staleTime,
+    refetchOnWindowFocus,
+  });
+
+  // Keep the old behavior of clamping page when server meta indicates fewer pages.
+  useEffect(() => {
+    if (!rqQueryKey) return;
+    const totalPages = rqQuery.data?.meta?.totalPages;
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [rqQueryKey, rqQuery.data?.meta?.totalPages, page]);
+
+  // If using React Query mode, return early with the same public API shape.
+  if (rqQueryKey) {
+    const result = rqQuery.data || { data: [], meta: { page: 1, limit: initialLimit, total: 0, totalPages: 0 } };
+    const nextMeta = result?.meta || { page: 1, limit: initialLimit, total: 0, totalPages: 0 };
+
+    return {
+      items: Array.isArray(result?.data) ? result.data : [],
+      meta: { ...nextMeta, sortBy, sortDir },
+      isLoading: Boolean(rqQuery.isLoading && rqQuery.data == null),
+      error: rqQuery.error ? (rqQuery.error?.message || 'Failed to load data') : null,
+      searchTerm: searchTermRaw,
+      setSearch: (v) => { setSearchTermRaw(v); setPage(1); },
+      setFilter,
+      setPage,
+      setLimit: (v) => { setLimit(v); setPage(1); },
+      toggleSort,
+      refresh: () => rqQuery.refetch({ cancelRefetch: true }),
+      silentRefresh: () => rqQuery.refetch({ cancelRefetch: true }),
+      softRefresh: () => rqQuery.refetch({ cancelRefetch: true }),
+      currentParams: effectiveParams,
+      resetAndReload: async ({ filters: newFilters = {}, search = '' } = {}) => {
+        setFilters(newFilters);
+        setSearchTermRaw(search);
+        setImmediateSearch(search);
+        setPage(1);
+        // Force a refetch for the next key.
+        // (Invalidate base rather than current key to cover list variants.)
+        try {
+          queryClient.invalidateQueries({ queryKey: queryKeyBase, refetchType: 'active' });
+        } catch {
+          // ignore
+        }
+      },
+    };
+  }
 
   // Create a stable signature irrespective of object key insertion order
   function buildSignature(obj) {

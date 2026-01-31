@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import { listCohorts } from '../../cohorts/api/cohorts';
@@ -11,9 +12,12 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import Separator from '../../../shared/components/ui/Separator.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import { studentKeys } from '../queryKeys';
 
 // Refactored StudentForm aligned with backend API (POST /api/students)
 // Academic Year and Cohort are required at creation; GradeSection is AY-agnostic.
+const EMPTY_ARR = [];
+
 export default function StudentForm({ student, onClose, onSubmit, submitting = false }) {
     const [formData, setFormData] = useState({
         fullName: '',
@@ -31,13 +35,60 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         gradeSectionId: ''
     });
 
-    // Lookups
-    const [years, setYears] = useState([]);
-    const [grades, setGradesState] = useState([]);
-    const [shifts, setShiftsState] = useState([]);
-    const [cohorts, setCohorts] = useState([]);
-    const [sections, setSections] = useState([]);
-    const [loadingSections, setLoadingSections] = useState(false);
+    const yearsQuery = useQuery({
+        queryKey: studentKeys.lookupsAcademicYears(),
+        queryFn: async () => {
+            const ys = await getAcademicYears();
+            return Array.isArray(ys) ? ys : (ys?.data || []);
+        },
+        placeholderData: (prev) => prev,
+    });
+
+    const gradesQuery = useQuery({
+        queryKey: studentKeys.lookupsGrades(),
+        queryFn: async () => {
+            const gs = await getGrades();
+            return Array.isArray(gs) ? gs : (gs?.data || []);
+        },
+        placeholderData: (prev) => prev,
+    });
+
+    const shiftsQuery = useQuery({
+        queryKey: studentKeys.lookupsShifts(),
+        queryFn: async () => {
+            const ss = await getShifts();
+            return Array.isArray(ss) ? ss : (ss?.data || []);
+        },
+        placeholderData: (prev) => prev,
+    });
+
+    const cohortsQuery = useQuery({
+        queryKey: studentKeys.cohorts({ status: 'active', academicYearId: formData.academicYearId, limit: 200 }),
+        queryFn: async () => {
+            const { data } = await listCohorts({ status: 'active', ay: formData.academicYearId, limit: 200 });
+            return Array.isArray(data) ? data : [];
+        },
+        placeholderData: (prev) => prev,
+    });
+
+    const { gradeId, shiftId } = formData;
+    const sectionsQuery = useQuery({
+        queryKey: studentKeys.gradeSectionsByGradeShift({ gradeId, shiftId, limit: 200 }),
+        enabled: Boolean(gradeId && shiftId),
+        queryFn: async ({ signal }) => {
+            const res = await listGradeSections({ grade: gradeId, shift: shiftId, limit: 200 }, { signal });
+            const rows = res?.data || res;
+            return Array.isArray(rows) ? rows : [];
+        },
+        placeholderData: (prev) => prev,
+    });
+
+    const years = yearsQuery.data ?? EMPTY_ARR;
+    const grades = gradesQuery.data ?? EMPTY_ARR;
+    const shifts = shiftsQuery.data ?? EMPTY_ARR;
+    const cohorts = cohortsQuery.data ?? EMPTY_ARR;
+    const sections = sectionsQuery.data ?? EMPTY_ARR;
+    const loadingSections = Boolean(sectionsQuery.isFetching && !sectionsQuery.data);
 
     useEffect(() => {
         if (student) {
@@ -57,50 +108,26 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         }
     }, [student]);
 
-    // Load lookups on mount
-    useEffect(() => {
-        (async () => {
-            const [ys, gs, ss] = await Promise.all([getAcademicYears(), getGrades(), getShifts()]);
-            setYears(ys || []);
-            setGradesState(gs || []);
-            setShiftsState(ss || []);
-        })();
-    }, []);
+    const lastNoSectionsKeyRef = useRef('');
+    const sectionsKey = useMemo(() => `${String(gradeId || '')}|${String(shiftId || '')}`, [gradeId, shiftId]);
 
-    // When AY changes, load cohorts (optionally filter by AY)
-    useEffect(() => {
-        (async () => {
-            try {
-                // Filter cohorts by selected AY if provided; show active by default
-                const { data } = await listCohorts({ status: 'active', ay: formData.academicYearId, limit: 200 });
-                setCohorts(data || []);
-            } catch {
-                setCohorts([]);
-            }
-        })();
-    }, [formData.academicYearId]);
-
-    // When Grade/Shift changes, fetch sections (AY-agnostic)
-    const { gradeId, shiftId } = formData;
     useEffect(() => {
         if (!gradeId || !shiftId) {
-            setSections([]);
-            setFormData(prev => ({ ...prev, gradeSectionId: '' }));
+            setFormData(prev => (prev.gradeSectionId ? ({ ...prev, gradeSectionId: '' }) : prev));
+            lastNoSectionsKeyRef.current = '';
             return;
         }
-        setLoadingSections(true);
-        listGradeSections({ grade: gradeId, shift: shiftId, limit: 200 })
-            .then(res => {
-                const rows = res?.data || [];
-                setSections(rows);
-                if (rows.length === 0) {
-                    toast.dismiss('no-sections');
-                    toast.info('No sections found. Adjust filters.', { id: 'no-sections' });
-                }
-            })
-            .catch(() => setSections([]))
-            .finally(() => setLoadingSections(false));
-    }, [gradeId, shiftId]);
+
+        // If sections result is empty, mirror old UX: show a single info toast.
+        if (sectionsQuery.isFetched && !sectionsQuery.isFetching) {
+            const rows = Array.isArray(sections) ? sections : [];
+            if (rows.length === 0 && lastNoSectionsKeyRef.current !== sectionsKey) {
+                lastNoSectionsKeyRef.current = sectionsKey;
+                toast.dismiss('no-sections');
+                toast.info('No sections found. Adjust filters.', { id: 'no-sections' });
+            }
+        }
+    }, [gradeId, shiftId, sectionsQuery.isFetched, sectionsQuery.isFetching, sectionsKey, sections]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

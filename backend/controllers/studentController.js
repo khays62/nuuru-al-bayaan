@@ -378,6 +378,9 @@ export const addStudent = async (req, res) => {
             await session.commitTransaction();
             session.endSession();
 
+            publishRealtime({ type: 'students:changed', id: String(studentDoc._id), ts: Date.now() });
+            publishRealtime({ type: 'users:changed', ts: Date.now() });
+
             return res.status(201).json({ student: studentDoc, enrollment: enrollment[0] });
         } catch (err) {
             await session.abortTransaction();
@@ -744,6 +747,36 @@ export const updateStudent = async (req, res) => {
 
         const student = await Student.findByIdAndUpdate(id, { $set: updates }, { new: true });
     if (!student) return res.status(404).json({ message: 'Student not found' });
+
+        // Keep linked login account (User) consistent when applicable.
+        try {
+            const userUpdate = {};
+            const userInc = {};
+
+            if (updates.fullName) userUpdate.fullName = updates.fullName;
+            if (updates.status) {
+                userUpdate.status = normalizeStudentStatusToUserStatus(updates.status);
+                // Invalidate tokens so other sessions logout quickly when status changes.
+                userInc.tokenVersion = 1;
+            }
+
+            if (Object.keys(userUpdate).length > 0 || Object.keys(userInc).length > 0) {
+                await User.updateOne(
+                    { studentRef: id },
+                    {
+                        ...(Object.keys(userUpdate).length > 0 ? { $set: userUpdate } : {}),
+                        ...(Object.keys(userInc).length > 0 ? { $inc: userInc } : {}),
+                    }
+                );
+            }
+        } catch {
+            // non-blocking
+        }
+
+        publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
+        if (updates.status || updates.fullName) publishRealtime({ type: 'users:changed', ts: Date.now() });
+        if (updates.status) publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+
         res.json({ message: 'Student updated', student });
     } catch (err) {
         console.error('Update student error', err);

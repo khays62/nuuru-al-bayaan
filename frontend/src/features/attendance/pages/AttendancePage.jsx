@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { getAttendanceWithOptions, markAttendanceBulk } from '../api/attendance';
@@ -18,7 +18,7 @@ import AttendanceTable from '../components/AttendanceTable';
 import AttendanceFooter from '../components/AttendanceFooter';
 import { useAuth } from '../../../auth/AuthContext';
 import { teacherKeys } from '../../teachers/queryKeys.js';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { useAttendanceRealtimeInvalidation } from '../useAttendanceRealtimeInvalidation';
 
 export default function AttendancePage() {
   const { auth, hasPermission } = useAuth();
@@ -200,33 +200,31 @@ export default function AttendancePage() {
   }, [dirty]);
 
   // Live refresh: keep attendance synced across browsers/tabs.
-  useEffect(() => {
-    const handler = (e) => {
-      const detail = e?.detail || {};
-      if (dirtyRef.current) return;
-      if (saving) return;
+  const onAttendanceChanged = useCallback((e) => {
+    const detail = e?.detail || {};
+    if (dirtyRef.current) return;
+    if (saving) return;
 
-      const eventGs = String(detail?.gradeSectionId || '');
-      const eventDate = String(detail?.date || '');
-      const eventPeriod = String(detail?.periodCode || '');
+    const eventGs = String(detail?.gradeSectionId || '');
+    const eventDate = String(detail?.date || '');
+    const eventPeriod = String(detail?.periodCode || '');
 
-      if (!eventGs) return;
-      if (String(sectionId || '') !== eventGs) return;
+    if (!eventGs) return;
+    if (String(sectionId || '') !== eventGs) return;
 
-      // If date is provided, only refresh when it matches current selection.
-      if (eventDate && String(selectedDate || '') !== eventDate) return;
+    // If date is provided, only refresh when it matches current selection.
+    if (eventDate && String(selectedDate || '') !== eventDate) return;
 
-      // If period is provided, only refresh when it matches the current mode/period.
-      if (eventPeriod) {
-        const currentPeriod = mode === 'daily' ? 'DAY' : String(periodCodeRef.current || '');
-        if (currentPeriod && String(currentPeriod) !== String(eventPeriod)) return;
-      }
+    // If period is provided, only refresh when it matches the current mode/period.
+    if (eventPeriod) {
+      const currentPeriod = mode === 'daily' ? 'DAY' : String(periodCodeRef.current || '');
+      if (currentPeriod && String(currentPeriod) !== String(eventPeriod)) return;
+    }
 
-      setRealtimeTick((t) => t + 1);
-    };
-    onEvent(EVENTS.ATTENDANCE_CHANGED, handler);
-    return () => offEvent(EVENTS.ATTENDANCE_CHANGED, handler);
+    setRealtimeTick((t) => t + 1);
   }, [mode, saving, sectionId, selectedDate]);
+
+  useAttendanceRealtimeInvalidation({ onChanged: onAttendanceChanged });
 
   // Gate toasts by key to avoid duplicates during rapid rerenders.
   const toastGateRef = useRef(new Map());

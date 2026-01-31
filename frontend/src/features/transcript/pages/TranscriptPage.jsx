@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getAcademicYears, getGrades } from '../../lookups/api/lookups';
 import { listStudents, getFullTranscript } from '../../students/api/studentsApi';
@@ -23,13 +23,18 @@ import FormField from '../../../shared/components/ui/FormField.jsx';
 import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { transcriptKeys } from '../queryKeys';
+import { useTranscriptRealtimeInvalidation } from '../useTranscriptRealtimeInvalidation';
 
 export default function TranscriptPage() {
   const { auth, hasPermission } = useAuth();
+  const queryClient = useQueryClient();
   const role = String(auth?.user?.role || '').toLowerCase();
   const isAdmin = role === 'admin';
   const canPrintTranscript = isAdmin || hasPermission('transcript', 'print');
+
+  useTranscriptRealtimeInvalidation();
 
   // Lookups (for labels only)
   const [, setYears] = useState([]);
@@ -64,23 +69,34 @@ export default function TranscriptPage() {
   } = useCascadingFilters();
 
   // Data per student
-  const [loading, setLoading] = useState(false);
-  const [transcripts, setTranscripts] = useState({}); // { [studentId]: { ok, data, error } }
-  const [realtimeTick, setRealtimeTick] = useState(0);
+  const selectedStudentIds = useMemo(
+    () => (selectedStudents || []).map((s) => String(s?._id || '')).filter(Boolean),
+    [selectedStudents]
+  );
 
-  // Live refresh: when results change elsewhere, re-fetch currently selected transcripts.
-  useEffect(() => {
-    const handler = () => {
-      if (!selectedStudents.length) return;
-      setRealtimeTick((t) => t + 1);
-    };
-    onEvent(EVENTS.RESULTS_CHANGED, handler);
-    onEvent(EVENTS.TRANSCRIPT_CHANGED, handler);
-    return () => {
-      offEvent(EVENTS.RESULTS_CHANGED, handler);
-      offEvent(EVENTS.TRANSCRIPT_CHANGED, handler);
-    };
-  }, [selectedStudents.length]);
+  const transcriptQueries = useQueries({
+    queries: selectedStudentIds.map((studentId) => ({
+      queryKey: transcriptKeys.full(studentId),
+      enabled: Boolean(studentId),
+      queryFn: async () => getFullTranscript(studentId),
+      placeholderData: (prev) => prev,
+    })),
+  });
+
+  const transcripts = useMemo(() => {
+    const map = {};
+    for (let i = 0; i < selectedStudentIds.length; i += 1) {
+      const id = selectedStudentIds[i];
+      const q = transcriptQueries[i];
+      map[id] = q?.data || null;
+    }
+    return map;
+  }, [selectedStudentIds, transcriptQueries]);
+
+  const loading = useMemo(() => {
+    if (!selectedStudentIds.length) return false;
+    return transcriptQueries.some((q) => Boolean(q?.isLoading && q?.data == null));
+  }, [selectedStudentIds.length, transcriptQueries]);
 
   // Load lookups once for labels + levels
   useEffect(() => {
@@ -210,31 +226,7 @@ export default function TranscriptPage() {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [showSuggestions, isPickerOpen]);
 
-  // Auto-load transcripts for newly selected students
-  useEffect(() => {
-    const run = async () => {
-      if (!selectedStudents.length) { setTranscripts({}); return; }
-      setLoading(true);
-      try {
-        const current = selectedStudents.map(s => s._id);
-        const toFetch = current.filter(id => !(transcripts[id]?.ok));
-        if (toFetch.length === 0) return;
-        const pairs = await Promise.all(toFetch.map(async (id) => {
-          const { ok, data, error } = await getFullTranscript(id);
-          return [id, { ok, data, error }];
-        }));
-        setTranscripts(prev => {
-          const next = { ...prev };
-          pairs.forEach(([id, payload]) => { next[id] = payload; });
-          return next;
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStudents, realtimeTick]);
+  // Transcript data is now React Query-backed per selected student.
 
   // (Top/Bottom removed)
 
@@ -258,7 +250,11 @@ export default function TranscriptPage() {
   const removeStudent = (id) => {
     manualSelectionRef.current = true;
     setSelectedStudents(prev => prev.filter(x => x._id !== id));
-    setTranscripts(prev => { const next = { ...prev }; delete next[id]; return next; });
+    try {
+      queryClient.removeQueries({ queryKey: transcriptKeys.full(id) });
+    } catch {
+      // ignore
+    }
   };
 
   const handlePrint = () => {
@@ -275,7 +271,6 @@ export default function TranscriptPage() {
     setSuggestions([]);
     setShowSuggestions(false);
     setIsPickerOpen(false);
-    setTranscripts({});
     setMode('latest');
     setAcademicYearId('');
     resetLower('ay');
@@ -288,6 +283,12 @@ export default function TranscriptPage() {
     hasAutoOpenedRef.current = false;
     setSelectedLevels([]);
     setLevelsOpen(false);
+
+    try {
+      queryClient.removeQueries({ queryKey: transcriptKeys.fullBase() });
+    } catch {
+      // ignore
+    }
   };
 
   // Close levels dropdown on outside click

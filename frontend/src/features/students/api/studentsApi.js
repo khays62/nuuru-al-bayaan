@@ -3,6 +3,14 @@
 
 import { apiUrl, fetchJson } from '../../../shared/api/http';
 
+function shouldLogStudentsApiErrors() {
+  try {
+    return Boolean(import.meta?.env?.DEV) || localStorage.getItem('debug:studentsApi') === '1';
+  } catch {
+    return false;
+  }
+}
+
 export async function listStudents(params = {}, opts = {}) {
   try {
     const query = new URLSearchParams();
@@ -17,7 +25,9 @@ export async function listStudents(params = {}, opts = {}) {
     });
     return data; // { data, meta }
   } catch (e) {
-    if (e?.name !== 'AbortError') console.error('Failed to list students', e);
+    if (e?.name !== 'AbortError' && shouldLogStudentsApiErrors()) {
+      console.error('Failed to list students', e);
+    }
     return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
   }
 }
@@ -86,7 +96,7 @@ export async function getStudentProfile(id) {
   try {
     return await fetchJson(`/students/${id}`);
   } catch (e) {
-    console.error('Profile error', e);
+    if (shouldLogStudentsApiErrors()) console.error('Profile error', e);
     return null;
   }
 }
@@ -100,7 +110,7 @@ export async function getStudentHistory(id, params = {}) {
     const qs = query.toString();
     return await fetchJson(`${apiUrl(`/students/${id}/history`)}${qs ? `?${qs}` : ''}`);
   } catch (e) {
-    console.error('History error', e);
+    if (shouldLogStudentsApiErrors()) console.error('History error', e);
     return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
   }
 }
@@ -110,7 +120,7 @@ export async function getFullTranscript(id) {
     const data = await fetchJson(`/students/${id}/full-transcript`);
     return { ok: true, data };
   } catch (e) {
-    console.error('Full transcript error', e);
+    if (shouldLogStudentsApiErrors()) console.error('Full transcript error', e);
     return { ok: false, error: 'Network or server error' };
   }
 }
@@ -124,7 +134,7 @@ export async function getStudentTransfers(id, params = {}) {
     const qs = query.toString();
     return await fetchJson(`${apiUrl(`/students/${id}/transfers`)}${qs ? `?${qs}` : ''}`);
   } catch (e) {
-    console.error('Transfers error', e);
+    if (shouldLogStudentsApiErrors()) console.error('Transfers error', e);
     return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
   }
 }

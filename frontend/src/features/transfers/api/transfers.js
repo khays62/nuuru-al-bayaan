@@ -2,17 +2,22 @@
 // Transfers API: candidates listing and perform transfer (proxy to student transfer logic)
 import { apiUrl, fetchJson } from '../../../shared/api/http';
 
-export async function listTransferCandidates(params = {}) {
+export async function listTransferCandidates(params = {}, opts = {}) {
   try {
     const query = new URLSearchParams();
     const { sortBy, sortDir, ...rest } = params;
     if (sortBy) query.append('sort', `${sortBy}:${sortDir || 'asc'}`);
     Object.entries(rest).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') query.append(k, v); });
     const qs = query.toString();
-    const data = await fetchJson(`${apiUrl('/transfers/candidates')}${qs ? `?${qs}` : ''}`, { cache: 'no-store' });
+    const data = await fetchJson(`${apiUrl('/transfers/candidates')}${qs ? `?${qs}` : ''}`, {
+      cache: 'no-store',
+      signal: opts?.signal,
+    });
     return data; // { data, meta }
   } catch (e) {
-    console.error('Failed to list transfer candidates', e);
+    if (e?.name !== 'AbortError') {
+      console.error('Failed to list transfer candidates', e);
+    }
     return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
   }
 }
@@ -27,17 +32,21 @@ export async function performTransfer(studentId, payload) {
   }
 }
 
-export async function listTransferLogs(params = {}) {
+export async function listTransferLogs(params = {}, opts = {}) {
   try {
     const query = new URLSearchParams();
     const { sortBy, sortDir, ...rest } = params;
     if (sortBy) query.append('sort', `${sortBy}:${sortDir || 'desc'}`);
     Object.entries(rest).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') query.append(k, v); });
     const qs = query.toString();
-    const data = await fetchJson(`${apiUrl('/transfers/logs')}${qs ? `?${qs}` : ''}`);
+    const data = await fetchJson(`${apiUrl('/transfers/logs')}${qs ? `?${qs}` : ''}`, {
+      signal: opts?.signal,
+    });
     return data; // { data, meta }
   } catch (e) {
-    console.error('Failed to list transfer logs', e);
+    if (e?.name !== 'AbortError') {
+      console.error('Failed to list transfer logs', e);
+    }
     return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
   }
 }

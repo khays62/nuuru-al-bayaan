@@ -21,7 +21,8 @@ import { getSubjects } from '../../subjects/api/subjects';
 import { getSlots, getSlotsWithOptions, createSlot, createSlotsBulk, updateSlot, swapSlots, deleteSlot } from '../api/timetable';
 import TeacherTimetablePanel from '../../teachers/components/dashboard/TeacherTimetablePanel.jsx';
 import { teacherKeys } from '../../teachers/queryKeys.js';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { timetableKeys } from '../queryKeys.js';
+import { useTimetableRealtimeInvalidation } from '../useTimetableRealtimeInvalidation.js';
 
 export default function TimetablePage() {
   const { auth, hasPermission } = useAuth();
@@ -53,30 +54,8 @@ export default function TimetablePage() {
   const [sections, setSections] = useState([]);
   const [subjects, setSubjects] = useState([]);
 
-  const [slots, setSlots] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
   const [dndBusy, setDndBusy] = useState(false);
   const [swapUi, setSwapUi] = useState({ isOpen: false, aId: null, bId: null });
-
-  const refreshSlots = useCallback(async ({ silent = false } = {}) => {
-    if (isTeacher) return;
-    if (!sectionId) {
-      setSlots([]);
-      return;
-    }
-    try {
-      if (!silent) { setLoading(true); setError(''); }
-      const res = await getSlots({ gs: sectionId });
-      setSlots(res?.data || []);
-    } catch (err) {
-      console.warn('Failed to load timetable', err);
-      if (!silent) setError('Failed to load timetable');
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [isTeacher, sectionId]);
 
   const dayNames = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
 
@@ -178,31 +157,31 @@ export default function TimetablePage() {
   }, [isTeacher, teacherSectionsQuery.data]);
 
 
-  useEffect(() => {
-    if (isTeacher) return;
-    refreshSlots({ silent: false });
-  }, [isTeacher, refreshSlots, sectionId]);
-
   const todayIdx = useMemo(() => getTimetableDayIndexFromLocalDate(new Date()), []);
 
-  // Live refresh: keep timetable synced across browsers/tabs.
-  useEffect(() => {
-    const handler = () => {
-      if (isTeacher) {
-        try {
-          queryClient.invalidateQueries({ queryKey: teacherKeys.timetableSlots({ gradeSectionId: sectionId }) });
-          queryClient.invalidateQueries({ queryKey: teacherKeys.timetableTodayMine({ dayIndex: todayIdx }) });
-        } catch {
-          // ignore
-        }
-        return;
-      }
-      refreshSlots({ silent: true });
-    };
+  useTimetableRealtimeInvalidation({
+    isTeacher,
+    gradeSectionId: sectionId,
+    todayIdx,
+  });
 
-    onEvent(EVENTS.TIMETABLE_CHANGED, handler);
-    return () => offEvent(EVENTS.TIMETABLE_CHANGED, handler);
-  }, [isTeacher, queryClient, refreshSlots, sectionId, todayIdx]);
+  const adminSlotsQuery = useQuery({
+    queryKey: timetableKeys.slots({ gradeSectionId: sectionId }),
+    enabled: Boolean(!isTeacher && sectionId),
+    queryFn: async ({ signal }) => {
+      const res = await getSlotsWithOptions({ gs: sectionId }, { signal });
+      return Array.isArray(res?.data) ? res.data : [];
+    },
+    placeholderData: (prev) => prev,
+  });
+
+  const slots = useMemo(() => {
+    if (isTeacher) return [];
+    return Array.isArray(adminSlotsQuery.data) ? adminSlotsQuery.data : [];
+  }, [adminSlotsQuery.data, isTeacher]);
+
+  const loading = Boolean(!isTeacher && sectionId && adminSlotsQuery.isLoading && !Array.isArray(adminSlotsQuery.data));
+  const error = !isTeacher && sectionId && adminSlotsQuery.isError ? 'Failed to load timetable' : '';
 
   const teacherSlotsQuery = useQuery({
     queryKey: teacherKeys.timetableSlots({ gradeSectionId: sectionId }),
@@ -276,7 +255,10 @@ export default function TimetablePage() {
         endTime: target.endTime,
       });
       const list = await getSlots({ gs: sectionId });
-      setSlots(list?.data || []);
+      queryClient.setQueryData(
+        timetableKeys.slots({ gradeSectionId: sectionId }),
+        Array.isArray(list?.data) ? list.data : []
+      );
       toast.success('Slot moved');
     } catch (err) {
       toast.error(err?.message || 'Move failed');
@@ -309,7 +291,10 @@ export default function TimetablePage() {
       setDndBusy(true);
       await swapSlots({ aId: swapUi.aId, bId: swapUi.bId });
       const list = await getSlots({ gs: sectionId });
-      setSlots(list?.data || []);
+      queryClient.setQueryData(
+        timetableKeys.slots({ gradeSectionId: sectionId }),
+        Array.isArray(list?.data) ? list.data : []
+      );
       toast.success('Slots swapped');
       closeSwap();
     } catch (err) {
@@ -337,7 +322,10 @@ export default function TimetablePage() {
       const res = await createSlot(payload);
       if (res?.data) {
         const list = await getSlots({ gs: sectionId });
-        setSlots(list?.data || []);
+        queryClient.setQueryData(
+          timetableKeys.slots({ gradeSectionId: sectionId }),
+          Array.isArray(list?.data) ? list.data : []
+        );
         toast.success('Slot created');
         setRoom('');
       }
@@ -362,7 +350,10 @@ export default function TimetablePage() {
       if (isBreak) payload.isBreak = true; else payload.subjectId = subjectId;
       const res = await createSlotsBulk(payload);
       const list = await getSlots({ gs: sectionId });
-      setSlots(list?.data || []);
+      queryClient.setQueryData(
+        timetableKeys.slots({ gradeSectionId: sectionId }),
+        Array.isArray(list?.data) ? list.data : []
+      );
       const conflicts = res?.data?.conflicts || [];
       if (conflicts.length) {
         const parts = conflicts
@@ -395,7 +386,10 @@ export default function TimetablePage() {
     if (!confirm('Delete this slot?')) return;
     try {
       await deleteSlot(slot._id);
-      setSlots((prev) => prev.filter(s => s._id !== slot._id));
+      queryClient.setQueryData(timetableKeys.slots({ gradeSectionId: sectionId }), (prev) => {
+        const arr = Array.isArray(prev) ? prev : [];
+        return arr.filter((s) => s?._id !== slot?._id);
+      });
       toast.success('Deleted');
     } catch (e) { toast.error(e?.message || 'Delete failed'); }
   };
@@ -433,7 +427,6 @@ export default function TimetablePage() {
   const resetAll = () => {
     setGradeId(''); setShiftId(''); setSectionId(''); setSubjectId('');
     setDays([]); setStartTime(''); setEndTime(''); setRoom(''); setIsBreak(false);
-    setSlots([]); setError('');
   };
 
   const selectedSection = useMemo(() => {

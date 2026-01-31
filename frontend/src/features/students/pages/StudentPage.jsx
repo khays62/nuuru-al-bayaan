@@ -3,8 +3,8 @@ import { Plus, Printer, RotateCcw } from 'lucide-react';
 import StudentTable from '../components/StudentTable';
 import StudentForm from '../components/StudentForm';
 import Modal from '../../../shared/components/ui/Modal.jsx';
-import { useEntityList } from '../../../hooks/useEntityList';
 import toast from 'react-hot-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     listStudents,
     createStudent,
@@ -13,7 +13,8 @@ import {
 } from '../api/studentsApi';
 import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
 import { listGradeSections } from '../../grades/api/gradeSections';
-import { on as onEvent, off as offEvent, EVENTS, emitStudentsChanged } from '../../../utils/events';
+import { EVENTS, emitStudentsChanged } from '../../../utils/events';
+import { useRealtimeInvalidation } from '../../../shared/realtime/useRealtimeInvalidation';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
@@ -35,10 +36,13 @@ import Card from '../../../shared/components/ui/Card.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 
 import { useAuth } from '../../../auth/AuthContext';
+import { useDebounce } from '../../../hooks/useDebounce';
+import { studentKeys } from '../queryKeys';
 
 // Student listing page using reusable entity list hook + pagination controls
 export default function StudentPage() {
     const { auth, hasPermission } = useAuth();
+    const queryClient = useQueryClient();
     const isAdmin = String(auth?.user?.role || '').toLowerCase() === 'admin';
     const canAddStudent = isAdmin || hasPermission('students', 'add');
     const canEditStudent = isAdmin || hasPermission('students', 'edit');
@@ -49,7 +53,6 @@ export default function StudentPage() {
     const [editingStudent, setEditingStudent] = useState(null);
     const [loadingEdit, setLoadingEdit] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [classes, setClasses] = useState([]);
     const [gradeSectionFilter, setGradeSectionFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     // Enrollment status tabs (active/inactive/promoted/graduated/transferred/withdrawn/all)
@@ -61,12 +64,12 @@ export default function StudentPage() {
     const [gradeFilter, setGradeFilter] = useState('');
     const [shiftFilter, setShiftFilter] = useState('');
     // removed: legacy filterSections state (using GradeSectionSelect which loads itself)
-    // Cascading lookups
-    const [years, setYears] = useState([]);
-    const [grades, setGrades] = useState([]);
-    const [shifts, setShifts] = useState([]);
-    const [sections, setSections] = useState([]);
-    // No filter persistence per request
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearch = useDebounce(searchTerm, 350);
+
+    const lastLocalStudentsEventRef = useRef({ ts: 0, id: null });
 
     // Dynamic extra filters: ensure clearing enrollmentStatus/includeClosed when switching back to 'open'
     const extraFilters = useMemo(() => {
@@ -85,33 +88,109 @@ export default function StudentPage() {
         return ef;
     }, [gradeSectionFilter, statusFilter, yearFilter, gradeFilter, shiftFilter, enrollmentStatus, cohortId]);
 
-    // fetchFn ha noqon mid aan dib isu abuureyn marka filters is beddelaan; filters waxay imanayaan extraFilters
-    const fetchFn = useCallback(async ({ page, limit, search, sortBy, sortDir, gradeSectionId, status, academicYear, grade, shift, cohortId, enrollmentStatus, includeClosed }) => {
-        const result = await listStudents({ page, limit, search, sortBy, sortDir, gradeSectionId, status, academicYear, grade, shift, cohortId, enrollmentStatus, includeClosed });
-        return { data: result.data, meta: result.meta };
-    }, []);
-
-    const {
-        items: students,
-        meta,
-        isLoading,
-        error,
-        searchTerm,
-        setSearch,
-        setPage,
-        setLimit,
-        refresh,
-        silentRefresh,
-        resetAndReload
-    } = useEntityList({
-        fetchFn,
-        initialSortBy: 'createdAt',
-        initialSortDir: 'desc',
-        initialLimit: 10,
-        persistKey: 'students',
-        extraFilters: extraFilters,
-        debounceSearchMs: 350
+    const yearsQuery = useQuery({
+        queryKey: studentKeys.lookupsAcademicYears(),
+        queryFn: async () => {
+            const ys = await getAcademicYears();
+            return Array.isArray(ys) ? ys : (ys?.data || []);
+        },
+        placeholderData: (prev) => prev,
     });
+    const gradesQuery = useQuery({
+        queryKey: studentKeys.lookupsGrades(),
+        queryFn: async () => {
+            const gs = await getGrades();
+            return Array.isArray(gs) ? gs : (gs?.data || []);
+        },
+        placeholderData: (prev) => prev,
+    });
+    const shiftsQuery = useQuery({
+        queryKey: studentKeys.lookupsShifts(),
+        queryFn: async () => {
+            const ss = await getShifts();
+            return Array.isArray(ss) ? ss : (ss?.data || []);
+        },
+        placeholderData: (prev) => prev,
+    });
+
+    const years = yearsQuery.data || [];
+    const grades = gradesQuery.data || [];
+    const shifts = shiftsQuery.data || [];
+
+    const sectionsQuery = useQuery({
+        queryKey: studentKeys.gradeSectionsByGradeShift({ gradeId: gradeFilter, shiftId: shiftFilter, limit: 200 }),
+        enabled: Boolean(gradeFilter && shiftFilter),
+        queryFn: async ({ signal }) => {
+            const res = await listGradeSections({ grade: gradeFilter, shift: shiftFilter, limit: 200 }, { signal });
+            return Array.isArray(res) ? res : (res?.data || []);
+        },
+        placeholderData: (prev) => prev,
+    });
+    const sections = sectionsQuery.data || [];
+
+    const classesQuery = useQuery({
+        queryKey: studentKeys.gradeSectionsStudentsForm({ limit: 1000, sortBy: 'createdAt', sortDir: 'desc' }),
+        queryFn: async ({ signal }) => {
+            const result = await listGradeSections({ limit: 1000, sortBy: 'createdAt', sortDir: 'desc' }, { signal });
+            const arr = result?.data || [];
+            return arr.map(item => {
+                const gradeName = item?.grade?.gradeName || 'Grade';
+                const section = item?.section || '1';
+                const yearName = item?.academicYear?.yearName || '';
+                const shiftName = item?.shift?.shiftName || '';
+                const tail = [yearName, shiftName].filter(Boolean).join(' - ');
+                const label = tail ? `${gradeName} - Sec ${section} (${tail})` : `${gradeName} - Sec ${section}`;
+                return { _id: item._id, className: label };
+            });
+        },
+        placeholderData: (prev) => prev,
+    });
+    const classes = classesQuery.data || [];
+
+    const listParams = useMemo(() => ({
+        page,
+        limit,
+        search: debouncedSearch,
+        sortBy: 'createdAt',
+        sortDir: 'desc',
+        ...extraFilters,
+    }), [page, limit, debouncedSearch, extraFilters]);
+
+    const studentsQuery = useQuery({
+        queryKey: studentKeys.adminList(listParams),
+        queryFn: async ({ signal }) => {
+            const result = await listStudents(listParams, { signal });
+            return {
+                data: Array.isArray(result?.data) ? result.data : [],
+                meta: result?.meta || { page: 1, limit: 10, total: 0, totalPages: 1 },
+            };
+        },
+        placeholderData: (prev) => prev,
+    });
+
+    const students = studentsQuery.data?.data || [];
+    const meta = studentsQuery.data?.meta || { page, limit, total: 0, totalPages: 1 };
+    const isLoading = Boolean(studentsQuery.isLoading && studentsQuery.data == null);
+    const error = studentsQuery.isError ? studentsQuery.error : null;
+
+    const refresh = useCallback(() => {
+        studentsQuery.refetch();
+    }, [studentsQuery]);
+
+    const silentRefresh = useCallback(() => {
+        queryClient.invalidateQueries({ queryKey: studentKeys.adminListBase });
+    }, [queryClient]);
+
+    const resetAndReload = useCallback(({ search = '' } = {}) => {
+        setSearchTerm(search);
+        setPage(1);
+        queryClient.invalidateQueries({ queryKey: studentKeys.adminListBase });
+    }, [queryClient]);
+
+    const setSearch = useCallback((v) => {
+        setSearchTerm(v || '');
+        setPage(1);
+    }, []);
 
     const {
         sortBy,
@@ -134,95 +213,46 @@ export default function StudentPage() {
         },
     });
 
-    // ------------------------------------------------------------
-    // Fetch classes (cache + guard): Ka hortag laba-mar request (StrictMode / remount)
-    // Isticmaal refs + module-level caching (optional future extract to context)
-                // setSectionsLoading(false);
-    const classesCacheRef = useRef(null);      // xogtii la helay
-    const classesLoadingRef = useRef(false);   // in-flight guard
-    const fetchClasses = useCallback(async () => {
-        // Haddii cache hore u jiro oo component-kan wali aanu buuxin -> isticmaal
-        if (classesCacheRef.current) {
-            if (classes.length === 0) setClasses(classesCacheRef.current);
-            return;
-        }
-        // Haddii request hore socda -> iska daa (mount duplicate)
-        if (classesLoadingRef.current) return;
-        classesLoadingRef.current = true;
-        try {
-            // Fetch Grade Sections (formerly classes) for the enrollment dropdown via apiService
-            const result = await listGradeSections({ limit: 1000, sortBy: 'createdAt', sortDir: 'desc' });
-            const arr = result?.data || [];
-            // Build readable label similar to old className for UI reuse
-            const formatted = arr.map(item => {
-                const gradeName = item?.grade?.gradeName || 'Grade';
-                const section = item?.section || '1';
-                const yearName = item?.academicYear?.yearName || '';
-                const shiftName = item?.shift?.shiftName || '';
-                const tail = [yearName, shiftName].filter(Boolean).join(' - ');
-                const label = tail ? `${gradeName} - Sec ${section} (${tail})` : `${gradeName} - Sec ${section}`;
-                return { _id: item._id, className: label };
-            });
-            classesCacheRef.current = formatted; // ku kaydi cache
-            setClasses(formatted);
-        } catch (e) {
-            console.error('[classes fetch error]', e);
-        } finally {
-            classesLoadingRef.current = false;
-        }
-    }, [classes.length]);
-
-    // Load lookups for toolbar filters on mount
-    useEffect(() => {
-        (async () => {
-            try {
-                const [ys, gs, ss] = await Promise.all([
-                    getAcademicYears(),
-                    getGrades(),
-                    getShifts(),
-                ]);
-                setYears(Array.isArray(ys) ? ys : (ys?.data || []));
-                setGrades(Array.isArray(gs) ? gs : (gs?.data || []));
-                setShifts(Array.isArray(ss) ? ss : (ss?.data || []));
-            } catch { toast.error('Failed to load filters'); }
-        })();
-    }, []);
-
-    // Persist on change
     // No filter persistence
-
-    useEffect(() => { fetchClasses(); }, [fetchClasses]);
     // Toolbar Section options are handled by GradeSectionSelect internally; simply clear selected section when parents change
     useEffect(() => {
         setGradeSectionFilter('');
     }, [yearFilter, gradeFilter, shiftFilter]);
 
-    useEffect(() => {
-        let ignore = false;
-        (async () => {
-            if (!gradeFilter || !shiftFilter) {
-                setSections([]);
+    useRealtimeInvalidation(
+        [EVENTS.STUDENTS_CHANGED, EVENTS.GRADE_SECTIONS_CHANGED],
+        (detail, evt) => {
+            const name = String(evt?.type || '');
+            if (name === EVENTS.STUDENTS_CHANGED) {
+                // Avoid duplicate refresh bursts from the same action:
+                // local emit (this tab) + SSE echo (realtime) for the same student id.
+                const src = String(detail?.source || '');
+                const id = detail?.id != null ? String(detail.id) : null;
+                const now = Date.now();
+
+                if (src === 'realtime') {
+                    const last = lastLocalStudentsEventRef.current;
+                    if (last?.ts && id && last.id === id && (now - last.ts) < 1200) {
+                        return;
+                    }
+                } else {
+                    // Treat anything non-realtime as local.
+                    lastLocalStudentsEventRef.current = { ts: now, id };
+                }
+
+                // Keep edit modal fast + consistent: clear cached profiles then refresh list silently.
+                try { queryClient.removeQueries({ queryKey: studentKeys.adminProfileBase }); } catch { /* ignore */ }
+                // invalidateQueries already refetches active observers in React Query v5.
+                try { queryClient.invalidateQueries({ queryKey: studentKeys.adminListBase, refetchType: 'active' }); } catch { /* ignore */ }
                 return;
             }
-            try {
-                const res = await listGradeSections({ grade: gradeFilter, shift: shiftFilter, limit: 200 });
-                const data = Array.isArray(res) ? res : (res?.data || []);
-                if (!ignore) setSections(data);
-            } catch {
-                if (!ignore) setSections([]);
+            if (name === EVENTS.GRADE_SECTIONS_CHANGED) {
+                try { queryClient.invalidateQueries({ queryKey: studentKeys.gradeSectionsBase }); } catch { /* ignore */ }
             }
-        })();
-        return () => { ignore = true; };
-    }, [gradeFilter, shiftFilter]);
-    useEffect(() => {
-        const handler = () => {
-            // Keep edit modal fast + consistent: clear cached profiles then refresh list silently.
-            profileCacheRef.current = {};
-            silentRefresh();
-        };
-        onEvent(EVENTS.STUDENTS_CHANGED, handler);
-        return () => offEvent(EVENTS.STUDENTS_CHANGED, handler);
-    }, [silentRefresh]);
+            void detail;
+        },
+        { enabled: true }
+    );
 
     const handleAddNew = () => {
         if (!canAddStudent) {
@@ -239,7 +269,6 @@ export default function StudentPage() {
     //  3. Kadib si asyncronous ah u cusboonaysii profile dhammeystiran marka la soo helo.
     //  4. Isticmaal cache ku saleysan memory si edit mar labaad ah u deg degsado.
     // ------------------------------------------------------------
-    const profileCacheRef = useRef({}); // { studentId: enrichedStudent }
     const handleEdit = async (student) => {
         if (!canEditStudent) {
             toast.error('You do not have permission to edit students');
@@ -248,26 +277,37 @@ export default function StudentPage() {
         // Step 1: Immediate open with basic row data
         setEditingStudent(student);
         setIsModalOpen(true);
-        // Haddii horey loo helay profile buuxa -> apply isla markiiba
-        if (profileCacheRef.current[student._id]) {
-            setEditingStudent(profileCacheRef.current[student._id]);
-            return; // no network wait
+
+        const k = studentKeys.adminProfile(student._id);
+        const cached = queryClient.getQueryData(k);
+        if (cached && cached.student) {
+            const enriched = { ...cached.student };
+            if (cached.latestEnrollment?.gradeSection?._id) {
+                enriched.classId = cached.latestEnrollment.gradeSection._id;
+            }
+            setEditingStudent(enriched);
+            return;
         }
+
         setLoadingEdit(true);
         try {
-            const profile = await fetchStudentProfile(student._id);
+            const profile = await queryClient.fetchQuery({
+                queryKey: k,
+                queryFn: () => fetchStudentProfile(student._id),
+            });
             if (profile && profile.student) {
                 const enriched = { ...profile.student };
                 if (profile.latestEnrollment?.gradeSection?._id) {
                     enriched.classId = profile.latestEnrollment.gradeSection._id;
                 }
-                profileCacheRef.current[student._id] = enriched;
                 setEditingStudent(enriched);
             } else {
                 toast.error('Failed to load full student details');
             }
         } catch (e) {
-            console.error(e);
+            try {
+                if (import.meta?.env?.DEV || localStorage.getItem('debug:students') === '1') console.error(e);
+            } catch { /* ignore */ }
             toast.error('Error loading student details');
         } finally {
             setLoadingEdit(false);
@@ -288,19 +328,16 @@ export default function StudentPage() {
                 if (ok) {
                     toast.success('Student updated');
                     // Invalidate and warm profile cache for immediate re-edit
-                    try { delete profileCacheRef.current[editingStudent._id]; } catch { /* ignore */ }
+                    try { queryClient.removeQueries({ queryKey: studentKeys.adminProfile(editingStudent._id) }); } catch { /* ignore */ }
                     try {
-                        const profile = await fetchStudentProfile(editingStudent._id);
-                        if (profile && profile.student) {
-                            const enriched = { ...profile.student };
-                            if (profile.latestEnrollment?.gradeSection?._id) {
-                                enriched.classId = profile.latestEnrollment.gradeSection._id;
-                            }
-                            profileCacheRef.current[editingStudent._id] = enriched;
-                        }
+                        const profile = await queryClient.fetchQuery({
+                            queryKey: studentKeys.adminProfile(editingStudent._id),
+                            queryFn: () => fetchStudentProfile(editingStudent._id),
+                        });
+                        void profile;
                     } catch { /* no-op prefetch */ }
                     closeModal();
-                    emitStudentsChanged();
+                    emitStudentsChanged({ source: 'local', action: 'update', id: String(editingStudent._id), ts: Date.now() });
                 } else {
                     if (status === 409) toast.error(data.message || 'Conflict updating student');
                     else toast.error(data.message || 'Update failed');
@@ -314,7 +351,7 @@ export default function StudentPage() {
                 if (ok) {
                     toast.success('Student created');
                     closeModal();
-                    emitStudentsChanged();
+                    emitStudentsChanged({ source: 'local', action: 'create', id: String(data?.student?._id || ''), ts: Date.now() });
                 } else if (status === 409) {
                     toast.error(data.message || 'Conflict creating student');
                 } else {
@@ -322,7 +359,9 @@ export default function StudentPage() {
                 }
             }
         } catch (e) {
-            console.error(e);
+            try {
+                if (import.meta?.env?.DEV || localStorage.getItem('debug:students') === '1') console.error(e);
+            } catch { /* ignore */ }
             toast.error('Network error');
         } finally {
             setIsSaving(false);
@@ -412,7 +451,7 @@ export default function StudentPage() {
         setStatusFilter('');
         setEnrollmentStatus('open');
         setCohortId('');
-        resetAndReload({ filters: {}, search: '' });
+        resetAndReload({ search: '' });
     };
 
     return (

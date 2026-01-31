@@ -7,6 +7,7 @@ import { useAuth } from '../../../auth/AuthContext';
 import { getStudentProfile } from '../api/studentsApi';
 import { studentKeys } from '../queryKeys';
 import Card from '../../../shared/components/ui/Card.jsx';
+import { useStudentDashboardRealtimeInvalidation } from '../components/dashboard/useStudentDashboardRealtimeInvalidation';
 
 function TabNav({ tabs = [] }) {
   const PRIMARY_SIZE = 3;
@@ -151,6 +152,8 @@ function StudentDashboardInner({ studentId }) {
   });
 
   const studentName = profileQuery.data?.student?.fullName || profileQuery.data?.student?.name || 'Student';
+
+  useStudentDashboardRealtimeInvalidation({ studentId, isStudentSelf: false, enabled: true });
 
   const tabs = useMemo(() => {
     const out = [];

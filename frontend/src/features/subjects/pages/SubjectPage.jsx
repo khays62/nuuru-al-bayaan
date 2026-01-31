@@ -16,11 +16,12 @@ import SortControls from '../../../shared/components/DataToolbar/SortControls.js
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import { useClientSort } from '../../../shared/hooks/useClientSort';
 import SubjectTable from '../components/SubjectTable.jsx';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 // API services (existing ones for now)
 import { getSubjects, addSubject, updateSubject, deleteSubject } from '../api/subjects';
 import { getGrades } from '../../lookups/api/lookups';
+import { subjectKeys } from '../queryKeys';
+import { useSubjectsRealtimeInvalidation } from '../useSubjectsRealtimeInvalidation';
 
 // NOTE: getSubjects(apiService) returns { data, meta }. We'll wrap it in fetchFn signature.
 
@@ -40,8 +41,8 @@ export default function SubjectPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- useEntityList Hook (Core List Management) ---
-  const fetchSubjects = useCallback(async (params) => {
-    const result = await getSubjects(params);
+  const fetchSubjects = useCallback(async (params, options = {}) => {
+    const result = await getSubjects(params, { signal: options?.signal });
     return result; // { data, meta }
   }, []);
 
@@ -51,7 +52,8 @@ export default function SubjectPage() {
     initialSortDir: 'desc',
     initialLimit: 10,
     persistKey: 'subjects',
-    extraFilters: { grade: gradeFilter }
+    extraFilters: { grade: gradeFilter },
+    queryKeyBase: subjectKeys.listBase,
   });
 
   // Extract for convenience
@@ -65,9 +67,10 @@ export default function SubjectPage() {
     setPage,
     setLimit,
     refresh,
-    silentRefresh,
     resetAndReload
   } = list;
+
+  useSubjectsRealtimeInvalidation({ enabled: true });
 
   const {
     sortBy,
@@ -145,7 +148,6 @@ export default function SubjectPage() {
       }
       return;
     }
-    silentRefresh();
     toast.success('Subject deleted', { position: 'top-center' });
   };
 
@@ -179,19 +181,11 @@ export default function SubjectPage() {
       setIsSubmitting(false);
       return;
     }
-    // Refresh only this list; GradeForm will refresh on demand via its refresh button or when grade changes
-    await silentRefresh();
+    // EDCI: realtime invalidation will refresh the list across browsers/tabs.
     closeModal();
     toast.success(editingSubject ? 'Subject updated' : 'Subject created', { position: 'top-center' });
     setIsSubmitting(false);
   };
-
-  // Live refresh: keep list in sync across browsers/tabs.
-  useEffect(() => {
-    const handler = () => silentRefresh();
-    onEvent(EVENTS.SUBJECTS_CHANGED, handler);
-    return () => offEvent(EVENTS.SUBJECTS_CHANGED, handler);
-  }, [silentRefresh]);
 
   // --- Toolbar Slots ---
   const searchSlot = (

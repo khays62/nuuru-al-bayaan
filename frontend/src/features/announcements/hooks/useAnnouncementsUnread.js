@@ -10,9 +10,10 @@ export function useAnnouncementsUnread(userKey) {
       const n = Number(data?.count || 0);
       return Number.isFinite(n) && n >= 0 ? n : 0;
     },
-    staleTime: 5_000,
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: true,
+    // SSE optimistically bumps unread; polling just reconciles occasionally.
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 

@@ -11,7 +11,7 @@ import RowActionButtons from "../../../shared/components/table/RowActionButtons.
 import { useAuth } from "../../../auth/AuthContext";
 import { getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, markAnnouncementsRead } from "../../../api";
 import { announcementKeys } from '../queryKeys';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { useAnnouncementsRealtimeInvalidation } from '../useAnnouncementsRealtimeInvalidation';
 
 export default function AnnouncementsPage() {
   const { auth, hasPermission } = useAuth();
@@ -26,6 +26,7 @@ export default function AnnouncementsPage() {
   const [deletingId, setDeletingId] = useState(null);
 
   const user = auth?.user || null;
+  const userKey = user?._id || user?.username || null;
 
   const {
     data: announcements = [],
@@ -42,7 +43,6 @@ export default function AnnouncementsPage() {
 
   // Clear unread badge when Announcements page opens
   useEffect(() => {
-    const userKey = user?._id || user?.username || null;
     if (!userKey) return;
     let cancelled = false;
     (async () => {
@@ -60,19 +60,7 @@ export default function AnnouncementsPage() {
   }, [user?._id, user?.username]);
 
   // Live refresh: keep announcements synced across browsers/tabs.
-  useEffect(() => {
-    const handler = () => {
-      try {
-        queryClient.invalidateQueries({ queryKey: announcementKeys.list() });
-        const userKey = user?._id || user?.username || null;
-        if (userKey) queryClient.invalidateQueries({ queryKey: ['announcements', 'unreadCount', userKey] });
-      } catch {
-        // ignore
-      }
-    };
-    onEvent(EVENTS.ANNOUNCEMENTS_CHANGED, handler);
-    return () => offEvent(EVENTS.ANNOUNCEMENTS_CHANGED, handler);
-  }, [queryClient, user?._id, user?.username]);
+  useAnnouncementsRealtimeInvalidation({ userKey });
 
   const canPost = useMemo(() => {
     if (!user) return false;

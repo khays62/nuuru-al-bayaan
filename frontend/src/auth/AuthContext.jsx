@@ -3,6 +3,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { queryClient } from '../queryClient';
 import { abortSessionRequests, resetSessionAbortController } from '../api/sessionAbort';
 import { fetchJson } from '../shared/api/http';
+import { on as onEvent, off as offEvent, EVENTS } from '../utils/events';
 
 const AuthContext = createContext();
 
@@ -11,8 +12,10 @@ const AUTH_LAST_ACTIVITY_KEY = 'auth:lastActivity';
 const AUTH_VERIFY_INTERVAL_MS = (() => {
   const raw = import.meta?.env?.VITE_AUTH_VERIFY_INTERVAL_MS;
   const n = Number(raw);
-  // Default: fast enough to enforce deactivation within seconds.
-  return Number.isFinite(n) && n > 0 ? n : 3000;
+  // Default: frequent enough to enforce deactivation, without spamming the backend.
+  const base = Number.isFinite(n) && n > 0 ? n : 15_000;
+  // Guardrail: avoid ultra-tight polling (e.g. 1000ms) that overloads the server.
+  return Math.max(5_000, base);
 })();
 // Auto-logout after user inactivity (shared across tabs via localStorage).
 // 30 minutes
@@ -97,22 +100,46 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (!user) return;
     let inFlight = false;
-    const id = setInterval(async () => {
-      if (inFlight) return;
+    let stopped = false;
+    let timer = null;
+
+    const getIntervalMs = () => {
+      // Slow down when tab is hidden to reduce load.
+      if (typeof document !== 'undefined' && document.hidden) return Math.max(30_000, AUTH_VERIFY_INTERVAL_MS);
+      return AUTH_VERIFY_INTERVAL_MS;
+    };
+
+    const schedule = () => {
+      if (stopped) return;
+      clearTimeout(timer);
+      timer = setTimeout(tick, getIntervalMs());
+    };
+
+    const tick = async () => {
+      if (stopped) return;
+      if (inFlight) return schedule();
       inFlight = true;
       try {
         const data = await fetchJson('/auth/verify');
         const ok = Boolean(data?.success && data?.user);
-        if (!ok) {
-          clientLogout({ redirect: true });
-        }
+        if (!ok) clientLogout({ redirect: true });
       } catch {
         // ignore transient failures
       } finally {
         inFlight = false;
+        schedule();
       }
-    }, AUTH_VERIFY_INTERVAL_MS);
-    return () => clearInterval(id);
+    };
+
+    const onVis = () => schedule();
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
+    schedule();
+
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -192,6 +219,31 @@ export const AuthProvider = ({ children }) => {
   }, [user]);
 
   const refreshUser = fetchCurrentUser;
+
+  // Realtime permissions/profile refresh: when a user's account is changed, refresh auth state immediately.
+  // This avoids waiting for the polling interval (default 15s) to pick up new permissions.
+  useEffect(() => {
+    if (!user) return;
+    const currentId = String(user?.id || user?._id || '');
+    if (!currentId) return;
+
+    let timer = null;
+    const handler = (ev) => {
+      const changedId = ev?.detail?.id != null ? String(ev.detail.id) : '';
+      if (!changedId || changedId !== currentId) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        fetchCurrentUser();
+      }, 250);
+    };
+
+    onEvent(EVENTS.USERS_CHANGED, handler);
+    return () => {
+      clearTimeout(timer);
+      offEvent(EVENTS.USERS_CHANGED, handler);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const hasPermission = (module, action) => {
     if (!user) return false;

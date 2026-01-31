@@ -1,9 +1,9 @@
 import { fetchJson } from '../../../shared/api/http';
 
-export const listTeachers = (params = {}) => {
+export const listTeachers = (params = {}, options = {}) => {
   const qs = new URLSearchParams(params).toString();
   const path = qs ? `teachers?${qs}` : 'teachers';
-  return fetchJson(path);
+  return fetchJson(path, options);
 };
 
 export const getTeacherProfile = (teacherId, options = {}) => {

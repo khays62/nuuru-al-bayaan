@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 // import { useAuth } from "../contexts/AuthContext";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   listUsers,
   createUser,
@@ -9,6 +10,8 @@ import {
   getUserById,
   resetUserLoginLockout,
 } from "../api/usersApi";
+
+import { useDebounce } from '../../../hooks/useDebounce';
 
 import SearchInput from "../../../shared/components/DataToolbar/SearchInput.jsx";
 import DataToolbar from "../../../shared/components/DataToolbar/DataToolbar.jsx";
@@ -19,7 +22,8 @@ import { useClientSort } from "../../../shared/hooks/useClientSort";
 import Button from "../../../shared/components/ui/Button.jsx";
 import UserTable from "../components/UserTable.jsx";
 import UserFormModal from "../components/UserFormModal.jsx";
-import { on as onEvent, off as offEvent, EVENTS } from "../../../utils/events";
+import { userKeys } from '../queryKeys';
+import { useUsersRealtimeInvalidation } from '../useUsersRealtimeInvalidation';
 
 import { MODULE_PERMISSIONS, MODULES } from "../../../shared/auth/permissionContract.js";
 
@@ -43,13 +47,13 @@ const buildEmptyPermissionsClone = () => JSON.parse(JSON.stringify(emptyPermissi
 
 /* ---------------- Component ---------------- */
 export default function UserManagementPage() {
-  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 350);
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const editingUserId = editingUser?._id ? String(editingUser._id) : '';
   const [isFormLoading, setIsFormLoading] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [createReadOnly, setCreateReadOnly] = useState({
     username: true,
     password: true,
@@ -63,7 +67,43 @@ export default function UserManagementPage() {
   const [statusOverrides, setStatusOverrides] = useState({});
   const [pendingById, setPendingById] = useState({});
 
-  const usersChangedDebounceRef = useRef(null);
+  const queryClient = useQueryClient();
+  useUsersRealtimeInvalidation({ userId: editingUserId || undefined });
+  const hydratingRef = useRef(false);
+  const lastRemoteUpdatedAtRef = useRef('');
+
+  const patchUserInCachedLists = useCallback((userId, patch) => {
+    if (!userId) return;
+    queryClient.setQueriesData({ queryKey: userKeys.adminListBase }, (old) => {
+      if (!Array.isArray(old)) return old;
+      let changed = false;
+      const next = old.map((u) => {
+        if (String(u?._id || '') !== String(userId)) return u;
+        changed = true;
+        const updated = typeof patch === 'function' ? patch(u) : { ...(u || {}), ...(patch || {}) };
+        return updated;
+      });
+      return changed ? next : old;
+    });
+  }, [queryClient]);
+
+  const upsertUserInCachedLists = useCallback((user) => {
+    const id = user?._id;
+    if (!id) return;
+    queryClient.setQueriesData({ queryKey: userKeys.adminListBase }, (old) => {
+      if (!Array.isArray(old)) return old;
+      const idx = old.findIndex((u) => String(u?._id || '') === String(id));
+      if (idx >= 0) {
+        const next = old.slice();
+        next[idx] = { ...(next[idx] || {}), ...(user || {}) };
+        return next;
+      }
+      // Insert new staff/admin users at top; keep list stable otherwise.
+      const role = String(user?.role || '').toLowerCase();
+      if (role === 'student' || role === 'teacher') return old;
+      return [user, ...old];
+    });
+  }, [queryClient]);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -77,16 +117,64 @@ export default function UserManagementPage() {
     selectedModule: "",
   });
 
+  const hydrateFormFromUser = useCallback((u) => {
+    if (!u) return;
+
+    const permissions = buildEmptyPermissions();
+    const userPerms = u.permissions || {};
+
+    MODULES.forEach((module) => {
+      MODULE_PERMISSIONS[module].forEach((perm) => {
+        permissions[module][perm] = !!userPerms?.[module]?.[perm];
+      });
+
+      // Backward compatibility: preserve FULL semantics
+      if (userPerms?.[module]?.full === true) {
+        MODULE_PERMISSIONS[module].forEach((perm) => {
+          permissions[module][perm] = true;
+        });
+      }
+
+      const allChecked = MODULE_PERMISSIONS[module]
+        .filter((p) => p !== 'full')
+        .every((p) => permissions[module][p]);
+
+      permissions[module].full = allChecked;
+    });
+
+    hydratingRef.current = true;
+    setForm((prev) => ({
+      fullName: u.fullName || "",
+      username: u.username || "",
+      email: u.email || "",
+      phone: u.phone || "",
+      password: "",
+      confirmPassword: "",
+      role: u.role || "staff",
+      permissions,
+      // UI-only selection: preserve current selection so the admin keeps their place.
+      selectedModule: prev?.selectedModule || "",
+    }));
+    hydratingRef.current = false;
+    setIsDirty(false);
+  }, []);
+
 //   const { hasPermission } = useAuth();
 
   
-  const fetchUsers = useCallback(async ({ silent = false } = {}) => {
-    if (!silent) setIsLoading(true); // start loading
-  
-    try {
-      const data = await listUsers({ search, role: roleFilter, status: statusFilter });
-  
-      // Make sure data is an array
+  const usersQuery = useQuery({
+    queryKey: userKeys.adminList({
+      search: debouncedSearch,
+      role: roleFilter,
+      status: statusFilter,
+    }),
+    queryFn: async ({ signal }) => {
+      const data = await listUsers({
+        search: debouncedSearch,
+        role: roleFilter,
+        status: statusFilter,
+      }, { signal });
+
       const usersArray = Array.isArray(data) ? data : [];
 
       // User Management page should only show staff/admin accounts.
@@ -94,45 +182,39 @@ export default function UserManagementPage() {
         const r = String(u?.role || '').toLowerCase();
         return r !== 'student' && r !== 'teacher';
       });
-  
-      // Sort by creation date descending (latest first)
-      const sortedUsers = staffOnly.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
 
-      setUsers(sortedUsers);
-      if (!silent) setCurrentPage(1);
-    } catch (err) {
-      console.error("Failed to fetch users", err);
-      if (!silent) setUsers([]);
-    } finally {
-      if (!silent) setIsLoading(false); // stop loading
-    }
-  }, [search, roleFilter, statusFilter]);
-  
-  // refetch users when filters or limit/search changes
+      // Default sort: latest first.
+      staffOnly.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      return staffOnly;
+    },
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const users = usersQuery.data || [];
+  const isLoading = Boolean(usersQuery.isLoading && usersQuery.data == null);
+
+  // Keep an edited user fresh across browsers: refetch the user's details when USERS_CHANGED invalidates.
+  const editingUserQuery = useQuery({
+    queryKey: userKeys.adminProfile(editingUserId),
+    enabled: Boolean(showModal && editingUserId),
+    queryFn: async ({ signal }) => getUserById(editingUserId, { signal }),
+    placeholderData: (prev) => prev,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
+  // Reset page when query inputs change.
   useEffect(() => {
     setCurrentPage(1);
-    fetchUsers();
-  }, [limit, fetchUsers]);
-
-  // Live refresh: when another part of the app changes user status (e.g. bell actions)
-  useEffect(() => {
-    const handler = () => {
-      clearTimeout(usersChangedDebounceRef.current);
-      usersChangedDebounceRef.current = setTimeout(() => fetchUsers({ silent: true }), 150);
-    };
-    onEvent(EVENTS.USERS_CHANGED, handler);
-    return () => {
-      clearTimeout(usersChangedDebounceRef.current);
-      offEvent(EVENTS.USERS_CHANGED, handler);
-    };
-  }, [fetchUsers]);
+  }, [debouncedSearch, roleFilter, statusFilter, limit]);
 
    
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (!hydratingRef.current) setIsDirty(true);
     if (name === "phone") {
       // Only allow digits
       if (!/^\d*$/.test(value)) {
@@ -173,6 +255,7 @@ export default function UserManagementPage() {
      
   
   const togglePermission = (module, permission) => {
+    if (!hydratingRef.current) setIsDirty(true);
     setForm((prev) => {
       const permissions = structuredClone(prev.permissions);
   
@@ -203,6 +286,7 @@ export default function UserManagementPage() {
   };
   
   const resetForm = () => {
+    setIsDirty(false);
     setForm({
       fullName: "",
       username: "",
@@ -217,6 +301,97 @@ export default function UserManagementPage() {
     setEditingUser(null);
     setCreateReadOnly({ username: true, password: true, confirmPassword: true });
   };
+
+  const createUserMutation = useMutation({
+    mutationFn: (payload) => createUser(payload),
+    onSuccess: (created) => {
+      toast.success('User created successfully');
+      // Avoid extra refetch/cancel storms: update local cache now; SSE invalidation will refetch cross-browser.
+      upsertUserInCachedLists(created?.user || created);
+      setShowModal(false);
+      resetForm();
+    },
+    onError: (e) => {
+      toast.error(e?.data?.message || e?.message || 'Failed to save user');
+    },
+  });
+
+  const updateUserMutation = useMutation({
+    mutationFn: ({ id, payload }) => updateUser(id, payload),
+    onSuccess: (resp, vars) => {
+      toast.success('User updated successfully');
+      if (vars?.id) {
+        const updated = resp?.user || resp?.data?.user || resp?.data || resp?.user || null;
+        if (updated) {
+          patchUserInCachedLists(vars.id, updated);
+          queryClient.setQueryData(userKeys.adminProfile(vars.id), updated);
+        } else {
+          // If API response isn't normalized, at least mirror what we submitted.
+          patchUserInCachedLists(vars.id, (u) => ({ ...u, ...(vars?.payload || {}) }));
+          queryClient.setQueryData(userKeys.adminProfile(vars.id), (prev) => ({ ...(prev || {}), ...(vars?.payload || {}) }));
+        }
+      }
+      setShowModal(false);
+      resetForm();
+    },
+    onError: (e) => {
+      toast.error(e?.data?.message || e?.message || 'Failed to save user');
+    },
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: (id) => toggleUserStatus(id),
+    onSuccess: (resp, id) => {
+      const updated = resp?.user || resp?.data?.user || resp?.data || resp;
+      if (id) {
+        if (updated && typeof updated === 'object') {
+          patchUserInCachedLists(id, updated);
+          queryClient.setQueryData(userKeys.adminProfile(id), updated);
+        }
+      }
+    },
+  });
+
+  const resetLockoutMutation = useMutation({
+    mutationFn: (id) => resetUserLoginLockout(id),
+    onSuccess: (_, id) => {
+      toast.success('Login lockout reset successfully');
+      // Prefer avoiding immediate refetch; SSE will broadcast the change.
+      // If profile is open, we can still mark it as stale by updating a lightweight timestamp.
+      if (id) {
+        patchUserInCachedLists(id, (u) => ({ ...(u || {}), updatedAt: new Date().toISOString() }));
+        queryClient.setQueryData(userKeys.adminProfile(id), (prev) => ({ ...(prev || {}), updatedAt: new Date().toISOString() }));
+      }
+    },
+    onError: (e) => {
+      toast.error(e?.data?.message || e?.message || 'Failed to reset lockout');
+    },
+  });
+
+  const isSaving = Boolean(createUserMutation.isPending || updateUserMutation.isPending);
+
+  // Re-hydrate the edit form from the latest server state when the same user changes in another browser.
+  useEffect(() => {
+    if (!showModal) return;
+    if (!editingUserId) return;
+    const remote = editingUserQuery.data;
+    if (!remote) return;
+
+    const remoteUpdatedAt = String(remote?.updatedAt || '');
+    const prevUpdatedAt = lastRemoteUpdatedAtRef.current;
+    if (remoteUpdatedAt) lastRemoteUpdatedAtRef.current = remoteUpdatedAt;
+
+    // If the admin has local unsaved edits, don't overwrite; just notify.
+    if (isDirty) {
+      if (remoteUpdatedAt && prevUpdatedAt && prevUpdatedAt !== remoteUpdatedAt) {
+        toast('This user was updated in another tab. Close/reopen to sync.', { duration: 2500 });
+      }
+      return;
+    }
+
+    if (isFormLoading || isSaving) return;
+    hydrateFormFromUser(remote);
+  }, [showModal, editingUserId, editingUserQuery.data, isDirty, isFormLoading, isSaving, hydrateFormFromUser]);
 
  
   const handleSubmit = async (e) => {
@@ -283,57 +458,31 @@ export default function UserManagementPage() {
     if (form.password) payload.password = form.password;
   
     try {
-      setIsSaving(true);
-  
-      // Check for existing username/email/phone
-      const exists = users.some((u) => {
-        if (editingUser && u._id === editingUser._id) return false; // skip current user when editing
-        return (
-          u.username === form.username ||
-          (form.email && u.email === form.email) ||
-          (form.phone && u.phone === form.phone)
-        );
-      });
-  
-      if (exists) {
-        toast.error("Username, Email, or Phone already exists");
-        return;
+      // Best-effort client-side uniqueness check only when we're showing the full list.
+      const canClientValidateUnique = !debouncedSearch && !roleFilter && !statusFilter;
+      if (canClientValidateUnique) {
+        const exists = users.some((u) => {
+          if (editingUser && u._id === editingUser._id) return false;
+          return (
+            u.username === form.username ||
+            (form.email && u.email === form.email) ||
+            (form.phone && u.phone === form.phone)
+          );
+        });
+        if (exists) {
+          toast.error('Username, Email, or Phone already exists');
+          return;
+        }
       }
-  
-      // Create or update
+
       if (editingUser) {
-        const res = await updateUser(editingUser._id, payload);
-        if (res?.error) {
-          toast.error(res.error);
-          return;
-        }
-        const updated = res?.data?.user || res?.data;
-        if (updated && updated._id) {
-          setUsers((prev) => prev.map((u) => (u?._id === updated._id ? { ...u, ...updated } : u)));
-        }
-        toast.success("User updated successfully");
+        await updateUserMutation.mutateAsync({ id: editingUser._id, payload });
       } else {
-        const res = await createUser(payload);
-        if (res?.error) {
-          toast.error(res.error);
-          return;
-        }
-        const created = res?.data?.user || res?.data;
-        if (created && created._id) {
-          setUsers((prev) => [created, ...prev]);
-        }
-        toast.success("User created successfully");
+        await createUserMutation.mutateAsync(payload);
       }
-  
-      setShowModal(false);
-      resetForm();
-      // No explicit refetch here: usersApi dispatches USERS_CHANGED and SSE will also arrive.
-      // The debounced USERS_CHANGED handler will refresh silently when needed.
     } catch (err) {
-      console.error("Failed to save user", err);
-      toast.error("Failed to save user");
-    } finally {
-      setIsSaving(false);
+      // onError handles toast; keep console for debugging.
+      console.error('Failed to save user', err);
     }
   };
 
@@ -341,45 +490,19 @@ export default function UserManagementPage() {
     setEditingUser(user);
     setShowModal(true);
     setIsFormLoading(true);
+    setIsDirty(false);
     setCreateReadOnly({ username: false, password: false, confirmPassword: false });
 
     try {
-      const userRes = await getUserById(user._id);
-      const u = userRes?.ok ? userRes.data : user;
+      const id = user?._id;
+      const u = id
+        ? await queryClient.fetchQuery({
+          queryKey: userKeys.adminProfile(id),
+          queryFn: ({ signal }) => getUserById(id, { signal }),
+        })
+        : user;
 
-      const permissions = buildEmptyPermissions();
-      const userPerms = u.permissions || {};
-
-      MODULES.forEach((module) => {
-        MODULE_PERMISSIONS[module].forEach((perm) => {
-          permissions[module][perm] = !!userPerms?.[module]?.[perm];
-        });
-
-        // Backward compatibility: preserve FULL semantics
-        if (userPerms?.[module]?.full === true) {
-          MODULE_PERMISSIONS[module].forEach((perm) => {
-            permissions[module][perm] = true;
-          });
-        }
-
-        const allChecked = MODULE_PERMISSIONS[module]
-          .filter((p) => p !== "full")
-          .every((p) => permissions[module][p]);
-
-        permissions[module].full = allChecked;
-      });
-
-      setForm({
-        fullName: u.fullName || "",
-        username: u.username || "",
-        email: u.email || "",
-        phone: u.phone || "",
-        password: "",
-        confirmPassword: "",
-        role: u.role || "staff",
-        permissions,
-        selectedModule: "",
-      });
+      hydrateFormFromUser(u);
     } catch (err) {
       console.error("Failed to load user details", err);
       toast.error("Failed to load user details");
@@ -411,10 +534,12 @@ export default function UserManagementPage() {
     setStatusOverrides((prev) => ({ ...prev, [id]: nextStatus }));
 
     try {
-      const res = await toggleUserStatus(id);
-      if (res?.error) throw new Error(res.error);
-
-      setUsers((prev) => prev.map((u) => (u?._id === id ? { ...u, status: nextStatus } : u)));
+      await toggleStatusMutation.mutateAsync(id);
+      setStatusOverrides((prev) => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
+      });
       toast.success('Status updated');
     } catch (err) {
       console.error(err);
@@ -490,9 +615,7 @@ export default function UserManagementPage() {
 
     setPendingById((prev) => ({ ...prev, [id]: true }));
     try {
-      const res = await resetUserLoginLockout(id);
-      if (!res?.ok) throw new Error(res?.error || 'Failed to reset lockout');
-      toast.success('Login lockout reset successfully');
+      await resetLockoutMutation.mutateAsync(id);
     } catch (err) {
       console.error('Reset lockout failed', err);
       toast.error(err?.message || 'Failed to reset lockout');

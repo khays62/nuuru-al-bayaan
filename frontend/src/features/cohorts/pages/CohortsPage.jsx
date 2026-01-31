@@ -14,8 +14,12 @@ import { useClientSort } from '../../../shared/hooks/useClientSort';
 import Button from '../../../shared/components/ui/Button.jsx';
 import CohortForm from '../components/CohortForm.jsx';
 import CohortTable from '../components/CohortTable.jsx';
+import { cohortsKeys } from '../queryKeys';
+import { useCohortsRealtimeInvalidation } from '../useCohortsRealtimeInvalidation';
 
 export default function CohortsPage() {
+  useCohortsRealtimeInvalidation();
+
   const [statusFilter, setStatusFilter] = useState('');
   const [ayFilter, setAyFilter] = useState('');
   const [ayOptions, setAyOptions] = useState([]);
@@ -40,7 +44,15 @@ export default function CohortsPage() {
   const {
     items, meta, isLoading, error,
     searchTerm, setSearch, setFilter, setPage, setLimit, refresh, resetAndReload
-  } = useEntityList({ fetchFn, initialSortBy: 'createdAt', initialSortDir: 'desc', initialLimit: 10, persistKey: 'cohorts', extraFilters: { status: statusFilter || undefined, startAcademicYear: ayFilter || undefined } });
+  } = useEntityList({
+    fetchFn,
+    initialSortBy: 'createdAt',
+    initialSortDir: 'desc',
+    initialLimit: 10,
+    persistKey: 'cohorts',
+    extraFilters: { status: statusFilter || undefined, startAcademicYear: ayFilter || undefined },
+    queryKeyBase: cohortsKeys.listBase(),
+  });
 
   const {
     sortBy,

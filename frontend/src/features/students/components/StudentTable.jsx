@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, KeyRound, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useMutation } from '@tanstack/react-query';
 import StatusBadge from '../../../shared/components/ui/badges/StatusBadge.jsx';
 import { deactivateStudentApi, reactivateStudentApi, resetStudentPassword } from '../api/studentsApi';
 import { emitStudentsChanged } from '../../../utils/events';
@@ -25,6 +26,86 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
 
     const canResetPw = roleLower !== 'student'
         && (isAdmin || hasPermission('students', 'resetPassword'));
+
+    const resetPwMutation = useMutation({
+        mutationFn: async (studentId) => {
+            const res = await resetStudentPassword(studentId);
+            if (!res?.ok) throw new Error(res?.data?.message || 'Failed to reset password');
+            return res;
+        },
+        onSuccess: (_res, studentId) => {
+            toast.success('Password reset to default. Student must change it after login.');
+            emitStudentsChanged({ source: 'local', action: 'resetPassword', id: String(studentId), ts: Date.now() });
+        },
+        onError: (e) => {
+            toast.error(e?.message || 'Failed to reset password');
+        },
+        onSettled: () => {
+            setPendingId(null);
+        },
+    });
+
+    const deactivateMutation = useMutation({
+        mutationFn: async ({ studentId }) => {
+            const res = await deactivateStudentApi(studentId);
+            if (!res?.ok) throw new Error(res?.data?.message || 'Failed to deactivate');
+            return res;
+        },
+        onMutate: async ({ studentId }) => {
+            setPendingId(studentId);
+            const prevStatus = optimisticStatusById[studentId];
+            setOptimisticStatusById((prev) => ({ ...prev, [studentId]: 'Inactive' }));
+            return { studentId, prevStatus };
+        },
+        onSuccess: (_res, vars) => {
+            toast.success('Student deactivated');
+            emitStudentsChanged({ source: 'local', action: 'deactivate', id: String(vars?.studentId || ''), ts: Date.now() });
+        },
+        onError: (e, vars, ctx) => {
+            const id = ctx?.studentId || vars?.studentId;
+            setOptimisticStatusById((prev) => {
+                const next = { ...prev };
+                if (ctx?.prevStatus === undefined) delete next[id];
+                else next[id] = ctx.prevStatus;
+                return next;
+            });
+            toast.error(e?.message || 'Network error');
+        },
+        onSettled: () => {
+            setPendingId(null);
+        },
+    });
+
+    const reactivateMutation = useMutation({
+        mutationFn: async ({ studentId }) => {
+            const res = await reactivateStudentApi(studentId);
+            if (!res?.ok) throw new Error(res?.data?.message || 'Failed to reactivate');
+            return res;
+        },
+        onMutate: async ({ studentId }) => {
+            setPendingId(studentId);
+            const prevStatus = optimisticStatusById[studentId];
+            setOptimisticStatusById((prev) => ({ ...prev, [studentId]: 'Active' }));
+            return { studentId, prevStatus };
+        },
+        onSuccess: (_res, vars) => {
+            toast.success('Student reactivated');
+            emitStudentsChanged({ source: 'local', action: 'reactivate', id: String(vars?.studentId || ''), ts: Date.now() });
+        },
+        onError: (e, vars, ctx) => {
+            const id = ctx?.studentId || vars?.studentId;
+            setOptimisticStatusById((prev) => {
+                const next = { ...prev };
+                if (ctx?.prevStatus === undefined) delete next[id];
+                else next[id] = ctx.prevStatus;
+                return next;
+            });
+            toast.error(e?.message || 'Network error');
+        },
+        onSettled: () => {
+            setPendingId(null);
+        },
+    });
 
     const columns = useMemo(() => ([
         { key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
@@ -82,20 +163,12 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                                   title: 'Reset password to default (clears 24h lock/cooldown)',
                                                   tone: 'edit',
                                                   icon: <KeyRound size={16} />,
-                                                  disabled: isPending || String(effectiveStatus || '').toLowerCase() === 'inactive',
+                                                  disabled: isPending || resetPwMutation.isPending || String(effectiveStatus || '').toLowerCase() === 'inactive',
                                                   onClick: async () => {
                                                       const ok = window.confirm('Reset this student\'s password to the default password and clear the 24h lock/cooldown?');
                                                       if (!ok) return;
                                                       setPendingId(st._id);
-                                                      try {
-                                                          const res = await resetStudentPassword(st._id);
-                                                          if (!res.ok) throw new Error(res?.data?.message || 'Failed to reset password');
-                                                          toast.success('Password reset to default. Student must change it after login.');
-                                                      } catch (e) {
-                                                          toast.error(e?.message || 'Failed to reset password');
-                                                      } finally {
-                                                          setPendingId(null);
-                                                      }
+                                                      resetPwMutation.mutate(st._id);
                                                   },
                                               },
                                           ]
@@ -130,25 +203,10 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                                             title: 'Deactivate Student',
                                                             tone: 'delete',
                                                             icon: <Trash2 size={16} />,
-                                                            disabled: isPending,
+                                                            disabled: isPending || deactivateMutation.isPending || reactivateMutation.isPending,
                                                             onClick: async () => {
                                                                 if (!window.confirm('Are you sure you want to deactivate this student?')) return;
-                                                                setPendingId(st._id);
-                                                                try {
-                                                                    const { ok, data } = await deactivateStudentApi(st._id);
-                                                                    if (ok) {
-                                                                        setOptimisticStatusById((prev) => ({ ...prev, [st._id]: 'Inactive' }));
-                                                                        toast.success('Student deactivated');
-                                                                        emitStudentsChanged();
-                                                                    } else {
-                                                                        toast.error(data?.message || 'Failed to deactivate');
-                                                                    }
-                                                                } catch (e) {
-                                                                    console.error(e);
-                                                                    toast.error('Network error');
-                                                                } finally {
-                                                                    setPendingId(null);
-                                                                }
+                                                                deactivateMutation.mutate({ studentId: st._id });
                                                             },
                                                         },
                                                     ]
@@ -161,24 +219,9 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                                             title: 'Reactivate Student',
                                                             tone: 'view',
                                                             icon: <RotateCcw size={16} />,
-                                                            disabled: isPending,
+                                                            disabled: isPending || deactivateMutation.isPending || reactivateMutation.isPending,
                                                             onClick: async () => {
-                                                                setPendingId(st._id);
-                                                                try {
-                                                                    const { ok, data } = await reactivateStudentApi(st._id);
-                                                                    if (ok) {
-                                                                        setOptimisticStatusById((prev) => ({ ...prev, [st._id]: 'Active' }));
-                                                                        toast.success('Student reactivated');
-                                                                        emitStudentsChanged();
-                                                                    } else {
-                                                                        toast.error(data?.message || 'Failed to reactivate');
-                                                                    }
-                                                                } catch (e) {
-                                                                    console.error(e);
-                                                                    toast.error('Network error');
-                                                                } finally {
-                                                                    setPendingId(null);
-                                                                }
+                                                                reactivateMutation.mutate({ studentId: st._id });
                                                             },
                                                         },
                                                     ]

@@ -27,6 +27,7 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 
 import { getAttendanceReportDetailsWithOptions, getAttendanceReportSummaryWithOptions } from '../api/attendanceReports';
 import { teacherKeys } from '../../teachers/queryKeys.js';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function AttendanceReportsPage() {
   const { auth, hasPermission } = useAuth();
@@ -373,6 +374,33 @@ export default function AttendanceReportsPage() {
   const canRun = Boolean(
     sectionId && from && to && (!isTeacher || (subjectId && !subjectSlotsLoading && subjectPeriodCodes.length > 0))
   );
+
+  const [realtimeTick, setRealtimeTick] = useState(0);
+
+  // Live refresh: keep reports synced across browsers/tabs.
+  // We don't refactor the report fetching logic here; we just trigger the existing debounced auto-run.
+  useEffect(() => {
+    const handler = () => {
+      // Only refresh when the current selection can run; avoids unnecessary work.
+      if (!canRun) return;
+      setRealtimeTick((t) => t + 1);
+    };
+
+    onEvent(EVENTS.ATTENDANCE_CHANGED, handler);
+    // Enrollment & timetable changes can affect roster/period mapping.
+    onEvent(EVENTS.STUDENTS_CHANGED, handler);
+    onEvent(EVENTS.PROMOTIONS_CHANGED, handler);
+    onEvent(EVENTS.TRANSFERS_CHANGED, handler);
+    onEvent(EVENTS.TIMETABLE_CHANGED, handler);
+
+    return () => {
+      offEvent(EVENTS.ATTENDANCE_CHANGED, handler);
+      offEvent(EVENTS.STUDENTS_CHANGED, handler);
+      offEvent(EVENTS.PROMOTIONS_CHANGED, handler);
+      offEvent(EVENTS.TRANSFERS_CHANGED, handler);
+      offEvent(EVENTS.TIMETABLE_CHANGED, handler);
+    };
+  }, [canRun]);
 
   const summaryAbortRef = useRef(null);
   const detailsAbortRef = useRef(null);
@@ -813,6 +841,7 @@ export default function AttendanceReportsPage() {
     from,
     to,
     rosterScope,
+    realtimeTick,
   ]);
 
   const meta = report?.meta || null;

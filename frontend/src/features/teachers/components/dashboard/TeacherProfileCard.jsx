@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useParams } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
 	BadgeCheck,
 	ArrowLeft,
@@ -19,7 +20,10 @@ import Button from '../../../../shared/components/ui/Button.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Input from '../../../../shared/components/ui/Input.jsx';
 import AuditHistoryTable from '../../../../shared/components/audit/AuditHistoryTable.jsx';
+import { fetchJson } from '../../../../shared/api/http';
 import { getTeacherAuditLogs, getTeacherProfile } from '../../api/teachersApi.js';
+import { teacherKeys } from '../../queryKeys';
+import { useTeachersRealtimeInvalidation } from '../../useTeachersRealtimeInvalidation';
 
 function firstChar(s) {
 	const t = String(s || '').trim();
@@ -134,6 +138,26 @@ function TeacherChangePasswordCard() {
 	const passwordsMatch = nextTouched && confirmTouched && newPassword === confirmPassword;
 	const passwordsMismatch = confirmTouched && newPassword !== confirmPassword;
 
+	const changePasswordMutation = useMutation({
+		mutationFn: async (payload) => {
+			return await fetchJson('/auth/change-password', { method: 'POST', body: JSON.stringify(payload) });
+		},
+		onSuccess: async () => {
+			toast.success('You changed your password successfully');
+			setCurrentPassword('');
+			setNewPassword('');
+			setConfirmPassword('');
+			try {
+				if (typeof refreshUser === 'function') await refreshUser();
+			} catch {
+				// ignore
+			}
+		},
+		onError: (err) => {
+			toast.error(err?.data?.message || err?.message || 'Failed to change password.');
+		},
+	});
+
 	const submit = async () => {
 		const curr = String(currentPassword || '').trim();
 		const next = String(newPassword || '').trim();
@@ -157,15 +181,7 @@ function TeacherChangePasswordCard() {
 			const payload = isForcePasswordChange
 				? { newPassword: next }
 				: { currentPassword: curr, newPassword: next };
-
-			await fetchJson('/auth/change-password', { method: 'POST', body: JSON.stringify(payload) });
-			toast.success('You changed your password successfully');
-			setCurrentPassword('');
-			setNewPassword('');
-			setConfirmPassword('');
-			if (typeof refreshUser === 'function') await refreshUser();
-		} catch (err) {
-			toast.error(err?.data?.message || err?.message || 'Failed to change password.');
+			await changePasswordMutation.mutateAsync(payload);
 		} finally {
 			setSaving(false);
 		}
@@ -279,17 +295,36 @@ export function TeacherProfilePage() {
 	const authUser = auth?.user || null;
 	const role = String(authUser?.role || '').toLowerCase();
 	const isAdminView = Boolean(teacherId) && (role === 'admin' || role === 'staff');
-
-	const [profile, setProfile] = useState({ teacher: null, user: null });
-	const [profileLoading, setProfileLoading] = useState(false);
-
-	const [logs, setLogs] = useState([]);
-	const [logsMeta, setLogsMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
-	const [logsLoading, setLogsLoading] = useState(false);
-	const [logsError, setLogsError] = useState(null);
 	const [page, setPage] = useState(1);
 	const [limit, setLimit] = useState(10);
 
+	useTeachersRealtimeInvalidation({ teacherId: isAdminView ? teacherId : undefined });
+
+	const profileQuery = useQuery({
+		queryKey: teacherKeys.adminProfile(teacherId),
+		enabled: Boolean(isAdminView && teacherId),
+		queryFn: async ({ signal }) => {
+			const res = await getTeacherProfile(teacherId, { signal });
+			const data = res?.data || res;
+			return { teacher: data?.teacher || null, user: data?.user || null };
+		},
+		placeholderData: (prev) => prev,
+	});
+
+	const logsQuery = useQuery({
+		queryKey: teacherKeys.adminAuditLogs({ teacherId, page, limit }),
+		enabled: Boolean(isAdminView && teacherId),
+		queryFn: async ({ signal }) => {
+			const res = await getTeacherAuditLogs(teacherId, { page, limit }, { signal });
+			return {
+				data: Array.isArray(res?.data) ? res.data : [],
+				meta: res?.meta || { page, limit, total: 0, totalPages: 1 },
+			};
+		},
+		placeholderData: (prev) => prev,
+	});
+
+	const profile = profileQuery.data || { teacher: null, user: null };
 	const effectiveTeacher = isAdminView ? profile.teacher : null;
 	const effectiveUser = isAdminView ? profile.user : authUser;
 	const fullName = (effectiveTeacher?.fullName || effectiveUser?.fullName || 'Teacher');
@@ -303,53 +338,11 @@ export function TeacherProfilePage() {
 		};
 	}, [effectiveUser, effectiveTeacher?.email, effectiveTeacher?.phone, fullName]);
 
-	const fetchAdminProfile = useCallback(async () => {
-		if (!isAdminView) return;
-		try {
-			setProfileLoading(true);
-			const res = await getTeacherProfile(teacherId);
-			const data = res?.data || res;
-			setProfile({ teacher: data?.teacher || null, user: data?.user || null });
-		} catch (e) {
-			console.error('teacher admin profile error:', e);
-			toast.error('Failed to load teacher profile');
-			setProfile({ teacher: null, user: null });
-		} finally {
-			setProfileLoading(false);
-		}
-	}, [isAdminView, teacherId]);
-
-	const fetchAdminLogs = useCallback(async () => {
-		if (!isAdminView) return;
-		try {
-			setLogsError(null);
-			setLogsLoading(true);
-			const res = await getTeacherAuditLogs(teacherId, { page, limit });
-			const data = Array.isArray(res?.data) ? res.data : [];
-			setLogs(data);
-			setLogsMeta(res?.meta || { page, limit, total: data.length, totalPages: 1 });
-		} catch (e) {
-			setLogs([]);
-			setLogsMeta({ page, limit, total: 0, totalPages: 1 });
-			setLogsError(e?.data?.message || e?.message || 'Failed to load audit history');
-		} finally {
-			setLogsLoading(false);
-		}
-	}, [isAdminView, teacherId, page, limit]);
-
 	useEffect(() => {
 		if (!isAdminView) return;
 		setPage(1);
 		setLimit(10);
 	}, [isAdminView, teacherId]);
-
-	useEffect(() => {
-		fetchAdminProfile();
-	}, [fetchAdminProfile]);
-
-	useEffect(() => {
-		fetchAdminLogs();
-	}, [fetchAdminLogs]);
 
 	return (
 		<Card className="p-0 rounded-xl overflow-hidden">
@@ -386,8 +379,11 @@ export function TeacherProfilePage() {
 			</div>
 
 			<div className="p-6">
-				{isAdminView && profileLoading ? (
+				{isAdminView && profileQuery.isLoading && profileQuery.data == null ? (
 					<div className="text-sm text-gray-600 mb-4">Loading teacher profile…</div>
+				) : null}
+				{isAdminView && profileQuery.isError ? (
+					<div className="text-sm text-red-600 mb-4">{profileQuery.error?.data?.message || profileQuery.error?.message || 'Failed to load teacher profile'}</div>
 				) : null}
 				<div className="w-full">
 					<TeacherProfileCard user={mergedUserForSummary} summary={{}} />
@@ -408,10 +404,10 @@ export function TeacherProfilePage() {
 							</div>
 							<div className="p-4">
 								<AuditHistoryTable
-									logs={logs}
-									isLoading={logsLoading && logs.length === 0}
-									error={logsError}
-									meta={logsMeta}
+									logs={logsQuery.data?.data || []}
+									isLoading={Boolean(logsQuery.isLoading && (logsQuery.data?.data || []).length === 0)}
+									error={logsQuery.isError ? (logsQuery.error?.data?.message || logsQuery.error?.message || 'Failed to load audit history') : null}
+									meta={logsQuery.data?.meta || { page, limit, total: 0, totalPages: 1 }}
 									onPage={setPage}
 									onLimit={(v) => {
 										setLimit(v);

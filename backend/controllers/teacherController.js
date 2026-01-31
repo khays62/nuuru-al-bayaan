@@ -147,6 +147,9 @@ export const createTeacher = async (req, res) => {
       return res.status(400).json({ message: e?.message || 'Could not create teacher login' });
     }
 
+    publishRealtime({ type: 'teachers:changed', id: String(doc._id), ts: Date.now() });
+    publishRealtime({ type: 'users:changed', ts: Date.now() });
+
     res.status(201).json({ data: { _id: String(doc._id), fullName: doc.fullName, teacherId: doc.teacherId, email: doc.email, phone: doc.phone, status: doc.status, lastAcademicYear: doc.lastAcademicYear, createdAt: doc.createdAt } });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
@@ -165,6 +168,10 @@ export const createTeacherLoginUser = async (req, res) => {
     if (existing) return res.json({ data: { ok: true, userId: String(existing._id), username: existing.username } });
 
     const user = await ensureTeacherUser({ teacherId: teacher.teacherId, teacherDoc: teacher });
+
+    publishRealtime({ type: 'users:changed', ts: Date.now() });
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+
     return res.status(201).json({ data: { ok: true, userId: String(user._id), username: user.username } });
   } catch (e) {
     if (e?.code === 'DUP_LOGIN') {
@@ -244,6 +251,9 @@ export const updateTeacher = async (req, res) => {
       // non-blocking
     }
 
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+    publishRealtime({ type: 'users:changed', ts: Date.now() });
+
     res.json({ data: updated });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
@@ -260,6 +270,10 @@ export const deleteTeacher = async (req, res) => {
       return res.status(409).json({ message: 'Cannot delete: teacher has assignments.' });
     }
     await Teacher.findByIdAndDelete(id);
+
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+    publishRealtime({ type: 'users:changed', ts: Date.now() });
+
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ message: 'Server Error' });

@@ -50,9 +50,12 @@ export default function TranscriptTab() {
 
   useEffect(() => {
     if (!enrollments?.length) return;
+    // Keep user's current selection when realtime refresh happens.
+    const current = activeEnrId ? enrollments.find(e => String(e._id) === String(activeEnrId)) : null;
+    if (current) return;
     setActiveEnrId(String(enrollments[0]._id));
     setActiveTab('summary');
-  }, [enrollments]);
+  }, [enrollments, activeEnrId]);
 
   const activeEnr = useMemo(() => {
     if (!activeEnrId) return null;

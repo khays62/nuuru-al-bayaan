@@ -2,7 +2,7 @@
 // Subjects API (moved from apiService.js)
 import { fetchJson, apiUrl } from '../../../shared/api/http';
 
-export async function getSubjects(params = {}) {
+export async function getSubjects(params = {}, options = {}) {
   try {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
@@ -10,7 +10,7 @@ export async function getSubjects(params = {}) {
     });
     const qs = query.toString();
     const url = `${apiUrl('/subjects')}${qs ? `?${qs}` : ''}`;
-    const data = await fetchJson(url);
+    const data = await fetchJson(url, { signal: options?.signal });
     return data; // { data, meta }
   } catch (error) {
     console.error('Failed to fetch subjects:', error);
@@ -21,12 +21,6 @@ export async function getSubjects(params = {}) {
 export async function addSubject(subjectData) {
   try {
     const data = await fetchJson('/subjects', { method: 'POST', body: JSON.stringify(subjectData) });
-    try {
-      const gradeIds = (data.grades || []).map(g => (g._id || g));
-      window.dispatchEvent(new CustomEvent('subjects:changed', { detail: { gradeIds } }));
-    } catch {
-      /* no-op */
-    }
     return { data };
   } catch (error) {
     console.error('Failed to add subject:', error);
@@ -37,12 +31,6 @@ export async function addSubject(subjectData) {
 export async function updateSubject(id, subjectData) {
   try {
     const data = await fetchJson(`/subjects/${id}`, { method: 'PUT', body: JSON.stringify(subjectData) });
-    try {
-      const gradeIds = (data.grades || []).map(g => (g._id || g));
-      window.dispatchEvent(new CustomEvent('subjects:changed', { detail: { gradeIds } }));
-    } catch {
-      /* ignore */
-    }
     return { data };
   } catch (error) {
     console.error('Failed to update subject:', error);

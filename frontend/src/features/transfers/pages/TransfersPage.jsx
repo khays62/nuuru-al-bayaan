@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
@@ -21,10 +22,12 @@ import { getStudentProfile } from '../../students/api/studentsApi';
 
 import TransfersCandidatesTable from '../components/TransfersCandidatesTable.jsx';
 import TransfersLogsTable from '../components/TransfersLogsTable.jsx';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { transferKeys } from '../queryKeys';
+import { useTransfersRealtimeInvalidation } from '../useTransfersRealtimeInvalidation';
 
 export default function TransfersPage() {
 	const { auth, hasPermission } = useAuth();
+	const queryClient = useQueryClient();
 	const role = String(auth?.user?.role || '').toLowerCase();
 	const isAdmin = role === 'admin';
 	const canTransfer = isAdmin || hasPermission('transfers', 'transfer');
@@ -37,16 +40,6 @@ export default function TransfersPage() {
 	const [section, setSection] = useState('');
 	const [page, setPage] = useState(1);
 	const [limit, setLimit] = useState(10);
-
-	// Data
-	const [loading, setLoading] = useState(false);
-	const [rows, setRows] = useState([]);
-	const [meta, setMeta] = useState({ page: 1, totalPages: 1, limit: 10, total: 0 });
-
-	// Logs state (global)
-	const [logsLoading, setLogsLoading] = useState(false);
-	const [logs, setLogs] = useState([]);
-	const [logsMeta, setLogsMeta] = useState({ page: 1, totalPages: 1, limit: 10, total: 0 });
 	const [logsPage, setLogsPage] = useState(1);
 	const [logsLimit, setLogsLimit] = useState(10);
 	const [logsSearch, setLogsSearch] = useState('');
@@ -79,33 +72,23 @@ export default function TransfersPage() {
 
 	const candidatesCoreApplied = Boolean(ay || grade || shift || search);
 
-	const load = async ({ silent = false } = {}) => {
-		// Gating: ha soo jiidin wax rows ilaa ugu yaraan mid ka mid ah filters (AY / Grade / Shift / Search) la doorto
-		const coreApplied = !!(params.academicYear || params.grade || params.shift || params.search);
-		if (!coreApplied) {
-			setLoading(false);
-			setRows([]);
-			setMeta({ page: 1, limit, total: 0, totalPages: 1 });
-			return;
-		}
+	const candidatesQuery = useQuery({
+		queryKey: transferKeys.candidates(params),
+		enabled: Boolean(candidatesCoreApplied),
+		queryFn: async ({ signal }) => {
+			const res = await listTransferCandidates(params, { signal });
+			return res || { data: [], meta: { page: 1, totalPages: 1, limit, total: 0 } };
+		},
+		placeholderData: (prev) => prev,
+		staleTime: 15_000,
+		refetchOnWindowFocus: false,
+	});
 
-		const hasSomethingOnScreen = Array.isArray(rows) && rows.length > 0;
-		setLoading(!silent || !hasSomethingOnScreen);
-		try {
-			const res = await listTransferCandidates(params);
-			setRows(res.data || []);
-			setMeta(res.meta || { page: 1, totalPages: 1, limit, total: 0 });
-		} catch (e) {
-			console.error(e);
-			toast.error('Failed to load candidates');
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	useEffect(() => {
-		void load({ silent: false });
-	}, [params.limit, params.page, params.academicYear, params.grade, params.shift, params.gradeSectionId, params.search]);
+	const rows = candidatesCoreApplied ? (candidatesQuery.data?.data || []) : [];
+	const meta = candidatesCoreApplied
+		? (candidatesQuery.data?.meta || { page: 1, totalPages: 1, limit, total: 0 })
+		: { page: 1, totalPages: 1, limit, total: 0 };
+	const loading = Boolean(candidatesCoreApplied && (candidatesQuery.isLoading || (candidatesQuery.isFetching && rows.length === 0)));
 
 	const {
 		sortBy: candSortBy,
@@ -141,34 +124,23 @@ export default function TransfersPage() {
 		},
 	});
 
-	const loadLogs = async ({ silent = false } = {}) => {
-		const hasSomethingOnScreen = Array.isArray(logs) && logs.length > 0;
-		setLogsLoading(!silent || !hasSomethingOnScreen);
-		try {
-			const res = await listTransferLogs({ page: logsPage, limit: logsLimit, search: logsSearch });
-			setLogs(res.data || []);
-			setLogsMeta(res.meta || { page: 1, totalPages: 1, limit: logsLimit, total: 0 });
-		} catch (e) {
-			console.error(e);
-			toast.error('Failed to load transfers log');
-		} finally {
-			setLogsLoading(false);
-		}
-	};
+	const logsQuery = useQuery({
+		queryKey: transferKeys.logs({ page: logsPage, limit: logsLimit, search: logsSearch }),
+		queryFn: async ({ signal }) => {
+			const res = await listTransferLogs({ page: logsPage, limit: logsLimit, search: logsSearch }, { signal });
+			return res || { data: [], meta: { page: 1, totalPages: 1, limit: logsLimit, total: 0 } };
+		},
+		placeholderData: (prev) => prev,
+		staleTime: 15_000,
+		refetchOnWindowFocus: false,
+	});
 
-	useEffect(() => {
-		void loadLogs({ silent: false });
-	}, [logsPage, logsLimit, logsSearch]);
+	const logs = logsQuery.data?.data || [];
+	const logsMeta = logsQuery.data?.meta || { page: 1, totalPages: 1, limit: logsLimit, total: 0 };
+	const logsLoading = Boolean(logsQuery.isLoading || (logsQuery.isFetching && logs.length === 0));
 
-	// Live refresh: keep Transfers synced across browsers/tabs.
-	useEffect(() => {
-		const handler = () => {
-			void loadLogs({ silent: true });
-			if (candidatesCoreApplied) void load({ silent: true });
-		};
-		onEvent(EVENTS.TRANSFERS_CHANGED, handler);
-		return () => offEvent(EVENTS.TRANSFERS_CHANGED, handler);
-	}, [candidatesCoreApplied, params.limit, params.page, params.academicYear, params.grade, params.shift, params.gradeSectionId, params.search, logsPage, logsLimit, logsSearch]);
+	// EDCI: Realtime -> EVENTS.TRANSFERS_CHANGED -> invalidate -> UI updates.
+	useTransfersRealtimeInvalidation({ enabled: true });
 
 	const {
 		sortBy: logsSortBy,
@@ -313,8 +285,14 @@ export default function TransfersPage() {
 			setSelGrade('');
 			setSelShift('');
 			setSelSection('');
-			await load();
-			await loadLogs();
+			try {
+				await queryClient.invalidateQueries({ queryKey: transferKeys.logsBase, refetchType: 'active' });
+				if (candidatesCoreApplied) {
+					await queryClient.invalidateQueries({ queryKey: transferKeys.candidatesBase, refetchType: 'active' });
+				}
+			} catch {
+				// ignore
+			}
 		} catch (e) {
 			console.error(e);
 			toast.error('Network or server error');
@@ -339,8 +317,14 @@ export default function TransfersPage() {
 			}
 			toast.success('Returned to previous');
 			setRecent((list) => list.filter((x) => !(x.studentId === item.studentId && x.ts === item.ts)));
-			await load();
-			await loadLogs();
+			try {
+				await queryClient.invalidateQueries({ queryKey: transferKeys.logsBase, refetchType: 'active' });
+				if (candidatesCoreApplied) {
+					await queryClient.invalidateQueries({ queryKey: transferKeys.candidatesBase, refetchType: 'active' });
+				}
+			} catch {
+				// ignore
+			}
 		} catch (e) {
 			console.error(e);
 			toast.error('Network or server error');

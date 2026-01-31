@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
 import GradeSelect from '../../lookups/components/GradeSelect';
@@ -17,7 +18,8 @@ import Chip from '../../../shared/components/ui/Chip.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { promotionKeys } from '../queryKeys';
+import { usePromotionsRealtimeInvalidation } from '../usePromotionsRealtimeInvalidation';
 
 // Skeleton page for Promotions as a standalone tab per PROMOTION.md
 // This wires the layout and UX elements; API integration to be added next.
@@ -49,110 +51,75 @@ export default function PromotionPage() {
   const [timing, setTiming] = useState('mid-year');
   const initialFilters = { q: '', ay: '', grade: '', shift: '', section: '', cohort: '' };
   const [filters, setFilters] = useState(initialFilters);
-  const [students, setStudents] = useState([]);
-  const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsError, setStudentsError] = useState(null);
   // filtersReady: all required dropdowns must be chosen (AY, Grade, Shift, Section, Cohort)
   const filtersReady = useMemo(() => (
     Boolean(filters.ay) && Boolean(filters.grade) && Boolean(filters.shift) && Boolean(filters.section) && Boolean(filters.cohort)
   ), [filters.ay, filters.grade, filters.shift, filters.section, filters.cohort]);
 
-  // Fetch students only when filtersReady
-  useEffect(() => {
-    setPreview(null);
-    if (!filtersReady) {
-      // Keep table empty & reset selection until user chooses all filters
-      setStudents([]);
-      setSelectedIds(new Set());
-      setStudentsLoading(false);
-      setStudentsError(null);
-      return;
-    }
-    setStudentsLoading(true);
-    setStudentsError(null);
-    const params = {
+  const rosterParams = useMemo(
+    () => ({
       search: filters.q,
       academicYear: filters.ay,
       grade: filters.grade,
       shift: filters.shift,
       gradeSectionId: filters.section,
       cohort: filters.cohort,
-    };
-    listStudents(params)
-      .then(res => {
-        const raw = res.data || [];
-        // Normalize to provide a `current` object expected by the table formatter
-        const mapped = raw.map(s => ({
-          ...s,
-          current: {
-            grade: s.grade || null,
-            ay: s.academicYear || null,
-            section: s.section || null,
-            shift: s.shift || null,
-            cohort: s.cohort || null,
-          }
-        }));
-        setStudents(mapped);
-      })
-      .catch(() => {
-        setStudents([]);
-        setStudentsError('Failed to load students');
-      })
-      .finally(() => setStudentsLoading(false));
+    }),
+    [filters.q, filters.ay, filters.grade, filters.shift, filters.section, filters.cohort]
+  );
+
+  const rosterQuery = useQuery({
+    queryKey: promotionKeys.roster(rosterParams),
+    enabled: Boolean(filtersReady),
+    queryFn: async ({ signal }) => {
+      const res = await listStudents(rosterParams, { signal });
+      const raw = res?.data || [];
+      return raw.map((s) => ({
+        ...s,
+        current: {
+          grade: s.grade || null,
+          ay: s.academicYear || null,
+          section: s.section || null,
+          shift: s.shift || null,
+          cohort: s.cohort || null,
+        },
+      }));
+    },
+    placeholderData: (prev) => prev,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Important: avoid returning a new [] each render when filtersReady=false (prevents effect loops)
+  const students = useMemo(
+    () => (filtersReady ? (rosterQuery.data || []) : []),
+    [filtersReady, rosterQuery.data]
+  );
+  const studentsLoading = Boolean(filtersReady && (rosterQuery.isLoading || (rosterQuery.isFetching && students.length === 0)));
+
+  // Keep table empty & reset selection until user chooses all filters
+  useEffect(() => {
+    setPreview(null);
+    if (!filtersReady) {
+      setSelectedIds(new Set());
+      setStudentsError(null);
+    }
   }, [filters, timing, filtersReady]);
 
-  // Live refresh: keep Promotions roster synced across browsers/tabs.
-  useEffect(() => {
-    const silentReload = async () => {
-      if (!filtersReady) return;
-      const params = {
-        search: filters.q,
-        academicYear: filters.ay,
-        grade: filters.grade,
-        shift: filters.shift,
-        gradeSectionId: filters.section,
-        cohort: filters.cohort,
-      };
-      const hasSomethingOnScreen = Array.isArray(students) && students.length > 0;
-      setStudentsLoading(!hasSomethingOnScreen);
-      setStudentsError(null);
-      try {
-        const res = await listStudents(params);
-        const raw = res?.data || [];
-        const mapped = raw.map(s => ({
-          ...s,
-          current: {
-            grade: s.grade || null,
-            ay: s.academicYear || null,
-            section: s.section || null,
-            shift: s.shift || null,
-            cohort: s.cohort || null,
-          }
-        }));
-        setStudents(mapped);
-        setSelectedIds((prev) => {
-          const next = new Set();
-          const allowed = new Set(mapped.map((s) => String(s._id)));
-          for (const id of prev) if (allowed.has(String(id))) next.add(id);
-          return next;
-        });
-      } catch {
-        // Non-blocking: keep current list
-      } finally {
-        setStudentsLoading(false);
-      }
-    };
+  // EDCI: Realtime -> Events -> invalidate roster query -> UI updates.
+  usePromotionsRealtimeInvalidation({ enabled: true });
 
-    const handler = () => {
-      void silentReload();
-    };
-    onEvent(EVENTS.PROMOTIONS_CHANGED, handler);
-    onEvent(EVENTS.STUDENTS_CHANGED, handler);
-    return () => {
-      offEvent(EVENTS.PROMOTIONS_CHANGED, handler);
-      offEvent(EVENTS.STUDENTS_CHANGED, handler);
-    };
-  }, [filtersReady, filters, students]);
+  // Keep selection consistent with visible roster
+  useEffect(() => {
+    if (!filtersReady) return;
+    setSelectedIds((prev) => {
+      const next = new Set();
+      const allowed = new Set((students || []).map((s) => String(s?._id)));
+      for (const id of prev) if (allowed.has(String(id))) next.add(id);
+      return next;
+    });
+  }, [filtersReady, students]);
 
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [preview, setPreview] = useState(null); // { items:[], summary:{} }

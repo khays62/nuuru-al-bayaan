@@ -11,6 +11,7 @@ import { writeAuditLog } from "../services/auditService.js";
 import { recordUnknownLoginAttempt } from "../utils/loginThrottleMemory.js";
 import AuthLockEvent from "../models/AuthLockEvent.js";
 import AuditLog from "../models/AuditLog.js";
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 
 // Progressive throttling config (requested schedule)
@@ -455,6 +456,18 @@ export const resetLoginLockout = async (req, res) => {
     // This forces logout on all devices/tabs on the next request.
     principal.tokenVersion = Number(principal.tokenVersion || 0) + 1;
     await principal.save();
+
+    try {
+      publishRealtime({ type: 'users:changed', id: String(principal._id), ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
+    try {
+      publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+    } catch {
+      // ignore
+    }
 
     res.json({ success: true, message: "Login lockout reset successfully" });
   } catch (err) {

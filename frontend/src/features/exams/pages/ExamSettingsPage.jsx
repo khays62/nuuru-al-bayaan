@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
@@ -17,12 +18,18 @@ import {
   cloneExamTemplateVersion,
   setActiveExamTemplateVersion,
 } from '../api/exams';
+import { examKeys } from '../queryKeys';
+import { useExamsRealtimeInvalidation } from '../useExamsRealtimeInvalidation';
 
 export default function ExamSettingsPage() {
   const { auth, hasPermission } = useAuth();
+  const queryClient = useQueryClient();
   const role = String(auth?.user?.role || '').toLowerCase();
   const isAdmin = role === 'admin';
   const canEditTemplate = isAdmin || hasPermission('exams', 'input');
+
+  // EDCI: Realtime -> exam/result events -> invalidate queries -> UI updates.
+  useExamsRealtimeInvalidation({ enabled: true });
 
   const [templateVersions, setTemplateVersions] = useState([]);
   const [templateVersion, setTemplateVersion] = useState('');
@@ -40,58 +47,71 @@ export default function ExamSettingsPage() {
 
   const templateLocked = Boolean(templateDetail?.hasScores);
 
+  const templateVersionsQuery = useQuery({
+    queryKey: examKeys.templateVersions(),
+    queryFn: async ({ signal }) => {
+      const res = await getExamTemplateVersions({ signal });
+      if (!res?.ok) throw new Error(res?.error || 'Failed to load template versions');
+      return res.data;
+    },
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
   useEffect(() => {
-    let ignore = false;
-    (async () => {
-      const res = await getExamTemplateVersions();
-      if (!res?.ok) {
-        if (!ignore) {
-          setTemplateVersions([]);
-          setTemplateVersion('');
-        }
-        return;
-      }
-      const versions = Array.isArray(res?.data?.versions) ? res.data.versions : [];
-      const active = res?.data?.activeVersion;
-      if (!ignore) {
-        setTemplateVersions(versions);
-        if (!templateVersion && active) setTemplateVersion(String(active));
-      }
-    })();
-    return () => {
-      ignore = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const data = templateVersionsQuery.data;
+    if (!data) return;
+
+    const versions = Array.isArray(data?.versions) ? data.versions : [];
+    const active = data?.activeVersion;
+
+    setTemplateVersions(versions);
+
+    const selectedOk = versions.some((v) => String(v?.templateVersion) === String(templateVersion));
+    if ((!templateVersion || !selectedOk) && active) {
+      setTemplateVersion(String(active));
+    }
+  }, [templateVersionsQuery.data, templateVersion]);
 
   const refreshTemplateVersions = async () => {
-    const res = await getExamTemplateVersions();
-    if (!res?.ok) return;
-    const versions = Array.isArray(res?.data?.versions) ? res.data.versions : [];
-    setTemplateVersions(versions);
-    const active = res?.data?.activeVersion;
-    const selectedOk = versions.some((v) => String(v.templateVersion) === String(templateVersion));
-    if ((!templateVersion || !selectedOk) && active) setTemplateVersion(String(active));
+    try {
+      await queryClient.invalidateQueries({ queryKey: examKeys.templateVersions(), refetchType: 'active' });
+    } catch {
+      // ignore
+    }
   };
 
   const loadTemplateDetail = async (v, opts = {}) => {
     if (!v) return;
     const { showSpinner = true, resetDraft = true } = opts;
     if (showSpinner) setTemplateDetailLoading(true);
-    const res = await getExamTemplateDetail(v);
-    if (showSpinner) setTemplateDetailLoading(false);
-    if (!res?.ok) {
-      if (!templateDetail) setTemplateDetail(null);
-      toast.error(res?.error || 'Failed to load template');
-      return;
-    }
-    setTemplateDetail(res.data);
-    const totalStr = String(res?.data?.templateTotal ?? 100);
-    setTemplateTotalInput(totalStr);
-    setSavedTemplateTotal(totalStr);
-    if (resetDraft) {
-      setDraftEdits({});
-      setNewComponent({ typeName: '', maxScore: '', order: '' });
+    try {
+      const data = await queryClient.fetchQuery({
+        queryKey: examKeys.templateDetail(v),
+        queryFn: async ({ signal }) => {
+          const res = await getExamTemplateDetail(v, { signal });
+          if (!res?.ok) throw new Error(res?.error || 'Failed to load template');
+          return res.data;
+        },
+        staleTime: 0,
+      });
+
+      setTemplateDetail(data);
+      const totalStr = String(data?.templateTotal ?? 100);
+      setTemplateTotalInput(totalStr);
+      setSavedTemplateTotal(totalStr);
+      if (resetDraft) {
+        setDraftEdits({});
+        setNewComponent({ typeName: '', maxScore: '', order: '' });
+      }
+    } catch (e) {
+      if (String(e?.message || '') !== 'Aborted') {
+        if (!templateDetail) setTemplateDetail(null);
+        toast.error(e?.message || 'Failed to load template');
+      }
+    } finally {
+      if (showSpinner) setTemplateDetailLoading(false);
     }
   };
 

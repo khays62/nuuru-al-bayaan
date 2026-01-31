@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,69 +20,54 @@ import Alert from '../../../shared/components/ui/Alert.jsx';
 import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
 import AuditHistoryTable from '../../../shared/components/audit/AuditHistoryTable.jsx';
 import { getUserById, getUserAuditLogs } from '../api/usersApi';
+import { useQuery } from '@tanstack/react-query';
+import { userKeys } from '../queryKeys';
+import { useUsersRealtimeInvalidation } from '../useUsersRealtimeInvalidation';
 
 export default function UserProfilePage() {
   const { userId } = useParams();
-
-  const [user, setUser] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const [logsMeta, setLogsMeta] = useState(null);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [logsError, setLogsError] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
+  useUsersRealtimeInvalidation({ userId });
 
-      const userRes = await getUserById(userId);
-      if (userRes.ok) setUser(userRes.data);
-      else throw new Error(userRes.error || 'User not found');
-    } catch (e) {
-      // Keep console for debug, show friendly toast
-      console.error('Profile fetch error:', e);
+  const userQuery = useQuery({
+    queryKey: userKeys.adminProfile(userId),
+    enabled: Boolean(userId),
+    queryFn: async ({ signal }) => getUserById(userId, { signal }),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const logsQuery = useQuery({
+    queryKey: userKeys.adminAuditLogs({ userId, page, limit }),
+    enabled: Boolean(userId),
+    queryFn: async ({ signal }) => getUserAuditLogs(userId, { page, limit }, { signal }),
+    placeholderData: (prev) => prev,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const logs = useMemo(() => logsQuery.data?.data || [], [logsQuery.data]);
+  const logsMeta = useMemo(() => {
+    const m = logsQuery.data?.meta;
+    if (m) return m;
+    const total = Array.isArray(logs) ? logs.length : 0;
+    return { page, limit, total, totalPages: 1 };
+  }, [logsQuery.data, logs, page, limit]);
+
+  const loading = Boolean(userQuery.isLoading && userQuery.data == null);
+  const user = userQuery.data || null;
+
+  useEffect(() => {
+    if (userQuery.isError) {
       toast.error('Failed to load profile');
-    } finally {
-      setLoading(false);
     }
-  }, [userId]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const fetchLogs = useCallback(async () => {
-    try {
-      setLogsLoading(true);
-      setLogsError(null);
-      const res = await getUserAuditLogs(userId, { page, limit });
-      if (res.ok) {
-        setLogs(Array.isArray(res.data) ? res.data : []);
-        setLogsMeta(res.meta || { page, limit, total: (res.data || []).length, totalPages: 1 });
-      } else {
-        setLogs([]);
-        setLogsMeta({ page, limit, total: 0, totalPages: 1 });
-        setLogsError(res.error || 'Failed to load audit history');
-      }
-    } catch (e) {
-      setLogs([]);
-      setLogsMeta({ page, limit, total: 0, totalPages: 1 });
-      setLogsError(e?.message || 'Failed to load audit history');
-    } finally {
-      setLogsLoading(false);
-    }
-  }, [userId, page, limit]);
-
-  useEffect(() => {
-    if (!userId) return;
-    fetchLogs();
-  }, [fetchLogs, userId]);
+  }, [userQuery.isError]);
 
   if (loading) return <LoadingState message="Loading user details…" />;
 
-  if (!user) {
+  if (!user || userQuery.isError) {
     return <Alert variant="danger" title="Could not load user profile." />;
   }
 
@@ -131,8 +116,8 @@ export default function UserProfilePage() {
 
           <AuditHistoryTable
             logs={logs}
-            isLoading={logsLoading && logs.length === 0}
-            error={logsError}
+            isLoading={Boolean(logsQuery.isLoading && logs.length === 0)}
+            error={logsQuery.isError ? (logsQuery.error?.data?.message || logsQuery.error?.message || 'Failed to load audit history') : null}
             meta={logsMeta}
             onPage={setPage}
             onLimit={(v) => {

@@ -6,7 +6,8 @@ import StandardTable from '../../../../shared/components/table/StandardTable.jsx
 import { useAuth } from '../../../../auth/AuthContext';
 import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { teacherKeys } from '../../queryKeys';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../../utils/events';
+import { EVENTS } from '../../../../utils/events';
+import { useRealtimeInvalidation } from '../../../../shared/realtime/useRealtimeInvalidation';
 
 const CARD_THEMES = [
 	{ header: 'bg-gradient-to-r from-blue-600 to-indigo-600' },
@@ -64,29 +65,30 @@ export default function TeacherClassesPage() {
 			return Array.isArray(res?.data) ? res.data : [];
 		},
 		placeholderData: (prev) => prev,
+		staleTime: 15_000,
+		refetchOnWindowFocus: false,
 	});
 
 	// Live refresh: keep My Classes in sync (assignments + rosters).
-	useEffect(() => {
-		if (!teacherRef) return;
-		const handler = () => {
+	useRealtimeInvalidation(
+		[
+			EVENTS.TEACHERS_CHANGED,
+			EVENTS.STUDENTS_CHANGED,
+			EVENTS.TRANSFERS_CHANGED,
+			EVENTS.PROMOTIONS_CHANGED,
+		],
+		() => {
+			if (!teacherRef) return;
 			try {
-				queryClient.invalidateQueries({ queryKey: teacherKeys.base });
+				queryClient.invalidateQueries({ queryKey: teacherKeys.assignmentsBase, refetchType: 'active' });
+				queryClient.invalidateQueries({ queryKey: teacherKeys.studentsCountBase, refetchType: 'active' });
+				queryClient.invalidateQueries({ queryKey: teacherKeys.studentsListBase, refetchType: 'active' });
 			} catch {
 				// ignore
 			}
-		};
-		onEvent(EVENTS.TEACHERS_CHANGED, handler);
-		onEvent(EVENTS.STUDENTS_CHANGED, handler);
-		onEvent(EVENTS.TRANSFERS_CHANGED, handler);
-		onEvent(EVENTS.PROMOTIONS_CHANGED, handler);
-		return () => {
-			offEvent(EVENTS.TEACHERS_CHANGED, handler);
-			offEvent(EVENTS.STUDENTS_CHANGED, handler);
-			offEvent(EVENTS.TRANSFERS_CHANGED, handler);
-			offEvent(EVENTS.PROMOTIONS_CHANGED, handler);
-		};
-	}, [queryClient, teacherRef]);
+		},
+		{ enabled: true }
+	);
 
 	const teacherAssignments = assignmentsQuery.data || [];
 
@@ -157,6 +159,8 @@ export default function TeacherClassesPage() {
 			return Array.isArray(res?.data) ? res.data : [];
 		},
 		placeholderData: (prev) => prev,
+		staleTime: 15_000,
+		refetchOnWindowFocus: false,
 	});
 
 	const students = rosterQuery.data || [];

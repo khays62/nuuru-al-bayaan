@@ -33,7 +33,8 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import GradeTable from '../components/GradeTable.jsx';
 import GradeForm from '../components/GradeForm.jsx';
 import GradeSectionRosterModal from '../components/GradeSectionRosterModal.jsx';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { gradeSectionKeys } from '../queryKeys';
+import { useGradeSectionsRealtimeInvalidation } from '../useGradeSectionsRealtimeInvalidation';
 
 export default function GradePage() {
 	const { auth, hasPermission } = useAuth();
@@ -76,7 +77,7 @@ export default function GradePage() {
 		return () => { ignore = true; };
 	}, []);
 
-	const fetchGradeSections = useCallback(async (params) => {
+	const fetchGradeSections = useCallback(async (params, options = {}) => {
 		return await listGradeSections({
 			page: params.page,
 			limit: params.limit,
@@ -86,7 +87,7 @@ export default function GradePage() {
 			section: params.section,
 			sortBy: params.sortBy,
 			sortDir: params.sortDir,
-		});
+		}, { signal: options?.signal });
 	}, []);
 
 	const list = useEntityList({
@@ -96,6 +97,7 @@ export default function GradePage() {
 		initialLimit: 10,
 		persistKey: 'grades-page',
 		extraFilters: { grade: gradeFilter, shift: shiftFilter, section: sectionFilter },
+		queryKeyBase: gradeSectionKeys.listBase,
 	});
 
 	const {
@@ -108,18 +110,10 @@ export default function GradePage() {
 		setPage,
 		setLimit,
 		refresh,
-		silentRefresh,
 		resetAndReload,
 	} = list;
 
-	// Live refresh: keep classes/grade-sections synced across browsers/tabs.
-	useEffect(() => {
-		const handler = () => {
-			silentRefresh();
-		};
-		onEvent(EVENTS.GRADE_SECTIONS_CHANGED, handler);
-		return () => offEvent(EVENTS.GRADE_SECTIONS_CHANGED, handler);
-	}, [silentRefresh]);
+	useGradeSectionsRealtimeInvalidation({ enabled: true });
 
 	const {
 		sortBy,
@@ -178,7 +172,6 @@ export default function GradePage() {
 		const res = await deleteGradeSection(id);
 		if (res && res.ok) {
 			toast.success('Deleted successfully');
-			silentRefresh();
 		} else {
 			toast.error(res?.error || 'Failed to delete');
 		}
@@ -360,7 +353,7 @@ export default function GradePage() {
 				onClose={closeModal}
 				title={editingClass ? 'Edit Grade Section' : 'Add Grade Section'}
 			>
-				<GradeForm cls={editingClass} onClose={closeModal} onSuccess={() => silentRefresh()} />
+				<GradeForm cls={editingClass} onClose={closeModal} onSuccess={() => { /* EDCI via realtime */ }} />
 			</Modal>
 
 			<GradeSectionRosterModal isOpen={isRosterOpen} onClose={closeRoster} gradeSection={rosterClass} />

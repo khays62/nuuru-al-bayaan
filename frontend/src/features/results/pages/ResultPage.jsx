@@ -24,7 +24,7 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
 import { teacherKeys } from '../../teachers/queryKeys.js';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { useResultsRealtimeInvalidation } from '../useResultsRealtimeInvalidation.js';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
@@ -32,33 +32,17 @@ import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterD
 
 export default function ResultPage() {
     const { auth, hasPermission } = useAuth();
-    const queryClient = useQueryClient();
     const role = String(auth?.user?.role || '').toLowerCase();
     const isTeacher = role === 'teacher';
     const isAdmin = role === 'admin';
+
+    useResultsRealtimeInvalidation();
 
     // Requirement: teachers should be able to Print/Download results like admins.
     const canPrintResults = isAdmin || isTeacher || hasPermission('results', 'print');
     const canDownloadResults = isAdmin || isTeacher || hasPermission('results', 'download');
 
-    // Live refresh: keep results synced across browsers/tabs.
-    useEffect(() => {
-        const handler = () => {
-            try {
-                queryClient.invalidateQueries({ queryKey: ['teacher', 'examSummary'] });
-                queryClient.invalidateQueries({ queryKey: ['teacher', 'examTypes'] });
-                queryClient.invalidateQueries({ queryKey: ['teacher', 'gradeSection'] });
-            } catch {
-                // ignore
-            }
-        };
-        onEvent(EVENTS.RESULTS_CHANGED, handler);
-        onEvent(EVENTS.EXAMS_CHANGED, handler);
-        return () => {
-            offEvent(EVENTS.RESULTS_CHANGED, handler);
-            offEvent(EVENTS.EXAMS_CHANGED, handler);
-        };
-    }, [queryClient]);
+    const queryClient = useQueryClient();
 
     // Persist filters in sessionStorage (not URL)
     const SESSION_KEY = 'results:filters:v1';

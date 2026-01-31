@@ -1,11 +1,10 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import Spinner from '../../../../shared/components/feedback/Spinner.jsx';
 import { getStudentProfile, getStudentTransfers } from '../../../../api';
 import TransferBadge from '../TransferBadge';
 import { Eye, EyeOff, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../../../auth/AuthContext';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { fetchJson } from '../../../../shared/api/http';
 import { studentKeys } from '../../queryKeys';
@@ -28,7 +27,6 @@ export default function ProfileTab() {
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
-  const [pwSaving, setPwSaving] = React.useState(false);
   const [showCurrentPw, setShowCurrentPw] = React.useState(false);
   const [showNewPw, setShowNewPw] = React.useState(false);
   const [showConfirmPw, setShowConfirmPw] = React.useState(false);
@@ -37,6 +35,31 @@ export default function ProfileTab() {
   const nextTouched = String(newPassword || '').length > 0;
   const passwordsMatch = nextTouched && confirmTouched && newPassword === confirmPassword;
   const passwordsMismatch = confirmTouched && newPassword !== confirmPassword;
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async ({ oldPassword, newPassword }) => {
+      const payload = isForcePasswordChange
+        ? { newPassword }
+        : { oldPassword, newPassword };
+
+      await fetchJson('/students/change-password', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+    },
+    onSuccess: async () => {
+      toast.success('You changed your password successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      if (typeof refreshUser === 'function') await refreshUser();
+    },
+    onError: (err) => {
+      toast.error(err?.data?.message || err?.message || 'Failed to change password.');
+    },
+  });
+
+  const pwSaving = changePasswordMutation.isPending;
 
   const handleChangePassword = async () => {
     const curr = String(currentPassword || '').trim();
@@ -57,23 +80,13 @@ export default function ProfileTab() {
       toast.error('New passwords do not match.');
       return;
     }
-
-    setPwSaving(true);
     try {
-      const payload = isForcePasswordChange
-        ? { newPassword: next }
-        : { oldPassword: curr, newPassword: next };
-
-      await fetchJson('/students/change-password', { method: 'PUT', body: JSON.stringify(payload) });
-      toast.success('You changed your password successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      if (typeof refreshUser === 'function') await refreshUser();
-    } catch (err) {
-      toast.error(err?.data?.message || err?.message || 'Failed to change password.');
-    } finally {
-      setPwSaving(false);
+      await changePasswordMutation.mutateAsync({
+        oldPassword: curr,
+        newPassword: next,
+      });
+    } catch {
+      // Error is surfaced via onError
     }
   };
 

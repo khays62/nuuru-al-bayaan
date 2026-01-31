@@ -5,7 +5,17 @@ const teacher = makeQueryKeys('teacher');
 export const teacherKeys = {
   base: teacher.base,
   me: () => teacher.key('me'),
+  assignmentsBase: teacher.key('assignments'),
   assignments: (teacherRef) => teacher.key('assignments', qkStr(teacherRef || '')),
+
+  // Admin/staff teacher management
+  adminListBase: teacher.key('adminList'),
+  adminList: ({ search, status } = {}) => teacher.key('adminList', qkStr(search || ''), qkStr(status || '')),
+  adminProfileBase: teacher.key('adminProfile'),
+  adminProfile: (teacherId) => teacher.key('adminProfile', qkStr(teacherId || '')),
+  adminAuditLogsBase: teacher.key('adminAuditLogs'),
+  adminAuditLogs: ({ teacherId, page, limit } = {}) =>
+    teacher.key('adminAuditLogs', qkStr(teacherId || ''), qkStr(page || 1), qkStr(limit || 10)),
 
   // Teacher-scoped list of grade sections (used by Result/Exam/Timetable pages in teacher mode)
   gradeSections: ({ limit } = {}) => teacher.key('gradeSections', qkStr(limit || '')),
@@ -52,9 +62,11 @@ export const teacherKeys = {
       qkStr(params?.templateVersion || ''),
     ),
 
+  studentsCountBase: teacher.key('studentsCount'),
   studentsCount: ({ gradeSectionId, enrollmentStatus } = {}) =>
     teacher.key('studentsCount', qkStr(gradeSectionId || ''), qkStr(enrollmentStatus || '')),
 
+  studentsListBase: teacher.key('studentsList'),
   studentsList: ({ gradeSectionId, enrollmentStatus, limit, sortBy, sortDir } = {}) =>
     teacher.key(
       'studentsList',

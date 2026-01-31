@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import { RotateCcw, Check, Loader2, AlertCircle, Lock } from 'lucide-react';
@@ -17,32 +17,16 @@ import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterD
 import { useAuth } from '../../../auth/AuthContext';
 import { getAssignments as getTeacherAssignments } from '../../teachers/api/teachersApi';
 import { teacherKeys } from '../../teachers/queryKeys.js';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { useExamsRealtimeInvalidation } from '../useExamsRealtimeInvalidation';
 
 export default function ExamManagementPage() {
     const { auth, hasPermission } = useAuth();
-    const queryClient = useQueryClient();
     const role = String(auth?.user?.role || '').toLowerCase();
     const isTeacher = role === 'teacher';
     const isAdmin = role === 'admin';
 
-    // Live refresh: keep exam grids synced across browsers/tabs.
-    useEffect(() => {
-        const handler = () => {
-            try {
-                queryClient.invalidateQueries({ queryKey: ['teacher', 'examGrid'] });
-                queryClient.invalidateQueries({ queryKey: ['teacher', 'examTypes'] });
-            } catch {
-                // ignore
-            }
-        };
-        onEvent(EVENTS.EXAMS_CHANGED, handler);
-        onEvent(EVENTS.RESULTS_CHANGED, handler);
-        return () => {
-            offEvent(EVENTS.EXAMS_CHANGED, handler);
-            offEvent(EVENTS.RESULTS_CHANGED, handler);
-        };
-    }, [queryClient]);
+    // EDCI: Realtime -> exam/result events -> invalidate queries -> UI updates.
+    useExamsRealtimeInvalidation({ enabled: true });
     const canInput = isTeacher || isAdmin || hasPermission('exams', 'input');
 
     const noInputToastShownRef = useRef(false);

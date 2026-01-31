@@ -67,9 +67,11 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             const data = await getAuthLockCount();
             return Number(data?.count || 0);
         },
-        refetchInterval: 3_000,
-        refetchIntervalInBackground: true,
-        staleTime: 0,
+        // Primary updates are realtime via SSE (security:authLocksChanged).
+        // Keep a light poll as a fallback.
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
+        staleTime: 30_000,
     });
 
     const locksQuery = useQuery({
@@ -80,8 +82,8 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             return Array.isArray(data?.events) ? data.events : [];
         },
         staleTime: 0,
-        refetchInterval: 3_000,
-        refetchIntervalInBackground: true,
+        refetchInterval: 10_000,
+        refetchIntervalInBackground: false,
     });
 
     // When opening the dropdown, mark all as read so the badge clears.

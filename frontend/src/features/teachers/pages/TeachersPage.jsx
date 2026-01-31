@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../../../auth/AuthContext';
 
@@ -11,11 +12,13 @@ import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx'
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
 import SortControls from '../../../shared/components/DataToolbar/SortControls.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
+import { useDebounce } from '../../../hooks/useDebounce';
 
 import TeacherForm from '../components/TeacherForm';
 import TeacherAssignmentsModal from '../components/TeacherAssignmentsModal';
 import TeacherTable from '../components/TeacherTable.jsx';
-import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { teacherKeys } from '../queryKeys';
+import { useTeachersRealtimeInvalidation } from '../useTeachersRealtimeInvalidation';
 
 export default function TeachersPage() {
 	const { auth, hasPermission } = useAuth();
@@ -28,12 +31,10 @@ export default function TeachersPage() {
 	const canResetTeacherPassword = isAdmin || hasPermission('teachers', 'resetPassword');
 
 	const navigate = useNavigate();
-	const [items, setItems] = useState([]);
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState(null);
 	const [showForm, setShowForm] = useState(false);
 	const [editing, setEditing] = useState(null);
 	const [search, setSearch] = useState('');
+	const debouncedSearch = useDebounce(search, 350);
 	const [showAssign, setShowAssign] = useState(false);
 	const [assignTeacher, setAssignTeacher] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
@@ -43,30 +44,70 @@ export default function TeachersPage() {
 	const [statusOverrides, setStatusOverrides] = useState({});
 	const [pendingById, setPendingById] = useState({});
 
-	const fetchTeachers = useCallback(async ({ silent = false } = {}) => {
-		if (!silent) setLoading(true);
-		if (!silent) setError(null);
-		try {
-			const data = await listTeachers({ search });
-			setItems(Array.isArray(data) ? data : (data.items || data?.data || []));
-		} catch {
-			if (!silent) setError('Failed to load teachers');
-		} finally {
-			if (!silent) setLoading(false);
-		}
-	}, [search]);
+	const queryClient = useQueryClient();
+	useTeachersRealtimeInvalidation();
 
-	useEffect(() => {
-		fetchTeachers();
-	}, [fetchTeachers]);
+	const teachersQuery = useQuery({
+		queryKey: teacherKeys.adminList({ search: debouncedSearch }),
+		queryFn: async ({ signal }) => {
+			const res = await listTeachers({ search: debouncedSearch }, { signal });
+			const rows = Array.isArray(res) ? res : (res?.items || res?.data || []);
+			return Array.isArray(rows) ? rows : [];
+		},
+		placeholderData: (prev) => prev,
+		staleTime: 30_000,
+		refetchOnWindowFocus: false,
+	});
 
-	// Live refresh: when bell actions mark a teacher active/inactive
-	useEffect(() => {
-		const handler = () => fetchTeachers({ silent: Array.isArray(items) && items.length > 0 });
-		onEvent(EVENTS.TEACHERS_CHANGED, handler);
-		return () => offEvent(EVENTS.TEACHERS_CHANGED, handler);
-	}, [fetchTeachers, items]);
+	const createTeacherMutation = useMutation({
+		mutationFn: (payload) => createTeacher(payload),
+		onSuccess: (res) => {
+			toast.success('Teacher created');
+			try {
+				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
+			} catch { /* ignore */ }
+		},
+		onError: (e) => {
+			toast.error(e?.data?.message || e?.message || 'Save failed');
+		},
+	});
 
+	const updateTeacherMutation = useMutation({
+		mutationFn: ({ id, payload }) => updateTeacher(id, payload),
+		onSuccess: (res, vars) => {
+			toast.success('Teacher updated');
+			try {
+				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
+			} catch { /* ignore */ }
+		},
+		onError: (e) => {
+			toast.error(e?.data?.message || e?.message || 'Save failed');
+		},
+	});
+
+	const toggleStatusMutation = useMutation({
+		mutationFn: async ({ id, nextStatus }) => {
+			if (nextStatus === 'inactive') return deactivateTeacher(id);
+			return reactivateTeacher(id);
+		},
+		onSuccess: (_, vars) => {
+			try {
+				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
+			} catch { /* ignore */ }
+		},
+	});
+
+	const resetPasswordMutation = useMutation({
+		mutationFn: (id) => resetTeacherPassword(id),
+		onSuccess: (_, id) => {
+			toast.success('Password reset to default. Teacher must change it after login.');
+		},
+		onError: (e) => {
+			toast.error(e?.data?.message || e?.message || 'Reset failed');
+		},
+	});
+
+	const items = teachersQuery.data || [];
 	const viewItems = React.useMemo(() => {
 		if (!Array.isArray(items)) return [];
 		return items.map((t) => {
@@ -151,9 +192,7 @@ export default function TeachersPage() {
 		setPendingById((prev) => ({ ...prev, [id]: true }));
 		setStatusOverrides((prev) => ({ ...prev, [id]: nextStatus }));
 		try {
-			if (nextStatus === 'inactive') await deactivateTeacher(id);
-			else await reactivateTeacher(id);
-			setItems((prev) => prev.map((x) => ((x._id || x.id) === id ? { ...x, status: nextStatus } : x)));
+			await toggleStatusMutation.mutateAsync({ id, nextStatus });
 			setStatusOverrides((prev) => {
 				const copy = { ...prev };
 				delete copy[id];
@@ -166,7 +205,7 @@ export default function TeachersPage() {
 				delete copy[id];
 				return copy;
 			});
-			toast.error(e?.message || 'Update failed');
+			toast.error(e?.data?.message || e?.message || 'Update failed');
 		} finally {
 			setPendingById((prev) => {
 				const copy = { ...prev };
@@ -189,8 +228,7 @@ export default function TeachersPage() {
 
 		setPendingById((prev) => ({ ...prev, [id]: true }));
 		try {
-			await resetTeacherPassword(id);
-			toast.success('Password reset to default. Teacher must change it after login.');
+			await resetPasswordMutation.mutateAsync(id);
 		} catch (e) {
 			toast.error(e?.data?.message || e?.message || 'Reset failed');
 		} finally {
@@ -220,25 +258,14 @@ export default function TeachersPage() {
 	}, [sortedItems, page, limit, total]);
 
 	const onSave = async (payload) => {
-		try {
-			if (editing) {
-				const id = editing._id || editing.id;
-				const updated = await updateTeacher(id, payload);
-				const row = updated?.data || updated;
-				setItems((prev) => prev.map((x) => ((x._id || x.id) === id ? { ...x, ...row } : x)));
-				toast.success('Teacher updated');
-			} else {
-				const created = await createTeacher(payload);
-				const row = created?.data || created;
-				setItems((prev) => [row, ...prev]);
-				toast.success('Teacher created');
-			}
-			setShowForm(false);
-			setEditing(null);
-		} catch (e) {
-			const msg = e?.message || 'Save failed';
-			toast.error(msg);
+		if (editing) {
+			const id = editing._id || editing.id;
+			await updateTeacherMutation.mutateAsync({ id, payload });
+		} else {
+			await createTeacherMutation.mutateAsync(payload);
 		}
+		setShowForm(false);
+		setEditing(null);
 	};
 
 	return (
@@ -260,8 +287,8 @@ export default function TeachersPage() {
 			<TeacherTable
 				items={sortedItems}
 				rows={currentRows}
-				isLoading={loading}
-				error={error}
+				isLoading={Boolean(teachersQuery.isLoading && teachersQuery.data == null)}
+				error={teachersQuery.isError ? (teachersQuery.error?.data?.message || teachersQuery.error?.message || 'Failed to load teachers') : null}
 				sortBy={sortBy}
 				sortDir={sortDir}
 				onSort={onSort}

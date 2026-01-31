@@ -29,23 +29,31 @@ export async function getExamTypes(params = {}) {
   }
 }
 
-export async function getExamTemplateVersions() {
+export async function getExamTemplateVersions(opts = {}) {
   try {
-    const data = await fetchJson('/exams/template/versions', { cache: 'no-store' });
+    const data = await fetchJson('/exams/template/versions', {
+      cache: 'no-store',
+      signal: opts?.signal,
+    });
     return { ok: true, data };
-  } catch {
+  } catch (e) {
+    if (e?.name === 'AbortError') return { ok: false, error: 'Aborted' };
     return { ok: false, error: 'Network or server error' };
   }
 }
 
-export async function getExamTemplateDetail(templateVersion) {
+export async function getExamTemplateDetail(templateVersion, opts = {}) {
   try {
     const query = new URLSearchParams();
     if (templateVersion) query.append('templateVersion', String(templateVersion));
     const qs = query.toString();
-    const data = await fetchJson(`${apiUrl('/exams/template/detail')}${qs ? `?${qs}` : ''}`, { cache: 'no-store' });
+    const data = await fetchJson(`${apiUrl('/exams/template/detail')}${qs ? `?${qs}` : ''}`, {
+      cache: 'no-store',
+      signal: opts?.signal,
+    });
     return { ok: true, data };
-  } catch {
+  } catch (e) {
+    if (e?.name === 'AbortError') return { ok: false, error: 'Aborted' };
     return { ok: false, error: 'Network or server error' };
   }
 }

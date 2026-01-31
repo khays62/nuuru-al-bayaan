@@ -9,6 +9,7 @@ export const EVENTS = {
   TEACHERS_CHANGED: 'teachers:changed',
   USERS_CHANGED: 'users:changed',
   GRADE_SECTIONS_CHANGED: 'gradeSections:changed',
+  COHORTS_CHANGED: 'cohorts:changed',
   TRANSFERS_CHANGED: 'transfers:changed',
   PROMOTIONS_CHANGED: 'promotions:changed',
   EXAMS_CHANGED: 'exams:changed',
@@ -48,6 +49,7 @@ export function emitStudentsChanged(detail) { emit(EVENTS.STUDENTS_CHANGED, deta
 export function emitTeachersChanged(detail) { emit(EVENTS.TEACHERS_CHANGED, detail); }
 export function emitUsersChanged(detail) { emit(EVENTS.USERS_CHANGED, detail); }
 export function emitGradeSectionsChanged(detail) { emit(EVENTS.GRADE_SECTIONS_CHANGED, detail); }
+export function emitCohortsChanged(detail) { emit(EVENTS.COHORTS_CHANGED, detail); }
 export function emitTransfersChanged(detail) { emit(EVENTS.TRANSFERS_CHANGED, detail); }
 export function emitPromotionsChanged(detail) { emit(EVENTS.PROMOTIONS_CHANGED, detail); }
 export function emitExamsChanged(detail) { emit(EVENTS.EXAMS_CHANGED, detail); }

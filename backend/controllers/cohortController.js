@@ -3,6 +3,7 @@ import Cohort from '../models/Cohort.js';
 import Enrollment from '../models/Enrollment.js';
 import GradeSection from '../models/GradeSection.js';
 import { parsePagination } from '../utils/pagination.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 // Policy: Maximum number of cohorts allowed per Academic Year
 const MAX_COHORTS_PER_ACADEMIC_YEAR = 2; // Mid-year + Year-end intakes
@@ -123,6 +124,7 @@ export const createCohort = async (req, res) => {
       throw err;
     }
     const populated = await Cohort.findById(created._id).populate('startAcademicYear', 'yearName');
+    publishRealtime({ type: 'cohorts:changed', id: String(created._id), ts: Date.now() });
     res.status(201).json(populated);
   } catch (err) {
     console.error('Create cohort error', err);
@@ -169,6 +171,7 @@ export const updateCohort = async (req, res) => {
     }
     await doc.save();
     const populated = await Cohort.findById(doc._id).populate('startAcademicYear', 'yearName');
+    publishRealtime({ type: 'cohorts:changed', id: String(doc._id), ts: Date.now() });
     res.json(populated);
   } catch (err) {
     console.error('Update cohort error', err);
@@ -194,6 +197,7 @@ export const deleteCohort = async (req, res) => {
     }
 
     await doc.deleteOne();
+    publishRealtime({ type: 'cohorts:changed', id: String(id), ts: Date.now() });
     res.json({ message: 'Deleted' });
   } catch (err) {
     console.error('Delete cohort error', err);

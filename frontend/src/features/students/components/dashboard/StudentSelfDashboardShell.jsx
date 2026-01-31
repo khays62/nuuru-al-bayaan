@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
 import PageLoading from '../../../../shared/components/feedback/PageLoading.jsx';
 import ForcePasswordChangeModal from '../../../../auth/components/ForcePasswordChangeModal';
+import { useStudentDashboardRealtimeInvalidation } from './useStudentDashboardRealtimeInvalidation';
 
 function isoDateOnly(d) {
   return new Date(d).toISOString().slice(0, 10);
@@ -449,6 +450,11 @@ export default function StudentSelfDashboardShell() {
   const { auth, refreshUser } = useAuth();
   const mustChangePassword = auth?.user?.role === 'student' && !!auth?.user?.mustChangePassword;
   const [forceOpen, setForceOpen] = useState(false);
+
+  const rawStudentRef = auth?.user?.studentRef;
+  const studentId = auth?.user?.role === 'student' ? (rawStudentRef?._id || rawStudentRef || null) : null;
+
+  useStudentDashboardRealtimeInvalidation({ studentId, isStudentSelf: true, enabled: true });
 
   useEffect(() => {
     if (!mustChangePassword) {
