@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Copy } from 'lucide-react';
+import toast from 'react-hot-toast';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToClipboard } from '../../../../utils/exportTable';
 
@@ -15,12 +16,16 @@ export default function CopyTableButton({ getPayload, disabled = false, classNam
 
       // TSV works best for pasting into Excel.
       await exportTableToClipboard({
-        title: payload.title || '',
-        subtitle: payload.subtitle || '',
         headers: payload.headers || [],
         rows: payload.rows || [],
+        tables: Array.isArray(payload.tables) ? payload.tables : null,
+        includeMeta: true,
         delimiter: '\t',
       });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Copy failed:', e);
+      toast.error(e?.message || 'Copy failed');
     } finally {
       setBusy(false);
     }

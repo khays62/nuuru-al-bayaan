@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 import Student from '../models/Student.js';
 
+// Ensure models used by populate() are registered in this runtime.
+import '../models/GradeSection.js';
+import '../models/Grade.js';
+import '../models/Shift.js';
+import '../models/AcademicYear.js';
+
 const inferTemplateVersionForContext = async ({ academicYearId, gradeSectionId, studentId }) => {
   const ayOk = mongoose.isValidObjectId(academicYearId);
   const gsOk = mongoose.isValidObjectId(gradeSectionId);
@@ -55,14 +61,23 @@ const inferTemplateVersionForContext = async ({ academicYearId, gradeSectionId, 
 export const getFullTranscript = async (req, res) => {
   try {
     const { id } = req.params;
+    const mode = String(req.query?.mode || 'full').toLowerCase();
+    const enrollmentIdParam = req.query?.enrollmentId;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
     const student = await Student.findById(id).select('fullName studentId').lean();
     if (!student) return res.status(404).json({ message: 'Student not found' });
 
     const Enrollment = (await import('../models/Enrollment.js')).default;
-    // Fetch all enrollments (oldest first for chronological display)
-    const enrollments = await Enrollment.find({ student: id })
-      .sort({ joinedAt: 1, createdAt: 1 })
+    const filter = { student: id };
+    if (enrollmentIdParam != null && String(enrollmentIdParam).length > 0) {
+      if (!mongoose.isValidObjectId(enrollmentIdParam)) {
+        return res.status(400).json({ message: 'Invalid enrollmentId' });
+      }
+      filter._id = enrollmentIdParam;
+    }
+    // Fetch enrollments. For mode=latest we only compute the most recent enrollment transcript.
+    const enrollmentsQuery = Enrollment.find(filter)
+      .sort(mode === 'latest' ? { joinedAt: -1, createdAt: -1 } : { joinedAt: 1, createdAt: 1 })
       .populate([
         { path: 'gradeSection', populate: [ { path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' } ] },
         { path: 'academicYear', select: 'yearName' },
@@ -70,6 +85,51 @@ export const getFullTranscript = async (req, res) => {
         { path: 'shift', select: 'shiftName' }
       ])
       .lean();
+
+    if (mode === 'latest' && !filter._id) enrollmentsQuery.limit(1);
+    const enrollments = await enrollmentsQuery;
+
+    // Fast path: return enrollment metadata only (no transcript computation)
+    if (mode === 'index') {
+      const enrichedEnrollments = (enrollments || []).map((en) => {
+        const enrichedGradeSection = (en.gradeSection && en.gradeSection.section)
+          ? {
+              _id: en.gradeSection._id,
+              section: en.gradeSection.section,
+              grade: en.gradeSection.grade?.gradeName || en.grade?.gradeName,
+              shift: en.gradeSection.shift?.shiftName || en.shift?.shiftName
+            }
+          : en.gradeSection;
+        return {
+          enrollmentId: en._id,
+          academicYear: en.academicYear?.yearName
+            ? { _id: en.academicYear._id, yearName: en.academicYear.yearName }
+            : en.academicYear,
+          gradeSection: enrichedGradeSection,
+          joinedAt: en.joinedAt,
+          leftAt: en.leftAt,
+          status: en.status,
+          transcript: {
+            examTypes: [],
+            subjects: [],
+            rows: [],
+            overall: { total: 0, average: 0 },
+          }
+        };
+      });
+
+      return res.json({
+        student,
+        enrollments: enrichedEnrollments,
+        transfers: [],
+        summary: {
+          enrollmentCount: enrichedEnrollments.length,
+          distinctSubjects: 0,
+          cumulativeTotal: 0,
+          cumulativeAverage: 0,
+        }
+      });
+    }
 
     // Bring in transfers (no pagination) for context
     const TransferLog = (await import('../models/TransferLog.js')).default;
@@ -93,9 +153,12 @@ export const getFullTranscript = async (req, res) => {
 
     const enrollmentTranscripts = [];
     for (const enr of enrollments) {
-      const academicYearId = String(enr.academicYear?._id || enr.academicYear);
-      const gradeSectionId = String(enr.gradeSection?._id || enr.gradeSection);
-      if (!academicYearId || !gradeSectionId) continue;
+      const academicYearIdRaw = enr.academicYear?._id || enr.academicYear;
+      const gradeSectionIdRaw = enr.gradeSection?._id || enr.gradeSection;
+      if (!mongoose.isValidObjectId(academicYearIdRaw) || !mongoose.isValidObjectId(gradeSectionIdRaw)) continue;
+
+      const academicYearId = String(academicYearIdRaw);
+      const gradeSectionId = String(gradeSectionIdRaw);
 
       const version = await inferTemplateVersionForContext({ academicYearId, gradeSectionId, studentId: id });
 
@@ -230,9 +293,12 @@ export const getOverallSummary = async (req, res) => {
 
     const levels = [];
     for (const en of enrollments) {
-      const academicYearId = String(en.academicYear?._id || en.academicYear);
-      const gradeSectionId = String(en.gradeSection?._id || en.gradeSection);
-      if (!academicYearId || !gradeSectionId) continue;
+      const academicYearIdRaw = en.academicYear?._id || en.academicYear;
+      const gradeSectionIdRaw = en.gradeSection?._id || en.gradeSection;
+      if (!mongoose.isValidObjectId(academicYearIdRaw) || !mongoose.isValidObjectId(gradeSectionIdRaw)) continue;
+
+      const academicYearId = String(academicYearIdRaw);
+      const gradeSectionId = String(gradeSectionIdRaw);
 
       const version = await inferTemplateVersionForContext({ academicYearId, gradeSectionId, studentId: id });
       const examsQuery = { academicYear: academicYearId, gradeSection: gradeSectionId };

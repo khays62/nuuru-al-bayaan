@@ -15,15 +15,24 @@ export default function ExcelDownloadButton({ getPayload, disabled = false, clas
       if (!payload) return;
 
       const filename = String(payload.filename || 'export.pdf').replace(/\.pdf$/i, '.xlsx');
-      await exportTableToExcel({
-        filename,
-        sheetName: payload.sheetName || 'Sheet1',
-        title: payload.title || '',
-        subtitle: payload.subtitle || '',
-        headerImageSrc: payload.headerImageSrc || '',
-        headers: payload.headers || [],
-        rows: payload.rows || [],
-      });
+      // Support multi-sheet exports when payload provides `sheets`.
+      if (Array.isArray(payload.sheets) && payload.sheets.length > 0) {
+        await exportTableToExcel({
+          filename,
+          headerImageSrc: payload.headerImageSrc || '',
+          sheets: payload.sheets,
+        });
+      } else {
+        await exportTableToExcel({
+          filename,
+          sheetName: payload.sheetName || 'Sheet1',
+          title: payload.title || '',
+          subtitle: payload.subtitle || '',
+          headerImageSrc: payload.headerImageSrc || '',
+          headers: payload.headers || [],
+          rows: payload.rows || [],
+        });
+      }
     } catch (e) {
       // Most common cause of “no download”: runtime exception while building XLSX.
       // Surface the error so we can fix it quickly.

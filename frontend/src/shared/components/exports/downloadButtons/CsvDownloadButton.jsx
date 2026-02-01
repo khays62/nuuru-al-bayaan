@@ -14,14 +14,21 @@ export default function CsvDownloadButton({ getPayload, disabled = false, classN
       if (!payload) return;
 
       const filename = String(payload.filename || 'export.pdf').replace(/\.pdf$/i, '.csv');
-      exportTableToCSV({
-        filename,
-        title: payload.title || '',
-        subtitle: payload.subtitle || '',
-        includeMetaRows: false,
-        headers: payload.headers || [],
-        rows: payload.rows || [],
-      });
+      if (Array.isArray(payload.tables) && payload.tables.length > 0) {
+        exportTableToCSV({
+          filename,
+          tables: payload.tables,
+        });
+      } else {
+        exportTableToCSV({
+          filename,
+          title: payload.title || '',
+          subtitle: payload.subtitle || '',
+          includeMetaRows: false,
+          headers: payload.headers || [],
+          rows: payload.rows || [],
+        });
+      }
     } finally {
       setBusy(false);
     }

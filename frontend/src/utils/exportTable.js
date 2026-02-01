@@ -54,28 +54,47 @@ export function exportTableToCSV({
   includeMetaRows = false,
   headers = [],
   rows = [],
+  tables = null,
 }) {
-  const safeHeaders = Array.isArray(headers) ? headers : [];
-  const safeRows = Array.isArray(rows) ? rows : [];
+  const lines = [];
 
-  const colCount = Math.max(1, safeHeaders.length);
-  const padRow = (cells) => {
-    const arr = Array.isArray(cells) ? cells : [];
-    const padded = arr.slice(0, colCount);
-    while (padded.length < colCount) padded.push('');
-    return padded;
+  const writeSingleTable = ({ title: tTitle = '', subtitle: tSubtitle = '', headers: tHeaders = [], rows: tRows = [], includeMeta = false }) => {
+    const safeHeaders = Array.isArray(tHeaders) ? tHeaders : [];
+    const safeRows = Array.isArray(tRows) ? tRows : [];
+    const colCount = Math.max(1, safeHeaders.length);
+    const padRow = (cells) => {
+      const arr = Array.isArray(cells) ? cells : [];
+      const padded = arr.slice(0, colCount);
+      while (padded.length < colCount) padded.push('');
+      return padded;
+    };
+
+    if (includeMeta) {
+      if (tTitle) lines.push(padRow([tTitle]).map(csvEscape).join(','));
+      if (tSubtitle) lines.push(padRow([tSubtitle]).map(csvEscape).join(','));
+      if (tTitle || tSubtitle) lines.push(padRow(['']).map(csvEscape).join(','));
+    }
+
+    lines.push(padRow(safeHeaders).map(csvEscape).join(','));
+    for (const r of safeRows) {
+      lines.push(padRow(r).map(csvEscape).join(','));
+    }
   };
 
-  const lines = [];
-  if (includeMetaRows) {
-    if (title) lines.push(padRow([title]).map(csvEscape).join(','));
-    if (subtitle) lines.push(padRow([subtitle]).map(csvEscape).join(','));
-    if (title || subtitle) lines.push(padRow(['']).map(csvEscape).join(','));
-  }
-
-  lines.push(padRow(safeHeaders).map(csvEscape).join(','));
-  for (const r of safeRows) {
-    lines.push(padRow(r).map(csvEscape).join(','));
+  if (Array.isArray(tables) && tables.length > 0) {
+    for (let i = 0; i < tables.length; i += 1) {
+      const t = tables[i] || {};
+      writeSingleTable({
+        title: t.title || '',
+        subtitle: t.subtitle || '',
+        headers: t.headers || [],
+        rows: t.rows || [],
+        includeMeta: true,
+      });
+      if (i !== tables.length - 1) lines.push('');
+    }
+  } else {
+    writeSingleTable({ title, subtitle, headers, rows, includeMeta: includeMetaRows });
   }
 
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -97,134 +116,181 @@ export async function exportTableToExcel({
   headerImageSrc = '',
   headers = [],
   rows = [],
+  sheets = null,
 }) {
-  const safeHeaders = Array.isArray(headers) ? headers : [];
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const colCount = Math.max(1, safeHeaders.length);
-
-  const safeSheetName = String(sheetName || 'Sheet1')
-    .replace(/[\\/?*[\]:]/g, ' ')
-    .trim()
-    .slice(0, 31) || 'Sheet1';
-
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Nuuru Al-Bayaan';
   wb.created = new Date();
 
-  const ws = wb.addWorksheet(safeSheetName);
-  ws.properties.defaultRowHeight = 18;
+  const writeWorksheet = async ({ ws, sheetTitle, sheetSubtitle, sheetHeaders, sheetRows, includeBranding }) => {
+    const safeHeaders = Array.isArray(sheetHeaders) ? sheetHeaders : [];
+    const safeRows = Array.isArray(sheetRows) ? sheetRows : [];
+    const colCount = Math.max(1, safeHeaders.length);
 
-  const mergeAcross = (rowIndex) => {
-    // ExcelJS signature: mergeCells(startRow, startCol, endRow, endCol)
-    if (colCount > 1) ws.mergeCells(rowIndex, 1, rowIndex, colCount);
+    ws.properties.defaultRowHeight = 18;
+
+    const mergeAcross = (rowIndex) => {
+      if (colCount > 1) ws.mergeCells(rowIndex, 1, rowIndex, colCount);
+    };
+
+    let rowCursor = 1;
+
+    // 1) Add header image (branding) if provided
+    if (includeBranding && headerImageSrc) {
+      const dataUrl = await loadImageAsDataUrl(headerImageSrc);
+      if (dataUrl) {
+        const base64 = String(dataUrl).split(',')[1] || '';
+        if (base64) {
+          const imageId = wb.addImage({ base64, extension: 'png' });
+          for (let r = 1; r <= 6; r += 1) ws.getRow(r).height = 18;
+
+          const imgW = 720;
+          const imgH = 100;
+          const startCol = Math.max(0, (colCount / 2) - 3.5);
+          ws.addImage(imageId, {
+            tl: { col: startCol, row: 0 },
+            ext: { width: imgW, height: imgH },
+          });
+          rowCursor = 7;
+        }
+      }
+    }
+
+    // 2) Title + subtitle
+    if (sheetTitle) {
+      mergeAcross(rowCursor);
+      const c = ws.getCell(rowCursor, 1);
+      c.value = toText(sheetTitle);
+      c.font = { bold: true, size: 16 };
+      c.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      ws.getRow(rowCursor).height = 24;
+      rowCursor += 1;
+    }
+    if (sheetSubtitle) {
+      mergeAcross(rowCursor);
+      const c = ws.getCell(rowCursor, 1);
+      c.value = toText(sheetSubtitle);
+      c.font = { size: 10, color: { argb: 'FF374151' } };
+      c.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+      ws.getRow(rowCursor).height = 34;
+      rowCursor += 1;
+    }
+    if (sheetTitle || sheetSubtitle) rowCursor += 1;
+
+    // 3) Header row
+    const headerRowIndex = rowCursor;
+    const headerRow = ws.getRow(headerRowIndex);
+    headerRow.values = [null, ...safeHeaders.map(toText)];
+    for (let c = 1; c <= colCount; c += 1) {
+      const cell = headerRow.getCell(c);
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: false };
+    }
+    headerRow.height = 20;
+    rowCursor += 1;
+
+    // 4) Data rows
+    for (const rawRow of safeRows) {
+      const row = ws.getRow(rowCursor);
+      const values = (Array.isArray(rawRow) ? rawRow : []).map(toText);
+      row.values = [null, ...values];
+      rowCursor += 1;
+    }
+
+    // Borders + widths
+    const sampleN = Math.min(50, safeRows.length);
+    const widths = Array.from({ length: colCount }).map((_, cIdx) => {
+      let maxLen = safeHeaders[cIdx] ? String(safeHeaders[cIdx]).length : 0;
+      for (let i = 0; i < sampleN; i += 1) {
+        const v = Array.isArray(safeRows[i]) ? safeRows[i][cIdx] : '';
+        maxLen = Math.max(maxLen, String(toText(v)).length);
+      }
+      const header = String(safeHeaders[cIdx] || '').toLowerCase();
+      const minW = header.includes('rank') ? 8 : header.includes('student') ? 22 : 12;
+      const maxW = header.includes('student') ? 55 : 40;
+      return Math.min(maxW, Math.max(minW, Math.ceil(maxLen * 1.1)));
+    });
+
+    ws.columns = widths.map((w) => ({ width: w }));
+
+    ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber < headerRowIndex) return;
+      row.eachCell({ includeEmpty: true }, (cell) => {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+          right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        };
+        if (rowNumber !== headerRowIndex) {
+          cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: false };
+        }
+      });
+    });
+
+    ws.views = [{ state: 'normal' }];
   };
 
-  let rowCursor = 1;
+  const normalizeSheetName = (n) => String(n || 'Sheet')
+    .replace(/[\\/?*[\]:]/g, ' ')
+    .trim()
+    .slice(0, 31) || 'Sheet';
 
-  // 1) Add header image (branding) if provided
-  if (headerImageSrc) {
-    const dataUrl = await loadImageAsDataUrl(headerImageSrc);
-    if (dataUrl) {
-      // data:image/png;base64,....
-      const base64 = String(dataUrl).split(',')[1] || '';
-      if (base64) {
-        const imageId = wb.addImage({ base64, extension: 'png' });
-        // Reserve rows so the image doesn't overlap the table.
-        for (let r = 1; r <= 6; r += 1) ws.getRow(r).height = 18;
+  const makeUniqueSheetName = (rawName, used) => {
+    const usedSet = used instanceof Set ? used : new Set();
+    const base = normalizeSheetName(rawName);
+    if (!usedSet.has(base)) {
+      usedSet.add(base);
+      return base;
+    }
 
-        // Place image top-center (approx). ExcelJS uses pixel sizing.
-        const imgW = 720;
-        const imgH = 100;
-        const startCol = Math.max(0, (colCount / 2) - 3.5);
-        ws.addImage(imageId, {
-          tl: { col: startCol, row: 0 },
-          ext: { width: imgW, height: imgH },
-        });
-
-        rowCursor = 7;
+    // Excel worksheet name limit is 31 chars.
+    // Add a numeric suffix while preserving as much of the base as possible.
+    for (let i = 2; i < 10_000; i += 1) {
+      const suffix = ` (${i})`;
+      const maxBaseLen = Math.max(1, 31 - suffix.length);
+      const candidate = `${base.slice(0, maxBaseLen)}${suffix}`;
+      if (!usedSet.has(candidate)) {
+        usedSet.add(candidate);
+        return candidate;
       }
     }
-  }
 
-  // 2) Title + subtitle
-  if (title) {
-    mergeAcross(rowCursor);
-    const c = ws.getCell(rowCursor, 1);
-    c.value = toText(title);
-    c.font = { bold: true, size: 16 };
-    c.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-    ws.getRow(rowCursor).height = 24;
-    rowCursor += 1;
-  }
-  if (subtitle) {
-    mergeAcross(rowCursor);
-    const c = ws.getCell(rowCursor, 1);
-    c.value = toText(subtitle);
-    c.font = { size: 10, color: { argb: 'FF374151' } };
-    c.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
-    ws.getRow(rowCursor).height = 34;
-    rowCursor += 1;
-  }
-  if (title || subtitle) rowCursor += 1;
+    // Extremely unlikely fallback
+    const fallback = `${base.slice(0, 25)}-${Date.now().toString().slice(-5)}`.slice(0, 31);
+    usedSet.add(fallback);
+    return fallback;
+  };
 
-  // 3) Header row
-  const headerRowIndex = rowCursor;
-  const headerRow = ws.getRow(headerRowIndex);
-  headerRow.values = [null, ...safeHeaders.map(toText)];
-  // Apply styles only to the actual header cells (otherwise Excel paints the entire row).
-  for (let c = 1; c <= colCount; c += 1) {
-    const cell = headerRow.getCell(c);
-    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } };
-    cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: false };
-  }
-  headerRow.height = 20;
-  rowCursor += 1;
-
-  // 4) Data rows
-  for (const rawRow of safeRows) {
-    const row = ws.getRow(rowCursor);
-    const values = (Array.isArray(rawRow) ? rawRow : []).map(toText);
-    row.values = [null, ...values];
-    rowCursor += 1;
-  }
-
-  // Borders + widths: sample first N rows for stable widths
-  const sampleN = Math.min(50, safeRows.length);
-  const widths = Array.from({ length: colCount }).map((_, cIdx) => {
-    let maxLen = safeHeaders[cIdx] ? String(safeHeaders[cIdx]).length : 0;
-    for (let i = 0; i < sampleN; i += 1) {
-      const v = Array.isArray(safeRows[i]) ? safeRows[i][cIdx] : '';
-      maxLen = Math.max(maxLen, String(toText(v)).length);
+  if (Array.isArray(sheets) && sheets.length > 0) {
+    const usedSheetNames = new Set();
+    for (let i = 0; i < sheets.length; i += 1) {
+      const s = sheets[i] || {};
+      const name = makeUniqueSheetName(s.sheetName || s.name || `Sheet${i + 1}`, usedSheetNames);
+      const ws = wb.addWorksheet(name);
+      await writeWorksheet({
+        ws,
+        sheetTitle: s.title || '',
+        sheetSubtitle: s.subtitle || '',
+        sheetHeaders: s.headers || [],
+        sheetRows: s.rows || [],
+        includeBranding: i === 0,
+      });
     }
-    const header = String(safeHeaders[cIdx] || '').toLowerCase();
-    // Heuristics for nicer Excel layout
-    const minW = header.includes('rank') ? 8 : header.includes('student') ? 22 : 12;
-    const maxW = header.includes('student') ? 55 : 40;
-    return Math.min(maxW, Math.max(minW, Math.ceil(maxLen * 1.1)));
-  });
-
-  ws.columns = widths.map((w) => ({ width: w }));
-
-  ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-    // Skip rows above the header row if they are part of the image/title spacing.
-    if (rowNumber < headerRowIndex) return;
-    row.eachCell({ includeEmpty: true }, (cell) => {
-      cell.border = {
-        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-        right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
-      };
-      if (rowNumber !== headerRowIndex) {
-        // Avoid aggressive wrapping that makes cells very tall.
-        cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: false };
-      }
+  } else {
+    const usedSheetNames = new Set();
+    const safeSheetName = makeUniqueSheetName(sheetName || 'Sheet1', usedSheetNames);
+    const ws = wb.addWorksheet(safeSheetName);
+    await writeWorksheet({
+      ws,
+      sheetTitle: title,
+      sheetSubtitle: subtitle,
+      sheetHeaders: headers,
+      sheetRows: rows,
+      includeBranding: true,
     });
-  });
-
-  // Avoid frozen panes (thick black line in Excel looks like a bug).
-  ws.views = [{ state: 'normal' }];
+  }
 
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
@@ -248,10 +314,8 @@ export async function exportTableToPDF({
   rows = [],
   orientation = 'landscape',
   headerImageSrc = '',
+  tables = null,
 }) {
-  const safeHeaders = Array.isArray(headers) ? headers : [];
-  const safeRows = Array.isArray(rows) ? rows : [];
-
   const doc = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
 
   const marginX = 40;
@@ -292,55 +356,153 @@ export async function exportTableToPDF({
     cursorY += 12;
   }
 
-  autoTable(doc, {
-    startY: cursorY + 8,
-    head: [safeHeaders.map(toText)],
-    body: safeRows.map((r) => (Array.isArray(r) ? r : []).map(toText)),
-    theme: 'grid',
-    styles: {
-      font: 'helvetica',
-      fontSize: 8,
-      cellPadding: 3,
-      overflow: 'linebreak',
-      valign: 'middle',
-    },
-    headStyles: {
-      fillColor: [31, 41, 55],
-      textColor: 255,
-      fontStyle: 'bold',
-    },
-    margin: { left: marginX, right: marginX },
-  });
+
+  const pageH = doc.internal.pageSize.getHeight();
+  const ensureSpace = (needed = 60) => {
+    if (cursorY + needed <= pageH - 40) return;
+    doc.addPage();
+    cursorY = 40;
+  };
+
+  const renderOneTable = ({ tableTitle = '', tableSubtitle = '', tableHeaders = [], tableRows = [] }) => {
+    const tTitle = String(tableTitle || '').trim();
+    const tSubtitle = String(tableSubtitle || '').trim();
+
+    const safeHeaders = Array.isArray(tableHeaders) ? tableHeaders : [];
+    const safeRows = Array.isArray(tableRows) ? tableRows : [];
+
+    // Prevent orphaned titles/subtitles at the bottom of the page.
+    // Keep enough room for title+subtitle, table header, and at least a couple rows.
+    const metaH = (tTitle ? 14 : 0) + (tSubtitle ? 12 : 0) + 10;
+    const tableMinH = 28 /* header */ + 32 /* ~2 rows */;
+    ensureSpace(Math.max(120, metaH + tableMinH));
+
+    if (tTitle) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text(toText(tTitle), marginX, cursorY);
+      cursorY += 14;
+    }
+
+    if (tSubtitle) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(toText(tSubtitle), marginX, cursorY);
+      cursorY += 12;
+    }
+
+    autoTable(doc, {
+      startY: cursorY + 6,
+      head: [safeHeaders.map(toText)],
+      body: safeRows.map((r) => (Array.isArray(r) ? r : []).map(toText)),
+      theme: 'grid',
+      showHead: 'everyPage',
+      rowPageBreak: 'avoid',
+      styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        cellPadding: 3,
+        overflow: 'linebreak',
+        valign: 'middle',
+      },
+      headStyles: {
+        fillColor: [31, 41, 55],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      margin: { left: marginX, right: marginX },
+    });
+
+    cursorY = (doc.lastAutoTable?.finalY || cursorY) + 22;
+  };
+
+  if (Array.isArray(tables) && tables.length > 0) {
+    for (const t of tables) {
+      const tt = t || {};
+
+      if (tt.pageBreakBefore) {
+        doc.addPage();
+        cursorY = 40;
+      }
+
+      renderOneTable({
+        tableTitle: tt.pdfHideTitle ? '' : (tt.title || ''),
+        tableSubtitle: tt.subtitle || '',
+        tableHeaders: tt.headers || [],
+        tableRows: tt.rows || [],
+      });
+    }
+  } else {
+    renderOneTable({ tableTitle: '', tableSubtitle: '', tableHeaders: headers, tableRows: rows });
+  }
 
   doc.save(filename);
 }
 
-export function exportTableToClipboard({ headers = [], rows = [], delimiter = '\t' }) {
-  const safeHeaders = Array.isArray(headers) ? headers : [];
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const colCount = Math.max(1, safeHeaders.length);
-
-  const padRow = (cells) => {
-    const arr = Array.isArray(cells) ? cells : [];
-    const padded = arr.slice(0, colCount);
-    while (padded.length < colCount) padded.push('');
-    return padded;
-  };
-
+export function exportTableToClipboard({
+  headers = [],
+  rows = [],
+  delimiter = '\t',
+  tables = null,
+  includeMeta = false,
+}) {
   const escapeCell = (v) => {
     const text = toText(v);
     // For TSV/CSV, normalize line breaks.
     return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   };
 
-  const lines = [];
-  // Keep clipboard output as a clean table so pasting into Excel stays aligned.
-  // (If you want title/subtitle, add them to the sheet/PDF; clipboard stays tabular.)
-  lines.push(padRow(safeHeaders).map(escapeCell).join(delimiter));
-  for (const r of safeRows) {
-    lines.push(padRow(r).map(escapeCell).join(delimiter));
+  const buildTableLines = ({ title = '', subtitle = '', tableHeaders = [], tableRows = [] }) => {
+    const safeHeaders = Array.isArray(tableHeaders) ? tableHeaders : [];
+    const safeRows = Array.isArray(tableRows) ? tableRows : [];
+    const colCount = Math.max(
+      1,
+      safeHeaders.length,
+      ...safeRows.map((r) => (Array.isArray(r) ? r.length : 0)),
+    );
+
+    const padRow = (cells) => {
+      const arr = Array.isArray(cells) ? cells : [];
+      const padded = arr.slice(0, colCount);
+      while (padded.length < colCount) padded.push('');
+      return padded;
+    };
+
+    const lines = [];
+    if (includeMeta) {
+      const t = String(title || '').trim();
+      const s = String(subtitle || '').trim();
+      if (t) lines.push(padRow([t]).map(escapeCell).join(delimiter));
+      if (s) lines.push(padRow([s]).map(escapeCell).join(delimiter));
+    }
+
+    // Keep clipboard output tabular so pasting into Excel stays aligned.
+    lines.push(padRow(safeHeaders).map(escapeCell).join(delimiter));
+    for (const r of safeRows) {
+      lines.push(padRow(r).map(escapeCell).join(delimiter));
+    }
+    return lines;
+  };
+
+  let text = '';
+  if (Array.isArray(tables) && tables.length > 0) {
+    const blocks = [];
+    for (const t of tables) {
+      const tt = t || {};
+      blocks.push(
+        ...buildTableLines({
+          title: tt.title || '',
+          subtitle: tt.subtitle || '',
+          tableHeaders: tt.headers || [],
+          tableRows: tt.rows || [],
+        }),
+      );
+      blocks.push('');
+    }
+    text = blocks.join('\n').replace(/\s+$/g, '');
+  } else {
+    text = buildTableLines({ title: '', subtitle: '', tableHeaders: headers, tableRows: rows }).join('\n');
   }
-  const text = lines.join('\n');
 
   if (navigator?.clipboard?.writeText) {
     return navigator.clipboard.writeText(text);

@@ -9,7 +9,7 @@ export function useTranscriptRealtimeInvalidation() {
   useEffect(() => {
     const handler = () => {
       try {
-        queryClient.invalidateQueries({ queryKey: transcriptKeys.fullBase() });
+        queryClient.invalidateQueries({ queryKey: transcriptKeys.all });
       } catch {
         // ignore
       }

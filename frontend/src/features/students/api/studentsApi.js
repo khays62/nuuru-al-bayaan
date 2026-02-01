@@ -115,9 +115,15 @@ export async function getStudentHistory(id, params = {}) {
   }
 }
 
-export async function getFullTranscript(id) {
+export async function getFullTranscript(id, params = {}) {
   try {
-    const data = await fetchJson(`/students/${id}/full-transcript`);
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.append(k, v);
+    });
+    const qs = query.toString();
+
+    const data = await fetchJson(`${apiUrl(`/students/${id}/full-transcript`)}${qs ? `?${qs}` : ''}`);
     return { ok: true, data };
   } catch (e) {
     if (shouldLogStudentsApiErrors()) console.error('Full transcript error', e);

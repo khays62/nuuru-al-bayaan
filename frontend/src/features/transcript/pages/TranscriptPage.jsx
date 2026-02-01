@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getAcademicYears, getGrades } from '../../lookups/api/lookups';
+import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
 import { listStudents, getFullTranscript } from '../../students/api/studentsApi';
 import { getCohortTimeline } from '../../cohorts/api/cohorts';
-import CohortSelect from '../../lookups/components/CohortSelect';
-import EnrollmentStatusSelect from '../../lookups/components/EnrollmentStatusSelect';
 import { useCascadingFilters } from '../../../hooks/useCascadingFilters';
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
@@ -12,15 +10,22 @@ import { Printer, RotateCcw } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
+import headerImg from '../../../assets/nuuruBayaanHeader.png';
+
+import EnrollmentCohortToolbar from '../../../shared/components/filters/EnrollmentCohortToolbar.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import { PdfDownloadButton, ExcelDownloadButton, CopyTableButton } from '../../../shared/components/exports/downloadButtons';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 
 import Card from '../../../shared/components/ui/Card.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
-import Select from '../../../shared/components/ui/Select.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
 import Radio from '../../../shared/components/ui/Radio.jsx';
 import Chip from '../../../shared/components/ui/Chip.jsx';
 import FormField from '../../../shared/components/ui/FormField.jsx';
 import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
+import Skeleton from '../../../shared/components/ui/Skeleton.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
 import { useAuth } from '../../../auth/AuthContext';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
@@ -37,9 +42,10 @@ export default function TranscriptPage() {
   useTranscriptRealtimeInvalidation();
 
   // Lookups (for labels only)
-  const [, setYears] = useState([]);
+  const [years, setYears] = useState([]);
   // Grade/Shift data no longer displayed; timeline covers progression
   const [grades, setGrades] = useState([]); // grade levels list
+  const [shifts, setShifts] = useState([]);
   const [timeline, setTimeline] = useState([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [activeTimelineIndex, setActiveTimelineIndex] = useState(-1); // user must choose one when timeline exists
@@ -53,11 +59,12 @@ export default function TranscriptPage() {
   const pickerRef = useRef(null);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const hasAutoOpenedRef = useRef(false); // controls one-time auto-open for class picker
+  const noTranscriptToastKeyRef = useRef('');
 
   // Controls
   const [mode, setMode] = useState('latest'); // full | latest (default latest per request)
-  const [showFilters, setShowFilters] = useState(false);
-  const [enrollmentStatus, setEnrollmentStatus] = useState('');
+  // Enrollment status tabs (same UX as Result/Exam/Student)
+  const [enrollmentStatus, setEnrollmentStatus] = useState('active');
   const [cohortId, setCohortId] = useState('');
   const [levelsOpen, setLevelsOpen] = useState(false);
   const [selectedLevels, setSelectedLevels] = useState([]); // grade ids
@@ -65,8 +72,22 @@ export default function TranscriptPage() {
   const {
     academicYearId,
     setAcademicYearId,
+    gradeId,
+    setGradeId,
+    shiftId,
+    setShiftId,
+    gradeSectionId,
+    setGradeSectionId,
+    sections,
+    loadingSections,
     resetLower,
   } = useCascadingFilters();
+
+  const effectiveSections = useMemo(() => {
+    // GradeSection is not scoped per academic year in the current data model.
+    // Academic year filtering is enforced via Enrollment queries (roster/transcripts), not here.
+    return Array.isArray(sections) ? sections : [];
+  }, [sections]);
 
   // Data per student
   const selectedStudentIds = useMemo(
@@ -74,29 +95,178 @@ export default function TranscriptPage() {
     [selectedStudents]
   );
 
-  const transcriptQueries = useQueries({
+  const isLatestMode = mode === 'latest';
+
+  // Lightweight enrollment index (fast) used to render accurate skeleton counts for full/levels.
+  const indexQueries = useQueries({
     queries: selectedStudentIds.map((studentId) => ({
-      queryKey: transcriptKeys.full(studentId),
-      enabled: Boolean(studentId),
-      queryFn: async () => getFullTranscript(studentId),
+      queryKey: transcriptKeys.student(studentId, 'index'),
+      enabled: Boolean(studentId)
+        && !isLatestMode
+        && (mode !== 'levels' || selectedLevels.length > 0),
+      queryFn: async () => getFullTranscript(studentId, { mode: 'index' }),
+      staleTime: 60_000,
       placeholderData: (prev) => prev,
     })),
   });
 
-  const transcripts = useMemo(() => {
+  const indexQueryByStudentId = useMemo(() => {
+    const map = {};
+    for (let i = 0; i < selectedStudentIds.length; i += 1) {
+      map[selectedStudentIds[i]] = indexQueries[i];
+    }
+    return map;
+  }, [selectedStudentIds, indexQueries]);
+
+  const indexByStudentId = useMemo(() => {
     const map = {};
     for (let i = 0; i < selectedStudentIds.length; i += 1) {
       const id = selectedStudentIds[i];
-      const q = transcriptQueries[i];
+      const q = indexQueries[i];
+      map[id] = q?.data?.data || q?.data || null;
+    }
+    return map;
+  }, [selectedStudentIds, indexQueries]);
+
+  // Latest mode stays as a single fast query per student.
+  const latestTranscriptQueries = useQueries({
+    queries: selectedStudentIds.map((studentId) => ({
+      queryKey: transcriptKeys.student(studentId, 'latest'),
+      enabled: Boolean(studentId) && isLatestMode,
+      queryFn: async () => getFullTranscript(studentId, { mode: 'latest' }),
+      placeholderData: (prev) => prev,
+    })),
+  });
+
+  const latestTranscriptQueryById = useMemo(() => {
+    const map = {};
+    for (let i = 0; i < selectedStudentIds.length; i += 1) {
+      map[selectedStudentIds[i]] = latestTranscriptQueries[i];
+    }
+    return map;
+  }, [selectedStudentIds, latestTranscriptQueries]);
+
+  const latestTranscripts = useMemo(() => {
+    const map = {};
+    for (let i = 0; i < selectedStudentIds.length; i += 1) {
+      const id = selectedStudentIds[i];
+      const q = latestTranscriptQueries[i];
       map[id] = q?.data || null;
     }
     return map;
-  }, [selectedStudentIds, transcriptQueries]);
+  }, [selectedStudentIds, latestTranscriptQueries]);
+
+  const getLevelNamesForSelected = () => {
+    const selected = new Set((selectedLevels || []).map((x) => String(x)));
+    return (grades || [])
+      .filter((g) => selected.has(String(g._id || g.id)))
+      .map((g) => String(g.gradeName || g.name || '').trim())
+      .filter(Boolean);
+  };
+
+  const getTargetEnrollmentsFromIndex = (studentId) => {
+    const idx = indexByStudentId[String(studentId)];
+    const enrolls = Array.isArray(idx?.enrollments) ? idx.enrollments : [];
+    if (!enrolls.length) return [];
+
+    if (mode === 'levels' && selectedLevels.length === 0) return [];
+
+    if (mode === 'levels' && selectedLevels.length > 0) {
+      const allowedNames = new Set(getLevelNamesForSelected().map((x) => x.toLowerCase()));
+      return enrolls.filter((en) => {
+        const gradeName = String(en?.gradeSection?.grade || '').toLowerCase();
+        return gradeName && allowedNames.has(gradeName);
+      });
+    }
+
+    return enrolls;
+  };
+
+  const enrollmentTargets = useMemo(() => {
+    if (isLatestMode) return [];
+    const targets = [];
+    for (const studentId of selectedStudentIds) {
+      const list = getTargetEnrollmentsFromIndex(studentId);
+      for (const en of list) {
+        const enrollmentId = String(en?.enrollmentId || en?._id || '');
+        if (!enrollmentId) continue;
+        targets.push({ studentId, enrollmentId });
+      }
+    }
+    return targets;
+  }, [isLatestMode, selectedStudentIds, mode, selectedLevels, grades, indexByStudentId]);
+
+  const enrollmentTranscriptQueries = useQueries({
+    queries: enrollmentTargets.map(({ studentId, enrollmentId }) => ({
+      queryKey: transcriptKeys.enrollment(studentId, enrollmentId),
+      enabled: Boolean(studentId)
+        && Boolean(enrollmentId)
+        && !isLatestMode
+        && (mode !== 'levels' || selectedLevels.length > 0),
+      queryFn: async () => getFullTranscript(studentId, { mode: 'full', enrollmentId }),
+      staleTime: 60_000,
+      placeholderData: (prev) => prev,
+    })),
+  });
+
+  const enrollmentQueryByStudentAndEnrollment = useMemo(() => {
+    const map = {};
+    for (let i = 0; i < enrollmentTargets.length; i += 1) {
+      const { studentId, enrollmentId } = enrollmentTargets[i];
+      if (!map[studentId]) map[studentId] = {};
+      map[studentId][enrollmentId] = enrollmentTranscriptQueries[i];
+    }
+    return map;
+  }, [enrollmentTargets, enrollmentTranscriptQueries]);
+
+  const enrollmentDataByStudentAndEnrollment = useMemo(() => {
+    const map = {};
+    for (let i = 0; i < enrollmentTargets.length; i += 1) {
+      const { studentId, enrollmentId } = enrollmentTargets[i];
+      const q = enrollmentTranscriptQueries[i];
+      if (!map[studentId]) map[studentId] = {};
+      map[studentId][enrollmentId] = q?.data || null;
+    }
+    return map;
+  }, [enrollmentTargets, enrollmentTranscriptQueries]);
+
+  // Toast (English) when Levels selection has no transcript for some grades.
+  useEffect(() => {
+    if (mode !== 'levels') return;
+    if (!selectedLevels.length) return;
+    if (!selectedStudentIds.length) return;
+
+    const selectedNames = getLevelNamesForSelected();
+    if (!selectedNames.length) return;
+
+    const msgs = [];
+    for (const studentId of selectedStudentIds) {
+      const idx = indexByStudentId[String(studentId)];
+      const enrolls = Array.isArray(idx?.enrollments) ? idx.enrollments : [];
+      if (!enrolls.length) continue;
+      const have = new Set(enrolls.map((en) => String(en?.gradeSection?.grade || '').toLowerCase()).filter(Boolean));
+      const missing = selectedNames.filter((nm) => !have.has(String(nm).toLowerCase()));
+      for (const nm of missing) msgs.push(`Grade ${nm} has no transcript.`);
+    }
+    const unique = [...new Set(msgs)];
+    if (!unique.length) return;
+
+    const key = unique.join('|');
+    if (noTranscriptToastKeyRef.current === key) return;
+    noTranscriptToastKeyRef.current = key;
+
+    toast.error(unique.length === 1 ? unique[0] : unique.join(' '));
+  }, [mode, selectedLevels, selectedStudentIds, grades, indexByStudentId]);
 
   const loading = useMemo(() => {
     if (!selectedStudentIds.length) return false;
-    return transcriptQueries.some((q) => Boolean(q?.isLoading && q?.data == null));
-  }, [selectedStudentIds.length, transcriptQueries]);
+    if (isLatestMode) {
+      return latestTranscriptQueries.some((q) => Boolean(q?.isLoading && q?.data == null));
+    }
+    const indexBusy = indexQueries.some((q) => Boolean(q?.isLoading && q?.data == null));
+    const enrollBusy = enrollmentTranscriptQueries.some((q) => Boolean(q?.isLoading && q?.data == null));
+    return indexBusy || enrollBusy;
+  }, [selectedStudentIds.length, isLatestMode, latestTranscriptQueries, indexQueries, enrollmentTranscriptQueries]);
 
   // Load lookups once for labels + levels
   useEffect(() => {
@@ -109,6 +279,11 @@ export default function TranscriptPage() {
           const gData = Array.isArray(gRes?.data) ? gRes.data : (gRes?.data || gRes || []);
           setGrades(gData);
         }
+        const sRes = await getShifts?.();
+        if (sRes) {
+          const sData = Array.isArray(sRes?.data) ? sRes.data : (sRes?.data || sRes || []);
+          setShifts(sData);
+        }
       } catch {
         toast.error('Failed to load lookups');
       }
@@ -118,27 +293,46 @@ export default function TranscriptPage() {
   // Load cohort timeline when cohort selected
   useEffect(() => {
     (async () => {
-      if (!cohortId) { setTimeline([]); return; }
+      if (!cohortId) { setTimeline([]); setActiveTimelineIndex(-1); return; }
       setTimelineLoading(true);
       const { data } = await getCohortTimeline(cohortId);
       setTimelineLoading(false);
-      setTimeline(data || []);
+      const next = data || [];
+      setTimeline(next);
+
+      // Auto-apply first timeline segment when a cohort is selected.
+      if (Array.isArray(next) && next.length > 0) {
+        const first = next[0];
+        setActiveTimelineIndex(0);
+        const ay = first?.academicYear?._id;
+        const g = first?.grade?._id;
+        const sh = first?.shift?._id;
+        const gs = first?.gradeSection?._id;
+        if (ay) setAcademicYearId(String(ay));
+        if (g) setGradeId(String(g));
+        if (sh) setShiftId(String(sh));
+        if (gs) setGradeSectionId(String(gs));
+
+        const hint = String(first?.statusHint || '').toLowerCase();
+        if (hint && ['active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn'].includes(hint)) {
+          setEnrollmentStatus(hint);
+        }
+      }
     })();
   }, [cohortId]);
 
   // Suggest students based on search once all required filters completed
   const suggTimer = useRef(null);
   const lastFilterKeyRef = useRef('');
-  const lastEmptyTimelineIndexRef = useRef(null); // track which timeline index already announced empty
+
   useEffect(() => {
     if (suggTimer.current) clearTimeout(suggTimer.current);
     suggTimer.current = setTimeout(async () => {
       try {
-        const filtersComplete = Boolean(
-          academicYearId && cohortId && enrollmentStatus && ((timeline.length === 0) || activeTimelineIndex >= 0)
-        );
+        // For roster suggestions, gradeSectionId is the authoritative "class" filter.
+        const filtersComplete = Boolean(gradeSectionId);
         // Build a key representing current filter combo to allow re-auto-open when any changes
-        const filterKey = [academicYearId, cohortId, enrollmentStatus, activeTimelineIndex].join('|');
+        const filterKey = [enrollmentStatus, academicYearId, gradeId, shiftId, gradeSectionId, cohortId, activeTimelineIndex].join('|');
         if (filterKey !== lastFilterKeyRef.current) {
           // allow auto-open again when any upstream filter changes (including timeline segment)
           hasAutoOpenedRef.current = false;
@@ -147,60 +341,32 @@ export default function TranscriptPage() {
         // Allow searching by name/ID even if filters not complete; but require filtersComplete for class auto list
         if (!filtersComplete && !search) { setSuggestions([]); setShowSuggestions(false); return; }
         const params = { page: 1, limit: 200 };
-        // If a timeline segment is chosen and its AY differs from selected AY, use segment AY for suggestions (override)
-        let segmentAcademicYearId = null;
-        if (activeTimelineIndex >= 0 && timeline[activeTimelineIndex]?.academicYear?._id) {
-          segmentAcademicYearId = String(timeline[activeTimelineIndex].academicYear._id);
+
+        // Core roster query
+        if (gradeSectionId) {
+          params.gradeSectionId = gradeSectionId;
+          // When Academic Year is selected, roster must reflect enrollments in that year.
+          if (academicYearId) params.academicYear = academicYearId;
+          // If cohort is selected, keep roster aligned with cohort/timeline selection.
+          if (cohortId) params.cohortId = cohortId;
+        } else {
+          // If no class selected yet, use broader filters (mainly for free-text search).
+          if (academicYearId) params.academicYear = academicYearId;
+          if (cohortId) params.cohortId = cohortId;
         }
-        const effectiveAcademicYearId = segmentAcademicYearId || academicYearId;
-        if (effectiveAcademicYearId) params.academicYear = effectiveAcademicYearId;
-        if (cohortId) params.cohort = cohortId;
-        if (enrollmentStatus) params.enrollmentStatus = enrollmentStatus;
+
+        // 'all' means: do not constrain by status.
+        if (enrollmentStatus && enrollmentStatus !== 'all') params.enrollmentStatus = enrollmentStatus;
         if (search) params.search = search;
-        // If a timeline segment is selected, narrow by its gradeSection (and optionally grade/shift)
-        if (activeTimelineIndex >= 0 && timeline[activeTimelineIndex]) {
-          const seg = timeline[activeTimelineIndex];
-          const gsId = seg?.gradeSection?._id;
-          if (gsId) params.gradeSectionId = gsId;
-          const gradeIdSeg = seg?.grade?._id;
-          if (gradeIdSeg) params.grade = gradeIdSeg;
-          const shiftIdSeg = seg?.shift?._id;
-          if (shiftIdSeg) params.shift = shiftIdSeg;
-        }
+
         // After filters complete, we always fetch suggestions (even without search) to allow immediate class selection
-        let res = await listStudents(params);
-        let list = res?.data || [];
-        const timelineChosen = activeTimelineIndex >= 0;
-        const timelineHasSection = (timelineChosen && params.gradeSectionId);
-        const initialEmpty = timelineChosen && list.length === 0;
-        if (initialEmpty && lastEmptyTimelineIndexRef.current !== activeTimelineIndex) {
-          toast.info('No students in selected timeline segment (Arday kuma jirto segment-kan)');
-          lastEmptyTimelineIndexRef.current = activeTimelineIndex;
-        }
-        // Fallback 1: remove gradeSection only
-        if (filtersComplete && timelineHasSection && list.length === 0) {
-          const retryParams = { ...params };
-          delete retryParams.gradeSectionId;
-          res = await listStudents(retryParams);
-          list = res?.data || [];
-        }
-        // Fallback 2: still empty – broaden fully (remove grade/shift narrowing) so segment beyond first years also shows cohort students
-        if (filtersComplete && timelineChosen && list.length === 0) {
-          const broadParams = { page: 1, limit: 200 };
-          // Use segment AY if present, else selected AY
-          if (effectiveAcademicYearId) broadParams.academicYear = effectiveAcademicYearId;
-          if (cohortId) broadParams.cohort = cohortId;
-          if (enrollmentStatus) broadParams.enrollmentStatus = enrollmentStatus;
-          if (search) broadParams.search = search;
-          res = await listStudents(broadParams);
-          list = res?.data || [];
-          if (list.length > 0) toast.success('Showing cohort students (Arday guud ee dufcada)');
-        }
+        const res = await listStudents(params);
+        const list = res?.data || [];
         setSuggestions(list);
         const shouldShow = list.length > 0 && (isPickerOpen || Boolean(search));
         setShowSuggestions(shouldShow);
-        // Auto-open picker ONLY once per filter completion cycle
-        if (!hasAutoOpenedRef.current && filtersComplete && list.length > 0 && !isPickerOpen) {
+        // Auto-open picker once per filter completion cycle (even if empty; user expects it to open).
+        if (!hasAutoOpenedRef.current && filtersComplete && !isPickerOpen) {
           setIsPickerOpen(true);
           setShowSuggestions(true);
           hasAutoOpenedRef.current = true;
@@ -211,7 +377,7 @@ export default function TranscriptPage() {
       }
     }, 250);
     return () => { if (suggTimer.current) clearTimeout(suggTimer.current); };
-  }, [search, academicYearId, enrollmentStatus, cohortId, timeline, activeTimelineIndex, isPickerOpen]);
+  }, [search, enrollmentStatus, academicYearId, gradeId, shiftId, gradeSectionId, cohortId, activeTimelineIndex, isPickerOpen]);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -240,6 +406,160 @@ export default function TranscriptPage() {
     return list;
   };
 
+  const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
+  const canExport = Boolean(
+    canPrintTranscript
+    && selectedStudentIds.length > 0
+    && (mode !== 'levels' || selectedLevels.length > 0)
+  );
+
+  const getTranscriptEnrollmentsForDisplay = (dataObj) => {
+    const enrolls = getFilteredEnrollments(dataObj);
+    if (mode !== 'levels' || !selectedLevels.length) return enrolls;
+
+    return (enrolls || []).filter((en) => {
+      const directGrade = en.grade?._id || en.grade;
+      const gsGradeObj = en.gradeSection?.grade?._id || en.gradeSection?.grade;
+      const gsGradeIdField = en.gradeSection?.gradeId;
+      const gsGradeNameField = en.gradeSection?.grade;
+      const candidates = [directGrade, gsGradeObj, gsGradeIdField, gsGradeNameField]
+        .filter(Boolean)
+        .map((x) => String(x));
+      const allowedNames = grades
+        .filter((g) => selectedLevels.includes(String(g._id || g.id)))
+        .map((g) => String(g.gradeName || g.name))
+        .filter(Boolean);
+      return candidates.some((c) => selectedLevels.includes(c) || allowedNames.includes(c));
+    });
+  };
+
+  const buildTranscriptTablesExportPayload = async () => {
+    if (!canExport) return null;
+
+    const safeMode = String(mode || 'transcript').replace(/[^a-z0-9_-]+/gi, '-').toLowerCase();
+    const scopeTag = gradeSectionId ? 'class' : (selectedStudentIds.length > 1 ? 'multi' : 'student');
+    const safeStatus = String(`${scopeTag}-${enrollmentStatus || 'status'}`)
+      .replace(/[^a-z0-9_-]+/gi, '-')
+      .toLowerCase();
+    const safeDate = new Date().toISOString().slice(0, 10);
+
+    const tables = [];
+    const sheets = [];
+
+    // Snapshot-only export: include what is currently visible (already loaded).
+    // This keeps buttons fast and avoids extra loading.
+    for (let sIdx = 0; sIdx < (selectedStudents || []).length; sIdx++) {
+      const sel = (selectedStudents || [])[sIdx];
+      const studentId = String(sel?._id || '');
+      let enrollmentsForExport = [];
+
+      if (isLatestMode) {
+        const t = latestTranscripts[studentId];
+        const ok = t?.ok && t?.data;
+        const dataObj = ok ? t.data : null;
+        enrollmentsForExport = getTranscriptEnrollmentsForDisplay(dataObj);
+      } else {
+        const metaEnrolls = getTargetEnrollmentsFromIndex(studentId);
+        enrollmentsForExport = (metaEnrolls || []).map((meta) => {
+          const enrollmentId = String(meta?.enrollmentId || meta?._id || '');
+          if (!enrollmentId) return null;
+          const resp = enrollmentDataByStudentAndEnrollment?.[studentId]?.[enrollmentId];
+          if (!(resp?.ok && resp?.data)) return null;
+          return resp.data?.enrollments?.[0] || null;
+        }).filter(Boolean);
+      }
+
+      let isFirstEnrollmentForStudent = true;
+
+      for (const en of (enrollmentsForExport || [])) {
+        const examTypesSorted = [...(en.transcript?.examTypes || [])].sort((a, b) => {
+          const ao = Number(a?.order || 0);
+          const bo = Number(b?.order || 0);
+          if (ao !== bo) return ao - bo;
+          return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
+        });
+
+        const headers = [
+          'Subject',
+          ...examTypesSorted.map((et) => et.typeName),
+          'Total',
+          'Average',
+        ];
+
+        const transcriptRows = Array.isArray(en.transcript?.rows) ? en.transcript.rows : [];
+        const rows = transcriptRows.map((row) => {
+          const examCells = examTypesSorted.map((et) => {
+            const cell = (row.exams || []).find((x) => String(x.examTypeId) === String(et._id));
+            return Number(cell?.score || 0).toFixed(2);
+          });
+          return [
+            row.subjectName || '',
+            ...examCells,
+            Number(row.total || 0).toFixed(2),
+            Number(row.average || 0).toFixed(2),
+          ];
+        });
+
+        // Overall row (matches UI)
+        rows.push([
+          'Overall',
+          ...examTypesSorted.map(() => ''),
+          Number(en.transcript?.overall?.total || 0).toFixed(2),
+          Number(en.transcript?.overall?.average || 0).toFixed(2),
+        ]);
+
+        const tableTitle = `${sel?.fullName || ''} (${sel?.studentId || ''})`;
+        const tableSubtitle = [
+          `Academic Year: ${en.academicYear?.yearName || '-'}`,
+          `Grade: ${en.gradeSection?.grade || '-'}`,
+          `Section: ${en.gradeSection?.section || '-'}`,
+          `Shift: ${en.gradeSection?.shift || '-'}`,
+          `Status: ${en.status || ''}`,
+        ].join(' • ');
+
+        const pageBreakBefore = isFirstEnrollmentForStudent && sIdx > 0;
+        // Keep the full title in payload for Excel/Copy, but allow PDF to suppress repeats.
+        tables.push({
+          title: tableTitle,
+          subtitle: tableSubtitle,
+          headers,
+          rows,
+          pageBreakBefore,
+          pdfHideTitle: !isFirstEnrollmentForStudent,
+        });
+        isFirstEnrollmentForStudent = false;
+
+        // One Excel sheet per enrollment table (closest to "as-is")
+        const baseSheetName = `${sel?.studentId || 'Student'} ${en.academicYear?.yearName || ''}`.trim();
+        sheets.push({
+          sheetName: baseSheetName,
+          title: tableTitle,
+          subtitle: tableSubtitle,
+          headers,
+          rows,
+        });
+      }
+    }
+
+    if (!tables.length) {
+      toast.error('Nothing to export yet. Wait for transcripts to load.');
+      return null;
+    }
+
+    return {
+      filename: `transcript-${safeMode}-${safeStatus}-${safeDate}.pdf`,
+      // Backwards-compatible single-table fields (not used when tables/sheets exist)
+      sheetName: 'Transcript',
+      title: '',
+      subtitle: '',
+      headerImageSrc: headerImg,
+      headers: [],
+      rows: [],
+      tables,
+      sheets,
+    };
+  };
+
   const manualSelectionRef = useRef(false);
 
   const addStudent = (s) => {
@@ -251,7 +571,8 @@ export default function TranscriptPage() {
     manualSelectionRef.current = true;
     setSelectedStudents(prev => prev.filter(x => x._id !== id));
     try {
-      queryClient.removeQueries({ queryKey: transcriptKeys.full(id) });
+      // Remove all transcript caches for this student (latest/index/per-enrollment).
+      queryClient.removeQueries({ queryKey: transcriptKeys.studentBase(id) });
     } catch {
       // ignore
     }
@@ -262,7 +583,7 @@ export default function TranscriptPage() {
       toast.error('You do not have permission to print transcripts');
       return;
     }
-    window.print();
+    setTimeout(() => window.print(), 0);
   };
   const handleReset = () => {
     setSearch('');
@@ -274,9 +595,8 @@ export default function TranscriptPage() {
     setMode('latest');
     setAcademicYearId('');
     resetLower('ay');
-    setEnrollmentStatus('');
+    setEnrollmentStatus('active');
     setCohortId('');
-    setShowFilters(false);
     setTimeline([]);
     setActiveTimelineIndex(-1);
     manualSelectionRef.current = false;
@@ -285,11 +605,50 @@ export default function TranscriptPage() {
     setLevelsOpen(false);
 
     try {
-      queryClient.removeQueries({ queryKey: transcriptKeys.fullBase() });
+      queryClient.removeQueries({ queryKey: transcriptKeys.all });
     } catch {
       // ignore
     }
   };
+
+  const StudentTranscriptSkeleton = () => (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-64 mx-auto" />
+        <Skeleton className="h-4 w-40 mx-auto" />
+      </div>
+      <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white p-3">
+        <div className="flex flex-wrap gap-3">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+        <div className="mt-3">
+          <LoadingState variant="table" message={mode === 'latest' ? 'Loading last transcript…' : (mode === 'levels' ? 'Loading transcripts (levels)…' : 'Loading full transcript…')} rows={6} columns={6} />
+        </div>
+      </div>
+    </div>
+  );
+
+  const EnrollmentTableSkeleton = () => (
+    <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white p-3">
+      <div className="flex flex-wrap gap-3">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-4 w-40" />
+      </div>
+      <div className="mt-3">
+        <LoadingState
+          variant="table"
+          message={mode === 'levels' ? 'Loading transcripts (levels)…' : 'Loading full transcript…'}
+          rows={6}
+          columns={6}
+        />
+      </div>
+    </div>
+  );
 
   // Close levels dropdown on outside click
   useEffect(() => {
@@ -307,9 +666,146 @@ export default function TranscriptPage() {
   <PrintHeader />
 
       <Card className="p-4 no-print">
-        <h1 className="text-lg font-semibold mb-3">Transcript Builder</h1>
-        {/* Row 1: Search + Select from class + Modes + Filters toggle */}
-        <div className="flex flex-row flex-wrap items-end w-full gap-3">
+        <EnrollmentCohortToolbar
+          enrollmentStatus={enrollmentStatus}
+          onEnrollmentStatusChange={(v) => setEnrollmentStatus(v || 'active')}
+          cohortId={cohortId}
+          onCohortChange={(v) => {
+            const next = v || '';
+            setCohortId(next);
+            setActiveTimelineIndex(-1);
+          }}
+          cohortPlaceholder="Cohort (optional)"
+          cohortSelectId="transcript-cohort"
+          cohortSelectName="transcript-cohort"
+          cohortSelectProps={{
+            searchable: true,
+            maxVisible: 5,
+          }}
+          className="mt-0"
+        />
+
+        <div className="mt-3">
+          <FilterRow className="gap-3">
+            <FilterItem grow minWidthClass="sm:min-w-40">
+              <AcademicYearSelect
+                id="transcript-ay"
+                name="academicYearId"
+                value={academicYearId}
+                onChange={(v) => {
+                  setAcademicYearId(v);
+                  resetLower('ay');
+                  setCohortId('');
+                  setActiveTimelineIndex(-1);
+                }}
+                placeholder="Academic Year"
+                searchable
+                maxVisible={5}
+                searchPlaceholder="Search academic years…"
+                className="w-full"
+              />
+            </FilterItem>
+
+            <FilterItem minWidthClass="sm:min-w-44">
+              <DropdownSelect
+                value={gradeId}
+                onChange={(v) => { setGradeId(v); resetLower('grade'); setActiveTimelineIndex(-1); }}
+                placeholder="Level"
+                options={[...(grades || [])]
+                  .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+                  .map((g) => ({ value: g._id, label: g.gradeName }))}
+              />
+            </FilterItem>
+
+            <FilterItem minWidthClass="sm:min-w-44">
+              <FilterDropdownSelect
+                value={shiftId}
+                onChange={(v) => { setShiftId(v); resetLower('shift'); setActiveTimelineIndex(-1); }}
+                placeholder="Shift"
+                options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
+                maxVisible={5}
+              />
+            </FilterItem>
+
+            <FilterItem minWidthClass="sm:min-w-56">
+              <FilterDropdownSelect
+                value={gradeSectionId}
+                onChange={(v) => { setGradeSectionId(v); setActiveTimelineIndex(-1); }}
+                placeholder="Section"
+                disabled={!gradeId || !shiftId || loadingSections}
+                options={(effectiveSections || []).map((gs) => {
+                  const gradeName = gs?.grade?.gradeName;
+                  const sectionNum = gs?.section;
+                  const shiftName = gs?.shift?.shiftName;
+                  const tail = [shiftName].filter(Boolean).join(' - ');
+                  const label = [
+                    gradeName ? `${gradeName}` : null,
+                    sectionNum ? `Sec ${sectionNum}` : null,
+                    tail ? `(${tail})` : null,
+                  ].filter(Boolean).join(' - ');
+                  return { value: gs._id, label: label || gs.sectionName || 'Section' };
+                })}
+                maxVisible={5}
+                searchPlaceholder="Type to search sections…"
+              />
+            </FilterItem>
+          </FilterRow>
+        </div>
+
+        {cohortId ? (
+          <Card className="p-3 mt-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-gray-800">Cohort timeline</div>
+              {timelineLoading ? <div className="text-xs text-gray-500">Loading…</div> : null}
+            </div>
+            {!timelineLoading && (!timeline || timeline.length === 0) ? (
+              <div className="text-sm text-gray-500 mt-2">No timeline data found for this cohort.</div>
+            ) : null}
+            {Array.isArray(timeline) && timeline.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {timeline.map((t, idx) => {
+                  const key = `${t?.academicYear?._id}-${t?.gradeSection?._id}-${idx}`;
+                  const label = [
+                    t?.academicYear?.yearName,
+                    t?.grade?.gradeName,
+                    t?.shift?.shiftName,
+                    t?.gradeSection?.section ? `Sec ${t.gradeSection.section}` : null,
+                    t?.statusHint ? `(${t.statusHint})` : null,
+                  ].filter(Boolean).join(' - ');
+                  const isActive = activeTimelineIndex === idx;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setActiveTimelineIndex(idx);
+                        const ay = t?.academicYear?._id;
+                        const g = t?.grade?._id;
+                        const sh = t?.shift?._id;
+                        const gs = t?.gradeSection?._id;
+                        if (ay) setAcademicYearId(String(ay));
+                        if (g) setGradeId(String(g));
+                        if (sh) setShiftId(String(sh));
+                        if (gs) setGradeSectionId(String(gs));
+
+                        const hint = String(t?.statusHint || '').toLowerCase();
+                        if (hint && ['active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn'].includes(hint)) {
+                          setEnrollmentStatus(hint);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-sm border ${isActive ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                      title={label || 'Timeline item'}
+                    >
+                      {label || 'Timeline item'}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </Card>
+        ) : null}
+
+        <div className="mt-3 flex flex-row flex-wrap items-end w-full gap-3">
           <div className="flex-1 min-w-[320px]" ref={pickerRef}>
             <FormField label="Search Student" htmlFor="transcript-search">
               <div className="relative">
@@ -317,109 +813,114 @@ export default function TranscriptPage() {
                   id="transcript-search"
                   name="transcript-search"
                   value={search}
-                  onChange={e=>{ setSearch(e.target.value); setShowSuggestions(true); }}
-                  onFocus={()=> setShowSuggestions(true)}
+                  onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
                   placeholder="Search by name or ID"
                   className="pr-28"
                 />
                 <div className="absolute right-1 top-1.5 flex gap-1">
                   <ActionButton
                     variant="neutral"
-                    onClick={() => { setIsPickerOpen(v=>!v); setShowSuggestions(true); }}
+                    onClick={() => {
+                      setIsPickerOpen((v) => !v);
+                      setShowSuggestions(true);
+                    }}
                     title="Open class list"
                     className="text-xs"
                   >
                     Select from class ▾
                   </ActionButton>
                 </div>
+
+                {(isPickerOpen || (showSuggestions && suggestions.length > 0)) && (
+                  <Card className="absolute left-0 right-0 top-full mt-1 z-50 max-h-72 overflow-auto">
+                    <div className="sticky top-0 bg-white border-b px-2 py-1 flex items-center gap-2">
+                      <Input
+                        id="transcript-student-filter"
+                        name="transcript-student-filter"
+                        aria-label="Filter suggested students"
+                        value={dropdownSearch}
+                        onChange={(e) => setDropdownSearch(e.target.value)}
+                        placeholder="Filter list..."
+                        className="text-sm"
+                      />
+                    </div>
+                    {(() => {
+                      const q = dropdownSearch.toLowerCase();
+                      const list = (suggestions || []).filter((s) => !q
+                        || s.fullName?.toLowerCase().includes(q)
+                        || String(s.studentId).toLowerCase().includes(q));
+                      if (!list.length) return <div className="px-3 py-2 text-sm text-gray-500">No students found</div>;
+                      return list.map((s) => {
+                        const checked = selectedStudents.some((x) => x._id === s._id);
+                        return (
+                          <label key={s._id} className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                            <div className="flex items-center gap-2">
+                              <Checkbox checked={checked} onChange={() => (checked ? removeStudent(s._id) : addStudent(s))} aria-label={`Select ${s.fullName}`} />
+                              <span>{s.fullName} <span className="text-gray-500">({s.studentId})</span></span>
+                            </div>
+                            {s.gradeDisplay && <span className="text-xs text-gray-500">{s.gradeDisplay}</span>}
+                          </label>
+                        );
+                      });
+                    })()}
+                  </Card>
+                )}
               </div>
-              {(isPickerOpen || (showSuggestions && suggestions.length > 0)) && (
-                <Card className="absolute left-0 right-0 top-full mt-1 z-50 max-h-72 overflow-auto">
-                  <div className="sticky top-0 bg-white border-b px-2 py-1 flex items-center gap-2">
-                    <Input
-                      id="transcript-student-filter"
-                      name="transcript-student-filter"
-                      aria-label="Filter suggested students"
-                      value={dropdownSearch}
-                      onChange={e=>setDropdownSearch(e.target.value)}
-                      placeholder="Filter list..."
-                      className="text-sm"
-                    />
-                  </div>
-                  {(() => {
-                    const q = dropdownSearch.toLowerCase();
-                    const list = (suggestions || []).filter(s => !q || s.fullName?.toLowerCase().includes(q) || String(s.studentId).toLowerCase().includes(q));
-                    if (!list.length) return <div className="px-3 py-2 text-sm text-gray-500">No students found</div>;
-                    return list.map(s => {
-                      const checked = selectedStudents.some(x => x._id === s._id);
-                      return (
-                        <label key={s._id} className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                          <div className="flex items-center gap-2">
-                            <Checkbox checked={checked} onChange={()=> checked ? removeStudent(s._id) : addStudent(s)} aria-label={`Select ${s.fullName}`} />
-                            <span>{s.fullName} <span className="text-gray-500">({s.studentId})</span></span>
-                          </div>
-                          {s.gradeDisplay && <span className="text-xs text-gray-500">{s.gradeDisplay}</span>}
-                        </label>
-                      );
-                    });
-                  })()}
-                </Card>
-              )}
-            <div className="mt-2 flex flex-wrap gap-2">
-              {selectedStudents.map(s => (
-                <Chip key={s._id} onRemove={()=>removeStudent(s._id)} removeLabel={`Remove ${s.fullName}`}>
-                  {s.fullName} ({s.studentId})
-                </Chip>
-              ))}
-            </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedStudents.map((s) => (
+                  <Chip key={s._id} onRemove={() => removeStudent(s._id)} removeLabel={`Remove ${s.fullName}`}>
+                    {s.fullName} ({s.studentId})
+                  </Chip>
+                ))}
+              </div>
             </FormField>
           </div>
         </div>
-        {/* Inline modes + filter toggle */}
-        <div className="flex flex-row flex-wrap items-end gap-4 w-full">
+
+        <div className="mt-3 w-full flex items-center justify-between gap-2 flex-wrap">
           <div className="flex flex-row flex-wrap items-center gap-4 text-sm">
             <label className="flex items-center gap-2 cursor-pointer">
-              <Radio name="transcript-mode" checked={mode==='full'} onChange={()=> setMode('full')} />
+              <Radio name="transcript-mode" checked={mode === 'full'} onChange={() => setMode('full')} />
               <span>Full Transcript</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <Radio name="transcript-mode" checked={mode==='latest'} onChange={()=> setMode('latest')} />
-              <span>Last Enrollment</span>
+              <Radio name="transcript-mode" checked={mode === 'latest'} onChange={() => setMode('latest')} />
+              <span>Last Transcript</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <Radio name="transcript-mode" checked={mode==='levels'} onChange={()=> setMode('levels')} />
+              <Radio name="transcript-mode" checked={mode === 'levels'} onChange={() => setMode('levels')} />
               <span>Levels</span>
             </label>
             <div className="relative flex items-center gap-2" ref={levelsRef}>
               <button
                 type="button"
-                disabled={mode!=='levels'}
-                onClick={()=> mode==='levels' && setLevelsOpen(o=>!o)}
-                className={`px-2 py-1 border rounded text-xs flex items-center gap-1 ${mode==='levels' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                disabled={mode !== 'levels'}
+                onClick={() => mode === 'levels' && setLevelsOpen((o) => !o)}
+                className={`px-2 py-1 border rounded text-xs flex items-center gap-1 ${mode === 'levels' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
               >
                 Levels ▾ {selectedLevels.length ? <span className="text-indigo-600">({selectedLevels.length})</span> : null}
               </button>
-              {levelsOpen && mode==='levels' && (
+              {levelsOpen && mode === 'levels' && (
                 <Card className="absolute z-40 mt-1 w-48 max-h-64 overflow-auto">
                   <div className="sticky top-0 bg-white border-b px-2 py-1 text-xs font-medium">Select Levels</div>
-                  {(!grades || grades.length===0) && <div className="px-3 py-2 text-xs text-gray-500">No grades</div>}
+                  {(!grades || grades.length === 0) && <div className="px-3 py-2 text-xs text-gray-500">No grades</div>}
                   {grades && [...grades]
-                    // Use same logic as GradeSelect: sort by createdAt to preserve DB insertion (level one → level two ...)
-                    .sort((a,b)=> new Date(a.createdAt) - new Date(b.createdAt))
-                    .map(g => {
-                    const id = String(g._id || g.id);
-                    const checked = selectedLevels.includes(id);
-                    return (
-                      <label key={id} className="flex items-center gap-2 px-3 py-1 text-xs hover:bg-gray-50 cursor-pointer">
-                        <Checkbox checked={checked} onChange={()=> setSelectedLevels(prev => checked ? prev.filter(x => x!==id) : [...prev, id])} />
-                        <span>{g.gradeName || g.name || 'Grade'}</span>
-                      </label>
-                    );
-                  })}
+                    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+                    .map((g) => {
+                      const id = String(g._id || g.id);
+                      const checked = selectedLevels.includes(id);
+                      return (
+                        <label key={id} className="flex items-center gap-2 px-3 py-1 text-xs hover:bg-gray-50 cursor-pointer">
+                          <Checkbox checked={checked} onChange={() => setSelectedLevels((prev) => (checked ? prev.filter((x) => x !== id) : [...prev, id]))} />
+                          <span>{g.gradeName || g.name || 'Grade'}</span>
+                        </label>
+                      );
+                    })}
                   {selectedLevels.length > 0 && (
                     <button
                       type="button"
-                      onClick={()=> setSelectedLevels([])}
+                      onClick={() => setSelectedLevels([])}
                       className="m-2 mt-1 px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 w-[calc(100%-1rem)]"
                     >Clear</button>
                   )}
@@ -427,122 +928,73 @@ export default function TranscriptPage() {
               )}
             </div>
           </div>
-          <label className="ml-auto flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none">
-            <Checkbox checked={showFilters} onChange={e=> setShowFilters(e.target.checked)} />
-            <span>Filters: AY → Cohort / Status / Timeline</span>
-          </label>
-        </div>
-        {showFilters && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-              <FormField label="Academic Year" htmlFor="transcript-ay">
-                <AcademicYearSelect id="transcript-ay" name="academicYearId" value={academicYearId} onChange={(v)=>{ setAcademicYearId(v); resetLower('ay'); setCohortId(''); setActiveTimelineIndex(-1); }} className="mt-1" placeholder="Select year" />
-              </FormField>
-              <FormField label="Cohort" htmlFor="transcript-cohort">
-                <CohortSelect id="transcript-cohort" value={cohortId} onChange={(v)=>{ setCohortId(v); setActiveTimelineIndex(-1); }} mode="context" academicYear={academicYearId} disabled={!academicYearId} className="mt-1" placeholder="Select cohort" />
-              </FormField>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <FormField label="Enrollment Status" htmlFor="transcript-status">
-                <EnrollmentStatusSelect id="transcript-status" value={enrollmentStatus} onChange={(v)=>{ setEnrollmentStatus(v); }} className="mt-1" placeholder="Select status" />
-              </FormField>
-              <FormField label="Timeline Segment" htmlFor="transcript-timeline">
-                <Select
-                  id="transcript-timeline"
-                  value={timelineLoading ? -2 : activeTimelineIndex}
-                  onChange={e=> {
-                    const idx = Number(e.target.value);
-                    setActiveTimelineIndex(idx);
-                    if (idx >= 0) {
-                      const hint = String(timeline?.[idx]?.statusHint || '').toLowerCase();
-                      if (hint && ['active','inactive','promoted','graduated','transferred','withdrawn'].includes(hint)) {
-                        setEnrollmentStatus(hint);
-                      }
-                    }
-                  }}
-                  disabled={timelineLoading || (!timeline.length && activeTimelineIndex === -1)}
-                  className="mt-1"
-                >
-                  <option value={-1}>Dooro segment</option>
-                  {timelineLoading && <option value={-2}>Loading…</option>}
-                  {!timelineLoading && timeline.length === 0 && <option value={-3}>No timeline data</option>}
-                  {!timelineLoading && timeline.map((seg, idx) => {
-                    const gradeName = seg.grade?.gradeName || '';
-                    const section = seg.gradeSection?.section || '';
-                    const shiftName = seg.shift?.shiftName || '';
-                    const ayName = seg.academicYear?.yearName || '';
-                    const labelCore = [gradeName, section, shiftName].filter(Boolean).join(' - ');
-                    const label = [ayName, labelCore].filter(Boolean).join(' | ');
-                    return <option key={idx} value={idx}>{label || `Segment ${idx+1}`}</option>;
-                  })}
-                </Select>
-              </FormField>
-            </div>
-          </>
-        )}
-        <div className="mt-3 flex flex-row flex-wrap gap-2 items-center">
-          {canPrintTranscript ? (
-            <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
-          ) : null}
-          <ActionButton variant="neutral" onClick={handleReset} title="Reset filters" icon={<RotateCcw size={16} />}>Reset</ActionButton>
+
+          <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
+            {canPrintTranscript ? (
+              <ActionButton variant="neutral" className={outlineBtn} onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+            ) : null}
+
+            <PdfDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} orientation="landscape" />
+            <ExcelDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} />
+            <CopyTableButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} />
+
+            <ActionButton variant="neutral" className={outlineBtn} onClick={handleReset} title="Reset" icon={<RotateCcw size={16} />}>Reset</ActionButton>
+          </div>
         </div>
       </Card>
 
   <Card className="p-4 print:shadow-none print:p-0 print-container">
-        {loading && <LoadingState message="Loading…" />}
-        {!loading && selectedStudents.length > 0 && (
+        {selectedStudents.length > 0 && (
           <div className="space-y-8 print-two" style={{ breakInside: 'auto' }}>
             {(() => {
               return selectedStudents.map((sel) => {
-              const t = transcripts[sel._id];
-              const ok = t?.ok && t?.data;
-              const dataObj = ok ? t.data : null;
-              const enrolls = getFilteredEnrollments(dataObj);
-              const filteredEnrolls = (mode==='levels' && selectedLevels.length) ? enrolls.filter(en => {
-                // Collect possible grade identifiers from enrollment
-                const directGrade = en.grade?._id || en.grade; // enrollment.grade can be object or id
-                const gsGradeObj = en.gradeSection?.grade?._id || en.gradeSection?.grade; // may be object or name/id
-                const gsGradeIdField = en.gradeSection?.gradeId; // explicit id if present
-                const gsGradeNameField = en.gradeSection?.grade; // often a plain name (e.g. "level one")
-                const candidates = [directGrade, gsGradeObj, gsGradeIdField, gsGradeNameField]
-                  .filter(Boolean)
-                  .map(x => String(x));
-                // Build allowed names for selected level IDs
-                const allowedNames = grades
-                  .filter(g => selectedLevels.includes(String(g._id || g.id)))
-                  .map(g => String(g.gradeName || g.name))
-                  .filter(Boolean);
-                return candidates.some(c => selectedLevels.includes(c) || allowedNames.includes(c));
-              }) : enrolls;
-              return (
-                <div key={sel._id} className="space-y-3 student-block avoid-break">
-                  <div className="print:text-center">
-                    <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
-                    <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
-                  </div>
-                  {(!ok || filteredEnrolls.length === 0) && (
-                    <Alert variant="neutral">No transcript data for the selected mode/filters.</Alert>
-                  )}
-                  {ok && filteredEnrolls.map((en, idx) => (
-                    <section key={en.enrollmentId || idx} className="p-3 avoid-break">
-                      <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
-                        <span><span className="font-medium">Academic Year:</span> {en.academicYear?.yearName || '-'}</span>
-                        <span><span className="font-medium">Grade:</span> {en.gradeSection?.grade || '-'}</span>
-                        <span><span className="font-medium">Section:</span> {en.gradeSection?.section || '-'}</span>
-                        <span><span className="font-medium">Shift:</span> {en.gradeSection?.shift || '-'}</span>
-                        <span><span className="font-medium">Status:</span> {en.status}</span>
-                      </div>
-                      <div className="overflow-x-auto mt-3">
-                        {(() => {
-                          const examTypesSorted = [...(en.transcript?.examTypes || [])].sort((a, b) => {
-                            const ao = Number(a?.order || 0);
-                            const bo = Number(b?.order || 0);
-                            if (ao !== bo) return ao - bo;
-                            return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
-                          });
+                const studentId = String(sel._id);
 
-                          const transcriptRows = en.transcript?.rows || [];
-                          const rowsWithOverall = [...transcriptRows, { __type: 'overall' }];
+                // LATEST mode: single request per student.
+                if (isLatestMode) {
+                  const q = latestTranscriptQueryById[studentId];
+                  const isBusy = Boolean(q?.isLoading || q?.isFetching);
+                  const hasData = Boolean(q?.data);
+                  if (isBusy && !hasData) {
+                    return (
+                      <div key={sel._id} className="space-y-3 student-block">
+                        <div className="avoid-break"><StudentTranscriptSkeleton /></div>
+                      </div>
+                    );
+                  }
+                  const t = latestTranscripts[studentId];
+                  const ok = t?.ok && t?.data;
+                  const dataObj = ok ? t.data : null;
+                  const filteredEnrolls = getTranscriptEnrollmentsForDisplay(dataObj);
+                  return (
+                    <div key={sel._id} className="space-y-3 student-block">
+                      <div className="print:text-center avoid-break">
+                        <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
+                        <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
+                      </div>
+                      {(!ok || filteredEnrolls.length === 0) && (
+                        <Alert variant="neutral">No transcript data for the selected mode/filters.</Alert>
+                      )}
+                      {ok && filteredEnrolls.map((en, idx) => (
+                        <section key={en.enrollmentId || idx} className="p-3 avoid-break">
+                          <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
+                            <span><span className="font-medium">Academic Year:</span> {en.academicYear?.yearName || '-'}</span>
+                            <span><span className="font-medium">Grade:</span> {en.gradeSection?.grade || '-'}</span>
+                            <span><span className="font-medium">Section:</span> {en.gradeSection?.section || '-'}</span>
+                            <span><span className="font-medium">Shift:</span> {en.gradeSection?.shift || '-'}</span>
+                            <span><span className="font-medium">Status:</span> {en.status}</span>
+                          </div>
+                          <div className="overflow-x-auto mt-3">
+                            {(() => {
+                              const examTypesSorted = [...(en.transcript?.examTypes || [])].sort((a, b) => {
+                                const ao = Number(a?.order || 0);
+                                const bo = Number(b?.order || 0);
+                                if (ao !== bo) return ao - bo;
+                                return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
+                              });
+
+                              const transcriptRows = en.transcript?.rows || [];
+                              const rowsWithOverall = [...transcriptRows, { __type: 'overall' }];
 
                           const columns = [
                             {
@@ -575,50 +1027,216 @@ export default function TranscriptPage() {
                             },
                           ];
 
-                          return (
-                            <StandardTable
-                              isLoading={false}
-                              items={transcriptRows}
-                              emptyTitle="No transcript rows"
-                              rows={rowsWithOverall}
-                              columns={columns}
-                              getRowKey={(row) => row?.__type === 'overall' ? 'overall' : String(row.subjectId)}
-                              renderCell={(row, col) => {
-                                if (row?.__type === 'overall') {
-                                  if (col.key === 'subject') return <span className="block text-right">Overall</span>;
-                                  if (String(col.key).startsWith('et:')) return '';
-                                  if (col.key === 'total') return Number(en.transcript?.overall?.total || 0).toFixed(2);
-                                  if (col.key === 'avg') return Number(en.transcript?.overall?.average || 0).toFixed(2);
-                                  return '';
-                                }
+                              return (
+                                <StandardTable
+                                  isLoading={false}
+                                  items={transcriptRows}
+                                  emptyTitle="No transcript rows"
+                                  rows={rowsWithOverall}
+                                  columns={columns}
+                                  getRowKey={(row) => row?.__type === 'overall' ? 'overall' : String(row.subjectId)}
+                                  renderCell={(row, col) => {
+                                    if (row?.__type === 'overall') {
+                                      if (col.key === 'subject') return <span className="block text-right">Overall</span>;
+                                      if (String(col.key).startsWith('et:')) return '';
+                                      if (col.key === 'total') return Number(en.transcript?.overall?.total || 0).toFixed(2);
+                                      if (col.key === 'avg') return Number(en.transcript?.overall?.average || 0).toFixed(2);
+                                      return '';
+                                    }
 
-                                if (col.key === 'subject') return row.subjectName;
+                                    if (col.key === 'subject') return row.subjectName;
 
-                                if (String(col.key).startsWith('et:')) {
-                                  const etId = col._etId;
-                                  const cell = (row.exams || []).find(x => String(x.examTypeId) === String(etId));
-                                  return Number(cell?.score || 0).toFixed(2);
-                                }
+                                    if (String(col.key).startsWith('et:')) {
+                                      const etId = col._etId;
+                                      const cell = (row.exams || []).find(x => String(x.examTypeId) === String(etId));
+                                      return Number(cell?.score || 0).toFixed(2);
+                                    }
 
-                                if (col.key === 'total') return Number(row.total || 0).toFixed(2);
-                                if (col.key === 'avg') return Number(row.average || 0).toFixed(2);
-                                return '';
-                              }}
-                              tableProps={{
-                                theadClassName: 'bg-gray-800',
-                                useDefaultHeaderStyles: false,
-                                baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
-                                rowClassName: (row) => row?.__type === 'overall' ? 'font-medium border-t-2 border-gray-700' : '',
-                              }}
-                            />
-                          );
-                        })()}
+                                    if (col.key === 'total') return Number(row.total || 0).toFixed(2);
+                                    if (col.key === 'avg') return Number(row.average || 0).toFixed(2);
+                                    return '';
+                                  }}
+                                  tableProps={{
+                                    theadClassName: 'bg-gray-800',
+                                    useDefaultHeaderStyles: false,
+                                    baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
+                                    rowClassName: (row) => row?.__type === 'overall' ? 'font-medium border-t-2 border-gray-700' : '',
+                                  }}
+                                />
+                              );
+                            })()}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  );
+                }
+
+                // FULL / LEVELS mode: progressive per-enrollment requests.
+                if (mode === 'levels' && selectedLevels.length === 0) {
+                  return (
+                    <div key={sel._id} className="space-y-3 student-block">
+                      <div className="print:text-center avoid-break">
+                        <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
+                        <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
                       </div>
-                    </section>
-                  ))}
-                  {/* Removed extra summary footer under table per request */}
-                </div>
-              );
+                      <Alert variant="neutral">Select one or more grades to view transcripts.</Alert>
+                    </div>
+                  );
+                }
+
+                const idxQ = indexQueryByStudentId[studentId];
+                const idx = indexByStudentId[studentId];
+                const idxEnrolls = Array.isArray(idx?.enrollments) ? idx.enrollments : [];
+                const targetMeta = idxEnrolls.length ? getTargetEnrollmentsFromIndex(studentId) : [];
+
+                // If we don't have any index yet, render a reasonable skeleton count.
+                if ((!idxEnrolls.length) && Boolean(idxQ?.isLoading || idxQ?.isFetching) && !idxQ?.data) {
+                  const fallbackCount = mode === 'levels' && selectedLevels.length ? selectedLevels.length : 1;
+                  return (
+                    <div key={sel._id} className="space-y-3 student-block">
+                      {Array.from({ length: Math.max(1, fallbackCount) }).map((_, i) => (
+                        <div key={i} className="avoid-break">
+                          <StudentTranscriptSkeleton />
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={sel._id} className="space-y-3 student-block">
+                    <div className="print:text-center avoid-break">
+                      <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
+                      <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
+                    </div>
+
+                    {targetMeta.length === 0 ? (
+                      <Alert variant="neutral">No transcript data for the selected mode/filters.</Alert>
+                    ) : (
+                      targetMeta.map((meta, idx2) => {
+                        const enrollmentId = String(meta?.enrollmentId || meta?._id || idx2);
+                        const q = enrollmentQueryByStudentAndEnrollment?.[studentId]?.[enrollmentId];
+                        const resp = enrollmentDataByStudentAndEnrollment?.[studentId]?.[enrollmentId];
+                        const ok = resp?.ok && resp?.data;
+                        const en = ok ? (resp.data?.enrollments?.[0] || null) : null;
+
+                        if (!en) {
+                          return (
+                            <section key={enrollmentId} className="p-3 avoid-break">
+                              <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
+                                <span><span className="font-medium">Academic Year:</span> {meta?.academicYear?.yearName || '-'}</span>
+                                <span><span className="font-medium">Grade:</span> {meta?.gradeSection?.grade || '-'}</span>
+                                <span><span className="font-medium">Section:</span> {meta?.gradeSection?.section || '-'}</span>
+                                <span><span className="font-medium">Shift:</span> {meta?.gradeSection?.shift || '-'}</span>
+                                <span><span className="font-medium">Status:</span> {meta?.status || '-'}</span>
+                              </div>
+                              <div className="mt-3">
+                                <EnrollmentTableSkeleton />
+                              </div>
+                            </section>
+                          );
+                        }
+
+                        return (
+                          <section key={en.enrollmentId || enrollmentId} className="p-3 avoid-break">
+                            <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
+                              <span><span className="font-medium">Academic Year:</span> {en.academicYear?.yearName || '-'}</span>
+                              <span><span className="font-medium">Grade:</span> {en.gradeSection?.grade || '-'}</span>
+                              <span><span className="font-medium">Section:</span> {en.gradeSection?.section || '-'}</span>
+                              <span><span className="font-medium">Shift:</span> {en.gradeSection?.shift || '-'}</span>
+                              <span><span className="font-medium">Status:</span> {en.status}</span>
+                            </div>
+                            <div className="overflow-x-auto mt-3">
+                              {(() => {
+                                const examTypesSorted = [...(en.transcript?.examTypes || [])].sort((a, b) => {
+                                  const ao = Number(a?.order || 0);
+                                  const bo = Number(b?.order || 0);
+                                  if (ao !== bo) return ao - bo;
+                                  return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
+                                });
+
+                                const transcriptRows = en.transcript?.rows || [];
+                                const rowsWithOverall = [...transcriptRows, { __type: 'overall' }];
+
+                                const columns = [
+                                  {
+                                    key: 'subject',
+                                    label: 'Subject',
+                                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                                    tdClassName: 'px-4 py-3 border-x border-gray-700',
+                                  },
+                                  ...examTypesSorted.map((et) => ({
+                                    key: `et:${String(et._id)}`,
+                                    label: et.typeName,
+                                    align: 'right',
+                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                                    tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                                    _etId: String(et._id),
+                                  })),
+                                  {
+                                    key: 'total',
+                                    label: 'Total',
+                                    align: 'right',
+                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                                    tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                                  },
+                                  {
+                                    key: 'avg',
+                                    label: 'Average',
+                                    align: 'right',
+                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
+                                    tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                                  },
+                                ];
+
+                                return (
+                                  <StandardTable
+                                    isLoading={false}
+                                    items={transcriptRows}
+                                    emptyTitle="No transcript rows"
+                                    rows={rowsWithOverall}
+                                    columns={columns}
+                                    getRowKey={(row) => row?.__type === 'overall' ? 'overall' : String(row.subjectId)}
+                                    renderCell={(row, col) => {
+                                      if (row?.__type === 'overall') {
+                                        if (col.key === 'subject') return <span className="block text-right">Overall</span>;
+                                        if (String(col.key).startsWith('et:')) return '';
+                                        if (col.key === 'total') return Number(en.transcript?.overall?.total || 0).toFixed(2);
+                                        if (col.key === 'avg') return Number(en.transcript?.overall?.average || 0).toFixed(2);
+                                        return '';
+                                      }
+
+                                      if (col.key === 'subject') return row.subjectName;
+
+                                      if (String(col.key).startsWith('et:')) {
+                                        const etId = col._etId;
+                                        const cell = (row.exams || []).find(x => String(x.examTypeId) === String(etId));
+                                        return Number(cell?.score || 0).toFixed(2);
+                                      }
+
+                                      if (col.key === 'total') return Number(row.total || 0).toFixed(2);
+                                      if (col.key === 'avg') return Number(row.average || 0).toFixed(2);
+                                      return '';
+                                    }}
+                                    tableProps={{
+                                      theadClassName: 'bg-gray-800',
+                                      useDefaultHeaderStyles: false,
+                                      baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
+                                      rowClassName: (row) => row?.__type === 'overall' ? 'font-medium border-t-2 border-gray-700' : '',
+                                    }}
+                                  />
+                                );
+                              })()}
+                            </div>
+                          </section>
+                        );
+                      })
+                    )}
+
+                    {/* Removed extra summary footer under table per request */}
+                  </div>
+                );
               });
             })()}
           </div>
