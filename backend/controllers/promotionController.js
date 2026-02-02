@@ -12,39 +12,29 @@ import Subject from '../models/Subject.js';
 import { computeOverallAverages, getMinAvgThreshold } from '../services/promotionEvaluation.js';
 import { publishRealtime } from '../utils/realtimeBus.js';
 
-// Helper: get next grade and AY
-// Helper: derive an ordering for grade names like "level one", "level 2", etc.
-function gradeRank(name = '') {
-  const s = String(name).toLowerCase();
-  // number in name wins (e.g., 'level 3')
-  const numMatch = s.match(/\b(\d{1,2})\b/);
-  if (numMatch) return parseInt(numMatch[1], 10);
-  // english words mapping
-  const words = ['one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve'];
-  for (let i = 0; i < words.length; i++) {
-    if (s.includes(words[i])) return i + 1;
-  }
-  // fallback: try roman numerals
-  const romans = { i:1, ii:2, iii:3, iv:4, v:5, vi:6, vii:7, viii:8, ix:9, x:10 };
-  for (const [k,v] of Object.entries(romans)) {
-    if (s.includes(` ${k} `) || s.endsWith(` ${k}`) || s.startsWith(`${k} `)) return v;
-  }
-  // default rank
-  return Number.MAX_SAFE_INTEGER;
-}
-
+// Helper: get next grade and AY using DB-driven Grade.order (language-agnostic)
 function getNextGradeAndAY(enrollment, timing, grades, academicYears) {
-  // Find current grade and AY
-  // Sort grades by derived rank for deterministic next
-  const sortedGrades = [...grades].sort((a,b) => gradeRank(a.gradeName) - gradeRank(b.gradeName) || String(a.gradeName).localeCompare(String(b.gradeName)));
   const enrGradeId = String(enrollment?.grade?._id || enrollment?.grade || '');
   const enrAyId = String(enrollment?.academicYear?._id || enrollment?.academicYear || '');
-  const currentGrade = sortedGrades.find(g => String(g._id) === enrGradeId);
-  const currentAY = academicYears.find(ay => String(ay._id) === enrAyId);
+  const currentGrade = (grades || []).find(g => String(g._id) === enrGradeId) || null;
+  const currentAY = (academicYears || []).find(ay => String(ay._id) === enrAyId) || null;
   if (!currentGrade || !currentAY) return null;
-  // Find next grade (simple next index)
-  const gradeIdx = sortedGrades.findIndex(g => String(g._id) === String(currentGrade._id));
-  const nextGrade = sortedGrades[gradeIdx + 1];
+
+  const currentOrder = currentGrade?.order;
+  if (!Number.isInteger(currentOrder)) {
+    return { error: 'GRADE_ORDER_MISSING', gradeId: String(currentGrade._id || ''), gradeName: currentGrade.gradeName || '' };
+  }
+
+  // Next grade is the smallest order > current
+  let nextGrade = null;
+  for (const g of (grades || [])) {
+    if (!g) continue;
+    if (!Number.isInteger(g.order)) continue;
+    if (g.order > currentOrder) {
+      if (!nextGrade || g.order < nextGrade.order) nextGrade = g;
+    }
+  }
+
   // AY: mid-year = same; year-end = deterministically compute next by name, then reuse if exists
   if (timing === 'mid-year') {
     return { nextGrade, nextAY: currentAY };
@@ -148,6 +138,25 @@ export async function previewPromotion(req, res) {
     nextInfoByStudent.set(String(student._id), ng);
   }
 
+  // Configuration guard: Promotions require Grade.order to be set (integer) for all grades in use.
+  const orderErrors = [];
+  for (const st of students) {
+    const enr = enrollmentByStudent.get(String(st._id));
+    if (!enr) continue;
+    const info = nextInfoByStudent.get(String(st._id));
+    if (info && info.error === 'GRADE_ORDER_MISSING') {
+      orderErrors.push({ studentId: st.studentId, fullName: st.fullName, gradeId: info.gradeId, gradeName: info.gradeName });
+    }
+  }
+  if (orderErrors.length > 0) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Grade order is not configured. Please set an integer `order` for each Grade (1..N).',
+      code: 'GRADE_ORDER_MISSING',
+      details: orderErrors,
+    });
+  }
+
   // Collect unique target GS query triples (grade, shift, section)
   const targetTriples = [];
   const tripleKeySet = new Set();
@@ -206,7 +215,8 @@ export async function previewPromotion(req, res) {
     const overallAvg = evalInfo?.overallAvg ?? null;
     const failedSubjects = evalInfo?.failedSubjects ?? null;
     // Per-student debug logging removed.
-    if (!nextGrade && timing === 'year-end') {
+    // Terminal grade (no nextGrade) => Graduation for both mid-year and year-end
+    if (!nextGrade) {
       items.push({ studentId: student.studentId, fullName: student.fullName, action: 'graduate', errors: [], overallAvg, failedSubjects });
       graduates++;
       continue;
@@ -487,12 +497,19 @@ export async function executePromotion(req, res) {
   const results = [];
   let promotable = 0, graduates = 0, missingTargets = 0, capacityIssues = 0;
 
-  // Pre-check: duplicate mid-year promotions
+  // Pre-check: duplicate mid-year promotions (only for promotable students)
   if (timing === 'mid-year') {
     const duplicatePromotions = [];
     for (const student of students) {
       const enrollment = enrollments.find(e => String(e.student) === String(student._id));
       if (!enrollment) continue;
+      const info = getNextGradeAndAY(enrollment, timing, grades, academicYears) || null;
+      // Terminal grade => graduation (no mid-year promotion row to block)
+      if (info && !info.error && !info.nextGrade) continue;
+      if (info && info.error === 'GRADE_ORDER_MISSING') {
+        duplicatePromotions.push({ studentId: student._id, fullName: student.fullName, error: 'Grade order missing' });
+        continue;
+      }
       const exists = await Enrollment.findOne({
         student: student._id,
         academicYear: enrollment.academicYear,
@@ -538,8 +555,13 @@ export async function executePromotion(req, res) {
         }
 
         const preInfo = nextInfoByStudent.get(String(student._id)) || {};
+        if (preInfo && preInfo.error === 'GRADE_ORDER_MISSING') {
+          actionResult = { error: 'GRADE_ORDER_MISSING' };
+          return;
+        }
         const { nextGrade, nextAY } = preInfo;
-        if (!nextGrade && timing === 'year-end') {
+        // Terminal grade (no nextGrade) => Graduation for both mid-year and year-end
+        if (!nextGrade) {
           // Graduation
           await Enrollment.updateOne({ _id: enrollmentSession._id }, { status: 'graduated', leftAt: new Date() }).session(session);
           await Student.updateOne({ _id: student._id }, { status: 'Inactive' }).session(session);

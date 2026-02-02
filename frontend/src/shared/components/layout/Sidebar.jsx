@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -106,18 +106,17 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
       const order = new Map([
         ['/teacher-dashboard', 0],
         ['/teacher-classes', 1],
-        ['/timetable', 2],
-        ['/attendance', 3],
-        ['/attendance-reports', 4],
-        ['__EXAMS__', 5],
-        ['/teacher-profile', 6],
-        ['/announcements', 7],
+        ['__OPERATIONS__', 2],
+        ['__EXAMS__', 3],
+        ['/teacher-profile', 4],
+        ['/announcements', 5],
       ]);
 
       const keyOf = (item) => {
         if (!item) return '';
         if (item.path) return String(item.path);
-        if (String(item.label || '') === 'Exam Management') return '__EXAMS__';
+        if (String(item.key || '') === 'exams' || String(item.label || '') === 'Exam Management' || String(item.label || '') === 'Exams') return '__EXAMS__';
+        if (String(item.key || '') === 'operations' || String(item.label || '') === 'Operations') return '__OPERATIONS__';
         return String(item.label || '');
       };
 
@@ -137,12 +136,33 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     return base;
   }, [role, hasPermission]);
 
-  const [examOpen, setExamOpen] = useState(() => {
-    const p = location.pathname;
-    return p.startsWith('/exams') || p.startsWith('/results') || p.startsWith('/transcripts');
-  });
+  const [openGroups, setOpenGroups] = useState(() => ({}));
 
-  const toggleExamOpen = () => setExamOpen((v) => !v);
+  useEffect(() => {
+    const p = location.pathname;
+    const keysToOpen = [];
+
+    for (const item of visibleNavItems || []) {
+      if (!Array.isArray(item.children) || !item.children.length) continue;
+      const key = String(item.key || item.label || '');
+      if (!key) continue;
+
+      const match = item.children.some((child) => {
+        const childPath = String(child?.path || '');
+        if (!childPath) return false;
+        return p === childPath || p.startsWith(childPath + '/') || p.startsWith(childPath);
+      });
+
+      if (match) keysToOpen.push(key);
+    }
+
+    if (!keysToOpen.length) return;
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const k of keysToOpen) next[k] = true;
+      return next;
+    });
+  }, [location.pathname, visibleNavItems]);
 
   const onMobileNavClick = () => {
     if (typeof closeMobileMenu === 'function') closeMobileMenu();
@@ -152,21 +172,38 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     const isMobile = variant === 'mobile';
     const collapsed = !isMobile && Boolean(isCollapsed);
 
+    const showGroupHeaders = (role === 'admin' || role === 'staff') && !collapsed;
+    let lastGroup = null;
+
     return (visibleNavItems || []).map((item) => {
       const Icon = item.icon;
       const hasChildren = Array.isArray(item.children) && item.children.length;
 
+      const group = String(item.group || '');
+      const shouldRenderHeader = showGroupHeaders && group && group !== lastGroup;
+      if (shouldRenderHeader) lastGroup = group;
+
       if (hasChildren) {
-        const isExamGroup = item.label === 'Exam Management';
-        const isOpen = isExamGroup ? examOpen : false;
-        const onToggle = isExamGroup ? toggleExamOpen : null;
+        const groupKey = String(item.key || item.label || '');
+        const isOpen = Boolean(openGroups[groupKey]);
+        const onToggle = () => {
+          if (!groupKey) return;
+          setOpenGroups((prev) => ({
+            ...prev,
+            [groupKey]: !prev[groupKey],
+          }));
+        };
 
         return (
-          <div key={item.label}>
+          <div key={item.key || item.label}>
+            {shouldRenderHeader ? (
+              <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                {group}
+              </div>
+            ) : null}
             <button
               type="button"
-              onClick={onToggle || undefined}
-              disabled={!onToggle}
+              onClick={onToggle}
               className={
                 `w-full flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${
                   isOpen ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
@@ -183,7 +220,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
               <div className="ml-6 border-l border-gray-700 pl-2">
                 {item.children.map((child) => (
                   <NavLink
-                    key={child.path}
+                    key={child.key || child.path}
                     to={child.path}
                     className={({ isActive }) =>
                       `flex items-center p-2 my-1 rounded-md transition-colors duration-200 ${
@@ -205,8 +242,13 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
       const isAnnouncements = item.path === '/announcements' || item.module === 'announcements';
 
       return (
-        <NavLink
-          key={item.path}
+        <React.Fragment key={item.key || item.path}>
+          {shouldRenderHeader ? (
+            <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              {group}
+            </div>
+          ) : null}
+          <NavLink
           to={item.path}
           end={isDashboardPath}
           className={navLinkClasses}
@@ -227,7 +269,8 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
               <span className="ml-1 inline-block w-2 h-2 rounded-full bg-red-500" />
             ) : null
           )}
-        </NavLink>
+          </NavLink>
+        </React.Fragment>
       );
     });
   };

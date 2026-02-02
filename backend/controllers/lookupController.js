@@ -16,7 +16,13 @@ export const getAcademicYears = async (_req, res) => {
 // Grades
 export const getGrades = async (_req, res) => {
     try {
-        const grades = await Grade.find().sort({ gradeName: 1 });
+        const grades = await Grade.find().lean();
+        grades.sort((a, b) => {
+            const ao = Number.isInteger(a?.order) ? a.order : Number.MAX_SAFE_INTEGER;
+            const bo = Number.isInteger(b?.order) ? b.order : Number.MAX_SAFE_INTEGER;
+            if (ao !== bo) return ao - bo;
+            return String(a?.gradeName || '').localeCompare(String(b?.gradeName || ''), undefined, { sensitivity: 'base' });
+        });
         res.json(grades);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching grades', error: error.message });

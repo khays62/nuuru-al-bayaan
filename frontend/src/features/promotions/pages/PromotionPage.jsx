@@ -1,45 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
-import AcademicYearSelect from '../../lookups/components/AcademicYearSelect';
-import GradeSelect from '../../lookups/components/GradeSelect';
-import ShiftSelect from '../../lookups/components/ShiftSelect';
-import GradeSectionSelect from '../../lookups/components/GradeSectionSelect';
-import CohortSelect from '../../lookups/components/CohortSelect';
-import { Search, Play, Rocket, RefreshCw, Loader2 } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { previewPromotion, executePromotion } from '../api/promotions';
 import { listStudents } from '../../students/api/studentsApi';
-import Button from '../../../shared/components/ui/Button';
-import Card from '../../../shared/components/ui/Card.jsx';
-import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
-import Checkbox from '../../../shared/components/ui/Checkbox';
-import Chip from '../../../shared/components/ui/Chip.jsx';
-import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
-import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { useAuth } from '../../../auth/AuthContext';
 import { promotionKeys } from '../queryKeys';
 import { usePromotionsRealtimeInvalidation } from '../usePromotionsRealtimeInvalidation';
 
-// Skeleton page for Promotions as a standalone tab per PROMOTION.md
-// This wires the layout and UX elements; API integration to be added next.
-
-const TimingSelector = ({ value, onChange }) => (
-  <div className="flex items-center gap-3">
-    <label className="font-medium">Timing</label>
-    <div className="min-w-40">
-      <DropdownSelect
-        value={value}
-        onChange={onChange}
-        options={[
-          { value: 'mid-year', label: 'Mid-Year' },
-          { value: 'year-end', label: 'Year-End' },
-        ]}
-        placeholder="Timing"
-      />
-    </div>
-  </div>
-);
+import PromotionsToolbar from '../components/PromotionsToolbar.jsx';
+import StudentsRosterTable from '../components/StudentsRosterTable.jsx';
+import PromotionPreviewPanel from '../components/PromotionPreviewPanel.jsx';
+import { formatApiErrorToast, formatCurrent, formatFrom, formatTo } from '../utils/formatters.js';
 
 export default function PromotionPage() {
   const { auth, hasPermission } = useAuth();
@@ -64,7 +36,8 @@ export default function PromotionPage() {
       grade: filters.grade,
       shift: filters.shift,
       gradeSectionId: filters.section,
-      cohort: filters.cohort,
+      cohortId: filters.cohort,
+      enrollmentStatus: 'active',
     }),
     [filters.q, filters.ay, filters.grade, filters.shift, filters.section, filters.cohort]
   );
@@ -134,85 +107,10 @@ export default function PromotionPage() {
     setPreview(null);
   }, [Array.from(selectedIds).join(',')]);
 
-  const allSelected = useMemo(() => students.length > 0 && selectedIds.size === students.length, [students, selectedIds]);
-
-  const toggleSelectAll = () => {
-    if (allSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(students.map(s => s._id)));
-  };
-
-  const toggleSelected = (id) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    setSelectedIds(next);
-  };
-
-  const studentsColumns = useMemo(() => ([
-    {
-      key: 'select',
-      label: '',
-      thClassName: 'p-2 border-b border-gray-200 w-10',
-      tdClassName: 'p-2',
-    },
-    {
-      key: 'student',
-      label: 'Student',
-      thClassName: 'p-2 text-left border-b border-gray-200',
-      tdClassName: 'p-2 whitespace-nowrap font-medium text-gray-700',
-    },
-    {
-      key: 'current',
-      label: 'Current',
-      thClassName: 'p-2 text-left border-b border-gray-200',
-      tdClassName: 'p-2 text-xs text-gray-600',
-    },
-    {
-      key: 'cohort',
-      label: 'Cohort',
-      thClassName: 'p-2 text-left border-b border-gray-200',
-      tdClassName: 'p-2',
-    },
-  ]), [filtersReady, selectedIds, students]);
-
-  const previewColumns = useMemo(() => ([
-    { key: 'student', label: 'Student', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
-    { key: 'from', label: 'From', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
-    { key: 'to', label: 'To', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
-    { key: 'avg', label: 'Avg', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2 text-xs' },
-    { key: 'failed', label: 'Failed', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2 text-xs' },
-    { key: 'status', label: 'Status', thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
-  ]), []);
-
-  // Helpers: consistent formatting for From/To/Current sections
-  const label = (v) => (v === undefined || v === null || v === '' || v === '-') ? null : String(v);
-  // Show AY as a short single year (the right-hand part of '2024-2025' → '2025')
-  const yearShort = (s) => {
-    if (!s || typeof s !== 'string') return null;
-    const sep = s.includes('/') ? '/' : '-';
-    const parts = s.split(sep).map(p => p.trim());
-    if (parts.length === 2) return parts[1];
-    return s;
-  };
-  const dotJoin = (parts) => parts.filter(Boolean).join(' • ');
-  const formatFrom = (from = {}) => {
-    const grade = from.grade?.gradeName;
-  const ay = yearShort(from.academicYear?.yearName);
-    const section = from.section;
-    const shift = from.shift?.shiftName;
-    const cohort = from.cohort?.name;
-    return dotJoin([label(grade), label(ay), label(section), label(shift), label(cohort)]);
-  };
-  const formatTo = (target = {}) => {
-    const grade = target.toGrade;
-  const ay = yearShort(target.toAY);
-    const section = target.section;
-    const shift = target.shift;
-    const cohort = target.cohort;
-    return dotJoin([label(grade), label(ay), label(section), label(shift), label(cohort)]);
-  };
-  const formatCurrent = (c = {}) => {
-    // listStudents() returns s.current fields as simple strings; tolerate missing values
-    return dotJoin([label(c.grade), label(c.ay), label(c.section), label(c.shift), label(c.cohort)]);
+  const resetPage = () => {
+    setPreview(null);
+    setSelectedIds(new Set());
+    setFilters(initialFilters);
   };
 
   const handlePreview = async () => {
@@ -235,16 +133,24 @@ export default function PromotionPage() {
       params.append('timing', timing);
       Array.from(selectedIds).forEach(id => params.append('studentIds', id));
     // UI no longer controls auto-create; backend decides and avoids duplicates
-  const { ok, items, summary, error, warnings, allNoScores } = await previewPromotion(params);
-      if (!ok) throw new Error(error || 'Preview failed');
-      // preview items received
-      setPreview({ items, summary });
+      const res = await previewPromotion(params);
+      const { ok, items, summary, error, warnings, allNoScores } = res || {};
+      if (!ok) {
+        toast.error(formatApiErrorToast(res || { error: error || 'Preview failed' }));
+        setPreview(null);
+        return;
+      }
+      // preview items received (hide any non-active students just in case)
+      const safeItems = (Array.isArray(items) ? items : []).filter((it) => !(
+        Array.isArray(it?.errors) && it.errors.includes('ACTIVE_ENROLLMENT_MISSING')
+      ));
+      setPreview({ items: safeItems, summary });
       // Show a short toast if all selected have no scores, but still render table
       if (allNoScores || (Array.isArray(warnings) && warnings.includes('NO_SCORES_ALL'))) {
         toast.error('All selected students have no exam scores.');
       }
     } catch (err) {
-      toast.error(err?.message || 'Preview failed');
+      toast.error(formatApiErrorToast(err));
       setPreview(null);
     } finally {
       setLoadingPreview(false);
@@ -257,17 +163,13 @@ export default function PromotionPage() {
       return;
     }
     if (!preview) { toast.error('Run preview first'); return; }
-    // Prevent execute if preview already shows mid-year error
-    if (preview && preview.items && preview.items.some(it => Array.isArray(it.errors) && it.errors.some(e => String(e).includes('Mid-year promotion already done')))) {
-      toast.error('Mid-year promotion already done for some students. Promotion stopped.');
-      return;
-    }
+
     setLoadingPromote(true);
     try {
-  const response = await executePromotion({ timing, studentIds: Array.from(selectedIds) });
+      const response = await executePromotion({ timing, studentIds: Array.from(selectedIds) });
       // If backend returns error status, show toast and stop
       if (response && response.ok === false && response.error) {
-        toast.error(response.error);
+        toast.error(formatApiErrorToast(response));
         // Clear preview when server returns an error (e.g., duplicate/mid-year already done)
         setPreview(null);
         setLoadingPromote(false);
@@ -290,30 +192,32 @@ export default function PromotionPage() {
         // dispatch global event so any AcademicYearSelect instances refresh immediately
   try { window.dispatchEvent(new CustomEvent('academicYear:created', { detail: { createdAcademicYearId: createdAYId } })); } catch { /* ignore */ }
       }
-  // We removed the Promotion Results table — keep behavior: toast + clear selection
-      // Notify user of overall outcome
-      const failed = results.filter(r => Array.isArray(r.errors) && r.errors.length > 0).length;
-      if (failed > 0) {
-        toast.error(`Promotion completed with ${failed} failures`);
-      } else {
-        toast.success('Promotion completed successfully');
-      }
+      // Single feedback toast: show counts after promote completes.
+      const promotedCount = Number(response?.summary?.promotable || 0);
+      const graduatesCount = Number(response?.summary?.graduates || 0);
+      const notEligibleCount = (Array.isArray(results) ? results : []).filter((r) => (
+        Array.isArray(r?.errors) && r.errors.includes('BELOW_MIN_AVG')
+      )).length;
+      const otherFailedCount = (Array.isArray(results) ? results : []).filter((r) => (
+        Array.isArray(r?.errors)
+        && r.errors.length > 0
+        && !r.errors.includes('BELOW_MIN_AVG')
+      )).length;
+
+      let msg = `Promotion completed. Promoted: ${promotedCount}. Not eligible (avg < 60): ${notEligibleCount}.`;
+      if (graduatesCount > 0) msg += ` Graduated: ${graduatesCount}.`;
+      if (otherFailedCount > 0) msg += ` Failed: ${otherFailedCount}.`;
+
+      if (otherFailedCount > 0) toast.error(msg);
+      else toast.success(msg);
       // clear selection but keep preview so user can compare
       setSelectedIds(new Set());
     } catch (err) {
       const code = err?.data?.error || '';
       if (code === 'NO_SCORES_ALL') {
-        const names = Array.isArray(err?.data?.details)
-          ? err.data.details.map(d => d.fullName).filter(Boolean)
-          : [];
-        const snippet = names.length === 0
-          ? ''
-          : names.length <= 3
-            ? ` (${names.join(', ')})`
-            : ` (${names.slice(0,3).join(', ')} +${names.length - 3} more)`;
-        toast.error(`All selected students have no exam scores${snippet}. Please add/import scores first, then try Promote again.`);
+        toast.error('All selected students have no exam scores. Please add/import scores first, then try Promote again.');
       } else {
-        toast.error(err?.message || 'Promotion failed');
+        toast.error(formatApiErrorToast(err));
       }
     } finally {
       setLoadingPromote(false);
@@ -326,238 +230,39 @@ export default function PromotionPage() {
         <h1 className="text-2xl font-bold text-gray-800">Promotions</h1>
         <p className="text-sm text-gray-600">Select context filters then preview eligibility before confirming promotions.</p>
       </div>
-      <DataToolbar
-        showReset={false}
-        filtersSlot={
-          <FilterRow align="end">
-            <FilterItem>
-              <TimingSelector value={timing} onChange={setTiming} />
-            </FilterItem>
-
-            <FilterItem grow minWidthClass="min-w-30">
-              <AcademicYearSelect
-                value={filters.ay}
-                onChange={v => setFilters({ ...filters, ay: v })}
-                refreshKey={ayRefreshKey}
-                placeholder="AY"
-                searchable
-                maxVisible={5}
-                searchPlaceholder="Search academic years…"
-              />
-            </FilterItem>
-
-            <FilterItem grow minWidthClass="min-w-30">
-              <GradeSelect
-                value={filters.grade}
-                onChange={v => setFilters({ ...filters, grade: v })}
-                placeholder="Grade"
-              />
-            </FilterItem>
-
-            <FilterItem grow minWidthClass="min-w-30">
-              <ShiftSelect
-                value={filters.shift}
-                onChange={v => setFilters({ ...filters, shift: v })}
-                placeholder="Shift"
-              />
-            </FilterItem>
-
-            <FilterItem grow minWidthClass="min-w-35">
-              <GradeSectionSelect
-                gradeId={filters.grade}
-                shiftId={filters.shift}
-                value={filters.section}
-                onChange={v => setFilters({ ...filters, section: v })}
-                placeholder="Section"
-              />
-            </FilterItem>
-
-            <FilterItem grow minWidthClass="min-w-40">
-              <CohortSelect
-                mode="promotion"
-                academicYear={filters.ay}
-                gradeSectionId={filters.section}
-                gradeId={filters.grade}
-                shiftId={filters.shift}
-                section={null}
-                value={filters.cohort}
-                onChange={v => setFilters({ ...filters, cohort: v })}
-                placeholder="Cohort"
-                searchable
-                maxVisible={5}
-                searchPlaceholder="Search cohorts…"
-              />
-            </FilterItem>
-          </FilterRow>
-        }
-        actionsSlot={<div className="flex gap-2">
-          {canPreview && (
-            <Button
-              onClick={handlePreview}
-              disabled={!filtersReady || loadingPreview || loadingPromote}
-              aria-busy={loadingPreview}
-              variant="brand"
-              size="lg"
-              icon={loadingPreview ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
-            >
-              Preview
-            </Button>
-          )}
-
-          {canPromote && (
-            <Button
-              onClick={handlePromote}
-              disabled={!preview || loadingPromote || loadingPreview}
-              aria-busy={loadingPromote}
-              variant="info"
-              size="lg"
-              icon={loadingPromote ? <Loader2 className="animate-spin" size={16} /> : <Rocket size={16} />}
-            >
-              Promote
-            </Button>
-          )}
-
-          <Button
-            onClick={() => { setPreview(null); setSelectedIds(new Set()); setFilters(initialFilters); }}
-            disabled={loadingPreview || loadingPromote}
-            variant="neutral"
-            size="lg"
-            icon={<RefreshCw size={16} />}
-          >
-            Reset
-          </Button>
-        </div>}
-        onReset={()=>{ setPreview(null); setSelectedIds(new Set()); setFilters(initialFilters); }}
+      <PromotionsToolbar
+        timing={timing}
+        setTiming={setTiming}
+        filters={filters}
+        setFilters={setFilters}
+        initialFilters={initialFilters}
+        ayRefreshKey={ayRefreshKey}
+        filtersReady={filtersReady}
+        canPreview={canPreview}
+        canPromote={canPromote}
+        loadingPreview={loadingPreview}
+        loadingPromote={loadingPromote}
+        onPreview={handlePreview}
+        onPromote={preview ? handlePromote : null}
+        onReset={resetPage}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Students table */}
-        <Card className="p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold">Students</h3>
-            <label className="inline-flex items-center gap-2 text-sm">
-              <Checkbox checked={allSelected} onChange={toggleSelectAll} disabled={!filtersReady || students.length === 0} />
-              <span>Select All</span>
-            </label>
-          </div>
-          <div className="max-h-130 overflow-auto">
-            <StandardTable
-              isLoading={studentsLoading}
-              error={studentsError}
-              items={students}
-              isEmpty={!studentsLoading && !studentsError && (!filtersReady || students.length === 0)}
-              loadingMessage="Loading students..."
-              loadingVariant="table"
-              loadingRows={7}
-              loadingColumns={4}
-              emptyTitle={!filtersReady ? 'Select filters to load students' : 'No students found'}
-              emptyDescription={!filtersReady ? 'Select AY, Grade, Shift, Section and Cohort.' : ''}
+        <StudentsRosterTable
+          filtersReady={filtersReady}
+          students={students}
+          studentsLoading={studentsLoading}
+          studentsError={studentsError}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+          formatCurrent={formatCurrent}
+        />
 
-              rows={students}
-              columns={studentsColumns}
-              getRowKey={(s) => s._id}
-              renderCell={(s, col) => {
-                switch (col.key) {
-                  case 'select':
-                    return (
-                      <Checkbox
-                        checked={selectedIds.has(s._id)}
-                        onChange={() => toggleSelected(s._id)}
-                        disabled={!filtersReady}
-                      />
-                    );
-                  case 'student':
-                    return (
-                      <span className="whitespace-nowrap">
-                        {s.studentId} — {s.fullName}
-                      </span>
-                    );
-                  case 'current':
-                    return formatCurrent(s.current || {}) || '-';
-                  case 'cohort':
-                    return <Chip>{s.current?.cohort || '-'}</Chip>;
-                  default:
-                    return '';
-                }
-              }}
-              tableProps={{
-                theadClassName: 'bg-gray-50',
-                useDefaultHeaderStyles: false,
-                baseRowClassName: 'border-b border-gray-200 hover:bg-gray-50 transition-colors',
-              }}
-            />
-          </div>
-        </Card>
-
-        {/* Preview panel */}
-        <Card className="p-3">
-          <h3 className="font-semibold mb-2">Preview</h3>
-          {!preview ? (
-            <div className="text-gray-500">Run Preview to see targets, auto-create needs, and graduations</div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-4 text-sm">
-                <div>Total: <b>{preview.summary.total}</b></div>
-                <div>Promotable: <b className="text-emerald-700">{preview.summary.promotable}</b></div>
-                <div>Graduates: <b className="text-blue-700">{preview.summary.graduates}</b></div>
-                <div>Missing Targets: <b className="text-amber-700">{preview.summary.missingTargets}</b></div>
-                <div>Capacity Issues: <b className="text-red-700">{preview.summary.capacityIssues}</b></div>
-              </div>
-              <div className="border rounded max-h-130 overflow-auto">
-                <StandardTable
-                  isLoading={false}
-                  error={null}
-                  items={preview.items}
-                  isEmpty={false}
-
-                  rows={preview.items}
-                  columns={previewColumns}
-                  getRowKey={(_, idx) => idx}
-                  renderCell={(it, col) => {
-                    const from = it.fromGS || {};
-                    const target = it.target || {};
-
-                    switch (col.key) {
-                      case 'student':
-                        return `${it.studentId} — ${it.fullName}`;
-                      case 'from':
-                        return formatFrom(from) || '-';
-                      case 'to':
-                        return formatTo(target) || '-';
-                      case 'avg':
-                        return typeof it.overallAvg === 'number' ? it.overallAvg.toFixed(1) : '-';
-                      case 'failed':
-                        return typeof it.failedSubjects === 'number' ? it.failedSubjects : '-';
-                      case 'status':
-                        return it.action === 'graduate' ? (
-                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded">Graduate</span>
-                        ) : (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay' ? (
-                          <span className="text-xs bg-red-50 text-red-700 px-2 py-1 rounded">Not eligible (avg &lt; 60)</span>
-                        ) : !it.toGS ? (
-                          <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded">Missing GS (will be auto-created on promote)</span>
-                        ) : (
-                          <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded">OK</span>
-                        );
-                      default:
-                        return '';
-                    }
-                  }}
-                  tableProps={{
-                    theadClassName: 'bg-gray-50',
-                    useDefaultHeaderStyles: false,
-                    baseRowClassName: 'border-b border-gray-200 hover:bg-gray-50 transition-colors',
-                    rowClassName: (it) => {
-                      const failed = (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay';
-                      const graduated = it.action === 'graduate';
-                      return failed ? 'bg-red-50' : (graduated ? 'bg-blue-50' : 'bg-white');
-                    },
-                  }}
-                />
-              </div>
-              {/* Promotion Results table removed per request */}
-            </div>
-          )}
-        </Card>
+        <PromotionPreviewPanel
+          preview={preview}
+          formatFrom={formatFrom}
+          formatTo={formatTo}
+        />
       </div>
     </div>
   );
