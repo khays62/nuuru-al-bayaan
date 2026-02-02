@@ -3,6 +3,17 @@ import { FileDown } from 'lucide-react';
 import ActionButton from '../ui/ActionButton';
 import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from '../../../utils/exportTable';
 
+function withExtension(filename, ext) {
+  const base = String(filename || '').trim();
+  const safeExt = String(ext || '').trim();
+  if (!safeExt) return base;
+
+  const withoutKnown = base.replace(/\.(pdf|xlsx|csv)$/i, '');
+  const hasExact = base.toLowerCase().endsWith(safeExt.toLowerCase());
+  if (hasExact) return base;
+  return `${withoutKnown}${safeExt}`;
+}
+
 export default function ExportButtons({
   getPayload,
   disabled = false,
@@ -10,13 +21,14 @@ export default function ExportButtons({
 }) {
   const [busy, setBusy] = useState(false);
 
-  const run = async (fn) => {
+  const run = async (fn, ext) => {
     if (busy || disabled) return;
     setBusy(true);
     try {
       const payload = await (typeof getPayload === 'function' ? getPayload() : null);
       if (!payload) return;
-      fn(payload);
+      const next = ext ? { ...payload, filename: withExtension(payload.filename, ext) } : payload;
+      fn(next);
     } finally {
       setBusy(false);
     }
@@ -28,7 +40,7 @@ export default function ExportButtons({
         variant="brand"
         icon={<FileDown size={16} />}
         disabled={disabled || busy}
-        onClick={() => run(exportTableToPDF)}
+        onClick={() => run(exportTableToPDF, '.pdf')}
         title="Export PDF"
       >
         PDF
@@ -37,7 +49,7 @@ export default function ExportButtons({
         variant="brand"
         icon={<FileDown size={16} />}
         disabled={disabled || busy}
-        onClick={() => run(exportTableToExcel)}
+        onClick={() => run(exportTableToExcel, '.xlsx')}
         title="Export Excel"
       >
         Excel
@@ -46,7 +58,7 @@ export default function ExportButtons({
         variant="brand"
         icon={<FileDown size={16} />}
         disabled={disabled || busy}
-        onClick={() => run(exportTableToCSV)}
+        onClick={() => run(exportTableToCSV, '.csv')}
         title="Export CSV"
       >
         CSV

@@ -29,6 +29,10 @@ import TeachersPage from '../features/teachers/pages/TeachersPage';
 import TimetablePage from '../features/timetable/pages/TimetablePage';
 import AnnouncementsPage from '../features/announcements/pages/Announcements';
 
+import GradesSetupPage from '../features/setup/pages/GradesSetupPage.jsx';
+import ShiftsSetupPage from '../features/setup/pages/ShiftsSetupPage.jsx';
+import AcademicYearsSetupPage from '../features/setup/pages/AcademicYearsSetupPage.jsx';
+
 import AdminStudentHomeTab from '../features/students/components/dashboard/AdminStudentHomeTab';
 import ProfileTab from '../features/students/components/dashboard/ProfileTab';
 import EnrollmentsTab from '../features/students/components/dashboard/EnrollmentsTab';
@@ -138,6 +142,30 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['admin', 'staff', 'teacher']} allowedPermissions={gradesAny}>
             <GradePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'setup/grades',
+        element: (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <GradesSetupPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'setup/shifts',
+        element: (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <ShiftsSetupPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'setup/academic-years',
+        element: (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AcademicYearsSetupPage />
           </ProtectedRoute>
         ),
       },

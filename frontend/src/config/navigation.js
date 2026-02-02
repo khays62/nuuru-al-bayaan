@@ -5,6 +5,7 @@ import {
     BookOpenCheck,
     BarChart2,
     UserCog,
+  Settings,
     Megaphone,
     TrendingUp,
     CalendarDays,
@@ -49,6 +50,21 @@ import {
         { key: 'cohorts', path: "/cohorts", label: "Cohorts", roles: ["admin", "staff"], module: "cohorts" },
         { key: 'promotions', path: "/promotions", label: "Promotions", roles: ["admin", "staff"], module: "promotions" },
         { key: 'transfers', path: '/transfers', label: 'Transfers', roles: ["admin", "staff"], module: "transfers" },
+      ],
+    },
+
+    // Academics Setup (dropdown)
+    {
+      key: 'academics-setup',
+      group: 'Academics',
+      label: 'Setup',
+      icon: Settings,
+      roles: ['admin'],
+      collapsible: true,
+      children: [
+        { key: 'setup-grades', path: '/setup/grades', label: 'Grades', roles: ['admin'] },
+        { key: 'setup-shifts', path: '/setup/shifts', label: 'Shifts', roles: ['admin'] },
+        { key: 'setup-academic-years', path: '/setup/academic-years', label: 'Academic Years', roles: ['admin'] },
       ],
     },
 
