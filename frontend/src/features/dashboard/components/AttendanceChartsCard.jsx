@@ -1,0 +1,782 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { BarChart3, Download, FileDown, Layers, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { toCanvas } from 'html-to-image';
+import jsPDF from 'jspdf';
+import { useQuery } from '@tanstack/react-query';
+
+import Alert from '../../../shared/components/ui/Alert.jsx';
+import UiLoadingState from '../../../shared/components/ui/LoadingState.jsx';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+
+import AcademicYearSelect from '../../lookups/components/AcademicYearSelect.jsx';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
+import Tabs from '../../attendance/components/Tabs.jsx';
+
+import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
+import { listGradeSections } from '../../grades/api/gradeSections';
+
+import { getDashboardSummary } from '../services/dashboardApi';
+import { dashboardKeys } from '../services/queryKeys';
+import { getSessionSignal } from '../../../api/sessionAbort';
+
+const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={
+                `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
+                (active
+                    ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand) shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:shadow')
+            }
+        >
+            {Icon ? <Icon size={16} /> : null}
+            {label}
+        </button>
+    );
+};
+
+const ActionButton = ({ disabled, onClick, icon: Icon, label }) => {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className={
+                `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
+                (disabled
+                    ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
+                    : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50 hover:shadow')
+            }
+            title={label}
+        >
+            {Icon ? <Icon size={16} /> : null}
+            {label}
+        </button>
+    );
+};
+
+const MiniLegend = ({ items }) => {
+    return (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+            {items.map((it) => (
+                <div key={it.label} className="inline-flex items-center gap-2">
+                    <span className={`inline-block w-2.5 h-2.5 rounded ${it.dot}`} />
+                    <span>{it.label}</span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
+const SkeletonRow = () => (
+    <div className="flex items-center gap-3 animate-pulse">
+        <div className="w-16 h-3 rounded bg-gray-200" />
+        <div className="flex-1 h-3 rounded bg-gray-200" />
+        <div className="w-12 h-3 rounded bg-gray-200" />
+    </div>
+);
+
+const TinyBadge = ({ tone = 'gray', children }) => {
+    const tones = {
+        gray: 'bg-gray-100 text-gray-800 border-gray-200',
+        emerald: 'bg-emerald-100 text-emerald-900 border-emerald-200',
+        indigo: 'bg-indigo-100 text-indigo-900 border-indigo-200',
+        amber: 'bg-amber-100 text-amber-900 border-amber-200',
+    };
+    return (
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tones[tone] || tones.gray}`}>
+            {children}
+        </span>
+    );
+};
+
+const PercentBar = ({ label, pct, tone = 'bg-indigo-600' }) => {
+    const v = Number(pct || 0);
+    const clamped = Math.max(0, Math.min(100, v));
+    return (
+        <div className="flex items-center gap-3">
+            <div className="w-24 text-[11px] text-gray-600 truncate">{label}</div>
+            <div className="flex-1">
+                <div className="h-3 w-full overflow-hidden rounded bg-gray-100 border border-gray-200">
+                    <div className={`h-full ${tone}`} style={{ width: `${Math.max(2, clamped)}%` }} />
+                </div>
+            </div>
+            <div className="w-12 text-right text-[11px] text-gray-700 tabular-nums">{clamped.toFixed(1)}%</div>
+        </div>
+    );
+};
+
+const StackedBar = ({ label, segments }) => {
+    const total = segments.reduce((sum, s) => sum + (Number(s.value) || 0), 0) || 1;
+    return (
+        <div className="flex items-center gap-3">
+            <div className="w-16 shrink-0 pt-0.5 text-[11px] text-gray-600 tabular-nums">{label}</div>
+            <div className="flex-1">
+                <div className="h-3 w-full overflow-hidden rounded bg-gray-100 border border-gray-200">
+                    <div className="flex h-full">
+                        {segments.map((s) => (
+                            <div
+                                key={s.key}
+                                className={s.className}
+                                style={{ width: `${Math.max(0, ((Number(s.value) || 0) / total) * 100)}%` }}
+                                title={`${s.label}: ${s.value}`}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </div>
+            <div className="w-12 text-right text-[11px] text-gray-700 tabular-nums">{total}</div>
+        </div>
+    );
+};
+
+const isoMinusDaysUTC = (isoDateOnly, days) => {
+    const m = String(isoDateOnly || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return isoDateOnly;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const dt = new Date(Date.UTC(y, mo - 1, d));
+    if (Number.isNaN(dt.getTime())) return isoDateOnly;
+    const out = new Date(dt.getTime() - (Number(days) || 0) * 86400000);
+    return out.toISOString().slice(0, 10);
+};
+
+const normalizeRange = (fromStr, toStr) => {
+    const a = new Date(`${String(fromStr)}T00:00:00.000Z`);
+    const b = new Date(`${String(toStr)}T00:00:00.000Z`);
+    if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return { from: fromStr, to: toStr };
+    if (b < a) return { from: fromStr, to: fromStr };
+    return { from: fromStr, to: toStr };
+};
+
+export default function AttendanceChartsCard() {
+    const sessionSignal = useMemo(() => getSessionSignal(), []);
+
+    const [academicYearId, setAcademicYearId] = useState('');
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
+    const [gradeSectionId, setGradeSectionId] = useState('');
+
+    const [view, setView] = useState('status'); // status | periods | performance
+
+    const todayUTC = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+    const [rangeTab, setRangeTab] = useState('last7'); // today | last7 | custom
+    const [from, setFrom] = useState(isoMinusDaysUTC(todayUTC, 6));
+    const [to, setTo] = useState(todayUTC);
+
+    // Range logic
+    useEffect(() => {
+        if (rangeTab === 'today') {
+            setFrom(todayUTC);
+            setTo(todayUTC);
+            return;
+        }
+        if (rangeTab === 'last7') {
+            setFrom(isoMinusDaysUTC(todayUTC, 6));
+            setTo(todayUTC);
+            return;
+        }
+    }, [rangeTab, todayUTC]);
+
+    useEffect(() => {
+        if (rangeTab !== 'custom') return;
+        const r = normalizeRange(from, to);
+        if (r.from !== from) setFrom(r.from);
+        if (r.to !== to) setTo(r.to);
+    }, [rangeTab, from, to]);
+
+    // Lightweight lookup labels for exports
+    const [lookupYears, setLookupYears] = useState([]);
+    const [lookupGrades, setLookupGrades] = useState([]);
+    const [lookupShifts, setLookupShifts] = useState([]);
+    const [lookupSections, setLookupSections] = useState([]);
+
+    useEffect(() => {
+        let ignore = false;
+        (async () => {
+            try {
+                const [ys, gs, ss] = await Promise.all([getAcademicYears(), getGrades(), getShifts()]);
+                if (ignore) return;
+                setLookupYears(Array.isArray(ys) ? ys : (ys?.data || []));
+                setLookupGrades(Array.isArray(gs) ? gs : (gs?.data || []));
+                setLookupShifts(Array.isArray(ss) ? ss : (ss?.data || []));
+            } catch {
+                if (ignore) return;
+                setLookupYears([]);
+                setLookupGrades([]);
+                setLookupShifts([]);
+            }
+        })();
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let ignore = false;
+        (async () => {
+            if (!gradeId || !shiftId) {
+                setLookupSections([]);
+                return;
+            }
+            try {
+                const res = await listGradeSections({ grade: gradeId, shift: shiftId, limit: 200 });
+                const list = Array.isArray(res) ? res : (res?.data || []);
+                if (!ignore) setLookupSections(list);
+            } catch {
+                if (!ignore) setLookupSections([]);
+            }
+        })();
+        return () => {
+            ignore = true;
+        };
+    }, [gradeId, shiftId]);
+
+    const summaryQuery = useQuery({
+        queryKey: dashboardKeys.summary({
+            from,
+            to,
+            academicYearId,
+            gradeId,
+            shiftId,
+            gradeSectionId,
+            _scope: 'attendanceCard',
+        }),
+        enabled: Boolean(from && to),
+        queryFn: async () => {
+            const res = await getDashboardSummary(
+                { from, to, academicYearId, gradeId, shiftId, gradeSectionId },
+                { signal: sessionSignal }
+            );
+            return res?.data;
+        },
+    });
+
+    const loading = summaryQuery.isLoading;
+    const isError = summaryQuery.isError;
+    const data = summaryQuery.data;
+
+    const perms = data?.permissions || {};
+
+    const STATUSES = useMemo(
+        () => [
+            { key: 'present', label: 'Present', dot: 'bg-emerald-600', bar: 'bg-emerald-600' },
+            { key: 'absent', label: 'Absent', dot: 'bg-red-500', bar: 'bg-red-500' },
+            { key: 'late', label: 'Late', dot: 'bg-amber-500', bar: 'bg-amber-500' },
+            { key: 'excused', label: 'Excused', dot: 'bg-violet-600', bar: 'bg-violet-600' },
+            { key: 'sick', label: 'Sick', dot: 'bg-sky-600', bar: 'bg-sky-600' },
+            { key: 'medical', label: 'Medical', dot: 'bg-teal-600', bar: 'bg-teal-600' },
+            { key: 'family', label: 'Family', dot: 'bg-pink-600', bar: 'bg-pink-600' },
+            { key: 'other', label: 'Other', dot: 'bg-gray-600', bar: 'bg-gray-600' },
+        ],
+        []
+    );
+
+    const attendanceByDay = Array.isArray(data?.charts?.attendanceByDay) ? data.charts.attendanceByDay : [];
+    const attendanceStatusTrend = Array.isArray(data?.charts?.attendanceStatusTrend) ? data.charts.attendanceStatusTrend : [];
+    const attendanceByPeriod = Array.isArray(data?.charts?.attendanceByPeriod) ? data.charts.attendanceByPeriod : [];
+
+    const trend = useMemo(() => {
+        const src = (attendanceStatusTrend && attendanceStatusTrend.length > 0) ? attendanceStatusTrend : attendanceByDay;
+        return (src || [])
+            .map((r) => {
+                const date = String(r?.date || '');
+                const present = Number(r?.present || 0);
+                const absent = Number(r?.absent || 0);
+                const late = Number(r?.late || 0);
+                const excused = Number(r?.excused || 0);
+                const sick = Number(r?.sick || 0);
+                const medical = Number(r?.medical || 0);
+                const family = Number(r?.family || 0);
+                const other = Number(r?.other || 0);
+                const total = present + absent + late + excused + sick + medical + family + other;
+
+                const preferSource = String(r?.preferSource || '');
+                const hasAllDay = Boolean(r?.hasAllDay);
+                const hasPerPeriod = Boolean(r?.hasPerPeriod);
+                const dayTotal = Number(r?.dayTotal || 0);
+                const lessonTotal = Number(r?.lessonTotal || 0);
+                const dayPresent = Number(r?.dayPresent || 0);
+                const lessonPresent = Number(r?.lessonPresent || 0);
+
+                return {
+                    date,
+                    present,
+                    absent,
+                    late,
+                    excused,
+                    sick,
+                    medical,
+                    family,
+                    other,
+                    total,
+                    preferSource,
+                    hasAllDay,
+                    hasPerPeriod,
+                    dayTotal,
+                    lessonTotal,
+                    dayPresent,
+                    lessonPresent,
+                };
+            })
+            .filter((r) => r.date)
+            .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    }, [attendanceByDay, attendanceStatusTrend]);
+
+    const performanceAgg = useMemo(() => {
+        const totals = Object.fromEntries(STATUSES.map((s) => [s.key, 0]));
+        let total = 0;
+        for (const r of trend || []) {
+            totals.present += Number(r.present || 0);
+            totals.absent += Number(r.absent || 0);
+            totals.late += Number(r.late || 0);
+            totals.excused += Number(r.excused || 0);
+            totals.sick += Number(r.sick || 0);
+            totals.medical += Number(r.medical || 0);
+            totals.family += Number(r.family || 0);
+            totals.other += Number(r.other || 0);
+            total += Number(r.total || 0);
+        }
+        const pct = {};
+        for (const s of STATUSES) {
+            pct[s.key] = total > 0 ? (Number(totals[s.key] || 0) / total) * 100 : 0;
+        }
+        const presentPct = total > 0 ? (Number(totals.present || 0) / total) * 100 : 0;
+        return { totals, total, pct, presentPct };
+    }, [trend, STATUSES]);
+
+    const sourceAgg = useMemo(() => {
+        let dayTotal = 0;
+        let dayPresent = 0;
+        let lessonTotal = 0;
+        let lessonPresent = 0;
+        for (const r of trend || []) {
+            dayTotal += Number(r.dayTotal || 0);
+            dayPresent += Number(r.dayPresent || 0);
+            lessonTotal += Number(r.lessonTotal || 0);
+            lessonPresent += Number(r.lessonPresent || 0);
+        }
+        const dayPct = dayTotal > 0 ? (dayPresent / dayTotal) * 100 : null;
+        const lessonPct = lessonTotal > 0 ? (lessonPresent / lessonTotal) * 100 : null;
+        return { dayTotal, dayPresent, lessonTotal, lessonPresent, dayPct, lessonPct };
+    }, [trend]);
+
+    const exportCaptureRef = useRef(null);
+    const [exporting, setExporting] = useState(false);
+
+    const downloadPng = async () => {
+        const el = exportCaptureRef.current;
+        if (!el) return;
+        try {
+            setExporting(true);
+            await new Promise((r) => requestAnimationFrame(() => r()));
+            const canvas = await toCanvas(el, {
+                backgroundColor: '#ffffff',
+                pixelRatio: 2,
+                cacheBust: true,
+            });
+            const dataUrl = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `attendance-dashboard-${from}_${to}.png`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const downloadPdf = async () => {
+        const el = exportCaptureRef.current;
+        if (!el) return;
+        try {
+            setExporting(true);
+            await new Promise((r) => requestAnimationFrame(() => r()));
+            const canvas = await toCanvas(el, {
+                backgroundColor: '#ffffff',
+                pixelRatio: 2,
+                cacheBust: true,
+            });
+            const img = canvas.toDataURL('image/png');
+            const w = canvas.width;
+            const h = canvas.height;
+            const orientation = w >= h ? 'landscape' : 'portrait';
+            const pdf = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
+            const pageW = pdf.internal.pageSize.getWidth();
+            const pageH = pdf.internal.pageSize.getHeight();
+            const margin = 18;
+            const maxW = pageW - margin * 2;
+            const maxH = pageH - margin * 2;
+            const scale = Math.min(maxW / w, maxH / h);
+            const drawW = w * scale;
+            const drawH = h * scale;
+            const x = (pageW - drawW) / 2;
+            const y = (pageH - drawH) / 2;
+            pdf.addImage(img, 'PNG', x, y, drawW, drawH);
+            pdf.save(`attendance-dashboard-${from}_${to}.pdf`);
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    if (!perms?.allowAttendance && !loading) return null;
+
+    const yearLabel = lookupYears.find((y) => y?._id === academicYearId)?.yearName;
+    const gradeLabel = lookupGrades.find((g) => g?._id === gradeId)?.gradeName;
+    const shiftLabel = lookupShifts.find((s) => s?._id === shiftId)?.shiftName;
+    const sectionObj = lookupSections.find((gs) => gs?._id === gradeSectionId);
+    const sectionLabel = (() => {
+        if (!sectionObj) return '';
+        const gName = sectionObj?.grade?.gradeName;
+        const sec = sectionObj?.section;
+        const sName = sectionObj?.shift?.shiftName;
+        const tail = [sName].filter(Boolean).join(' - ');
+        return [
+            gName ? `${gName}` : null,
+            sec ? `Sec ${sec}` : null,
+            tail ? `(${tail})` : null,
+        ].filter(Boolean).join(' - ');
+    })();
+
+    const exportFilterSummary = useMemo(() => {
+        const parts = [];
+        parts.push(`Range: ${from} → ${to}`);
+        if (academicYearId) parts.push(`AY: ${yearLabel || 'Selected'}`);
+        if (gradeId) parts.push(`Level: ${gradeLabel || 'Selected'}`);
+        if (shiftId) parts.push(`Shift: ${shiftLabel || 'Selected'}`);
+        if (gradeSectionId) parts.push(`Class: ${sectionLabel || 'Selected'}`);
+        return parts.join(' • ');
+    }, [from, to, academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel]);
+
+    const listScrollClassName = exporting
+        ? 'p-4 space-y-2'
+        : 'p-4 space-y-2 max-h-[420px] overflow-y-auto pr-2';
+
+    return (
+        <div className="rounded-2xl border border-emerald-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+            <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <div className="text-lg font-semibold">Attendance</div>
+                    <div className="text-sm text-white/80 mt-1">Admin/Staff overview (all classes)</div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                    <ActionButton disabled={exporting || loading || trend.length === 0} onClick={downloadPng} icon={Download} label="PNG" />
+                    <ActionButton disabled={exporting || loading || trend.length === 0} onClick={downloadPdf} icon={FileDown} label="PDF" />
+                    <ToggleButton active={view === 'status'} onClick={() => setView('status')} icon={BarChart3} label="Status trend" />
+                    <ToggleButton active={view === 'periods'} onClick={() => setView('periods')} icon={Layers} label="By periods" />
+                    <ToggleButton active={view === 'performance'} onClick={() => setView('performance')} icon={SlidersHorizontal} label="Performance" />
+                </div>
+            </div>
+
+            <div className="p-5 flex flex-col gap-4">
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
+                            <SlidersHorizontal size={16} />
+                            <span>Filters</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setAcademicYearId('');
+                                setGradeId('');
+                                setShiftId('');
+                                setGradeSectionId('');
+                                setRangeTab('last7');
+                                setFrom(isoMinusDaysUTC(todayUTC, 6));
+                                setTo(todayUTC);
+                            }}
+                            className="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            title="Reset filters"
+                        >
+                            <RotateCcw size={14} />
+                            Reset
+                        </button>
+                    </div>
+
+                    <div className="mt-3">
+                        <FilterRow className="gap-3" align="end">
+                            <FilterItem grow minWidthClass="min-w-40">
+                                <AcademicYearSelect
+                                    id="dash-att-ay"
+                                    name="dash-att-ay"
+                                    aria-label="Academic Year"
+                                    value={academicYearId}
+                                    onChange={(v) => setAcademicYearId(v)}
+                                    placeholder="Academic Year"
+                                    searchable
+                                    maxVisible={5}
+                                    searchPlaceholder="Search academic years…"
+                                    className="w-full"
+                                />
+                            </FilterItem>
+
+                            <FilterItem grow minWidthClass="min-w-40">
+                                <GradeSelect
+                                    id="dash-att-grade"
+                                    name="dash-att-grade"
+                                    aria-label="Level"
+                                    value={gradeId}
+                                    onChange={(v) => {
+                                        setGradeId(v);
+                                        setShiftId('');
+                                        setGradeSectionId('');
+                                    }}
+                                    placeholder="Level"
+                                    className="w-full"
+                                />
+                            </FilterItem>
+
+                            <FilterItem grow minWidthClass="min-w-36">
+                                <ShiftSelect
+                                    id="dash-att-shift"
+                                    name="dash-att-shift"
+                                    aria-label="Shift"
+                                    value={shiftId}
+                                    onChange={(v) => {
+                                        setShiftId(v);
+                                        setGradeSectionId('');
+                                    }}
+                                    placeholder="Shift"
+                                    className="w-full"
+                                />
+                            </FilterItem>
+
+                            <FilterItem grow minWidthClass="min-w-56">
+                                <GradeSectionSelect
+                                    id="dash-att-section"
+                                    name="dash-att-section"
+                                    aria-label="Section"
+                                    academicYearId={academicYearId}
+                                    gradeId={gradeId}
+                                    shiftId={shiftId}
+                                    value={gradeSectionId}
+                                    onChange={(v) => setGradeSectionId(v)}
+                                    placeholder="Section"
+                                    toastOnEmpty
+                                    toastOnEmptyMessage="No classes (sections) exist for the selected level and shift."
+                                    toastKeyPrefix="DashboardAttendance"
+                                    searchable
+                                    maxVisible={6}
+                                    searchPlaceholder="Search sections…"
+                                    className="w-full"
+                                />
+                            </FilterItem>
+                        </FilterRow>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <Tabs
+                                value={rangeTab}
+                                onChange={(v) => setRangeTab(v)}
+                                options={[
+                                    { value: 'today', label: 'Today' },
+                                    { value: 'last7', label: 'Last 7 days' },
+                                    { value: 'custom', label: 'Custom' },
+                                ]}
+                            />
+                        </div>
+                        <div className="text-xs text-gray-700">
+                            <span className="font-medium">Present%</span>: {Number(performanceAgg.presentPct || 0).toFixed(1)}% •{' '}
+                            <span className="font-medium">Days</span>: {trend.length}
+                        </div>
+                    </div>
+
+                    {(sourceAgg.dayPct != null || sourceAgg.lessonPct != null) ? (
+                        <div className="mt-2 text-[11px] text-gray-600 flex flex-wrap gap-x-3 gap-y-1">
+                            {sourceAgg.dayPct != null ? (
+                                <span><span className="font-semibold">All-day</span>: {sourceAgg.dayPct.toFixed(1)}%</span>
+                            ) : null}
+                            {sourceAgg.lessonPct != null ? (
+                                <span><span className="font-semibold">Per-period</span>: {sourceAgg.lessonPct.toFixed(1)}%</span>
+                            ) : null}
+                            <span className="text-gray-500">One row per date (prefers ALL DAY when available)</span>
+                        </div>
+                    ) : null}
+
+                    {rangeTab === 'custom' ? (
+                        <div className="mt-3 flex flex-wrap items-end gap-3">
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-medium text-gray-600">From</label>
+                                <input
+                                    type="date"
+                                    className="border rounded px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                                    value={from}
+                                    onChange={(e) => setFrom(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <label className="text-xs font-medium text-gray-600">To</label>
+                                <input
+                                    type="date"
+                                    className="border rounded px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                                    value={to}
+                                    onChange={(e) => setTo(e.target.value)}
+                                />
+                            </div>
+                            <div className="text-xs text-gray-500">Pick any date range.</div>
+                        </div>
+                    ) : (
+                        <div className="mt-2 text-xs text-gray-600">Shows attendance records in the selected range.</div>
+                    )}
+                </div>
+
+                <div ref={exportCaptureRef} className="flex flex-col gap-4">
+                    {exporting ? (
+                        <div className="rounded-xl border border-gray-200 bg-white p-3">
+                            <div className="text-sm font-semibold text-gray-900">Attendance dashboard export</div>
+                            <div className="mt-1 text-xs text-gray-600">{exportFilterSummary}</div>
+                        </div>
+                    ) : null}
+
+                {isError ? (
+                    <Alert variant="danger">Failed to load attendance summary.</Alert>
+                ) : loading ? (
+                    <div className="space-y-2">
+                        <UiLoadingState label="Loading attendance…" className="border-0 bg-transparent p-0 justify-start" />
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <SkeletonRow key={i} />
+                        ))}
+                    </div>
+                ) : trend.length === 0 ? (
+                    <div className="text-sm text-gray-600">No attendance data found for the selected filters.</div>
+                ) : view === 'performance' ? (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="text-sm font-medium text-gray-800">Attendance performance</div>
+                            <div className="text-xs text-gray-500">Percent breakdown</div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                                <div className="text-xs font-semibold text-emerald-900">Present</div>
+                                <div className="text-xl font-bold text-emerald-900 tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
+                                <div className="text-[11px] text-emerald-900/70">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
+                            </div>
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                <div className="text-xs font-semibold text-gray-900">Marked days</div>
+                                <div className="text-xl font-bold text-gray-900 tabular-nums">{trend.length}</div>
+                                <div className="text-[11px] text-gray-600">One row per date</div>
+                            </div>
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                                <div className="text-xs font-semibold text-gray-900">Total records</div>
+                                <div className="text-xl font-bold text-gray-900 tabular-nums">{Number(performanceAgg.total || 0)}</div>
+                                <div className="text-[11px] text-gray-600">Sum of all statuses</div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                            <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+                                <div className="text-sm font-semibold">Status percentages</div>
+                                <div className="text-xs text-white/80">Total records: {Number(performanceAgg.total || 0)}</div>
+                            </div>
+                            <div className="p-4 space-y-2">
+                                {STATUSES
+                                    .map((s) => ({ ...s, pct: Number(performanceAgg.pct?.[s.key] || 0) }))
+                                    .sort((a, b) => b.pct - a.pct)
+                                    .map((s) => (
+                                        <PercentBar key={s.key} label={s.label} pct={s.pct} tone={s.bar} />
+                                    ))}
+                            </div>
+                        </div>
+                    </div>
+                ) : view === 'periods' ? (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="text-sm font-medium text-gray-800">Attendance by periods</div>
+                            <div className="text-xs text-gray-500">Aggregated over selected range</div>
+                        </div>
+
+                        <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
+
+                        {(() => {
+                            const rows = (attendanceByPeriod || [])
+                                .filter((r) => String(r?.periodCode || '').toUpperCase() !== 'DAY')
+                                .map((r) => {
+                                    const periodCode = String(r?.periodCode || '');
+                                    const segments = STATUSES.map((s) => ({
+                                        key: `${periodCode}__${s.key}`,
+                                        label: s.label,
+                                        value: Number(r?.[s.key] || 0),
+                                        className: s.bar,
+                                    }));
+                                    return { periodCode, segments };
+                                })
+                                .filter((r) => r.periodCode);
+
+                            if (rows.length === 0) {
+                                return <div className="text-sm text-gray-600">No per-period (lesson) data found in this range.</div>;
+                            }
+
+                            return (
+                                <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                                    <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+                                        <div className="text-sm font-semibold">Periods</div>
+                                        <div className="text-xs text-white/80">Excludes ALL DAY</div>
+                                    </div>
+                                    <div className={listScrollClassName}>
+                                        {rows.map((r) => (
+                                            <StackedBar key={r.periodCode} label={r.periodCode} segments={r.segments} />
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="text-sm font-medium text-gray-800">Attendance status trend</div>
+                            <div className="text-xs text-gray-500">Per day (all classes)</div>
+                        </div>
+
+                        <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
+
+                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                            <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+                                <div className="text-sm font-semibold">Daily trend</div>
+                                <div className="text-xs text-white/80">Hover segments for counts</div>
+                            </div>
+
+                            <div className={listScrollClassName}>
+                                {trend.map((r) => (
+                                    <StackedBar
+                                        key={r.date}
+                                        label={
+                                            <span className="inline-flex items-center gap-2">
+                                                <span className="tabular-nums">{String(r.date).slice(5)}</span>
+                                                {r.hasAllDay ? <TinyBadge tone={String(r.preferSource).toUpperCase() === 'DAY' ? 'emerald' : 'gray'}>ALL DAY</TinyBadge> : null}
+                                                {r.hasPerPeriod ? <TinyBadge tone={String(r.preferSource).toUpperCase() === 'LESSON' ? 'indigo' : 'gray'}>PERIOD</TinyBadge> : null}
+                                            </span>
+                                        }
+                                        segments={STATUSES.map((s) => ({
+                                            key: `${r.date}__${s.key}`,
+                                            label: s.label,
+                                            value: Number(r?.[s.key] || 0),
+                                            className: s.bar,
+                                        }))}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+                        <div className="text-xs text-gray-500">Source: Dashboard summary (admin/staff)</div>
+                        <div className="text-xs text-gray-600">KPIs: <span className="font-medium">Present%</span> • <span className="font-medium">Days</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

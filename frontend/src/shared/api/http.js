@@ -59,6 +59,18 @@ export async function fetchJson(urlOrPath, options = {}) {
 		}
 	};
 
+	// Proactively bootstrap CSRF cookie for unsafe methods.
+	// This avoids depending on 403 bodies always being JSON/CSRF-detectable.
+	if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+		const hasHeader = Boolean(headers['X-CSRF-Token'] || headers['x-csrf-token']);
+		const cookieToken = getCookie('csrf_token');
+		if (!hasHeader && !cookieToken) {
+			await ensureCsrfCookie();
+			const token = getCookie('csrf_token');
+			if (token) headers['X-CSRF-Token'] = token;
+		}
+	}
+
 	const { res, data } = await tryRequest();
 	if (!res.ok) {
 		if (res.status === 401 && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {

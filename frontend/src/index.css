@@ -99,7 +99,21 @@
 	to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes nb-fade-in {
+	from { opacity: 0; transform: translateY(8px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nb-draw {
+	from { stroke-dashoffset: var(--nb-dash, 140); }
+	to { stroke-dashoffset: 0; }
+}
+
 /* Used by shared Modal primitive (non-breaking if unused elsewhere). */
 .animate-scale-in {
 	animation: scale-in 160ms ease-out both;
+}
+
+.animate-nb-fade-in {
+	animation: nb-fade-in 240ms ease-out both;
 }

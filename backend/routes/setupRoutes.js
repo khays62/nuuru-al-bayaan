@@ -16,7 +16,7 @@ import {
   deleteAcademicYear,
 } from '../controllers/setupController.js';
 
-import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -24,7 +24,22 @@ const router = express.Router();
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
 
 // All setup endpoints are admin-only.
-router.use(protect, authorizeRoles('admin'));
+// Defense-in-depth: return 404 for non-admin (and unauthenticated) to reduce route discovery.
+router.use((req, res, next) => {
+  protect(req, res, (err) => {
+    if (err) return next(err);
+    if (!req.user) {
+      return res.status(404).json({ message: 'Not found' });
+    }
+
+    const role = String(req.user?.role || '').toLowerCase();
+    if (role !== 'admin') {
+      return res.status(404).json({ message: 'Not found' });
+    }
+
+    return next();
+  });
+});
 
 // Grades
 router.get('/grades', listGrades);

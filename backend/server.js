@@ -29,6 +29,7 @@ import timetableRoutes from './routes/timetableRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import realtimeRoutes from './routes/realtimeRoutes.js';
 import setupRoutes from './routes/setupRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 
 // Auth + User Management routes
 import authRoutes from './routes/authRoutes.js';
@@ -173,6 +174,7 @@ const startServer = async () => {
   app.use('/api/announcements', announcementRoutes);
   app.use('/api/realtime', realtimeRoutes);
   app.use('/api/setup', setupRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
 
   // User management (admin-only). Mount on a specific prefix so unknown /api/*
   // routes return 404 (not 401 from router-level auth).

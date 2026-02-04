@@ -16,7 +16,7 @@ import {
 
   export const navItems = [
     // Dashboard
-    { key: 'dashboard', group: 'Dashboard', path: "/dashboard", label: "Dashboard", roles: ["admin"], icon: LayoutDashboard },
+  { key: 'dashboard', group: 'Dashboard', path: "/dashboard", label: "Dashboard", roles: ["admin", "staff"], icon: LayoutDashboard },
 	{ key: 'teacher-dashboard', group: 'Dashboard', path: "/teacher-dashboard", label: "Dashboard", roles: ["teacher"], icon: LayoutDashboard },
     { key: 'teacher-classes', group: 'Dashboard', path: "/teacher-classes", label: "My Classes", roles: ["teacher"], icon: Layers3 },
     { key: 'teacher-profile', group: 'Dashboard', path: "/teacher-profile", label: "Profile", roles: ["teacher"], icon: Users },
