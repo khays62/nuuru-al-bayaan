@@ -25,6 +25,9 @@ import { dashboardKeys } from '../services/queryKeys';
 import { getSessionSignal } from '../../../api/sessionAbort';
 import AttendanceChartsCard from '../components/AttendanceChartsCard.jsx';
 import ResultsChartsCard from '../components/ResultsChartsCard.jsx';
+import ScoreActivityCard from '../components/ScoreActivityCard.jsx';
+import AnnouncementsMixCard from '../components/AnnouncementsMixCard.jsx';
+import { useDashboardRealtimeInvalidation } from '../useDashboardRealtimeInvalidation';
 
 const tones = {
     blue: {
@@ -627,6 +630,9 @@ export default function DashboardPage() {
     const fullName = String(auth?.user?.fullName || '').trim();
     const isAdmin = role === 'admin';
 
+    // EDCI: Realtime -> Events -> invalidate dashboard queries -> UI updated.
+    useDashboardRealtimeInvalidation({ enabled: true });
+
     const today = useMemo(() => isoDateOnlyUTC(new Date()), []);
     const effectiveRange = useMemo(() => ({ from: isoMinusDaysUTC(today, 6), to: today }), [today]);
 
@@ -638,6 +644,7 @@ export default function DashboardPage() {
             const res = await getDashboardSummary({ ...effectiveRange }, { signal: sessionSignal });
             return res?.data;
         },
+        staleTime: 30_000,
     });
 
     const loading = summaryQuery.isLoading;
@@ -669,6 +676,33 @@ export default function DashboardPage() {
     const cohortsCount = data?.cards?.cohorts;
     const transfersInRange = data?.cards?.transfersInRange;
     const announcementsInRange = data?.cards?.announcementsCreatedInRange;
+
+    const announcementsByRole = Array.isArray(data?.charts?.announcementsByRole) ? data.charts.announcementsByRole : [];
+    const announcementsByRoleAllTime = Array.isArray(data?.charts?.announcementsByRoleAllTime)
+        ? data.charts.announcementsByRoleAllTime
+        : [];
+    const announcementsTotalAllTime = data?.cards?.announcementsTotalAllTime;
+    const announcementsMixBuckets = data?.charts?.announcementsMixBuckets;
+
+    const scoreActivityByDayRaw = Array.isArray(data?.charts?.scoreActivityByDay) ? data.charts.scoreActivityByDay : [];
+    const scoreTotals = data?.performance?.scores;
+    const scoreActivityBuckets = data?.charts?.scoreActivityBuckets;
+
+    const scoreActivitySeries7 = useMemo(() => {
+        const map = new Map((scoreActivityByDayRaw || []).map((r) => [String(r?.day || ''), r]));
+        const out = [];
+        for (let idx = 0; idx < 7; idx++) {
+            const day = isoMinusDaysUTC(today, 6 - idx);
+            const row = map.get(day);
+            out.push({
+                day,
+                touched: Number(row?.touched || 0),
+                created: Number(row?.created || 0),
+                updated: Number(row?.updated || 0),
+            });
+        }
+        return out;
+    }, [scoreActivityByDayRaw, today]);
 
     const [newStudentsRange, setNewStudentsRange] = useState('year'); // year | month | week | day
 
@@ -844,27 +878,30 @@ export default function DashboardPage() {
                 />
             </div>
 
+            {/* Analytics (2-column layout) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {perms?.allowStudents ? (
-                    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-2 text-base font-semibold text-gray-900">
-                                <LineChart size={18} className="text-indigo-600" />
-                                New Students Trend
+                    <div className="rounded-2xl border border-indigo-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+                        <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <div className="text-lg font-semibold">New Students</div>
+                                <div className="text-sm text-white/80 mt-1">First-ever enrollment trend</div>
                             </div>
-                            <RangeTabs
-                                value={newStudentsRange}
-                                onChange={setNewStudentsRange}
-                                items={[
-                                    { value: 'day', label: 'Day' },
-                                    { value: 'week', label: 'Week' },
-                                    { value: 'month', label: 'Month' },
-                                    { value: 'year', label: 'Year' },
-                                ]}
-                            />
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <RangeTabs
+                                    value={newStudentsRange}
+                                    onChange={setNewStudentsRange}
+                                    items={[
+                                        { value: 'day', label: 'Day' },
+                                        { value: 'week', label: 'Week' },
+                                        { value: 'month', label: 'Month' },
+                                        { value: 'year', label: 'Year' },
+                                    ]}
+                                />
+                            </div>
                         </div>
 
-                        <div className="mt-4">
+                        <div className="p-5">
                             <SvgNewStudentsLineChart series={newStudentsSeries} height={320} yAxisLabel="Tirada Ardayda (Student Count)" />
                         </div>
                     </div>
@@ -872,12 +909,21 @@ export default function DashboardPage() {
 
                 {perms?.allowAttendance ? <AttendanceChartsCard /> : null}
 
-                {perms?.allowExams ? (
-                    <div className="lg:col-span-2">
-                        <ResultsChartsCard />
-                    </div>
+                {perms?.allowExams ? <ScoreActivityCard buckets={scoreActivityBuckets} series={scoreActivitySeries7} totals={scoreTotals} /> : null}
+
+                {perms?.allowAnnouncements ? (
+                    <AnnouncementsMixCard
+                        buckets={announcementsMixBuckets}
+                        rowsInRange={announcementsByRole}
+                        rowsAllTime={announcementsByRoleAllTime}
+                        totalInRange={announcementsInRange}
+                        totalAllTime={announcementsTotalAllTime}
+                    />
                 ) : null}
             </div>
+
+            {/* Results is intentionally full-width */}
+            {perms?.allowExams ? <ResultsChartsCard /> : null}
         </div>
     );
 }

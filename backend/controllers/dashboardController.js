@@ -12,6 +12,7 @@ import Announcement from '../models/Announcement.js';
 import TransferLog from '../models/TransferLog.js';
 import Exam from '../models/Exam.js';
 import Cohort from '../models/Cohort.js';
+import ExamScore from '../models/ExamScore.js';
 
 const isPlainObject = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 
@@ -98,6 +99,10 @@ export async function getDashboardSummary(req, res) {
   const gradeSectionId = mongoose.isValidObjectId(gradeSectionIdQ) ? gradeSectionIdQ : '';
   const attendanceAyFilterId = mongoose.isValidObjectId(academicYearIdQ) ? academicYearIdQ : '';
   const hasAttendanceClassFilter = Boolean(gradeId || shiftId || gradeSectionId);
+
+  // IMPORTANT: Only filter by Academic Year when the client explicitly requested it.
+  // `selectedAcademicYear` may fall back to latest AY for display, but analytics should not be silently scoped.
+  const academicYearFilterId = attendanceAyFilterId;
 
   const selectedAcademicYear = await resolveAcademicYear(req.query?.academicYearId);
   const selectedAcademicYearId = selectedAcademicYear?._id ? String(selectedAcademicYear._id) : null;
@@ -443,9 +448,13 @@ export async function getDashboardSummary(req, res) {
         .lean()
     : Promise.resolve([]);
 
+  const announcementVisibilityMatch = role === 'admin' || role === 'staff'
+    ? { audienceType: { $in: [null, 'all'] } }
+    : {};
+
   const announcementRoleStatsPromise = allowAnnouncements
     ? Announcement.aggregate([
-        { $match: { date: { $gte: range.from, $lte: range.to } } },
+        { $match: { ...announcementVisibilityMatch, date: { $gte: range.from, $lte: range.to } } },
         {
           $project: {
             role: { $ifNull: ['$role', 'unknown'] },
@@ -470,8 +479,103 @@ export async function getDashboardSummary(req, res) {
       ])
     : Promise.resolve([]);
 
+  const announcementMixBucketsPromise = allowAnnouncements
+    ? (async () => {
+        const now = new Date();
+        const windows = {
+          day: { from: startOfDayUTC(now), to: endOfDayUTC(now) },
+          week: { from: startOfDayUTC(new Date(now.getTime() - 6 * 86400000)), to: endOfDayUTC(now) },
+          month: { from: startOfDayUTC(new Date(now.getTime() - 29 * 86400000)), to: endOfDayUTC(now) },
+          year: { from: startOfDayUTC(new Date(now.getTime() - 364 * 86400000)), to: endOfDayUTC(now) },
+        };
+
+        const mergeRoleRows = ({ createdRows, updatedRows }) => {
+          const byRole = new Map();
+          for (const r of createdRows || []) {
+            const role = String(r?._id || 'unknown');
+            byRole.set(role, { role, created: Number(r?.created || 0), updated: 0 });
+          }
+          for (const r of updatedRows || []) {
+            const role = String(r?._id || 'unknown');
+            const cur = byRole.get(role) || { role, created: 0, updated: 0 };
+            cur.updated = Number(r?.updated || 0);
+            byRole.set(role, cur);
+          }
+          const arr = Array.from(byRole.values()).sort((a, b) => (b.created + b.updated) - (a.created + a.updated));
+          const totals = arr.reduce(
+            (acc, r) => {
+              acc.created += Number(r.created || 0);
+              acc.updated += Number(r.updated || 0);
+              return acc;
+            },
+            { created: 0, updated: 0 }
+          );
+          return { byRole: arr, totals };
+        };
+
+        const computeWindow = async ({ from, to }) => {
+          const facet = await Announcement.aggregate([
+            { $match: { ...announcementVisibilityMatch } },
+            {
+              $facet: {
+                created: [
+                  { $match: { date: { $gte: from, $lte: to } } },
+                  { $group: { _id: { $ifNull: ['$role', 'unknown'] }, created: { $sum: 1 } } },
+                ],
+                updated: [
+                  { $match: { updatedAt: { $gte: from, $lte: to } } },
+                  { $group: { _id: { $ifNull: ['$role', 'unknown'] }, updated: { $sum: 1 } } },
+                ],
+              },
+            },
+          ]);
+          const first = Array.isArray(facet) && facet.length ? facet[0] : null;
+          return mergeRoleRows({ createdRows: first?.created || [], updatedRows: first?.updated || [] });
+        };
+
+        const [day, week, month, year] = await Promise.all([
+          computeWindow(windows.day),
+          computeWindow(windows.week),
+          computeWindow(windows.month),
+          computeWindow(windows.year),
+        ]);
+
+        return { day, week, month, year };
+      })()
+    : Promise.resolve({ day: null, week: null, month: null, year: null });
+
+  const announcementRoleStatsAllTimePromise = allowAnnouncements
+    ? Announcement.aggregate([
+        { $match: { ...announcementVisibilityMatch } },
+        {
+          $project: {
+            role: { $ifNull: ['$role', 'unknown'] },
+            wasUpdated: {
+              $cond: [{ $ifNull: ['$updatedAt', false] }, true, false],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$role',
+            created: { $sum: 1 },
+            updated: {
+              $sum: {
+                $cond: ['$wasUpdated', 1, 0],
+              },
+            },
+          },
+        },
+        { $sort: { created: -1 } },
+      ])
+    : Promise.resolve([]);
+
+  const announcementsTotalAllTimePromise = allowAnnouncements
+    ? Announcement.countDocuments({ ...announcementVisibilityMatch })
+    : Promise.resolve(null);
+
   const recentAnnouncementsPromise = allowAnnouncements
-    ? Announcement.find({})
+    ? Announcement.find({ ...announcementVisibilityMatch })
         .sort({ date: -1 })
         .limit(8)
         .select('title date role author updatedAt updatedByRole')
@@ -481,6 +585,400 @@ export async function getDashboardSummary(req, res) {
   const examsCountPromise = allowExams
     ? Exam.countDocuments({ createdAt: { $gte: range.from, $lte: range.to } })
     : Promise.resolve(null);
+
+  // Exam score activity (created/updated within the selected range).
+  // This is used only as a lightweight ops metric (not for grading analytics).
+  const scoreActivityPromise = allowExams
+    ? (async () => {
+        const dateMatch = { $gte: range.from, $lte: range.to };
+
+        const needsExamJoin = Boolean(academicYearFilterId || hasAttendanceClassFilter);
+        if (!needsExamJoin) {
+          const [touched, created, updated] = await Promise.all([
+            ExamScore.countDocuments({ updatedAt: dateMatch }),
+            ExamScore.countDocuments({ createdAt: dateMatch }),
+            ExamScore.countDocuments({ updatedAt: dateMatch, createdAt: { $lt: range.from } }),
+          ]);
+          return { touched, created, updated };
+        }
+
+        let sectionIds = null;
+        if (gradeSectionId) {
+          sectionIds = [new mongoose.Types.ObjectId(gradeSectionId)];
+        } else if (hasAttendanceClassFilter) {
+          const match = {};
+          if (gradeId) match.grade = new mongoose.Types.ObjectId(gradeId);
+          if (shiftId) match.shift = new mongoose.Types.ObjectId(shiftId);
+          const rows = await GradeSection.find(match).select('_id').lean();
+          const ids = (rows || []).map((r) => r?._id).filter(Boolean);
+          if (ids.length === 0) return { touched: 0, created: 0, updated: 0 };
+          sectionIds = ids;
+        }
+
+        const pipeline = [
+          { $match: { updatedAt: dateMatch } },
+          {
+            $lookup: {
+              from: 'exams',
+              localField: 'exam',
+              foreignField: '_id',
+              as: 'examDoc',
+            },
+          },
+          { $unwind: { path: '$examDoc', preserveNullAndEmptyArrays: false } },
+        ];
+
+        if (academicYearFilterId && mongoose.isValidObjectId(academicYearFilterId)) {
+          pipeline.push({ $match: { 'examDoc.academicYear': new mongoose.Types.ObjectId(academicYearFilterId) } });
+        }
+
+        if (Array.isArray(sectionIds) && sectionIds.length > 0) {
+          pipeline.push({ $match: { 'examDoc.gradeSection': { $in: sectionIds } } });
+        }
+
+        pipeline.push({
+          $group: {
+            _id: null,
+            touched: { $sum: 1 },
+            created: {
+              $sum: {
+                $cond: [{ $and: [{ $gte: ['$createdAt', range.from] }, { $lte: ['$createdAt', range.to] }] }, 1, 0],
+              },
+            },
+            updated: {
+              $sum: {
+                $cond: [{ $and: [{ $lt: ['$createdAt', range.from] }, { $gte: ['$updatedAt', range.from] }, { $lte: ['$updatedAt', range.to] }] }, 1, 0],
+              },
+            },
+          },
+        });
+
+        const rows = await ExamScore.aggregate(pipeline);
+        const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+        return {
+          touched: Number(row?.touched || 0),
+          created: Number(row?.created || 0),
+          updated: Number(row?.updated || 0),
+        };
+      })()
+    : Promise.resolve(null);
+
+  // Score activity by day (based on ExamScore.updatedAt within the selected range)
+  // Returns [{ _id: 'YYYY-MM-DD', touched, created, updated }, ...]
+  const scoreActivityByDayPromise = allowExams
+    ? (async () => {
+        const dateMatch = { $gte: range.from, $lte: range.to };
+
+        const mergeRows = (createdRows, touchedRows) => {
+          const byDay = new Map();
+
+          for (const r of createdRows || []) {
+            const day = String(r?._id || '');
+            if (!day) continue;
+            byDay.set(day, {
+              _id: day,
+              touched: 0,
+              created: Number(r?.created || 0),
+              updated: 0,
+            });
+          }
+
+          for (const r of touchedRows || []) {
+            const day = String(r?._id || '');
+            if (!day) continue;
+            const cur = byDay.get(day) || { _id: day, touched: 0, created: 0, updated: 0 };
+            cur.touched = Number(r?.touched || 0);
+            cur.updated = Number(r?.updated || 0);
+            byDay.set(day, cur);
+          }
+
+          return Array.from(byDay.values()).sort((a, b) => String(a._id).localeCompare(String(b._id)));
+        };
+
+        const needsExamJoin = Boolean(academicYearFilterId || hasAttendanceClassFilter);
+        if (!needsExamJoin) {
+          const [createdRows, touchedRows] = await Promise.all([
+            ExamScore.aggregate([
+              { $match: { createdAt: dateMatch } },
+              { $project: { day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } } } },
+              { $group: { _id: '$day', created: { $sum: 1 } } },
+              { $sort: { _id: 1 } },
+            ]),
+            ExamScore.aggregate([
+              { $match: { updatedAt: dateMatch } },
+              {
+                $project: {
+                  day: { $dateToString: { format: '%Y-%m-%d', date: '$updatedAt' } },
+                  createdDay: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+                },
+              },
+              {
+                $group: {
+                  _id: '$day',
+                  touched: { $sum: 1 },
+                  updated: { $sum: { $cond: [{ $lt: ['$createdDay', '$day'] }, 1, 0] } },
+                },
+              },
+              { $sort: { _id: 1 } },
+            ]),
+          ]);
+
+          return mergeRows(createdRows, touchedRows);
+        }
+
+        let sectionIds = null;
+        if (gradeSectionId) {
+          sectionIds = [new mongoose.Types.ObjectId(gradeSectionId)];
+        } else if (hasAttendanceClassFilter) {
+          const match = {};
+          if (gradeId) match.grade = new mongoose.Types.ObjectId(gradeId);
+          if (shiftId) match.shift = new mongoose.Types.ObjectId(shiftId);
+          const rows = await GradeSection.find(match).select('_id').lean();
+          const ids = (rows || []).map((r) => r?._id).filter(Boolean);
+          if (ids.length === 0) return [];
+          sectionIds = ids;
+        }
+
+        const withExamFilters = (match) => {
+          const p = [
+            { $match: match },
+            {
+              $lookup: {
+                from: 'exams',
+                localField: 'exam',
+                foreignField: '_id',
+                as: 'examDoc',
+              },
+            },
+            { $unwind: { path: '$examDoc', preserveNullAndEmptyArrays: false } },
+          ];
+
+          if (academicYearFilterId && mongoose.isValidObjectId(academicYearFilterId)) {
+            p.push({ $match: { 'examDoc.academicYear': new mongoose.Types.ObjectId(academicYearFilterId) } });
+          }
+
+          if (Array.isArray(sectionIds) && sectionIds.length > 0) {
+            p.push({ $match: { 'examDoc.gradeSection': { $in: sectionIds } } });
+          }
+
+          return p;
+        };
+
+        const [createdRows, touchedRows] = await Promise.all([
+          ExamScore.aggregate([
+            ...withExamFilters({ createdAt: dateMatch }),
+            { $project: { day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } } } },
+            { $group: { _id: '$day', created: { $sum: 1 } } },
+            { $sort: { _id: 1 } },
+          ]),
+          ExamScore.aggregate([
+            ...withExamFilters({ updatedAt: dateMatch }),
+            {
+              $project: {
+                day: { $dateToString: { format: '%Y-%m-%d', date: '$updatedAt' } },
+                createdDay: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+              },
+            },
+            {
+              $group: {
+                _id: '$day',
+                touched: { $sum: 1 },
+                updated: { $sum: { $cond: [{ $lt: ['$createdDay', '$day'] }, 1, 0] } },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ]),
+        ]);
+
+        return mergeRows(createdRows, touchedRows);
+      })()
+    : Promise.resolve([]);
+
+  const scoreActivityBucketsPromise = allowExams
+    ? (async () => {
+        const now = new Date();
+        const end = endOfDayUTC(now);
+
+        const dayWindow = { from: startOfDayUTC(new Date(now.getTime() - 13 * 86400000)), to: end };
+        const weekWindow = { from: startOfDayUTC(new Date(now.getTime() - 83 * 86400000)), to: end };
+        const monthWindow = { from: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)), to: end };
+        const yearWindow = { from: new Date(Date.UTC(now.getUTCFullYear() - 4, 0, 1)), to: end };
+
+        const needsExamJoin = Boolean(academicYearFilterId || hasAttendanceClassFilter);
+
+        let sectionIds = null;
+        if (needsExamJoin) {
+          if (gradeSectionId) {
+            sectionIds = [new mongoose.Types.ObjectId(gradeSectionId)];
+          } else if (hasAttendanceClassFilter) {
+            const match = {};
+            if (gradeId) match.grade = new mongoose.Types.ObjectId(gradeId);
+            if (shiftId) match.shift = new mongoose.Types.ObjectId(shiftId);
+            const rows = await GradeSection.find(match).select('_id').lean();
+            const ids = (rows || []).map((r) => r?._id).filter(Boolean);
+            sectionIds = ids.length ? ids : [];
+          }
+        }
+
+        const withExamFilters = (match) => {
+          const p = [{ $match: match }];
+          if (!needsExamJoin) return p;
+          if (Array.isArray(sectionIds) && sectionIds.length === 0) return [{ $match: { _id: { $exists: false } } }];
+
+          p.push(
+            {
+              $lookup: {
+                from: 'exams',
+                localField: 'exam',
+                foreignField: '_id',
+                as: 'examDoc',
+              },
+            },
+            { $unwind: { path: '$examDoc', preserveNullAndEmptyArrays: false } }
+          );
+
+          if (academicYearFilterId && mongoose.isValidObjectId(academicYearFilterId)) {
+            p.push({ $match: { 'examDoc.academicYear': new mongoose.Types.ObjectId(academicYearFilterId) } });
+          }
+          if (Array.isArray(sectionIds) && sectionIds.length > 0) {
+            p.push({ $match: { 'examDoc.gradeSection': { $in: sectionIds } } });
+          }
+          return p;
+        };
+
+        const mergeKeyed = ({ createdRows, touchedRows }) => {
+          const byKey = new Map();
+          for (const r of createdRows || []) {
+            const key = String(r?._id || '');
+            if (!key) continue;
+            byKey.set(key, { key, touched: 0, created: Number(r?.created || 0), updated: 0 });
+          }
+          for (const r of touchedRows || []) {
+            const key = String(r?._id || '');
+            if (!key) continue;
+            const cur = byKey.get(key) || { key, touched: 0, created: 0, updated: 0 };
+            cur.touched = Number(r?.touched || 0);
+            cur.updated = Number(r?.updated || 0);
+            byKey.set(key, cur);
+          }
+          return Array.from(byKey.values()).sort((a, b) => String(a.key).localeCompare(String(b.key)));
+        };
+
+        const mergeWeek = ({ createdRows, touchedRows }) => {
+          const toKey = (id) => `${Number(id?.y || 0)}-W${String(Math.max(0, Number(id?.w || 0))).padStart(2, '0')}`;
+          const byKey = new Map();
+
+          for (const r of createdRows || []) {
+            const key = toKey(r?._id);
+            if (!key) continue;
+            byKey.set(key, { key, touched: 0, created: Number(r?.created || 0), updated: 0 });
+          }
+          for (const r of touchedRows || []) {
+            const key = toKey(r?._id);
+            if (!key) continue;
+            const cur = byKey.get(key) || { key, touched: 0, created: 0, updated: 0 };
+            cur.touched = Number(r?.touched || 0);
+            cur.updated = Number(r?.updated || 0);
+            byKey.set(key, cur);
+          }
+
+          return Array.from(byKey.values()).sort((a, b) => String(a.key).localeCompare(String(b.key)));
+        };
+
+        const aggKeyed = async ({ from, to, dateField, keyFormat }) => {
+          const dateMatch = { $gte: from, $lte: to };
+          if (dateField === 'createdAt') {
+            return ExamScore.aggregate([
+              ...withExamFilters({ createdAt: dateMatch }),
+              { $project: { key: { $dateToString: { format: keyFormat, date: '$createdAt' } } } },
+              { $group: { _id: '$key', created: { $sum: 1 } } },
+              { $sort: { _id: 1 } },
+            ]);
+          }
+
+          return ExamScore.aggregate([
+            ...withExamFilters({ updatedAt: dateMatch }),
+            {
+              $project: {
+                key: { $dateToString: { format: keyFormat, date: '$updatedAt' } },
+                createdKey: { $dateToString: { format: keyFormat, date: '$createdAt' } },
+              },
+            },
+            {
+              $group: {
+                _id: '$key',
+                touched: { $sum: 1 },
+                updated: { $sum: { $cond: [{ $lt: ['$createdKey', '$key'] }, 1, 0] } },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ]);
+        };
+
+        const aggWeek = async ({ from, to, mode }) => {
+          const dateMatch = { $gte: from, $lte: to };
+          if (mode === 'created') {
+            return ExamScore.aggregate([
+              ...withExamFilters({ createdAt: dateMatch }),
+              { $project: { y: { $isoWeekYear: '$createdAt' }, w: { $isoWeek: '$createdAt' } } },
+              { $group: { _id: { y: '$y', w: '$w' }, created: { $sum: 1 } } },
+              { $sort: { '_id.y': 1, '_id.w': 1 } },
+            ]);
+          }
+          return ExamScore.aggregate([
+            ...withExamFilters({ updatedAt: dateMatch }),
+            {
+              $project: {
+                y: { $isoWeekYear: '$updatedAt' },
+                w: { $isoWeek: '$updatedAt' },
+                cy: { $isoWeekYear: '$createdAt' },
+                cw: { $isoWeek: '$createdAt' },
+              },
+            },
+            {
+              $group: {
+                _id: { y: '$y', w: '$w' },
+                touched: { $sum: 1 },
+                updated: {
+                  $sum: {
+                    $cond: [
+                      { $or: [{ $lt: ['$cy', '$y'] }, { $and: [{ $eq: ['$cy', '$y'] }, { $lt: ['$cw', '$w'] }] }] },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+            { $sort: { '_id.y': 1, '_id.w': 1 } },
+          ]);
+        };
+
+        const [dayCreated, dayTouched] = await Promise.all([
+          aggKeyed({ ...dayWindow, dateField: 'createdAt', keyFormat: '%Y-%m-%d' }),
+          aggKeyed({ ...dayWindow, dateField: 'updatedAt', keyFormat: '%Y-%m-%d' }),
+        ]);
+        const [weekCreated, weekTouched] = await Promise.all([
+          aggWeek({ ...weekWindow, mode: 'created' }),
+          aggWeek({ ...weekWindow, mode: 'touched' }),
+        ]);
+        const [monthCreated, monthTouched] = await Promise.all([
+          aggKeyed({ ...monthWindow, dateField: 'createdAt', keyFormat: '%Y-%m' }),
+          aggKeyed({ ...monthWindow, dateField: 'updatedAt', keyFormat: '%Y-%m' }),
+        ]);
+        const [yearCreated, yearTouched] = await Promise.all([
+          aggKeyed({ ...yearWindow, dateField: 'createdAt', keyFormat: '%Y' }),
+          aggKeyed({ ...yearWindow, dateField: 'updatedAt', keyFormat: '%Y' }),
+        ]);
+
+        return {
+          day: mergeKeyed({ createdRows: dayCreated, touchedRows: dayTouched }),
+          week: mergeWeek({ createdRows: weekCreated, touchedRows: weekTouched }),
+          month: mergeKeyed({ createdRows: monthCreated, touchedRows: monthTouched }),
+          year: mergeKeyed({ createdRows: yearCreated, touchedRows: yearTouched }),
+        };
+      })()
+    : Promise.resolve({ day: [], week: [], month: [], year: [] });
 
   const [
     academicYears,
@@ -500,8 +998,14 @@ export async function getDashboardSummary(req, res) {
     transfersByDayRaw,
     recentTransfers,
     announcementRoleStats,
+    announcementRoleStatsAllTime,
+    announcementsTotalAllTime,
     recentAnnouncements,
+    announcementMixBuckets,
     examsCreated,
+    scoreActivity,
+    scoreActivityByDay,
+    scoreActivityBuckets,
   ] = await Promise.all([
     academicYearsPromise,
     studentCountsPromise,
@@ -520,8 +1024,14 @@ export async function getDashboardSummary(req, res) {
     transfersByDayPromise,
     recentTransfersPromise,
     announcementRoleStatsPromise,
+    announcementRoleStatsAllTimePromise,
+    announcementsTotalAllTimePromise,
     recentAnnouncementsPromise,
+    announcementMixBucketsPromise,
     examsCountPromise,
+    scoreActivityPromise,
+    scoreActivityByDayPromise,
+    scoreActivityBucketsPromise,
   ]);
 
   const normalizeCounts = (rows, activeKey) => {
@@ -635,6 +1145,23 @@ export async function getDashboardSummary(req, res) {
     ? (announcementRoleStats || []).reduce((sum, r) => sum + Number(r?.created || 0), 0)
     : null;
 
+  // Lightweight, user-facing performance metrics for the dashboard.
+  const attendancePerf = (() => {
+    if (!allowAttendance) return null;
+    const rows = Array.isArray(attendanceStatusTrend) ? attendanceStatusTrend : [];
+    const last = rows.length ? rows[rows.length - 1] : null;
+    const present = Number(last?.present || 0);
+    const total = Number(last?.total || 0);
+    const ratePct = total > 0 ? (present / total) * 100 : null;
+    return {
+      date: last?.date ? String(last.date) : null,
+      source: last?.preferSource ? String(last.preferSource) : null,
+      present,
+      total,
+      ratePct: ratePct == null ? null : Math.max(0, Math.min(100, ratePct)),
+    };
+  })();
+
   return res.json({
     success: true,
     data: {
@@ -672,7 +1199,12 @@ export async function getDashboardSummary(req, res) {
         cohorts: cohortsCount,
         transfersInRange,
         announcementsCreatedInRange,
+        announcementsTotalAllTime,
         examsCreated,
+      },
+      performance: {
+        attendance: attendancePerf,
+        scores: scoreActivity,
       },
       charts: {
         attendanceByDay,
@@ -721,6 +1253,23 @@ export async function getDashboardSummary(req, res) {
               updated: Number(r?.updated || 0),
             }))
           : [],
+        announcementsByRoleAllTime: Array.isArray(announcementRoleStatsAllTime)
+          ? announcementRoleStatsAllTime.map((r) => ({
+              role: String(r?._id || 'unknown'),
+              created: Number(r?.created || 0),
+              updated: Number(r?.updated || 0),
+            }))
+          : [],
+        announcementsMixBuckets: announcementMixBuckets || null,
+        scoreActivityByDay: Array.isArray(scoreActivityByDay)
+          ? scoreActivityByDay.map((r) => ({
+              day: String(r?._id || ''),
+              touched: Number(r?.touched || 0),
+              created: Number(r?.created || 0),
+              updated: Number(r?.updated || 0),
+            }))
+          : [],
+        scoreActivityBuckets: scoreActivityBuckets || null,
       },
       lists: {
         recentAnnouncements,
