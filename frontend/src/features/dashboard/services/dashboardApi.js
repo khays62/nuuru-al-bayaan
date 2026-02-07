@@ -10,5 +10,5 @@ export async function getDashboardSummary(params = {}, options = {}) {
   if (params?.gradeSectionId) qs.set('gradeSectionId', String(params.gradeSectionId));
 
   const url = `dashboard/summary${qs.toString() ? `?${qs.toString()}` : ''}`;
-  return fetchJson(url, { method: 'GET', signal: options.signal });
+  return fetchJson(url, { method: 'GET', signal: options.signal, cache: 'no-store' });
 }

@@ -34,11 +34,25 @@ export function useDashboardRealtimeInvalidation({ enabled = true } = {}) {
 
   useRealtimeInvalidation(
     eventNames,
-    () => {
+    (detail, evt) => {
       try {
         // Mark stale and immediately refetch active observers.
         queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
         queryClient.refetchQueries({ queryKey: dashboardKeys.all, type: 'active' });
+
+        const eventName = String(evt?.type || '').trim();
+
+        // ResultsChartsCard depends on these query prefixes.
+        if (eventName === EVENTS.RESULTS_CHANGED || eventName === EVENTS.EXAMS_CHANGED) {
+          queryClient.invalidateQueries({ queryKey: ['exams'] });
+          queryClient.refetchQueries({ queryKey: ['exams'], type: 'active' });
+        }
+
+        // Grade section edits can affect Results subject options and related lookups.
+        if (eventName === EVENTS.GRADE_SECTIONS_CHANGED) {
+          queryClient.invalidateQueries({ queryKey: ['gradeSections'] });
+          queryClient.refetchQueries({ queryKey: ['gradeSections'], type: 'active' });
+        }
       } catch {
         // ignore
       }

@@ -78,6 +78,14 @@ const resolveAcademicYear = async (academicYearId) => {
 };
 
 export async function getDashboardSummary(req, res) {
+  // Realtime dashboard data must never be served from HTTP cache.
+  // This endpoint is an aggregation surface that should reflect latest writes after EDCI refetch.
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+  } catch {
+    // ignore
+  }
+
   const user = req.user;
   const role = String(user?.role || '').toLowerCase();
 
