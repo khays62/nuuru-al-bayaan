@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../../auth/AuthContext';
 import Button from '../ui/Button';
-import { Menu, X, LogOut, ChevronRight, Search, User, Bell, ShieldAlert } from 'lucide-react';
+import { Menu, X, LogOut, ChevronLeft, ChevronRight, Search, User, Bell, ShieldAlert, Languages } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -19,15 +19,19 @@ import Card from '../ui/Card.jsx';
 import UiLoadingState from '../ui/LoadingState.jsx';
 import { useAnnouncementsStream } from '../../../features/announcements/hooks/useAnnouncementsStream';
 import { useRealtimeStream } from '../../realtime/useRealtimeStream';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 // This is the updated Navbar component with a new design.
 const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
     const { auth, logout, hasPermission } = useAuth();
+    const { lang, setLang, isRTL, t } = useI18n();
     const user = auth?.user;
     const queryClient = useQueryClient();
     const [openLocks, setOpenLocks] = React.useState(false);
+    const [openLang, setOpenLang] = React.useState(false);
     const [pendingByKey, setPendingByKey] = React.useState({});
     const locksRef = React.useRef(null);
+    const langRef = React.useRef(null);
 
     // Realtime Announcements (SSE)
     useAnnouncementsStream({ user });
@@ -46,6 +50,19 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         document.addEventListener('mousedown', onMouseDown);
         return () => document.removeEventListener('mousedown', onMouseDown);
     }, [openLocks]);
+
+    // Close language menu on click-outside
+    React.useEffect(() => {
+        if (!openLang) return;
+        const onMouseDown = (e) => {
+            const el = langRef.current;
+            if (!el) return;
+            if (el.contains(e.target)) return;
+            setOpenLang(false);
+        };
+        document.addEventListener('mousedown', onMouseDown);
+        return () => document.removeEventListener('mousedown', onMouseDown);
+    }, [openLang]);
 
     const setPending = (key, value) => {
         setPendingByKey((prev) => ({ ...prev, [key]: value }));
@@ -201,15 +218,17 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         }
     };
 
-    return (
-        <header className="relative bg-white shadow-lg p-4 flex items-center justify-between z-40 no-print">
-            {/* Left side: Mobile Menu Toggle and Current Page Title */}
-            <div className="flex items-center gap-4">
+    const leftGroup = (
+        <div
+            dir={isRTL ? 'rtl' : 'ltr'}
+            className="flex items-center gap-4"
+            style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
+        >
                 {/* Mobile Menu Toggle (Hamburger Icon) */}
                 <button
                     onClick={onToggleMobileMenu}
                     className="text-gray-600 hover:text-gray-800 md:hidden"
-                    title="Open Menu"
+                    title={t('common.openMenu', { defaultValue: 'Open Menu' })}
                 >
                     <Menu size={24} />
                 </button>
@@ -218,49 +237,124 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                 <button
                     onClick={onToggleCollapse}
                     className="hidden md:block text-gray-600 hover:text-gray-800"
-                    title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                    title={isCollapsed
+                        ? t('common.expandSidebar', { defaultValue: 'Expand Sidebar' })
+                        : t('common.collapseSidebar', { defaultValue: 'Collapse Sidebar' })
+                    }
                 >
-                    {isCollapsed ? <ChevronRight size={20} /> : <Menu size={20} />}
+                    {isCollapsed
+                        ? (isRTL ? <ChevronLeft size={20} /> : <ChevronRight size={20} />)
+                        : <Menu size={20} />}
                 </button>
 
                 {/* Current Page Title */}
-                <h1 className="hidden sm:block text-xl font-semibold text-gray-700">{currentPageTitle}</h1>
-            </div>
-
-            {/* Center: Search Bar */}
-            <div className="flex-1 flex justify-center px-4 lg:px-12">
-                <div className="relative w-full max-w-lg">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <Search size={20} className="text-gray-400" />
-                    </span>
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                <div className="hidden sm:block">
+                    <h1 className={(isRTL ? 'text-right' : 'text-left') + " text-lg font-bold text-gray-800"}>{currentPageTitle || ''}</h1>
                 </div>
+        </div>
+    );
+
+    const searchGroup = (
+        <div dir={isRTL ? 'rtl' : 'ltr'} className="flex-1 flex justify-center px-4 lg:px-12">
+            <div className="relative w-full max-w-lg">
+                <span className={
+                    "absolute inset-y-0 flex items-center " +
+                    (isRTL ? 'right-0 pr-3' : 'left-0 pl-3')
+                }>
+                    <Search size={20} className="text-gray-400" />
+                </span>
+                <input
+                    dir={isRTL ? 'rtl' : 'ltr'}
+                    type="text"
+                    placeholder={t('common.search', { defaultValue: 'Search…' })}
+                    className={
+                        "w-full py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 " +
+                        (isRTL ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4')
+                    }
+                />
             </div>
+        </div>
+    );
 
-            {/* Right side: User Info and Logout */}
-            <div className="flex items-center gap-4">
-                {canSeeLocks && (
-                    <div className="relative" ref={locksRef}>
-                        <button
-                            type="button"
-                            onClick={() => setOpenLocks((v) => !v)}
-                            className="relative p-2 rounded-md hover:bg-gray-100"
-                            title="Security notifications"
-                        >
-                            <Bell size={20} className="text-gray-700" />
-                            {Number(lockCountQuery.data || 0) > 0 && (
-                                <span className="absolute -top-1 -right-1 min-w-4.5 h-4.5 px-1 rounded-full bg-red-600 text-white text-[11px] flex items-center justify-center">
-                                    {Number(lockCountQuery.data || 0)}
-                                </span>
-                            )}
-                        </button>
+    const languageEl = (
+        <div ref={langRef} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpenLang((v) => !v)}
+                className="p-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                title={t('common.language', { defaultValue: 'Language' })}
+                aria-label={t('common.language', { defaultValue: 'Language' })}
+            >
+                <Languages size={18} />
+            </button>
 
-                        {openLocks && (
-                            <Card className="absolute right-0 mt-2 w-96 rounded-xl shadow-xl overflow-hidden z-50">
+            {openLang ? (
+                <Card
+                    dir={isRTL ? 'rtl' : 'ltr'}
+                    className={(isRTL ? 'left-0' : 'right-0') + ' absolute mt-2 w-44 overflow-hidden z-50'}
+                >
+                    <button
+                        type="button"
+                        onClick={() => { setLang('en'); setOpenLang(false); }}
+                        className={
+                            'w-full px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ' +
+                            (lang === 'en' ? 'text-blue-700 font-medium' : 'text-slate-700')
+                        }
+                    >
+                        <span>{t('common.english', { defaultValue: 'English' })}</span>
+                        {lang === 'en' ? <span className="text-blue-700">✓</span> : null}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setLang('so'); setOpenLang(false); }}
+                        className={
+                            'w-full px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ' +
+                            (lang === 'so' ? 'text-blue-700 font-medium' : 'text-slate-700')
+                        }
+                    >
+                        <span>{t('common.somali', { defaultValue: 'Somali' })}</span>
+                        {lang === 'so' ? <span className="text-blue-700">✓</span> : null}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setLang('ar'); setOpenLang(false); }}
+                        className={
+                            'w-full px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ' +
+                            (lang === 'ar' ? 'text-blue-700 font-medium' : 'text-slate-700')
+                        }
+                    >
+                        <span>{t('common.arabic', { defaultValue: 'Arabic' })}</span>
+                        {lang === 'ar' ? <span className="text-blue-700">✓</span> : null}
+                    </button>
+                </Card>
+            ) : null}
+        </div>
+    );
+
+    const bellEl = canSeeLocks ? (
+        <div className="relative" ref={locksRef}>
+            <button
+                type="button"
+                onClick={() => setOpenLocks((v) => !v)}
+                className="relative p-2 rounded-md hover:bg-gray-100"
+                title="Security notifications"
+            >
+                <Bell size={20} className="text-gray-700" />
+                {Number(lockCountQuery.data || 0) > 0 && (
+                    <span className={
+                        "absolute -top-1 min-w-4.5 h-4.5 px-1 rounded-full bg-red-600 text-white text-[11px] flex items-center justify-center " +
+                        (isRTL ? '-left-1' : '-right-1')
+                    }>
+                        {Number(lockCountQuery.data || 0)}
+                    </span>
+                )}
+            </button>
+
+            {openLocks && (
+                <Card
+                    dir={isRTL ? 'rtl' : 'ltr'}
+                    className={(isRTL ? 'left-0' : 'right-0') + " absolute mt-2 w-96 rounded-xl shadow-xl overflow-hidden z-50"}
+                >
                                 <div className="px-3 py-2 border-b flex items-center justify-between bg-gray-50">
                                     <div className="flex items-center gap-2">
                                         <ShieldAlert size={16} className="text-red-600" />
@@ -427,26 +521,65 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         );
                                     })}
                                 </div>
-                            </Card>
-                        )}
-                    </div>
-                )}
+                </Card>
+            )}
+        </div>
+    ) : null;
 
-                <div className="text-right hidden sm:block">
-                    <p className="font-semibold text-sm text-gray-800">{displayName}</p>
-                    <p className="text-xs text-gray-500">{meta || ' '}</p>
-                </div>
-                <User size={24} className="text-gray-600 sm:hidden" />
-                <Button
-                    onClick={logout}
-                    variant="brand"
-                    size="lg"
-                    title="Logout"
-                >
-                    <LogOut size={16} />
-                    <span className="hidden lg:inline">Logout</span>
-                </Button>
+    const userEl = (
+        <>
+            <div dir={isRTL ? 'rtl' : 'ltr'} className={(isRTL ? 'text-left' : 'text-right') + " hidden sm:block"}>
+                <p className="font-semibold text-sm text-gray-800">{displayName}</p>
+                <p className="text-xs text-gray-500">{meta || ' '}</p>
             </div>
+            <User size={24} className="text-gray-600 sm:hidden" />
+        </>
+    );
+
+    const logoutEl = (
+        <div dir={isRTL ? 'rtl' : 'ltr'}>
+            <Button
+                onClick={logout}
+                variant="brand"
+                size="lg"
+                title={t('common.logout', { defaultValue: 'Logout' })}
+            >
+                <LogOut size={16} />
+                <span className="hidden lg:inline">{t('common.logout', { defaultValue: 'Logout' })}</span>
+            </Button>
+        </div>
+    );
+
+    const rightGroup = (
+        <div dir="ltr" className="flex items-center gap-4">
+            {isRTL ? (
+                <>
+                    {logoutEl}
+                    {userEl}
+                    {bellEl}
+                    {languageEl}
+                </>
+            ) : (
+                <>
+                    {languageEl}
+                    {bellEl}
+                    {userEl}
+                    {logoutEl}
+                </>
+            )}
+        </div>
+    );
+
+    return (
+        <header
+            // Important: keep layout direction stable so RTL swaps (DOM order) work predictably.
+            // Text direction is applied on inner groups.
+            dir="ltr"
+            className="relative bg-white shadow-lg p-4 flex items-center justify-between gap-4 z-40 no-print"
+        >
+            {isRTL ? rightGroup : leftGroup}
+            {searchGroup}
+            {isRTL ? leftGroup : rightGroup}
         </header>
     );
 };

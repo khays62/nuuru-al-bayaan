@@ -1,18 +1,31 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Printer, RotateCcw } from 'lucide-react';
 
 import { useAuth } from '../../../auth/AuthContext';
 
 import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, resetTeacherPassword, updateTeacher } from '../api/teachersApi';
 
 import Modal from '../../../shared/components/ui/Modal.jsx';
-import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
 import SortControls from '../../../shared/components/DataToolbar/SortControls.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
+import PdfDownloadButton from '../../../shared/components/exports/downloadButtons/PdfDownloadButton.jsx';
+import ExcelDownloadButton from '../../../shared/components/exports/downloadButtons/ExcelDownloadButton.jsx';
+import CsvDownloadButton from '../../../shared/components/exports/downloadButtons/CsvDownloadButton.jsx';
+import CopyTableButton from '../../../shared/components/exports/downloadButtons/CopyTableButton.jsx';
+import headerImg from '../../../assets/nuuruBayaanHeader.png';
+import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
+import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+
+import { useI18n } from '../../../i18n/I18nProvider';
 
 import TeacherForm from '../components/TeacherForm';
 import TeacherAssignmentsModal from '../components/TeacherAssignmentsModal';
@@ -22,6 +35,7 @@ import { useTeachersRealtimeInvalidation } from '../useTeachersRealtimeInvalidat
 
 export default function TeachersPage() {
 	const { auth, hasPermission } = useAuth();
+	const { t } = useI18n();
 	const isAdmin = String(auth?.user?.role || '').toLowerCase() === 'admin';
 	const canAddTeacher = isAdmin || hasPermission('teachers', 'add');
 	const canEditTeacher = isAdmin || hasPermission('teachers', 'edit');
@@ -29,6 +43,8 @@ export default function TeachersPage() {
 	const canDeactivateTeacher = isAdmin || hasPermission('teachers', 'deactivate');
 	const canReactivateTeacher = isAdmin || hasPermission('teachers', 'reactivate');
 	const canResetTeacherPassword = isAdmin || hasPermission('teachers', 'resetPassword');
+	// Teachers module doesn't define a separate "print" action; treat printing/exports as data download.
+	const canDownloadTeachers = isAdmin || hasPermission('teachers', 'download');
 
 	const navigate = useNavigate();
 	const [showForm, setShowForm] = useState(false);
@@ -39,6 +55,7 @@ export default function TeachersPage() {
 	const [assignTeacher, setAssignTeacher] = useState(null);
 	const [sortBy, setSortBy] = useState('createdAt');
 	const [sortDir, setSortDir] = useState('desc');
+	const [statusFilter, setStatusFilter] = useState('');
 	const [page, setPage] = useState(1);
 	const [limit, setLimit] = useState(10);
 	const [statusOverrides, setStatusOverrides] = useState({});
@@ -62,26 +79,26 @@ export default function TeachersPage() {
 	const createTeacherMutation = useMutation({
 		mutationFn: (payload) => createTeacher(payload),
 		onSuccess: (res) => {
-			toast.success('Teacher created');
+			toast.success(t('teachers.table.toasts.created'));
 			try {
 				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
 			} catch { /* ignore */ }
 		},
 		onError: (e) => {
-			toast.error(e?.data?.message || e?.message || 'Save failed');
+			toast.error(e?.data?.message || e?.message || t('teachers.table.errors.saveFailed'));
 		},
 	});
 
 	const updateTeacherMutation = useMutation({
 		mutationFn: ({ id, payload }) => updateTeacher(id, payload),
 		onSuccess: (res, vars) => {
-			toast.success('Teacher updated');
+			toast.success(t('teachers.table.toasts.updated'));
 			try {
 				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
 			} catch { /* ignore */ }
 		},
 		onError: (e) => {
-			toast.error(e?.data?.message || e?.message || 'Save failed');
+			toast.error(e?.data?.message || e?.message || t('teachers.table.errors.saveFailed'));
 		},
 	});
 
@@ -100,10 +117,10 @@ export default function TeachersPage() {
 	const resetPasswordMutation = useMutation({
 		mutationFn: (id) => resetTeacherPassword(id),
 		onSuccess: (_, id) => {
-			toast.success('Password reset to default. Teacher must change it after login.');
+			toast.success(t('teachers.table.toasts.passwordReset'));
 		},
 		onError: (e) => {
-			toast.error(e?.data?.message || e?.message || 'Reset failed');
+			toast.error(e?.data?.message || e?.message || t('teachers.table.errors.resetFailed'));
 		},
 	});
 
@@ -118,8 +135,15 @@ export default function TeachersPage() {
 		});
 	}, [items, statusOverrides]);
 
+	const filteredItems = React.useMemo(() => {
+		if (!Array.isArray(viewItems)) return [];
+		const sf = String(statusFilter || '').trim().toLowerCase();
+		if (!sf) return viewItems;
+		return viewItems.filter((t) => String(t?.status || '').toLowerCase() === sf);
+	}, [viewItems, statusFilter]);
+
 	const sortedItems = React.useMemo(() => {
-		const arr = [...viewItems];
+		const arr = [...filteredItems];
 		const dir = sortDir === 'asc' ? 1 : -1;
 		const key = sortBy;
 		arr.sort((a, b) => {
@@ -137,7 +161,7 @@ export default function TeachersPage() {
 			return 0;
 		});
 		return arr;
-	}, [viewItems, sortBy, sortDir]);
+	}, [filteredItems, sortBy, sortDir]);
 
 	const onSort = (field) => {
 		if (sortBy === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -151,13 +175,14 @@ export default function TeachersPage() {
 		setSearch('');
 		setSortBy('createdAt');
 		setSortDir('desc');
+		setStatusFilter('');
 		setPage(1);
 		setLimit(10);
 	};
 
 	const onAdd = () => {
 		if (!canAddTeacher) {
-			toast.error('You do not have permission to add teachers');
+			toast.error(t('teachers.table.permissions.noAdd'));
 			return;
 		}
 		setEditing(null);
@@ -165,7 +190,7 @@ export default function TeachersPage() {
 	};
 	const onEdit = (row) => {
 		if (!canEditTeacher) {
-			toast.error('You do not have permission to edit teachers');
+			toast.error(t('teachers.table.permissions.noEdit'));
 			return;
 		}
 		setEditing(row);
@@ -179,15 +204,15 @@ export default function TeachersPage() {
 		const currentStatus = (statusOverrides[id] ?? row?.status ?? 'active') === 'inactive' ? 'inactive' : 'active';
 		const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
 		if (nextStatus === 'inactive' && !canDeactivateTeacher) {
-			toast.error('You do not have permission to deactivate teachers');
+			toast.error(t('teachers.table.permissions.noDeactivate'));
 			return;
 		}
 		if (nextStatus === 'active' && !canReactivateTeacher) {
-			toast.error('You do not have permission to reactivate teachers');
+			toast.error(t('teachers.table.permissions.noReactivate'));
 			return;
 		}
-		const verb = nextStatus === 'inactive' ? 'Deactivate' : 'Reactivate';
-		if (!confirm(`${verb} this teacher?`)) return;
+		const verb = nextStatus === 'inactive' ? t('common.actions.deactivate') : t('common.actions.reactivate');
+		if (!confirm(t('teachers.table.confirms.toggle', { verb }))) return;
 
 		setPendingById((prev) => ({ ...prev, [id]: true }));
 		setStatusOverrides((prev) => ({ ...prev, [id]: nextStatus }));
@@ -198,14 +223,14 @@ export default function TeachersPage() {
 				delete copy[id];
 				return copy;
 			});
-			toast.success(nextStatus === 'inactive' ? 'Teacher deactivated' : 'Teacher reactivated');
+			toast.success(nextStatus === 'inactive' ? t('teachers.table.toasts.deactivated') : t('teachers.table.toasts.reactivated'));
 		} catch (e) {
 			setStatusOverrides((prev) => {
 				const copy = { ...prev };
 				delete copy[id];
 				return copy;
 			});
-			toast.error(e?.data?.message || e?.message || 'Update failed');
+			toast.error(e?.data?.message || e?.message || t('teachers.table.errors.updateFailed'));
 		} finally {
 			setPendingById((prev) => {
 				const copy = { ...prev };
@@ -217,20 +242,20 @@ export default function TeachersPage() {
 
 	const onResetPassword = async (row) => {
 		if (!canResetTeacherPassword) {
-			toast.error('You do not have permission to reset passwords');
+			toast.error(t('teachers.table.permissions.noResetPw'));
 			return;
 		}
 		const id = row?._id || row?.id;
 		if (!id) return;
 		if (pendingById[id]) return;
 		if (String(row?.status || '').toLowerCase() === 'inactive') return;
-		if (!confirm('Reset this teacher\'s password to the default password and clear the 24h lock/cooldown?')) return;
+		if (!confirm(t('teachers.table.confirms.resetPassword'))) return;
 
 		setPendingById((prev) => ({ ...prev, [id]: true }));
 		try {
 			await resetPasswordMutation.mutateAsync(id);
 		} catch (e) {
-			toast.error(e?.data?.message || e?.message || 'Reset failed');
+			toast.error(e?.data?.message || e?.message || t('teachers.table.errors.resetFailed'));
 		} finally {
 			setPendingById((prev) => {
 				const copy = { ...prev };
@@ -268,44 +293,174 @@ export default function TeachersPage() {
 		setEditing(null);
 	};
 
+	const handlePrint = () => {
+		if (!canDownloadTeachers) {
+			toast.error(t('teachers.table.permissions.noExport'));
+			return;
+		}
+		setTimeout(() => window.print(), 0);
+	};
+
+	const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
+	const isLoading = Boolean(teachersQuery.isLoading && teachersQuery.data == null);
+	const canExport = Boolean(canDownloadTeachers && !isLoading && Array.isArray(sortedItems) && sortedItems.length > 0);
+	const buildExportPayload = useCallback(async () => {
+		if (!canExport) return null;
+
+		// Export should match the currently visible table columns (and exclude action buttons).
+		const STORAGE_KEY = 'teachers:columns:v1';
+		let visible = {};
+		try {
+			const raw = localStorage.getItem(STORAGE_KEY);
+			if (raw) {
+				const parsed = JSON.parse(raw);
+				if (parsed && typeof parsed === 'object') visible = parsed;
+			}
+		} catch { /* ignore */ }
+		const isVisible = (key) => visible?.[String(key)] !== false;
+
+		const dtf = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+		const cols = [
+			{ key: 'name', label: t('teachers.table.columns.name'), get: (tch) => tch?.fullName || `${tch?.firstName || ''} ${tch?.lastName || ''}`.trim() || '' },
+			{ key: 'teacherId', label: t('teachers.table.columns.teacherId'), get: (tch) => tch?.teacherId || '' },
+			{ key: 'email', label: t('teachers.table.columns.email'), get: (tch) => tch?.email || '' },
+			{ key: 'phone', label: t('teachers.table.columns.phone'), get: (tch) => tch?.phone || '' },
+			{ key: 'createdAt', label: t('teachers.table.columns.createdAt'), get: (tch) => (tch?.createdAt ? dtf.format(new Date(tch.createdAt)) : '') },
+			{ key: 'status', label: t('teachers.table.columns.status'), get: (tch) => tch?.status || '' },
+			// actions are UI-only; never export
+		].filter((c) => isVisible(c.key));
+
+		const headers = cols.map((c) => c.label);
+		const rows = (sortedItems || []).map((t) => cols.map((c) => c.get(t)));
+
+		const subtitleParts = [
+			search ? `${t('teachers.export.labels.search')}: ${search}` : null,
+			statusFilter ? `${t('teachers.export.labels.status')}: ${statusFilter}` : null,
+		].filter(Boolean);
+
+		return {
+			filename: t('teachers.export.filename'),
+			sheetName: t('teachers.export.sheetName'),
+			title: '',
+			subtitle: subtitleParts.join(' • '),
+			headerImageSrc: headerImg,
+			headers,
+			rows,
+		};
+	}, [canExport, sortedItems, search, statusFilter, t]);
+
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center">
-				<h1 className="text-2xl font-semibold">Teacher Management</h1>
-				{canAddTeacher && (
-					<Button variant="brand" size="lg" onClick={onAdd} className="ml-auto">
-						Add New Teacher
-					</Button>
-				)}
-			</div>
-			<DataToolbar
-				searchSlot={<SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search teachers..." />}
-				sortSlot={<SortControls currentField={sortBy} currentDir={sortDir} fields={[{ field: 'fullName', label: 'Name' }, { field: 'teacherId', label: 'ID' }, { field: 'createdAt', label: 'Created' }]} onSort={onSort} />}
-				onReset={onReset}
-			/>
+		<div className="space-y-6 with-print-header with-print-footer print-fit-wide">
+			<PrintHeader />
+			<PrintFooter left={t('common.generatedBy')} />
+
+			<Card className="p-4 no-print">
+				<div className="flex flex-col gap-3">
+					{/* Row 1: Search + selections */}
+					<div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3">
+						<div className="w-full md:max-w-xs grow">
+							<SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder={t('teachers.searchPlaceholder')} />
+						</div>
+
+						<FilterRow className="flex-1">
+							<FilterItem minWidthClass="sm:min-w-44">
+								<DropdownSelect
+									value={statusFilter}
+									onChange={(v) => { setStatusFilter(v); setPage(1); }}
+									placeholder={t('teachers.filters.status')}
+									options={[
+										{ value: '', label: t('teachers.filters.all') },
+										{ value: 'active', label: t('teachers.filters.active') },
+										{ value: 'inactive', label: t('teachers.filters.inactive') },
+									]}
+								/>
+							</FilterItem>
+
+							<FilterItem grow minWidthClass="sm:min-w-48">
+								<SortControls
+									currentField={sortBy}
+									currentDir={sortDir}
+									fields={[
+										{ field: 'fullName', label: t('teachers.sort.name') },
+										{ field: 'teacherId', label: t('teachers.sort.id') },
+										{ field: 'createdAt', label: t('teachers.sort.created') },
+									]}
+									onSort={onSort}
+								/>
+							</FilterItem>
+						</FilterRow>
+					</div>
+
+					{/* Row 2: Add button (left) + Actions (right) */}
+					<div className="w-full flex items-center justify-between gap-2 flex-wrap">
+						{canAddTeacher && (
+							<Button
+								variant="brand"
+								size="lg"
+								onClick={onAdd}
+								icon={<Plus size={20} />}
+								className="w-full sm:w-auto justify-center"
+							>
+								{t('teachers.addNew')}
+							</Button>
+						)}
+
+						<div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
+							{canDownloadTeachers && (
+								<>
+									<ActionButton
+										variant="neutral"
+										className={outlineBtn}
+										onClick={handlePrint}
+										title={t('common.actions.print')}
+										icon={<Printer size={16} />}
+									>
+										{t('common.actions.print')}
+									</ActionButton>
+
+									<PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+								</>
+							)}
+
+							<ActionButton
+								variant="neutral"
+								className={outlineBtn}
+								onClick={onReset}
+								title={t('teachers.resetFilters')}
+								icon={<RotateCcw size={16} />}
+							>
+								{t('common.actions.reset')}
+							</ActionButton>
+						</div>
+					</div>
+				</div>
+			</Card>
 
 			<TeacherTable
 				items={sortedItems}
 				rows={currentRows}
-				isLoading={Boolean(teachersQuery.isLoading && teachersQuery.data == null)}
-				error={teachersQuery.isError ? (teachersQuery.error?.data?.message || teachersQuery.error?.message || 'Failed to load teachers') : null}
+				isLoading={isLoading}
+				error={teachersQuery.isError ? (teachersQuery.error?.data?.message || teachersQuery.error?.message || t('teachers.table.errors.loadFailed')) : null}
 				sortBy={sortBy}
 				sortDir={sortDir}
 				onSort={onSort}
 				meta={{ page, totalPages, limit, total }}
 				onPage={setPage}
 				onLimit={(v) => { setLimit(v); setPage(1); }}
-				onView={(t) => {
-					const id = t?._id || t?.id;
+				onView={(teacher) => {
+					const id = teacher?._id || teacher?.id;
 					if (!id) return;
 					navigate(`/teachers/${id}`);
 				}}
-				onAssign={(t) => {
+				onAssign={(teacher) => {
 					if (!canAssignTeacher) {
-						toast.error('You do not have permission to assign teachers');
+						toast.error(t('teachers.table.permissions.noAssign'));
 						return;
 					}
-					setAssignTeacher(t);
+					setAssignTeacher(teacher);
 					setShowAssign(true);
 				}}
 				onEdit={onEdit}
@@ -317,7 +472,7 @@ export default function TeachersPage() {
 			<Modal isOpen={showForm} onClose={() => {
 				setShowForm(false);
 				setEditing(null);
-			}} title={editing ? 'Edit Teacher' : 'Add Teacher'}>
+			}} title={editing ? t('teachers.editTitle') : t('teachers.addTitle')}>
 				<TeacherForm initialValue={editing} onCancel={() => {
 					setShowForm(false);
 					setEditing(null);

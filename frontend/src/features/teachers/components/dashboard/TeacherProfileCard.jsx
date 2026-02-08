@@ -24,6 +24,7 @@ import { fetchJson } from '../../../../shared/api/http';
 import { getTeacherAuditLogs, getTeacherProfile } from '../../api/teachersApi.js';
 import { teacherKeys } from '../../queryKeys';
 import { useTeachersRealtimeInvalidation } from '../../useTeachersRealtimeInvalidation';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 function firstChar(s) {
 	const t = String(s || '').trim();
@@ -51,6 +52,7 @@ function SmallStat({ label, value, tone = 'indigo' }) {
 }
 
 export default function TeacherProfileCard({ user, summary }) {
+	const { t } = useI18n();
 	const fullName = String(user?.fullName || '').trim();
 	const initials = useMemo(() => {
 		const parts = fullName.split(/\s+/).filter(Boolean);
@@ -66,8 +68,8 @@ export default function TeacherProfileCard({ user, summary }) {
 	return (
 		<Card className="rounded-xl border-blue-100 shadow-sm overflow-hidden">
 			<div className="px-6 py-3 bg-gray-800 text-white">
-				<div className="font-semibold">My Profile</div>
-				<div className="text-xs text-white/80 mt-0.5">Quick account info</div>
+				<div className="font-semibold">{t('teachers.dashboard.profile.title', { defaultValue: 'My Profile' })}</div>
+				<div className="text-xs text-white/80 mt-0.5">{t('teachers.dashboard.profile.subtitle', { defaultValue: 'Quick account info' })}</div>
 			</div>
 
 			<div className="p-6 lg:p-8">
@@ -78,41 +80,41 @@ export default function TeacherProfileCard({ user, summary }) {
 
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
-							<div className="text-xl md:text-2xl font-semibold text-gray-900 truncate">{fullName || 'Teacher'}</div>
+							<div className="text-xl md:text-2xl font-semibold text-gray-900 truncate">{fullName || t('teachers.dashboard.profile.teacherFallback', { defaultValue: 'Teacher' })}</div>
 							<span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 text-xs font-semibold">
-								<BadgeCheck size={14} /> {role ? role.toUpperCase() : 'TEACHER'}
+								<BadgeCheck size={14} /> {role ? role.toUpperCase() : t('teachers.dashboard.profile.roleFallback', { defaultValue: 'TEACHER' })}
 							</span>
 						</div>
 
 						<div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
 							<div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-base text-gray-800 min-w-0">
 								<UserCircle2 size={18} className="text-gray-400" />
-								<span className="truncate">Username: {safeStr(user?.username)}</span>
+								<span className="truncate">{t('teachers.dashboard.profile.fields.username', { defaultValue: 'Username' })}: {safeStr(user?.username)}</span>
 							</div>
 							<div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-base text-gray-800 min-w-0">
 								<Hash size={18} className="text-gray-400" />
-								<span className="break-all">Teacher Ref: {teacherRef ? teacherRef : '—'}</span>
+								<span className="break-all">{t('teachers.dashboard.profile.fields.teacherRef', { defaultValue: 'Teacher Ref' })}: {teacherRef ? teacherRef : '—'}</span>
 							</div>
 							<div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-base text-gray-800 min-w-0">
 								<Mail size={18} className="text-gray-400" />
-								<span className="truncate">Email: {safeStr(user?.email)}</span>
+								<span className="truncate">{t('teachers.dashboard.profile.fields.email', { defaultValue: 'Email' })}: {safeStr(user?.email)}</span>
 							</div>
 							<div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-base text-gray-800 min-w-0">
 								<Phone size={18} className="text-gray-400" />
-								<span className="truncate">Phone: {safeStr(user?.phone)}</span>
+								<span className="truncate">{t('teachers.dashboard.profile.fields.phone', { defaultValue: 'Phone' })}: {safeStr(user?.phone)}</span>
 							</div>
 						</div>
 
 						<div className="mt-5 flex flex-wrap gap-3">
-							<SmallStat label="Classes" value={Number.isFinite(stats?.classesCount) ? stats.classesCount : '—'} tone="indigo" />
-							<SmallStat label="Subjects" value={Number.isFinite(stats?.subjectsCount) ? stats.subjectsCount : '—'} tone="blue" />
-							<SmallStat label="Today" value={Number.isFinite(stats?.todayLessons) ? stats.todayLessons : '—'} tone="emerald" />
-							<SmallStat label="Week" value={Number.isFinite(stats?.weeklyLessons) ? stats.weeklyLessons : '—'} tone="violet" />
+							<SmallStat label={t('teachers.dashboard.profile.stats.classes', { defaultValue: 'Classes' })} value={Number.isFinite(stats?.classesCount) ? stats.classesCount : '—'} tone="indigo" />
+							<SmallStat label={t('teachers.dashboard.profile.stats.subjects', { defaultValue: 'Subjects' })} value={Number.isFinite(stats?.subjectsCount) ? stats.subjectsCount : '—'} tone="blue" />
+							<SmallStat label={t('teachers.dashboard.profile.stats.today', { defaultValue: 'Today' })} value={Number.isFinite(stats?.todayLessons) ? stats.todayLessons : '—'} tone="emerald" />
+							<SmallStat label={t('teachers.dashboard.profile.stats.week', { defaultValue: 'Week' })} value={Number.isFinite(stats?.weeklyLessons) ? stats.weeklyLessons : '—'} tone="violet" />
 						</div>
 
 						<div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
 							<Building2 size={14} className="text-gray-400" />
-							<span>Tip: If profile fields are missing, ask admin to update your teacher record.</span>
+							<span>{t('teachers.dashboard.profile.tip', { defaultValue: 'Tip: If profile fields are missing, ask admin to update your teacher record.' })}</span>
 						</div>
 					</div>
 				</div>
@@ -123,6 +125,7 @@ export default function TeacherProfileCard({ user, summary }) {
 
 function TeacherChangePasswordCard() {
 	const { auth, refreshUser } = useAuth();
+	const { t } = useI18n();
 	const isForcePasswordChange = Boolean(auth?.user?.mustChangePassword);
 
 	const [currentPassword, setCurrentPassword] = React.useState('');
@@ -143,7 +146,7 @@ function TeacherChangePasswordCard() {
 			return await fetchJson('/auth/change-password', { method: 'POST', body: JSON.stringify(payload) });
 		},
 		onSuccess: async () => {
-			toast.success('You changed your password successfully');
+			toast.success(t('students.profileTab.password.changedSuccess', { defaultValue: 'Password changed successfully.' }));
 			setCurrentPassword('');
 			setNewPassword('');
 			setConfirmPassword('');
@@ -154,7 +157,7 @@ function TeacherChangePasswordCard() {
 			}
 		},
 		onError: (err) => {
-			toast.error(err?.data?.message || err?.message || 'Failed to change password.');
+			toast.error(err?.data?.message || err?.message || t('students.profileTab.password.changeFailed', { defaultValue: 'Failed to change password.' }));
 		},
 	});
 
@@ -164,15 +167,15 @@ function TeacherChangePasswordCard() {
 		const confirm = String(confirmPassword || '').trim();
 
 		if (!next || !confirm || (!isForcePasswordChange && !curr)) {
-			toast.error('Please fill in all required password fields.');
+			toast.error(t('students.profileTab.password.fieldsRequired', { defaultValue: 'Please fill in all required fields.' }));
 			return;
 		}
 		if (next.length < 6) {
-			toast.error('Password must be at least 6 characters.');
+			toast.error(t('students.profileTab.password.minLength', { defaultValue: 'Password must be at least 6 characters.' }));
 			return;
 		}
 		if (next !== confirm) {
-			toast.error('New passwords do not match.');
+			toast.error(t('students.profileTab.password.noMatch', { defaultValue: 'Passwords do not match.' }));
 			return;
 		}
 
@@ -192,13 +195,13 @@ function TeacherChangePasswordCard() {
 			<div className="px-4 py-3 border-b">
 				<div className="flex items-center gap-2">
 					<Shield size={18} className="text-gray-700" />
-					<h3 className="text-base font-semibold">Change Password</h3>
+					<h3 className="text-base font-semibold">{t('students.profileTab.password.title', { defaultValue: 'Change Password' })}</h3>
 				</div>
-				<p className="text-xs text-gray-500">Update your account password</p>
+				<p className="text-xs text-gray-500">{t('students.profileTab.password.subtitle', { defaultValue: 'Update your password' })}</p>
 			</div>
 			<div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
 				<div className="sm:col-span-1">
-					<label className="block text-sm font-medium text-gray-700 mb-1">Current</label>
+					<label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.current', { defaultValue: 'Current password' })}</label>
 					<div className="relative">
 						<Input
 							type={showCurrentPw ? 'text' : 'password'}
@@ -207,7 +210,7 @@ function TeacherChangePasswordCard() {
 							className="pr-10"
 							autoComplete="current-password"
 							disabled={saving || isForcePasswordChange}
-							placeholder={isForcePasswordChange ? 'Default password' : ''}
+							placeholder={isForcePasswordChange ? t('students.profileTab.password.defaultPasswordPlaceholder', { defaultValue: 'Default password' }) : ''}
 						/>
 						<button
 							type="button"
@@ -215,8 +218,8 @@ function TeacherChangePasswordCard() {
 							onMouseEnter={() => setShowCurrentPw(true)}
 							onMouseLeave={() => setShowCurrentPw(false)}
 							onMouseDown={(e) => e.preventDefault()}
-							aria-label="Show current password"
-							title="Show password"
+							aria-label={t('students.profileTab.password.showCurrentAria', { defaultValue: 'Show current password' })}
+							title={t('students.profileTab.password.showPasswordTitle', { defaultValue: 'Show password' })}
 							disabled={saving || isForcePasswordChange}
 						>
 							{showCurrentPw ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -224,13 +227,13 @@ function TeacherChangePasswordCard() {
 					</div>
 					{isForcePasswordChange ? (
 						<div className="mt-1 text-[11px] text-gray-500">
-							Your account is using the default password. Set a new one.
+							{t('students.profileTab.password.defaultPasswordNote', { defaultValue: 'Your account is using the default password. Please change it now.' })}
 						</div>
 					) : null}
 				</div>
 
 				<div className="sm:col-span-1">
-					<label className="block text-sm font-medium text-gray-700 mb-1">New</label>
+					<label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.new', { defaultValue: 'New password' })}</label>
 					<div className="relative">
 						<Input
 							type={showNewPw ? 'text' : 'password'}
@@ -246,8 +249,8 @@ function TeacherChangePasswordCard() {
 							onMouseEnter={() => setShowNewPw(true)}
 							onMouseLeave={() => setShowNewPw(false)}
 							onMouseDown={(e) => e.preventDefault()}
-							aria-label="Show new password"
-							title="Show password"
+							aria-label={t('students.profileTab.password.showNewAria', { defaultValue: 'Show new password' })}
+							title={t('students.profileTab.password.showPasswordTitle', { defaultValue: 'Show password' })}
 						>
 							{showNewPw ? <EyeOff size={18} /> : <Eye size={18} />}
 						</button>
@@ -255,7 +258,7 @@ function TeacherChangePasswordCard() {
 				</div>
 
 				<div className="sm:col-span-1">
-					<label className="block text-sm font-medium text-gray-700 mb-1">Confirm</label>
+					<label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.confirm', { defaultValue: 'Confirm password' })}</label>
 					<div className="relative">
 						<Input
 							type={showConfirmPw ? 'text' : 'password'}
@@ -271,8 +274,8 @@ function TeacherChangePasswordCard() {
 							onMouseEnter={() => setShowConfirmPw(true)}
 							onMouseLeave={() => setShowConfirmPw(false)}
 							onMouseDown={(e) => e.preventDefault()}
-							aria-label="Show confirm password"
-							title="Show password"
+							aria-label={t('students.profileTab.password.showConfirmAria', { defaultValue: 'Show confirm password' })}
+							title={t('students.profileTab.password.showPasswordTitle', { defaultValue: 'Show password' })}
 						>
 							{showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
 						</button>
@@ -281,7 +284,7 @@ function TeacherChangePasswordCard() {
 
 				<div className="sm:col-span-3 flex justify-end">
 					<Button type="button" variant="brand" onClick={submit} disabled={saving}>
-						{saving ? 'Saving…' : 'Save'}
+						{saving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.actions.save', { defaultValue: 'Save' })}
 					</Button>
 				</div>
 			</div>
@@ -290,6 +293,7 @@ function TeacherChangePasswordCard() {
 }
 
 export function TeacherProfilePage() {
+	const { t } = useI18n();
 	const { teacherId } = useParams();
 	const { auth } = useAuth();
 	const authUser = auth?.user || null;
@@ -327,7 +331,7 @@ export function TeacherProfilePage() {
 	const profile = profileQuery.data || { teacher: null, user: null };
 	const effectiveTeacher = isAdminView ? profile.teacher : null;
 	const effectiveUser = isAdminView ? profile.user : authUser;
-	const fullName = (effectiveTeacher?.fullName || effectiveUser?.fullName || 'Teacher');
+	const fullName = (effectiveTeacher?.fullName || effectiveUser?.fullName || t('teachers.dashboard.profile.teacherFallback', { defaultValue: 'Teacher' }));
 	const mergedUserForSummary = useMemo(() => {
 		const base = effectiveUser || {};
 		return {
@@ -350,7 +354,7 @@ export function TeacherProfilePage() {
 				{isAdminView ? (
 					<div className="mb-4">
 						<Button as={Link} to="/teachers" variant="neutral" size="md" icon={<ArrowLeft size={15} />}>
-							Back to Teachers
+							{t('teachers.profile.backToTeachers', { defaultValue: 'Back to Teachers' })}
 						</Button>
 					</div>
 				) : null}
@@ -363,15 +367,15 @@ export function TeacherProfilePage() {
 
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-6xl mt-3">
 						<div className="rounded-lg p-4 bg-indigo-50 text-indigo-700 border border-indigo-100">
-							<div className="text-xs uppercase tracking-wide font-semibold">Username</div>
+							<div className="text-xs uppercase tracking-wide font-semibold">{t('teachers.dashboard.profile.fields.username', { defaultValue: 'Username' })}</div>
 							<div className="font-mono text-xl font-bold">{safeStr(effectiveUser?.username)}</div>
 						</div>
 						<div className="rounded-lg p-4 bg-emerald-50 text-emerald-700 border border-emerald-100">
-							<div className="text-xs uppercase tracking-wide font-semibold">Role</div>
+							<div className="text-xs uppercase tracking-wide font-semibold">{t('teachers.profile.role', { defaultValue: 'Role' })}</div>
 							<div className="text-xl font-bold">{String(effectiveUser?.role || 'teacher').toUpperCase()}</div>
 						</div>
 						<div className="rounded-lg p-4 bg-amber-50 text-amber-700 border border-amber-100">
-							<div className="text-xs uppercase tracking-wide font-semibold">Teacher Ref</div>
+							<div className="text-xs uppercase tracking-wide font-semibold">{t('teachers.dashboard.profile.fields.teacherRef', { defaultValue: 'Teacher Ref' })}</div>
 							<div className="font-mono text-lg font-bold break-all leading-snug">{effectiveUser?.teacherRef ? String(effectiveUser.teacherRef) : '-'}</div>
 						</div>
 					</div>
@@ -380,10 +384,10 @@ export function TeacherProfilePage() {
 
 			<div className="p-6">
 				{isAdminView && profileQuery.isLoading && profileQuery.data == null ? (
-					<div className="text-sm text-gray-600 mb-4">Loading teacher profile…</div>
+					<div className="text-sm text-gray-600 mb-4">{t('teachers.profile.loading', { defaultValue: 'Loading teacher profile…' })}</div>
 				) : null}
 				{isAdminView && profileQuery.isError ? (
-					<div className="text-sm text-red-600 mb-4">{profileQuery.error?.data?.message || profileQuery.error?.message || 'Failed to load teacher profile'}</div>
+					<div className="text-sm text-red-600 mb-4">{profileQuery.error?.data?.message || profileQuery.error?.message || t('teachers.profile.loadFailed', { defaultValue: 'Failed to load teacher profile' })}</div>
 				) : null}
 				<div className="w-full">
 					<TeacherProfileCard user={mergedUserForSummary} summary={{}} />
@@ -399,14 +403,14 @@ export function TeacherProfilePage() {
 					<div className="mt-6">
 						<div className="rounded-xl border bg-white overflow-hidden">
 							<div className="px-4 py-3 border-b">
-								<h3 className="text-base font-semibold">Audit History</h3>
-								<p className="text-xs text-gray-500">Recent actions recorded for this teacher account</p>
+								<h3 className="text-base font-semibold">{t('teachers.profile.audit.title', { defaultValue: 'Audit History' })}</h3>
+								<p className="text-xs text-gray-500">{t('teachers.profile.audit.subtitle', { defaultValue: 'Recent actions recorded for this teacher account' })}</p>
 							</div>
 							<div className="p-4">
 								<AuditHistoryTable
 									logs={logsQuery.data?.data || []}
 									isLoading={Boolean(logsQuery.isLoading && (logsQuery.data?.data || []).length === 0)}
-									error={logsQuery.isError ? (logsQuery.error?.data?.message || logsQuery.error?.message || 'Failed to load audit history') : null}
+									error={logsQuery.isError ? (logsQuery.error?.data?.message || logsQuery.error?.message || t('teachers.profile.audit.loadFailed', { defaultValue: 'Failed to load audit history' })) : null}
 									meta={logsQuery.data?.meta || { page, limit, total: 0, totalPages: 1 }}
 									onPage={setPage}
 									onLimit={(v) => {
@@ -414,8 +418,8 @@ export function TeacherProfilePage() {
 										setPage(1);
 									}}
 									storageKey="teachers:profile:auditLogs:columns:v2"
-									emptyTitle="No audit history."
-									emptyDescription="No actions have been recorded yet."
+									emptyTitle={t('teachers.profile.audit.emptyTitle', { defaultValue: 'No audit history.' })}
+									emptyDescription={t('teachers.profile.audit.emptyDescription', { defaultValue: 'No actions have been recorded yet.' })}
 								/>
 							</div>
 						</div>

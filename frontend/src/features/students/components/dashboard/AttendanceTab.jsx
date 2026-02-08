@@ -8,6 +8,7 @@ import { useAuth } from '../../../../auth/AuthContext';
 import { getStudentAttendanceSelfWithOptions, getStudentSelfAttendanceWithOptions } from '../../../attendance/api/attendance';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 function isoDateOnly(d) {
   return new Date(d).toISOString().slice(0, 10);
@@ -19,9 +20,13 @@ function subDays(date, days) {
   return dt;
 }
 
-function statusLabel(s) {
+function statusLabel(s, t) {
   const v = String(s || '').toLowerCase();
-  if (v === 'not_marked') return 'Not marked';
+  if (v === 'not_marked') return t('students.attendance.status.notMarked');
+  if (v === 'present') return t('students.attendance.status.present');
+  if (v === 'absent') return t('students.attendance.status.absent');
+  if (v === 'late') return t('students.attendance.status.late');
+  if (v === 'excused' || v === 'sick' || v === 'medical' || v === 'family' || v === 'other') return t('students.attendance.status.excused');
   if (!v) return '-';
   return v.charAt(0).toUpperCase() + v.slice(1);
 }
@@ -63,6 +68,7 @@ function statusClass(s) {
 
 export default function AttendanceTab() {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const { studentId: paramStudentId } = useParams();
   const isStudentSelf = auth?.user?.role === 'student' && !paramStudentId;
 
@@ -95,7 +101,7 @@ export default function AttendanceTab() {
   });
 
   const loading = attendanceQuery.isLoading;
-  const error = attendanceQuery.isError ? 'Failed to load attendance' : '';
+  const error = attendanceQuery.isError ? t('students.attendanceTab.loadFailed') : '';
   const hasFetched = attendanceQuery.isFetched;
   const items = attendanceQuery.data || [];
 
@@ -128,15 +134,15 @@ export default function AttendanceTab() {
 
       <div className="mb-4">
         <div className="border-l-4 border-blue-600 bg-blue-50 rounded px-3 py-2">
-          <h2 className="text-lg font-semibold text-blue-900">Attendance</h2>
+          <h2 className="text-lg font-semibold text-blue-900">{t('nav.attendance')}</h2>
           <div className="text-xs text-blue-800/80 mt-0.5">
-            Showing recorded attendance only
+            {t('students.attendanceTab.subtitle')}
           </div>
         </div>
       </div>
 
       {loading && (
-        <LoadingState variant="table" rows={8} columns={3} message="Loading attendance…" />
+        <LoadingState variant="table" rows={8} columns={3} message={t('students.attendanceTab.loading')} />
       )}
 
       {!loading && error && (
@@ -145,7 +151,7 @@ export default function AttendanceTab() {
 
       {!loading && !error && hasFetched && groupedByDate.length === 0 && (
         <div className="text-lg font-semibold text-gray-800">
-          No attendance has been recorded yet.
+          {t('students.attendanceTab.empty')}
         </div>
       )}
 
@@ -169,10 +175,10 @@ export default function AttendanceTab() {
                       <div className="border border-blue-100 rounded-lg p-3 bg-white shadow-sm">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="font-medium text-gray-900">All day</div>
-                            <div className="text-xs text-gray-500 mt-0.5">Attendance for the full day</div>
+                            <div className="font-medium text-gray-900">{t('students.attendanceTab.allDay')}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{t('students.attendanceTab.allDaySubtitle')}</div>
                           </div>
-                          <div className={`text-sm font-semibold ${statusClass(st)} whitespace-nowrap`}>{statusLabel(st)}</div>
+                          <div className={`text-sm font-semibold ${statusClass(st)} whitespace-nowrap`}>{statusLabel(st, t)}</div>
                         </div>
                         {showRemarks && (
                           <div className="text-xs text-gray-600 mt-2">{remarks}</div>
@@ -188,7 +194,7 @@ export default function AttendanceTab() {
                       const timeLabel = (it?.startTime && it?.endTime)
                         ? `${it.startTime}-${it.endTime}`
                         : String(it?.periodCode || '');
-                      const title = subjectName || 'Lesson';
+                      const title = subjectName || t('students.attendanceTab.lessonFallback');
                       const subtitle = [timeLabel, teacherName].filter(Boolean).join(' • ');
                       const st = String(it?.status || '');
                       const remarks = String(it?.remarks || '').trim();
@@ -201,7 +207,7 @@ export default function AttendanceTab() {
                               <div className="font-medium text-gray-900 truncate">{title}</div>
                               {subtitle && <div className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</div>}
                             </div>
-                            <div className={`text-sm font-semibold ${statusClass(st)} whitespace-nowrap`}>{statusLabel(st)}</div>
+                            <div className={`text-sm font-semibold ${statusClass(st)} whitespace-nowrap`}>{statusLabel(st, t)}</div>
                           </div>
                           {showRemarks && (
                             <div className="text-xs text-gray-600 mt-2">{remarks}</div>

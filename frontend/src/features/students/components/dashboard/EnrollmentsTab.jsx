@@ -9,6 +9,7 @@ import { studentKeys } from '../../queryKeys';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 function formatDate(value) {
   if (!value) return '-';
@@ -33,6 +34,7 @@ function statusClass(status) {
 export default function EnrollmentsTab() {
   const { studentId: paramStudentId } = useParams();
   const { auth } = useAuth();
+  const { t } = useI18n();
 
   const studentIdFromAuth = useMemo(() => {
     const ref = auth?.user?.studentRef;
@@ -70,20 +72,20 @@ export default function EnrollmentsTab() {
   }, [historyQuery.data, sort]);
 
   const loading = historyQuery.isLoading;
-  const error = historyQuery.isError ? 'Failed to load history' : null;
+  const error = historyQuery.isError ? t('students.enrollmentsTab.loadFailed') : null;
 
   return (
     <Card className="p-4">
-      <h2 className="text-lg font-medium mb-2">Enrollments</h2>
+      <h2 className="text-lg font-medium mb-2">{t('nav.enrollments')}</h2>
       {loading && (
         <div className="py-6">
-          <LoadingState label="Loading enrollments…" className="border-0 bg-transparent p-0" />
+          <LoadingState label={t('students.enrollmentsTab.loading')} className="border-0 bg-transparent p-0" />
         </div>
       )}
       {error && <Alert variant="danger" title={error} className="py-3" />}
       {!loading && !error && (
         items.length === 0 ? (
-          <EmptyState title="No enrollment history" description="This student has no recorded enrollments yet." />
+          <EmptyState title={t('students.enrollmentsTab.emptyTitle')} description={t('students.enrollmentsTab.emptyDescription')} />
         ) : (
           <StandardTable
             isLoading={false}
@@ -99,15 +101,15 @@ export default function EnrollmentsTab() {
               })
             }
             columns={[
-              { key: 'academicYear', label: 'Academic Year', field: 'academicYear', sortable: true },
-              { key: 'grade', label: 'Grade', field: 'grade', sortable: true },
-              { key: 'section', label: 'Section', field: 'section', sortable: true },
-              { key: 'shift', label: 'Shift', field: 'shift', sortable: true },
-              { key: 'cohort', label: 'Cohort', field: 'cohort', sortable: true },
-              { key: 'status', label: 'Status', field: 'status', sortable: true },
-              { key: 'joinedAt', label: 'Joined', field: 'joinedAt', sortable: true },
-              { key: 'leftAt', label: 'Left', field: 'leftAt', sortable: true },
-              { key: 'sequenceInYear', label: 'Seq', field: 'sequenceInYear', sortable: true },
+              { key: 'academicYear', label: t('students.table.columns.academicYear'), field: 'academicYear', sortable: true },
+              { key: 'grade', label: t('students.table.columns.grade'), field: 'grade', sortable: true },
+              { key: 'section', label: t('students.table.columns.section'), field: 'section', sortable: true },
+              { key: 'shift', label: t('students.table.columns.shift'), field: 'shift', sortable: true },
+              { key: 'cohort', label: t('students.form.cohort'), field: 'cohort', sortable: true },
+              { key: 'status', label: t('students.table.columns.status'), field: 'status', sortable: true },
+              { key: 'joinedAt', label: t('students.enrollmentsTab.columns.joined'), field: 'joinedAt', sortable: true },
+              { key: 'leftAt', label: t('students.enrollmentsTab.columns.left'), field: 'leftAt', sortable: true },
+              { key: 'sequenceInYear', label: t('students.enrollmentsTab.columns.sequence'), field: 'sequenceInYear', sortable: true },
             ].map((c) => ({
               ...c,
               thClassName: 'px-3 py-2 text-left text-sm font-medium text-gray-700',
@@ -129,7 +131,7 @@ export default function EnrollmentsTab() {
                 case 'status':
                   return (
                     <span className={`px-2 py-0.5 rounded text-xs ${statusClass(e.status)}`}>
-                      {e.status || '-'}
+                      {e.status ? t(`students.enrollmentStatus.${String(e.status).toLowerCase()}`) : '-'}
                     </span>
                   );
                 case 'joinedAt':

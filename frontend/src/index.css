@@ -74,6 +74,16 @@
 	.overflow-x-auto, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
 	table { width: 100% !important; table-layout: auto !important; border-collapse: collapse !important; }
 	thead { display: table-header-group; }
+
+	/* Some list pages (Students/Teachers/Users) are too wide for A4; scale down + tighten table spacing to avoid clipping. */
+	.print-fit-wide { zoom: 0.76; }
+	.print-fit-wide * { max-width: none !important; }
+	.print-fit-wide table { table-layout: fixed !important; }
+	.print-fit-wide th, .print-fit-wide td {
+		padding: 6px 8px !important;
+		white-space: normal !important;
+		word-break: break-word !important;
+	}
 	/* Keep cell wrapping behavior controlled by the page/table (don't force global wrapping). */
 
 	/* Results table print tuning */

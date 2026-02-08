@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const DND_SLOT_MIME = 'text/x-timetable-slot-id';
 
@@ -10,7 +11,17 @@ export default function TimetableGrid({
   onMove,
   busy = false,
 }) {
-  const days = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const { t } = useI18n();
+
+  const days = [
+    t('common.days.long.saturday'),
+    t('common.days.long.sunday'),
+    t('common.days.long.monday'),
+    t('common.days.long.tuesday'),
+    t('common.days.long.wednesday'),
+    t('common.days.long.thursday'),
+    t('common.days.long.friday'),
+  ];
 
   const canDnd = typeof onMove === 'function' && !busy;
   const canDelete = typeof onDelete === 'function' && !busy;
@@ -79,7 +90,13 @@ export default function TimetableGrid({
   };
 
   if (!daysFilter.length) {
-    return <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>No days selected.</td></tr>;
+    return (
+      <tr>
+        <td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>
+          {t('timetable.grid.noDaysSelected')}
+        </td>
+      </tr>
+    );
   }
 
   return (
@@ -95,7 +112,7 @@ export default function TimetableGrid({
             {days[idx]}
           </td>
           {periods.length === 0 ? (
-            <td className="px-3 py-2 text-sm text-gray-500">No periods</td>
+            <td className="px-3 py-2 text-sm text-gray-500">{t('timetable.grid.noPeriods')}</td>
           ) : (
             periods.map((p, i) => {
               const cellSlot = findSlotForCell(idx, p);
@@ -129,20 +146,20 @@ export default function TimetableGrid({
                       onDragStart(e, cellSlot._id);
                     }}
                     className={cellSlot.isBreak ? 'cursor-default' : (canDnd ? 'cursor-move' : 'cursor-default')}
-                    title={cellSlot.isBreak ? 'Break (locked)' : (canDnd ? 'Drag to move' : '')}
+                    title={cellSlot.isBreak ? t('timetable.grid.breakLocked') : (canDnd ? t('timetable.grid.dragToMove') : '')}
                   >
                     {cellSlot.isBreak ? (
-                      <div className="text-xs text-gray-500">Break</div>
+                      <div className="text-xs text-gray-500">{t('timetable.grid.break')}</div>
                     ) : (
                       <>
                         <div className="text-sm font-medium">{cellSlot.subject?.subjectName || '-'}</div>
-                        <div className="text-xs text-gray-600">{cellSlot.teacher?.fullName || '—'}{cellSlot.room ? ` • Room ${cellSlot.room}` : ''}</div>
+                        <div className="text-xs text-gray-600">{cellSlot.teacher?.fullName || '—'}{cellSlot.room ? ` • ${t('common.room')} ${cellSlot.room}` : ''}</div>
                       </>
                     )}
                   </div>
                   {canDelete && (
                     <div className="mt-2 no-print">
-                      <button className="px-2 py-1 text-xs border rounded text-red-600" onClick={() => onDelete(cellSlot)}>Delete</button>
+                      <button className="px-2 py-1 text-xs border rounded text-red-600" onClick={() => onDelete(cellSlot)}>{t('common.actions.delete')}</button>
                     </div>
                   )}
                 </td>

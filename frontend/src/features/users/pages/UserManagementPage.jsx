@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 // import { useAuth } from "../contexts/AuthContext";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, RotateCcw, Printer } from 'lucide-react';
 import {
   listUsers,
   createUser,
@@ -14,16 +15,26 @@ import {
 import { useDebounce } from '../../../hooks/useDebounce';
 
 import SearchInput from "../../../shared/components/DataToolbar/SearchInput.jsx";
-import DataToolbar from "../../../shared/components/DataToolbar/DataToolbar.jsx";
 import { FilterItem, FilterRow } from "../../../shared/components/DataToolbar/FilterLayout.jsx";
 import FilterDropdownSelect from "../../../shared/components/DataToolbar/FilterDropdownSelect.jsx";
 import ListPageShell from "../../../shared/components/ui/ListPageShell.jsx";
 import { useClientSort } from "../../../shared/hooks/useClientSort";
 import Button from "../../../shared/components/ui/Button.jsx";
+import Card from '../../../shared/components/ui/Card.jsx';
+import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
+import PdfDownloadButton from '../../../shared/components/exports/downloadButtons/PdfDownloadButton.jsx';
+import ExcelDownloadButton from '../../../shared/components/exports/downloadButtons/ExcelDownloadButton.jsx';
+import CsvDownloadButton from '../../../shared/components/exports/downloadButtons/CsvDownloadButton.jsx';
+import CopyTableButton from '../../../shared/components/exports/downloadButtons/CopyTableButton.jsx';
+import headerImg from '../../../assets/nuuruBayaanHeader.png';
+import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
+import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 import UserTable from "../components/UserTable.jsx";
 import UserFormModal from "../components/UserFormModal.jsx";
 import { userKeys } from '../queryKeys';
 import { useUsersRealtimeInvalidation } from '../useUsersRealtimeInvalidation';
+
+import { useI18n } from '../../../i18n/I18nProvider';
 
 import { MODULE_PERMISSIONS, MODULES } from "../../../shared/auth/permissionContract.js";
 
@@ -47,6 +58,7 @@ const buildEmptyPermissionsClone = () => JSON.parse(JSON.stringify(emptyPermissi
 
 /* ---------------- Component ---------------- */
 export default function UserManagementPage() {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 350);
   const [showModal, setShowModal] = useState(false);
@@ -218,13 +230,13 @@ export default function UserManagementPage() {
     if (name === "phone") {
       // Only allow digits
       if (!/^\d*$/.test(value)) {
-        toast.error("Phone must contain digits only");
+        toast.error(t('users.toasts.phoneDigitsOnly'));
         return;
       }
     
       // Limit to 9 digits
       if (value.length > 9) {
-        toast.error("Phone number cannot exceed 9 digits");
+        toast.error(t('users.toasts.phoneMaxDigits'));
         return;
       }
     
@@ -305,21 +317,21 @@ export default function UserManagementPage() {
   const createUserMutation = useMutation({
     mutationFn: (payload) => createUser(payload),
     onSuccess: (created) => {
-      toast.success('User created successfully');
+      toast.success(t('users.toasts.created'));
       // Avoid extra refetch/cancel storms: update local cache now; SSE invalidation will refetch cross-browser.
       upsertUserInCachedLists(created?.user || created);
       setShowModal(false);
       resetForm();
     },
     onError: (e) => {
-      toast.error(e?.data?.message || e?.message || 'Failed to save user');
+      toast.error(e?.data?.message || e?.message || t('users.toasts.saveFailed'));
     },
   });
 
   const updateUserMutation = useMutation({
     mutationFn: ({ id, payload }) => updateUser(id, payload),
     onSuccess: (resp, vars) => {
-      toast.success('User updated successfully');
+      toast.success(t('users.toasts.updated'));
       if (vars?.id) {
         const updated = resp?.user || resp?.data?.user || resp?.data || resp?.user || null;
         if (updated) {
@@ -335,7 +347,7 @@ export default function UserManagementPage() {
       resetForm();
     },
     onError: (e) => {
-      toast.error(e?.data?.message || e?.message || 'Failed to save user');
+      toast.error(e?.data?.message || e?.message || t('users.toasts.saveFailed'));
     },
   });
 
@@ -355,7 +367,7 @@ export default function UserManagementPage() {
   const resetLockoutMutation = useMutation({
     mutationFn: (id) => resetUserLoginLockout(id),
     onSuccess: (_, id) => {
-      toast.success('Login lockout reset successfully');
+      toast.success(t('users.toasts.lockoutReset'));
       // Prefer avoiding immediate refetch; SSE will broadcast the change.
       // If profile is open, we can still mark it as stale by updating a lightweight timestamp.
       if (id) {
@@ -364,7 +376,7 @@ export default function UserManagementPage() {
       }
     },
     onError: (e) => {
-      toast.error(e?.data?.message || e?.message || 'Failed to reset lockout');
+      toast.error(e?.data?.message || e?.message || t('users.toasts.lockoutResetFailed'));
     },
   });
 
@@ -384,7 +396,7 @@ export default function UserManagementPage() {
     // If the admin has local unsaved edits, don't overwrite; just notify.
     if (isDirty) {
       if (remoteUpdatedAt && prevUpdatedAt && prevUpdatedAt !== remoteUpdatedAt) {
-        toast('This user was updated in another tab. Close/reopen to sync.', { duration: 2500 });
+        toast(t('users.toasts.updatedElsewhere'), { duration: 2500 });
       }
       return;
     }
@@ -399,16 +411,16 @@ export default function UserManagementPage() {
   
     // Password checks
     if (!editingUser && !form.password) {
-      toast.error("Password is required for new users");
+      toast.error(t('users.form.validations.passwordRequiredNew'));
       return;
     }
     if (!editingUser && String(form.password || '').trim().length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error(t('users.form.validations.passwordMin'));
       return;
     }
     if (form.password || form.confirmPassword) {
       if (form.password !== form.confirmPassword) {
-        toast.error("Passwords do not match");
+        toast.error(t('users.form.passwordsNoMatch'));
         return;
       }
     }
@@ -470,7 +482,7 @@ export default function UserManagementPage() {
           );
         });
         if (exists) {
-          toast.error('Username, Email, or Phone already exists');
+          toast.error(t('users.toasts.uniqueExists'));
           return;
         }
       }
@@ -505,7 +517,7 @@ export default function UserManagementPage() {
       hydrateFormFromUser(u);
     } catch (err) {
       console.error("Failed to load user details", err);
-      toast.error("Failed to load user details");
+      toast.error(t('users.toasts.loadDetailsFailed'));
     } finally {
       setIsFormLoading(false);
     }
@@ -527,8 +539,8 @@ export default function UserManagementPage() {
     const currentUser = users.find((u) => u?._id === id);
     const currentStatus = (statusOverrides[id] ?? currentUser?.status ?? 'active') === 'inactive' ? 'inactive' : 'active';
     const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    const verb = nextStatus === 'inactive' ? 'Deactivate' : 'Activate';
-    if (!confirm(`${verb} this user?`)) return;
+    const verb = nextStatus === 'inactive' ? t('users.table.actions.deactivate') : t('users.table.actions.activate');
+    if (!confirm(t('users.confirms.toggleStatus', { verb }))) return;
 
     setPendingById((prev) => ({ ...prev, [id]: true }));
     setStatusOverrides((prev) => ({ ...prev, [id]: nextStatus }));
@@ -540,7 +552,7 @@ export default function UserManagementPage() {
         delete copy[id];
         return copy;
       });
-      toast.success('Status updated');
+      toast.success(t('users.toasts.statusUpdated'));
     } catch (err) {
       console.error(err);
       setStatusOverrides((prev) => {
@@ -548,7 +560,7 @@ export default function UserManagementPage() {
         delete copy[id];
         return copy;
       });
-      toast.error(err?.message || 'Failed to update status');
+      toast.error(err?.message || t('users.toasts.statusUpdateFailed'));
     } finally {
       setPendingById((prev) => {
         const copy = { ...prev };
@@ -611,14 +623,14 @@ export default function UserManagementPage() {
     if (!id) return;
     if (pendingById[id]) return;
 
-    if (!confirm('Reset login lockout for this user?')) return;
+    if (!confirm(t('users.confirms.resetLockout'))) return;
 
     setPendingById((prev) => ({ ...prev, [id]: true }));
     try {
       await resetLockoutMutation.mutateAsync(id);
     } catch (err) {
       console.error('Reset lockout failed', err);
-      toast.error(err?.message || 'Failed to reset lockout');
+      toast.error(err?.message || t('users.toasts.lockoutResetFailed'));
     } finally {
       setPendingById((prev) => {
         const copy = { ...prev };
@@ -628,89 +640,196 @@ export default function UserManagementPage() {
     }
   };
 
+  const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
+
+  const canExport = Boolean(!isLoading && Array.isArray(sortedUsersForView) && sortedUsersForView.length > 0);
+  const buildExportPayload = async () => {
+    if (!canExport) return null;
+
+    // Export should match visible table columns (and exclude action buttons).
+    const STORAGE_KEY = 'users:columns:v1';
+    let visible = {};
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') visible = parsed;
+      }
+    } catch { /* ignore */ }
+    const isVisible = (key) => visible?.[String(key)] !== false;
+
+    const cols = [
+      { key: 'fullName', label: t('users.table.columns.fullName'), get: (u) => u?.fullName || '' },
+      { key: 'username', label: t('users.table.columns.username'), get: (u) => u?.username || '' },
+      { key: 'email', label: t('users.table.columns.email'), get: (u) => u?.email || '' },
+      { key: 'phone', label: t('users.table.columns.phone'), get: (u) => u?.phone || '' },
+      { key: 'role', label: t('users.table.columns.role'), get: (u) => u?.role || '' },
+      { key: 'status', label: t('users.table.columns.status'), get: (u) => u?.status || '' },
+      // actions are UI-only; never export
+    ].filter((c) => isVisible(c.key));
+
+    const headers = cols.map((c) => c.label);
+    const rows = (sortedUsersForView || []).map((u) => cols.map((c) => c.get(u)));
+
+    const roleLabel = roleFilter
+      ? (String(roleFilter).toLowerCase() === 'admin'
+          ? t('users.filters.admin')
+          : String(roleFilter).toLowerCase() === 'staff'
+            ? t('users.filters.staff')
+            : roleFilter)
+      : '';
+    const statusLabel = statusFilter
+      ? (String(statusFilter).toLowerCase() === 'active'
+          ? t('users.filters.active')
+          : String(statusFilter).toLowerCase() === 'inactive'
+            ? t('users.filters.inactive')
+            : statusFilter)
+      : '';
+
+    const subtitleParts = [
+      search ? `${t('users.export.labels.search')}: ${search}` : null,
+      roleFilter ? `${t('users.export.labels.role')}: ${roleLabel || roleFilter}` : null,
+      statusFilter ? `${t('users.export.labels.status')}: ${statusLabel || statusFilter}` : null,
+    ].filter(Boolean);
+
+    return {
+      filename: t('users.export.filename'),
+      sheetName: t('users.export.sheetName'),
+      title: '',
+      subtitle: subtitleParts.join(' • '),
+      headerImageSrc: headerImg,
+      headers,
+      rows,
+    };
+  };
+
+  const handlePrint = () => {
+    if (!canExport) return;
+    setTimeout(() => window.print(), 0);
+  };
+
   /* ---------------- Render ---------------- */
   return (
     <ListPageShell
-      title="User Management"
-      actions={(
-        <Button
-          variant="brand"
-          size="lg"
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
-        >
-          + Add User
-        </Button>
-      )}
+      title={null}
+      actions={null}
       toolbar={(
-        <DataToolbar
-          searchSlot={
-            <SearchInput
-              value={search}
-              onChange={(v) => setSearch(v)}
-              placeholder="Search by name or username..."
-            />
-          }
-          onReset={() => {
-            setSearch("");
-            setRoleFilter("");
-            setStatusFilter("");
-          }}
-          filtersSlot={
-            <FilterRow>
-              <FilterItem grow minWidthClass="min-w-32.5">
-                <FilterDropdownSelect
-                  value={roleFilter}
-                  onChange={(v) => setRoleFilter(v)}
-                  placeholder="Role"
-                  options={[
-                    { value: "", label: "All Roles" },
-                    { value: "admin", label: "Admin" },
-                    { value: "staff", label: "Staff" },
-                  ]}
-                />
-              </FilterItem>
-              <FilterItem grow minWidthClass="min-w-32.5">
-                <FilterDropdownSelect
-                  value={statusFilter}
-                  onChange={(v) => setStatusFilter(v)}
-                  placeholder="Status"
-                  options={[
-                    { value: "", label: "All Status" },
-                    { value: "active", label: "Active" },
-                    { value: "inactive", label: "Inactive" },
-                  ]}
-                />
-              </FilterItem>
-            </FilterRow>
-          }
-        />
+      <Card className="p-4 no-print">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="w-full lg:max-w-lg">
+              <SearchInput
+                value={search}
+                onChange={(v) => setSearch(v)}
+                placeholder={t('users.searchPlaceholder')}
+              />
+            </div>
+            <div className="w-full lg:max-w-2xl">
+              <FilterRow align="end">
+                <FilterItem grow minWidthClass="min-w-32.5">
+                  <FilterDropdownSelect
+                    value={roleFilter}
+                    onChange={(v) => setRoleFilter(v)}
+                    placeholder={t('users.filters.role')}
+                    options={[
+                      { value: "", label: t('users.filters.allRoles') },
+                      { value: "admin", label: t('users.filters.admin') },
+                      { value: "staff", label: t('users.filters.staff') },
+                    ]}
+                  />
+                </FilterItem>
+                <FilterItem grow minWidthClass="min-w-32.5">
+                  <FilterDropdownSelect
+                    value={statusFilter}
+                    onChange={(v) => setStatusFilter(v)}
+                    placeholder={t('users.filters.status')}
+                    options={[
+                      { value: "", label: t('users.filters.allStatus') },
+                      { value: "active", label: t('users.filters.active') },
+                      { value: "inactive", label: t('users.filters.inactive') },
+                    ]}
+                  />
+                </FilterItem>
+              </FilterRow>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="w-full sm:w-auto">
+              <Button
+                variant="brand"
+                size="lg"
+                className="w-full sm:w-auto justify-center"
+                icon={<Plus size={20} />}
+                onClick={() => {
+                  resetForm();
+                  setShowModal(true);
+                }}
+              >
+                {t('users.addUser')}
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <ActionButton
+                variant="neutral"
+                className={outlineBtn}
+                icon={<Printer size={16} />}
+                disabled={!canExport}
+                onClick={handlePrint}
+                title={t('common.actions.print')}
+              >
+                {t('common.actions.print')}
+              </ActionButton>
+              <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <ActionButton
+                variant="neutral"
+                className={outlineBtn}
+                icon={<RotateCcw size={16} />}
+                onClick={() => {
+                  setSearch("");
+                  setRoleFilter("");
+                  setStatusFilter("");
+                }}
+              >
+                {t('common.actions.reset')}
+              </ActionButton>
+            </div>
+          </div>
+        </div>
+      </Card>
       )}
     >
 
-      <UserTable
-        isLoading={isLoading}
-        items={sortedUsersForView}
-        rows={currentUsers}
-        allCount={sortedUsersForView.length}
-        sortBy={sortBy}
-        sortDir={sortDir}
-        onSort={onSort}
-        page={currentPage}
-        totalPages={Math.ceil(sortedUsersForView.length / limit)}
-        limit={limit}
-        onPage={(p) => setCurrentPage(p)}
-        onLimit={(newLimit) => {
-          setLimit(newLimit);
-          setCurrentPage(1);
-        }}
-        onEdit={handleEditUser}
-        onToggleStatus={handleToggleStatus}
-        onResetLockout={handleResetLockout}
-        pendingById={pendingById}
-      />
+      <div className="space-y-6 with-print-header with-print-footer print-fit-wide">
+        <PrintHeader />
+        <PrintFooter left={t('common.generatedBy')} />
+
+        <UserTable
+          isLoading={isLoading}
+          items={sortedUsersForView}
+          rows={currentUsers}
+          allCount={sortedUsersForView.length}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={onSort}
+          page={currentPage}
+          totalPages={Math.ceil(sortedUsersForView.length / limit)}
+          limit={limit}
+          onPage={(p) => setCurrentPage(p)}
+          onLimit={(newLimit) => {
+            setLimit(newLimit);
+            setCurrentPage(1);
+          }}
+          onEdit={handleEditUser}
+          onToggleStatus={handleToggleStatus}
+          onResetLockout={handleResetLockout}
+          pendingById={pendingById}
+        />
+      </div>
 
       <UserFormModal
         isOpen={showModal}
@@ -718,7 +837,7 @@ export default function UserManagementPage() {
           setShowModal(false);
           resetForm();
         }}
-        title={editingUser ? "Edit User" : "Create User"}
+        title={editingUser ? t('users.editTitle') : t('users.createTitle')}
         editingUser={editingUser}
         isFormLoading={isFormLoading}
         isSaving={isSaving}

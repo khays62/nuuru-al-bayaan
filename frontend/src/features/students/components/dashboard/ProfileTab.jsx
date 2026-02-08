@@ -13,10 +13,12 @@ import Input from '../../../../shared/components/ui/Input.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 export default function ProfileTab() {
   const { studentId: paramStudentId } = useParams();
   const { auth, refreshUser } = useAuth();
+  const { t } = useI18n();
 
   const rawStudentRef = auth?.user?.studentRef;
   const studentRefId = rawStudentRef?._id || rawStudentRef || null;
@@ -48,14 +50,14 @@ export default function ProfileTab() {
       });
     },
     onSuccess: async () => {
-      toast.success('You changed your password successfully');
+      toast.success(t('students.profileTab.password.changedSuccess'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       if (typeof refreshUser === 'function') await refreshUser();
     },
     onError: (err) => {
-      toast.error(err?.data?.message || err?.message || 'Failed to change password.');
+      toast.error(err?.data?.message || err?.message || t('students.profileTab.password.changeFailed'));
     },
   });
 
@@ -69,15 +71,15 @@ export default function ProfileTab() {
     // Security: we never read the current password from the DB.
     // If the account is still on default password (mustChangePassword), allow changing without entering current.
     if (!next || !confirm || (!isForcePasswordChange && !curr)) {
-      toast.error('Please fill in all required password fields.');
+      toast.error(t('students.profileTab.password.fieldsRequired'));
       return;
     }
     if (next.length < 6) {
-      toast.error('Password must be at least 6 characters.');
+      toast.error(t('students.profileTab.password.minLength'));
       return;
     }
     if (next !== confirm) {
-      toast.error('New passwords do not match.');
+      toast.error(t('students.profileTab.password.noMatch'));
       return;
     }
     try {
@@ -95,7 +97,7 @@ export default function ProfileTab() {
     enabled: !!studentId,
     queryFn: async () => {
       const data = await getStudentProfile(studentId);
-      if (!data) throw new Error('Failed to load profile');
+      if (!data) throw new Error(t('students.profileTab.loadFailed'));
       return data;
     },
   });
@@ -110,7 +112,7 @@ export default function ProfileTab() {
   });
 
   const loading = profileQuery.isLoading;
-  const error = profileQuery.isError ? 'Failed to load profile' : null;
+  const error = profileQuery.isError ? t('students.profileTab.loadFailed') : null;
   const profile = profileQuery.data ?? null;
   const latestTransfer = (transfersQuery.data || [])?.[0] ?? null;
 
@@ -118,12 +120,12 @@ export default function ProfileTab() {
     <Card className="overflow-hidden">
       {loading ? (
         <div className="p-6">
-          <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+          <UiLoadingState label={t('common.loading')} className="border-0 bg-transparent p-0 justify-start" />
         </div>
       ) : error ? (
         <Alert variant="danger" className="m-6 flex items-center justify-between gap-3">
           <span>{error}</span>
-          <Button size="sm" variant="brand" onClick={() => profileQuery.refetch()}>Retry</Button>
+          <Button size="sm" variant="brand" onClick={() => profileQuery.refetch()}>{t('common.retry')}</Button>
         </Alert>
       ) : profile ? (
         <>
@@ -132,19 +134,19 @@ export default function ProfileTab() {
           <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center shadow-inner ring-2 ring-gray-300">
             <UserIcon size={56} className="text-black" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold leading-tight text-black">{profile?.student?.fullName || 'Student'}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold leading-tight text-black">{profile?.student?.fullName || t('students.common.studentFallback')}</h2>
               {/* Summary cards: ID, Status, Cohort */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl mt-3">
                 <div className="rounded-lg p-4 bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  <div className="text-xs uppercase tracking-wide font-semibold">Student ID</div>
+                  <div className="text-xs uppercase tracking-wide font-semibold">{t('students.table.columns.studentId')}</div>
                   <div className="font-mono text-xl font-bold">{profile?.student?.studentId || '-'}</div>
                 </div>
                 <div className="rounded-lg p-4 bg-emerald-50 text-emerald-700 border border-emerald-100">
-                  <div className="text-xs uppercase tracking-wide font-semibold">Status</div>
+                  <div className="text-xs uppercase tracking-wide font-semibold">{t('students.table.columns.status')}</div>
                   <div className="text-xl font-bold">{profile?.student?.status || profile?.stats?.activeStatus || '-'}</div>
                 </div>
                 <div className="rounded-lg p-4 bg-amber-50 text-amber-700 border border-amber-100">
-                  <div className="text-xs uppercase tracking-wide font-semibold">Cohort</div>
+                  <div className="text-xs uppercase tracking-wide font-semibold">{t('students.form.cohort')}</div>
                   <div className="text-xl font-bold">{profile?.latestEnrollment?.cohort?.name || '-'}</div>
                 </div>
               </div>
@@ -155,30 +157,30 @@ export default function ProfileTab() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="rounded-xl shadow-none">
                 <div className="px-4 py-3 border-b">
-                  <h3 className="text-base font-semibold">Personal Information</h3>
-                  <p className="text-xs text-gray-500">Student personal details</p>
+                  <h3 className="text-base font-semibold">{t('students.profileTab.personal.title')}</h3>
+                  <p className="text-xs text-gray-500">{t('students.profileTab.personal.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InfoItem label="Full Name" value={profile?.student?.fullName} />
-                  <InfoItem label="Gender" value={profile?.student?.gender} />
-                  <InfoItem label="Date of Birth" value={formatDate(profile?.student)} />
-                  <InfoItem label="Parent/Guardian Name" value={profile?.student?.guardianName} />
-                  <InfoItem label="Contact Number" value={profile?.student?.contactNumber} />
-                  <InfoItem label="Admission Date" value={profile?.student?.admissionDate ? new Date(profile.student.admissionDate).toLocaleDateString() : '-'} />
-                  <InfoItem label="Address" value={profile?.student?.address} />
+                  <InfoItem label={t('students.form.fullName')} value={profile?.student?.fullName} />
+                  <InfoItem label={t('students.form.gender')} value={profile?.student?.gender} />
+                  <InfoItem label={t('students.form.dob')} value={formatDate(profile?.student)} />
+                  <InfoItem label={t('students.form.guardianName')} value={profile?.student?.guardianName} />
+                  <InfoItem label={t('students.form.contactNumber')} value={profile?.student?.contactNumber} />
+                  <InfoItem label={t('students.form.admissionDate')} value={profile?.student?.admissionDate ? new Date(profile.student.admissionDate).toLocaleDateString() : '-'} />
+                  <InfoItem label={t('students.form.address')} value={profile?.student?.address} />
                 </div>
               </Card>
 
               <Card className="rounded-xl shadow-none">
                 <div className="px-4 py-3 border-b">
-                  <h3 className="text-base font-semibold">Academic Information</h3>
-                  <p className="text-xs text-gray-500">Student academic details</p>
+                  <h3 className="text-base font-semibold">{t('students.profileTab.academic.title')}</h3>
+                  <p className="text-xs text-gray-500">{t('students.profileTab.academic.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InfoItem label="Academic Year" value={profile?.latestEnrollment?.academicYear?.yearName} />
-                  <InfoItem label="Grade" value={profile?.latestEnrollment?.grade?.gradeName || profile?.latestEnrollment?.gradeSection?.grade?.gradeName} />
-                  <InfoItem label="Section" value={profile?.latestEnrollment?.gradeSection?.section} />
-                  <InfoItem label="Shift" value={profile?.latestEnrollment?.shift?.shiftName} />
+                  <InfoItem label={t('students.table.columns.academicYear')} value={profile?.latestEnrollment?.academicYear?.yearName} />
+                  <InfoItem label={t('students.table.columns.grade')} value={profile?.latestEnrollment?.grade?.gradeName || profile?.latestEnrollment?.gradeSection?.grade?.gradeName} />
+                  <InfoItem label={t('students.table.columns.section')} value={profile?.latestEnrollment?.gradeSection?.section} />
+                  <InfoItem label={t('students.table.columns.shift')} value={profile?.latestEnrollment?.shift?.shiftName} />
                 </div>
               </Card>
             </div>
@@ -192,12 +194,12 @@ export default function ProfileTab() {
             {isStudentSelf ? (
               <Card className="mt-6 rounded-xl shadow-none">
                 <div className="px-4 py-3 border-b">
-                  <h3 className="text-base font-semibold">Change Password</h3>
-                  <p className="text-xs text-gray-500">Update your account password</p>
+                  <h3 className="text-base font-semibold">{t('students.profileTab.password.title')}</h3>
+                  <p className="text-xs text-gray-500">{t('students.profileTab.password.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Current</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.current')}</label>
                     <div className="relative">
                       <Input
                         type={showCurrentPw ? 'text' : 'password'}
@@ -206,7 +208,7 @@ export default function ProfileTab() {
                         className="pr-10"
                         autoComplete="current-password"
                         disabled={pwSaving || isForcePasswordChange}
-                        placeholder={isForcePasswordChange ? 'Default password' : ''}
+                        placeholder={isForcePasswordChange ? t('students.profileTab.password.defaultPasswordPlaceholder') : ''}
                       />
                       <button
                         type="button"
@@ -214,8 +216,8 @@ export default function ProfileTab() {
                         onMouseEnter={() => setShowCurrentPw(true)}
                         onMouseLeave={() => setShowCurrentPw(false)}
                         onMouseDown={(e) => e.preventDefault()}
-                        aria-label="Show current password"
-                        title="Show password"
+                        aria-label={t('students.profileTab.password.showCurrentAria')}
+                        title={t('students.profileTab.password.showPasswordTitle')}
                         disabled={pwSaving || isForcePasswordChange}
                       >
                         {showCurrentPw ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -223,12 +225,12 @@ export default function ProfileTab() {
                     </div>
                     {isForcePasswordChange ? (
                       <div className="mt-1 text-[11px] text-gray-500">
-                        Your account is using the default password. Set a new one.
+                        {t('students.profileTab.password.defaultPasswordNote')}
                       </div>
                     ) : null}
                   </div>
                   <div className="sm:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">New</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.new')}</label>
                     <div className="relative">
                       <Input
                         type={showNewPw ? 'text' : 'password'}
@@ -244,15 +246,15 @@ export default function ProfileTab() {
                         onMouseEnter={() => setShowNewPw(true)}
                         onMouseLeave={() => setShowNewPw(false)}
                         onMouseDown={(e) => e.preventDefault()}
-                        aria-label="Show new password"
-                        title="Show password"
+                        aria-label={t('students.profileTab.password.showNewAria')}
+                        title={t('students.profileTab.password.showPasswordTitle')}
                       >
                         {showNewPw ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
                   </div>
                   <div className="sm:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Confirm</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.confirm')}</label>
                     <div className="relative">
                       <Input
                         type={showConfirmPw ? 'text' : 'password'}
@@ -268,8 +270,8 @@ export default function ProfileTab() {
                         onMouseEnter={() => setShowConfirmPw(true)}
                         onMouseLeave={() => setShowConfirmPw(false)}
                         onMouseDown={(e) => e.preventDefault()}
-                        aria-label="Show confirm password"
-                        title="Show password"
+                        aria-label={t('students.profileTab.password.showConfirmAria')}
+                        title={t('students.profileTab.password.showPasswordTitle')}
                       >
                         {showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
@@ -278,7 +280,7 @@ export default function ProfileTab() {
 
                   <div className="sm:col-span-3 flex justify-end">
                     <Button type="button" variant="brand" onClick={handleChangePassword} disabled={pwSaving}>
-                      {pwSaving ? 'Saving…' : 'Save'}
+                      {pwSaving ? t('common.saving') : t('common.actions.save')}
                     </Button>
                   </div>
                 </div>

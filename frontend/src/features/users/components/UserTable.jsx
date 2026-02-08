@@ -5,6 +5,7 @@ import { Eye, Pencil, Repeat, RotateCcw, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import StatusBadge from '../../../shared/components/ui/badges/StatusBadge.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function UserTable({
   isLoading,
@@ -25,40 +26,41 @@ export default function UserTable({
   pendingById,
 }) {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   return (
     <StandardTable
       isLoading={isLoading}
       items={items}
-      loadingMessage="Loading users..."
+      loadingMessage={t('users.table.loading')}
       loadingVariant="table"
       loadingRows={6}
       loadingColumns={7}
-      emptyTitle="No users found"
-      emptyDescription="Try adjusting filters or add a new user."
+      emptyTitle={t('users.table.emptyTitle')}
+      emptyDescription={t('users.table.emptyDescription')}
       rows={rows}
       columns={[
         {
           key: 'fullName',
-          label: 'Full Name',
+          label: t('users.table.columns.fullName'),
           sortable: true,
           field: 'fullName',
           tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200',
         },
-        { key: 'username', label: 'Username', sortable: true, field: 'username' },
-        { key: 'email', label: 'Email', sortable: true, field: 'email' },
-        { key: 'phone', label: 'Phone', sortable: true, field: 'phone' },
-        { key: 'role', label: 'Role', sortable: true, field: 'role' },
+        { key: 'username', label: t('users.table.columns.username'), sortable: true, field: 'username' },
+        { key: 'email', label: t('users.table.columns.email'), sortable: true, field: 'email' },
+        { key: 'phone', label: t('users.table.columns.phone'), sortable: true, field: 'phone' },
+        { key: 'role', label: t('users.table.columns.role'), sortable: true, field: 'role' },
         {
           key: 'status',
-          label: 'Status',
+          label: t('users.table.columns.status'),
           sortable: true,
           field: 'status',
           tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200',
         },
         {
           key: 'actions',
-          label: 'Actions',
+          label: t('users.table.columns.actions'),
           align: 'right',
           noPrint: true,
           locked: false,
@@ -95,8 +97,8 @@ export default function UserTable({
             const actions = [
               {
                 key: 'view',
-                label: 'View',
-                title: 'View user',
+                label: t('users.table.actions.view'),
+                title: t('users.table.actionTitles.view'),
                 tone: 'view',
                 icon: <Eye size={16} />,
                 disabled: isPending,
@@ -104,8 +106,8 @@ export default function UserTable({
               },
               {
                 key: 'edit',
-                label: 'Edit',
-                title: 'Edit user',
+                label: t('users.table.actions.edit'),
+                title: t('users.table.actionTitles.edit'),
                 tone: 'edit',
                 icon: <Pencil size={16} />,
                 disabled: isPending,
@@ -113,8 +115,8 @@ export default function UserTable({
               },
               {
                 key: u.status === 'active' ? 'deactivate' : 'activate',
-                label: u.status === 'active' ? 'Deactivate' : 'Activate',
-                title: u.status === 'active' ? 'Deactivate user' : 'Activate user',
+                label: u.status === 'active' ? t('users.table.actions.deactivate') : t('users.table.actions.activate'),
+                title: u.status === 'active' ? t('users.table.actionTitles.deactivate') : t('users.table.actionTitles.activate'),
                 tone: u.status === 'active' ? 'delete' : 'view',
                 icon: u.status === 'active' ? <Trash2 size={16} /> : <RotateCcw size={16} />,
                 disabled: isPending,
@@ -122,8 +124,8 @@ export default function UserTable({
               },
               {
                 key: 'resetLockout',
-                label: 'Unlock',
-                title: 'Unlock login (clear lockout)',
+                label: t('users.table.actions.unlock'),
+                title: t('users.table.actionTitles.unlock'),
                 tone: 'neutral',
                 icon: <Repeat size={16} />,
                 disabled: isPending,
@@ -143,6 +145,7 @@ export default function UserTable({
       onPage={onPage}
       onLimit={onLimit}
       showRowsSelector={false}
+      paginationProps={{ className: 'no-print', infoVariant: 'page' }}
     />
   );
 }

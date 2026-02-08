@@ -565,9 +565,9 @@ export default function TimetablePage() {
         </div>
       </Modal>
 
-      <div className="flex items-center no-print">
+      <div className="w-full flex items-center justify-between gap-2 flex-wrap no-print">
         <h1 className="text-2xl font-semibold">Timetable</h1>
-        <div className="ml-auto flex gap-2 items-center">
+        <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
           {!isTeacher ? (
             <>
               {canTimetablePrint ? (

@@ -13,12 +13,14 @@ import Separator from '../../../shared/components/ui/Separator.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import { studentKeys } from '../queryKeys';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 // Refactored StudentForm aligned with backend API (POST /api/students)
 // Academic Year and Cohort are required at creation; GradeSection is AY-agnostic.
 const EMPTY_ARR = [];
 
 export default function StudentForm({ student, onClose, onSubmit, submitting = false }) {
+    const { t } = useI18n();
     const [formData, setFormData] = useState({
         fullName: '',
         gender: 'Male',
@@ -124,7 +126,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
             if (rows.length === 0 && lastNoSectionsKeyRef.current !== sectionsKey) {
                 lastNoSectionsKeyRef.current = sectionsKey;
                 toast.dismiss('no-sections');
-                toast.info('No sections found. Adjust filters.', { id: 'no-sections' });
+                toast.info(t('students.form.info.noSections'), { id: 'no-sections' });
             }
         }
     }, [gradeId, shiftId, sectionsQuery.isFetched, sectionsQuery.isFetching, sectionsKey, sections]);
@@ -142,11 +144,11 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         e.preventDefault();
 
         if (!student) {
-            if (!formData.academicYearId) return toast.error('Academic Year is required');
-            if (!formData.cohortId) return toast.error('Cohort is required');
-            if (!formData.gradeId) return toast.error('Grade is required');
-            if (!formData.shiftId) return toast.error('Shift is required');
-            if (!formData.gradeSectionId) return toast.error('Section is required');
+            if (!formData.academicYearId) return toast.error(t('students.form.validations.academicYearRequired'));
+            if (!formData.cohortId) return toast.error(t('students.form.validations.cohortRequired'));
+            if (!formData.gradeId) return toast.error(t('students.form.validations.gradeRequired'));
+            if (!formData.shiftId) return toast.error(t('students.form.validations.shiftRequired'));
+            if (!formData.gradeSectionId) return toast.error(t('students.form.validations.sectionRequired'));
         }
 
         // Only include fields API expects
@@ -169,34 +171,34 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <Label>Full Name</Label>
+                    <Label>{t('students.form.fullName')}</Label>
                     <Input name="fullName" value={formData.fullName} onChange={handleChange} type="text" required disabled={submitting} className="mt-1" />
                 </div>
                 <div>
-                    <Label>Gender</Label>
+                    <Label>{t('students.form.gender')}</Label>
                     <Select name="gender" value={formData.gender} onChange={handleChange} disabled={submitting} className="mt-1">
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
+                        <option value="Male">{t('students.form.male')}</option>
+                        <option value="Female">{t('students.form.female')}</option>
                     </Select>
                 </div>
                 <div>
-                    <Label>Date of Birth</Label>
+                    <Label>{t('students.form.dob')}</Label>
                     <Input name="dob" value={formData.dob} onChange={handleChange} type="date" disabled={submitting} className="mt-1" />
                 </div>
                 <div>
-                    <Label>Parent/Guardian Name</Label>
+                    <Label>{t('students.form.guardianName')}</Label>
                     <Input name="guardianName" value={formData.guardianName} onChange={handleChange} type="text" required disabled={submitting} className="mt-1" />
                 </div>
                 <div>
-                    <Label>Contact Number</Label>
+                    <Label>{t('students.form.contactNumber')}</Label>
                     <Input name="contactNumber" value={formData.contactNumber} onChange={handleChange} type="text" required disabled={submitting} className="mt-1" />
                 </div>
                 <div>
-                    <Label>Admission Date</Label>
+                    <Label>{t('students.form.admissionDate')}</Label>
                     <Input name="admissionDate" value={formData.admissionDate} onChange={handleChange} type="date" required disabled={submitting} className="mt-1" />
                 </div>
                 <div className="md:col-span-2">
-                    <Label>Address</Label>
+                    <Label>{t('students.form.address')}</Label>
                     <Textarea name="address" value={formData.address} onChange={handleChange} rows={3} disabled={submitting} className="mt-1" />
                 </div>
 
@@ -205,7 +207,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                 {!student && (
                     <>
                         <div>
-                            <Label>Academic Year</Label>
+                            <Label>{t('students.form.academicYear')}</Label>
                             <div className="mt-1">
                                 <SearchableSelect
                                     id="student-academic-year"
@@ -216,15 +218,15 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                                         setField('cohortId', '');
                                     }}
                                     options={(years || []).map((y) => ({ value: y._id, label: y.yearName }))}
-                                    placeholder="-- Select Academic Year --"
+                                    placeholder={t('students.form.selectAcademicYear')}
                                     maxVisible={5}
-                                    searchPlaceholder="Search academic years…"
+                                    searchPlaceholder={t('students.filters.searchAcademicYears')}
                                     disabled={submitting}
                                 />
                             </div>
                         </div>
                         <div>
-                            <Label>Cohort</Label>
+                            <Label>{t('students.form.cohort')}</Label>
                             <div className="mt-1">
                                 <SearchableSelect
                                     id="student-cohort"
@@ -235,15 +237,15 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                                         value: c._id,
                                         label: `${c.name}${c.startAcademicYear?.yearName ? ` (${c.startAcademicYear.yearName})` : ''}`,
                                     }))}
-                                    placeholder="-- Select Cohort --"
+                                    placeholder={t('students.form.selectCohort')}
                                     maxVisible={5}
-                                    searchPlaceholder="Search cohorts…"
+                                    searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
                                     disabled={submitting || !formData.academicYearId}
                                 />
                             </div>
                         </div>
                         <div>
-                            <Label>Grade</Label>
+                            <Label>{t('students.form.grade')}</Label>
                             <div className="mt-1">
                                 <DropdownSelect
                                     id="student-grade"
@@ -257,14 +259,14 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                                     options={[...(grades || [])]
                                         .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
                                         .map((g) => ({ value: g._id, label: g.gradeName }))}
-                                    placeholder="-- Select Grade --"
+                                    placeholder={t('students.form.selectGrade')}
                                     disabled={submitting}
                                     maxHeightClassName="max-h-72"
                                 />
                             </div>
                         </div>
                         <div>
-                            <Label>Shift</Label>
+                            <Label>{t('students.form.shift')}</Label>
                             <div className="mt-1">
                                 <DropdownSelect
                                     id="student-shift"
@@ -275,13 +277,13 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                                         setField('gradeSectionId', '');
                                     }}
                                     options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
-                                    placeholder="-- Select Shift --"
+                                    placeholder={t('students.form.selectShift')}
                                     disabled={submitting || !formData.gradeId}
                                 />
                             </div>
                         </div>
                         <div className="md:col-span-2">
-                            <Label>Enroll in Section</Label>
+                            <Label>{t('students.form.enrollSection')}</Label>
                             <div className="mt-1">
                                 <DropdownSelect
                                     id="student-section"
@@ -290,9 +292,9 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                                     onChange={(v) => setField('gradeSectionId', v)}
                                     options={(sections || []).map((sec) => ({
                                         value: sec._id,
-                                        label: `${sec.grade?.gradeName || ''} - Sec ${sec.section} (${sec.shift?.shiftName || ''})`,
+                                        label: `${sec.grade?.gradeName || ''} - ${t('students.export.sectionPrefix')} ${sec.section} (${sec.shift?.shiftName || ''})`,
                                     }))}
-                                    placeholder={loadingSections ? 'Loading sections…' : '-- Select Section --'}
+                                    placeholder={loadingSections ? t('students.form.loadingSections') : t('students.form.selectSection')}
                                     disabled={submitting || loadingSections || !formData.gradeId || !formData.shiftId}
                                     maxHeightClassName="max-h-72"
                                 />
@@ -303,10 +305,12 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
             </div>
             <div className="mt-8 flex justify-end space-x-4">
                 <Button type="button" onClick={onClose} disabled={submitting} variant="neutral">
-                    Cancel
+                    {t('students.form.cancel')}
                 </Button>
                 <Button type="submit" disabled={submitting} variant="brand">
-                    {submitting ? (student ? 'Updating…' : 'Saving…') : (student ? 'Update Student' : 'Save Student')}
+                    {submitting
+                        ? (student ? t('students.form.updating') : t('students.form.saving'))
+                        : (student ? t('students.form.updateStudent') : t('students.form.saveStudent'))}
                 </Button>
             </div>
         </form>

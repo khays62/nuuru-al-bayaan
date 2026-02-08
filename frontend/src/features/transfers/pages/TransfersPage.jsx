@@ -333,11 +333,6 @@ export default function TransfersPage() {
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h1 className="text-2xl font-bold text-gray-800">Transfers</h1>
-				<p className="mt-1 text-sm text-gray-600">Search and transfer active students. Forward to any future AY; returns are controlled.</p>
-			</div>
-
 			<DataToolbar
 				searchSlot={<SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search by name or ID" />}
 				filtersSlot={(

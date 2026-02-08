@@ -9,11 +9,13 @@ import { emitStudentsChanged } from '../../../utils/events';
 import DataTable from '../../../shared/components/table/DataTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 // Displays students returned by backend list endpoint
 const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total, onLimit }) => {
     const navigate = useNavigate();
     const { auth, hasPermission } = useAuth();
+    const { t } = useI18n();
     const STORAGE_KEY = 'students:columns:v1';
     const [optimisticStatusById, setOptimisticStatusById] = useState({});
     const [pendingId, setPendingId] = useState(null);
@@ -30,15 +32,15 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
     const resetPwMutation = useMutation({
         mutationFn: async (studentId) => {
             const res = await resetStudentPassword(studentId);
-            if (!res?.ok) throw new Error(res?.data?.message || 'Failed to reset password');
+            if (!res?.ok) throw new Error(res?.data?.message || t('students.table.errors.resetFailed'));
             return res;
         },
         onSuccess: (_res, studentId) => {
-            toast.success('Password reset to default. Student must change it after login.');
+            toast.success(t('students.table.toasts.passwordReset'));
             emitStudentsChanged({ source: 'local', action: 'resetPassword', id: String(studentId), ts: Date.now() });
         },
         onError: (e) => {
-            toast.error(e?.message || 'Failed to reset password');
+            toast.error(e?.message || t('students.table.errors.resetFailed'));
         },
         onSettled: () => {
             setPendingId(null);
@@ -48,7 +50,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
     const deactivateMutation = useMutation({
         mutationFn: async ({ studentId }) => {
             const res = await deactivateStudentApi(studentId);
-            if (!res?.ok) throw new Error(res?.data?.message || 'Failed to deactivate');
+            if (!res?.ok) throw new Error(res?.data?.message || t('students.table.actions.deactivate'));
             return res;
         },
         onMutate: async ({ studentId }) => {
@@ -58,7 +60,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
             return { studentId, prevStatus };
         },
         onSuccess: (_res, vars) => {
-            toast.success('Student deactivated');
+            toast.success(t('students.table.toasts.deactivated'));
             emitStudentsChanged({ source: 'local', action: 'deactivate', id: String(vars?.studentId || ''), ts: Date.now() });
         },
         onError: (e, vars, ctx) => {
@@ -69,7 +71,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                 else next[id] = ctx.prevStatus;
                 return next;
             });
-            toast.error(e?.message || 'Network error');
+            toast.error(e?.message || t('students.table.errors.network'));
         },
         onSettled: () => {
             setPendingId(null);
@@ -79,7 +81,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
     const reactivateMutation = useMutation({
         mutationFn: async ({ studentId }) => {
             const res = await reactivateStudentApi(studentId);
-            if (!res?.ok) throw new Error(res?.data?.message || 'Failed to reactivate');
+            if (!res?.ok) throw new Error(res?.data?.message || t('students.table.actions.reactivate'));
             return res;
         },
         onMutate: async ({ studentId }) => {
@@ -89,7 +91,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
             return { studentId, prevStatus };
         },
         onSuccess: (_res, vars) => {
-            toast.success('Student reactivated');
+            toast.success(t('students.table.toasts.reactivated'));
             emitStudentsChanged({ source: 'local', action: 'reactivate', id: String(vars?.studentId || ''), ts: Date.now() });
         },
         onError: (e, vars, ctx) => {
@@ -100,7 +102,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                 else next[id] = ctx.prevStatus;
                 return next;
             });
-            toast.error(e?.message || 'Network error');
+            toast.error(e?.message || t('students.table.errors.network'));
         },
         onSettled: () => {
             setPendingId(null);
@@ -108,17 +110,17 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
     });
 
     const columns = useMemo(() => ([
-        { key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-        { key: 'fullName', label: 'Full Name', sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-        { key: 'gender', label: 'Gender', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
-        { key: 'grade', label: 'Grade', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-        { key: 'section', label: 'Section', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-        { key: 'academicYear', label: 'Academic Year', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-        { key: 'shift', label: 'Shift', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-        { key: 'status', label: 'Status', tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
-        { key: 'contact', label: 'Contact', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
-        { key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-gray-200 no-print' },
-    ]), []);
+        { key: 'studentId', label: t('students.table.columns.studentId'), sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+        { key: 'fullName', label: t('students.table.columns.fullName'), sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+        { key: 'gender', label: t('students.table.columns.gender'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
+        { key: 'grade', label: t('students.table.columns.grade'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+        { key: 'section', label: t('students.table.columns.section'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
+        { key: 'academicYear', label: t('students.table.columns.academicYear'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
+        { key: 'shift', label: t('students.table.columns.shift'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
+        { key: 'status', label: t('students.table.columns.status'), tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
+        { key: 'contact', label: t('students.table.columns.contact'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
+        { key: 'actions', label: t('students.table.columns.actions'), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-gray-200 no-print' },
+    ]), [t]);
 
     return (
         <DataTable
@@ -141,7 +143,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                     case 'fullName': return st.fullName;
                     case 'gender': return st.gender;
                     case 'grade': return st.grade || '-';
-                    case 'section': return st.section ? `Sec ${st.section}` : '-';
+                    case 'section': return st.section ? `${t('students.export.sectionPrefix')} ${st.section}` : '-';
                     case 'academicYear': return st.academicYear || '-';
                     case 'shift': return st.shift || '-';
                     case 'status':
@@ -159,13 +161,13 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                         ? [
                                               {
                                                   key: 'resetPassword',
-                                                  label: 'Reset Password',
-                                                  title: 'Reset password to default (clears 24h lock/cooldown)',
+                                                  label: t('students.table.actions.resetPassword'),
+                                                  title: t('students.table.actionTitles.resetPasswordDefault'),
                                                   tone: 'edit',
                                                   icon: <KeyRound size={16} />,
                                                   disabled: isPending || resetPwMutation.isPending || String(effectiveStatus || '').toLowerCase() === 'inactive',
                                                   onClick: async () => {
-                                                      const ok = window.confirm('Reset this student\'s password to the default password and clear the 24h lock/cooldown?');
+                                                      const ok = window.confirm(t('students.table.confirms.resetPassword'));
                                                       if (!ok) return;
                                                       setPendingId(st._id);
                                                       resetPwMutation.mutate(st._id);
@@ -175,8 +177,8 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                         : []),
                                     {
                                         key: 'view',
-                                        label: 'View',
-                                        title: 'View Profile',
+                                        label: t('students.table.actions.view'),
+                                        title: t('students.table.actionTitles.viewProfile'),
                                         tone: 'view',
                                         icon: <Eye size={16} />,
                                         onClick: () => navigate(`/students/${st._id}`),
@@ -185,8 +187,8 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                         ? [
                                               {
                                                   key: 'edit',
-                                                  label: 'Edit',
-                                                  title: 'Edit Student',
+                                                  label: t('students.table.actions.edit'),
+                                                  title: t('students.table.actionTitles.editStudent'),
                                                   tone: 'edit',
                                                   icon: <Pencil size={16} />,
                                                   onClick: () => onEdit(st),
@@ -199,13 +201,13 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                                   ? [
                                                         {
                                                             key: 'deactivate',
-                                                            label: 'Deactivate',
-                                                            title: 'Deactivate Student',
+                                                            label: t('students.table.actions.deactivate'),
+                                                            title: t('students.table.actionTitles.deactivateStudent'),
                                                             tone: 'delete',
                                                             icon: <Trash2 size={16} />,
                                                             disabled: isPending || deactivateMutation.isPending || reactivateMutation.isPending,
                                                             onClick: async () => {
-                                                                if (!window.confirm('Are you sure you want to deactivate this student?')) return;
+                                                                if (!window.confirm(t('students.table.confirms.deactivate'))) return;
                                                                 deactivateMutation.mutate({ studentId: st._id });
                                                             },
                                                         },
@@ -215,8 +217,8 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                                                   ? [
                                                         {
                                                             key: 'reactivate',
-                                                            label: 'Reactivate',
-                                                            title: 'Reactivate Student',
+                                                            label: t('students.table.actions.reactivate'),
+                                                            title: t('students.table.actionTitles.reactivateStudent'),
                                                             tone: 'view',
                                                             icon: <RotateCcw size={16} />,
                                                             disabled: isPending || deactivateMutation.isPending || reactivateMutation.isPending,

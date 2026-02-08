@@ -8,6 +8,7 @@ import { useAuth } from '../../../../auth/AuthContext';
 import DropdownSelect from '../../../../shared/components/ui/DropdownSelect.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { getSlotsWithOptions } from '../../../timetable/api/timetable';
@@ -131,6 +132,7 @@ const PercentBar = ({ label, pct, tone = 'bg-indigo-600' }) => {
 };
 
 export default function TeacherAttendanceChartsCard() {
+  const { t } = useI18n();
   const { auth } = useAuth();
   const isTeacher = String(auth?.user?.role || '').toLowerCase() === 'teacher';
   const teacherRef = String(auth?.user?.teacherRef || '');
@@ -175,7 +177,9 @@ export default function TeacherAttendanceChartsCard() {
 
   const teacherAssignments = assignmentsQuery.data || [];
   const assignmentsLoading = assignmentsQuery.isLoading;
-  const assignmentsError = assignmentsQuery.isError ? 'Failed to load teacher assignments.' : '';
+  const assignmentsError = assignmentsQuery.isError
+    ? t('teachers.dashboard.attendance.assignmentsLoadFailed', { defaultValue: 'Failed to load teacher assignments.' })
+    : '';
 
   const [sectionId, setSectionId] = useState('');
   const [subjectId, setSubjectId] = useState('');
@@ -218,16 +222,16 @@ export default function TeacherAttendanceChartsCard() {
   const chartCaptureRef = useRef(null);
 
   const STATUSES = useMemo(() => ([
-    { key: 'present', label: 'Present', dot: 'bg-emerald-600', bar: 'bg-emerald-600' },
-    { key: 'absent', label: 'Absent', dot: 'bg-red-500', bar: 'bg-red-500' },
-    { key: 'late', label: 'Late', dot: 'bg-amber-500', bar: 'bg-amber-500' },
+    { key: 'present', label: t('teachers.dashboard.attendance.status.present', { defaultValue: 'Present' }), dot: 'bg-emerald-600', bar: 'bg-emerald-600' },
+    { key: 'absent', label: t('teachers.dashboard.attendance.status.absent', { defaultValue: 'Absent' }), dot: 'bg-red-500', bar: 'bg-red-500' },
+    { key: 'late', label: t('teachers.dashboard.attendance.status.late', { defaultValue: 'Late' }), dot: 'bg-amber-500', bar: 'bg-amber-500' },
     // Use excusedExact to avoid double-counting (backend still provides legacy `excused` aggregate).
-    { key: 'excusedExact', label: 'Excused', dot: 'bg-violet-600', bar: 'bg-violet-600' },
-    { key: 'sick', label: 'Sick', dot: 'bg-sky-600', bar: 'bg-sky-600' },
-    { key: 'medical', label: 'Medical', dot: 'bg-teal-600', bar: 'bg-teal-600' },
-    { key: 'family', label: 'Family', dot: 'bg-pink-600', bar: 'bg-pink-600' },
-    { key: 'other', label: 'Other', dot: 'bg-gray-600', bar: 'bg-gray-600' },
-  ]), []);
+    { key: 'excusedExact', label: t('teachers.dashboard.attendance.status.excused', { defaultValue: 'Excused' }), dot: 'bg-violet-600', bar: 'bg-violet-600' },
+    { key: 'sick', label: t('teachers.dashboard.attendance.status.sick', { defaultValue: 'Sick' }), dot: 'bg-sky-600', bar: 'bg-sky-600' },
+    { key: 'medical', label: t('teachers.dashboard.attendance.status.medical', { defaultValue: 'Medical' }), dot: 'bg-teal-600', bar: 'bg-teal-600' },
+    { key: 'family', label: t('teachers.dashboard.attendance.status.family', { defaultValue: 'Family' }), dot: 'bg-pink-600', bar: 'bg-pink-600' },
+    { key: 'other', label: t('teachers.dashboard.attendance.status.other', { defaultValue: 'Other' }), dot: 'bg-gray-600', bar: 'bg-gray-600' },
+  ]), [t]);
 
   // (assignments are provided by React Query)
 
@@ -252,12 +256,12 @@ export default function TeacherAttendanceChartsCard() {
       const tail = [shiftName].filter(Boolean).join(' - ');
       const label = [
         gradeName ? `${gradeName}` : null,
-        sectionNum ? `Sec ${sectionNum}` : null,
+        sectionNum ? `${t('teachers.dashboard.common.sectionPrefix', { defaultValue: 'Sec' })} ${sectionNum}` : null,
         tail ? `(${tail})` : null,
       ].filter(Boolean).join(' - ');
-      return { value: String(gs?._id || ''), label: label || gs?.sectionName || 'Section' };
+      return { value: String(gs?._id || ''), label: label || gs?.sectionName || t('teachers.dashboard.common.section', { defaultValue: 'Section' }) };
     });
-  }, [teacherSections]);
+  }, [teacherSections, t]);
 
   const subjectOptions = useMemo(() => {
     if (!sectionId) return [];
@@ -266,12 +270,12 @@ export default function TeacherAttendanceChartsCard() {
       if (String(a?.gradeSection?._id || '') !== String(sectionId)) continue;
       const sid = String(a?.subject?._id || '');
       if (!sid) continue;
-      if (!map.has(sid)) map.set(sid, String(a?.subject?.subjectName || 'Subject'));
+      if (!map.has(sid)) map.set(sid, String(a?.subject?.subjectName || t('teachers.dashboard.common.subject', { defaultValue: 'Subject' })));
     }
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => String(a.label).localeCompare(String(b.label)));
-  }, [teacherAssignments, sectionId]);
+  }, [teacherAssignments, sectionId, t]);
 
   // Auto-pick defaults when possible.
   useEffect(() => {
@@ -337,7 +341,7 @@ export default function TeacherAttendanceChartsCard() {
   // Fetch attendance report summary (teacher-scoped filtering is applied client-side using subjectPeriodCodes)
   useEffect(() => {
     setLoading(reportQuery.isLoading);
-    setError(reportQuery.isError ? 'Failed to load attendance report.' : '');
+    setError(reportQuery.isError ? t('teachers.dashboard.attendance.reportLoadFailed', { defaultValue: 'Failed to load attendance report.' }) : '');
 
     if (!canRun) {
       setReport(null);
@@ -530,7 +534,7 @@ export default function TeacherAttendanceChartsCard() {
       a.click();
     } catch (e) {
       console.error('PNG download failed:', e);
-      alert('Download failed. Please try again.');
+      alert(t('teachers.dashboard.common.downloadFailed', { defaultValue: 'Download failed. Please try again.' }));
     }
   };
 
@@ -560,7 +564,7 @@ export default function TeacherAttendanceChartsCard() {
       pdf.save(`attendance_${String(sectionId || 'section')}_${String(subjectId || 'subject')}_${String(from)}_${String(to)}_${String(view)}.pdf`);
     } catch (e) {
       console.error('PDF download failed:', e);
-      alert('Download failed. Please try again.');
+      alert(t('teachers.dashboard.common.downloadFailed', { defaultValue: 'Download failed. Please try again.' }));
     }
   };
 
@@ -601,30 +605,30 @@ export default function TeacherAttendanceChartsCard() {
     <div className="rounded-2xl border border-emerald-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
       <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="text-lg font-semibold">Attendance</div>
-          <div className="text-sm text-white/80 mt-1">Live data (teacher-scoped)</div>
+          <div className="text-lg font-semibold">{t('teachers.dashboard.attendance.title', { defaultValue: 'Attendance' })}</div>
+          <div className="text-sm text-white/80 mt-1">{t('teachers.dashboard.common.liveTeacherScoped', { defaultValue: 'Live data (teacher-scoped)' })}</div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <ActionButton disabled={!canDownload} onClick={downloadPng} icon={Download} label="PNG" />
-          <ActionButton disabled={!canDownload} onClick={downloadPdf} icon={FileDown} label="PDF" />
+          <ActionButton disabled={!canDownload} onClick={downloadPng} icon={Download} label={t('teachers.dashboard.common.downloadPng', { defaultValue: 'PNG' })} />
+          <ActionButton disabled={!canDownload} onClick={downloadPdf} icon={FileDown} label={t('teachers.dashboard.common.downloadPdf', { defaultValue: 'PDF' })} />
           <ToggleButton
             active={view === 'status'}
             onClick={() => setView('status')}
             icon={BarChart3}
-            label="Status trend"
+            label={t('teachers.dashboard.attendance.views.statusTrend', { defaultValue: 'Status trend' })}
           />
           <ToggleButton
             active={view === 'periods'}
             onClick={() => setView('periods')}
             icon={Layers}
-            label="By periods"
+            label={t('teachers.dashboard.attendance.views.byPeriods', { defaultValue: 'By periods' })}
           />
           <ToggleButton
             active={view === 'performance'}
             onClick={() => setView('performance')}
             icon={SlidersHorizontal}
-            label="Performance"
+            label={t('teachers.dashboard.attendance.views.performance', { defaultValue: 'Performance' })}
           />
         </div>
       </div>
@@ -635,42 +639,42 @@ export default function TeacherAttendanceChartsCard() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
               <SlidersHorizontal size={16} />
-              <span>Filters</span>
+              <span>{t('teachers.dashboard.common.filters', { defaultValue: 'Filters' })}</span>
             </div>
-            <div className="text-xs text-gray-500">Max range: 31 days</div>
+            <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.maxRange', { defaultValue: 'Max range: 31 days' })}</div>
           </div>
 
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">Section</div>
+              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.common.section', { defaultValue: 'Section' })}</div>
               <DropdownSelect
                 value={sectionId}
                 onChange={(v) => { setSectionId(v); setReport(null); }}
                 disabled={!isTeacher || assignmentsLoading || !teacherRef}
-                placeholder={assignmentsLoading ? 'Loading…' : 'Select section'}
+                placeholder={assignmentsLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('teachers.dashboard.common.selectSection', { defaultValue: 'Select section' })}
                 options={sectionOptions}
               />
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">Subject</div>
+              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.common.subject', { defaultValue: 'Subject' })}</div>
               <DropdownSelect
                 value={subjectId}
                 onChange={(v) => { setSubjectId(v); setReport(null); }}
                 disabled={!sectionId || subjectOptions.length === 0}
-                placeholder={sectionId ? 'Select subject' : 'Select section first'}
+                placeholder={sectionId ? t('teachers.dashboard.common.selectSubject', { defaultValue: 'Select subject' }) : t('teachers.dashboard.common.selectSectionFirst', { defaultValue: 'Select section first' })}
                 options={subjectOptions}
               />
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">Range</div>
+              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.attendance.range.title', { defaultValue: 'Range' })}</div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setRangeTab('today')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='today'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
-                <button type="button" onClick={() => setRangeTab('last7')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='last7'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7</button>
-                <button type="button" onClick={() => setRangeTab('custom')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='custom'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Custom</button>
+                <button type="button" onClick={() => setRangeTab('today')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='today'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{t('teachers.dashboard.attendance.range.today', { defaultValue: 'Today' })}</button>
+                <button type="button" onClick={() => setRangeTab('last7')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='last7'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{t('teachers.dashboard.attendance.range.last7', { defaultValue: 'Last 7' })}</button>
+                <button type="button" onClick={() => setRangeTab('custom')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='custom'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{t('teachers.dashboard.attendance.range.custom', { defaultValue: 'Custom' })}</button>
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">Dates</div>
+              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.attendance.dates', { defaultValue: 'Dates' })}</div>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="date"
@@ -690,60 +694,60 @@ export default function TeacherAttendanceChartsCard() {
 
           <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
             <div className="text-xs text-gray-600">
-              {subjectSlotsLoading ? 'Loading timetable periods…' : (subjectId && sectionId && subjectPeriodCodes.length === 0 ? 'No timetable periods for this subject.' : '')}
+              {subjectSlotsLoading ? t('teachers.dashboard.attendance.loadingTimetablePeriods', { defaultValue: 'Loading timetable periods…' }) : (subjectId && sectionId && subjectPeriodCodes.length === 0 ? t('teachers.dashboard.attendance.noPeriodsForSubject', { defaultValue: 'No timetable periods for this subject.' }) : '')}
               {assignmentsError ? ` ${assignmentsError}` : ''}
             </div>
             <div className="text-xs text-gray-700">
-              <span className="font-medium">All-day%</span>: {kpis.dayPct}% • <span className="font-medium">Per-period%</span>: {kpis.periodPct}%
-              {kpis.roster ? ` • ` : ''}{kpis.roster ? (<><span className="font-medium">Roster</span>: {kpis.roster}</>) : null}
+              <span className="font-medium">{t('teachers.dashboard.attendance.kpis.allDayPct', { defaultValue: 'All-day%' })}</span>: {kpis.dayPct}% • <span className="font-medium">{t('teachers.dashboard.attendance.kpis.perPeriodPct', { defaultValue: 'Per-period%' })}</span>: {kpis.periodPct}%
+              {kpis.roster ? ` • ` : ''}{kpis.roster ? (<><span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>: {kpis.roster}</>) : null}
             </div>
           </div>
         </div>
 
         {!isTeacher ? (
-          <div className="text-sm text-gray-600">This card is available for teachers only.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.common.teachersOnly', { defaultValue: 'This card is available for teachers only.' })}</div>
         ) : !teacherRef ? (
-          <div className="text-sm text-gray-600">No teacherRef found on your account.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.common.noTeacherRef', { defaultValue: 'No teacherRef found on your account.' })}</div>
         ) : error ? (
           <Alert variant="danger">{error}</Alert>
         ) : loading ? (
           <div className="space-y-2">
-            <UiLoadingState label="Loading attendance…" className="border-0 bg-transparent p-0 justify-start" />
+            <UiLoadingState label={t('teachers.dashboard.attendance.loading', { defaultValue: 'Loading attendance…' })} className="border-0 bg-transparent p-0 justify-start" />
             {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
           </div>
         ) : !canRun ? (
-          <div className="text-sm text-gray-600">Select Section + Subject + date range to view charts.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.selectFilters', { defaultValue: 'Select Section + Subject + date range to view charts.' })}</div>
         ) : (trendDates.length === 0) ? (
-          <div className="text-sm text-gray-600">No attendance data found for the selected filters.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.noData', { defaultValue: 'No attendance data found for the selected filters.' })}</div>
         ) : view === 'performance' ? (
           <div ref={chartCaptureRef} className="space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="text-sm font-medium text-gray-800">Attendance performance</div>
-              <div className="text-xs text-gray-500">Percent breakdown (prefers ALL DAY per date)</div>
+              <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.performance.title', { defaultValue: 'Attendance performance' })}</div>
+              <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.performance.subtitle', { defaultValue: 'Percent breakdown (prefers ALL DAY per date)' })}</div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-                <div className="text-xs font-semibold text-emerald-900">Present</div>
+                <div className="text-xs font-semibold text-emerald-900">{t('teachers.dashboard.attendance.status.present', { defaultValue: 'Present' })}</div>
                 <div className="text-xl font-bold text-emerald-900 tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
                 <div className="text-[11px] text-emerald-900/70">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
               </div>
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                <div className="text-xs font-semibold text-gray-900">Marked days</div>
+                <div className="text-xs font-semibold text-gray-900">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</div>
                 <div className="text-xl font-bold text-gray-900 tabular-nums">{combinedTrend.length}</div>
-                <div className="text-[11px] text-gray-600">One row per date (DAY else PERIOD)</div>
+                <div className="text-[11px] text-gray-600">{t('teachers.dashboard.attendance.performance.markedDaysNote', { defaultValue: 'One row per date (DAY else PERIOD)' })}</div>
               </div>
               <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                <div className="text-xs font-semibold text-gray-900">Roster</div>
+                <div className="text-xs font-semibold text-gray-900">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</div>
                 <div className="text-xl font-bold text-gray-900 tabular-nums">{Number(kpis.roster || 0) || '—'}</div>
-                <div className="text-[11px] text-gray-600">From report meta</div>
+                <div className="text-[11px] text-gray-600">{t('teachers.dashboard.attendance.performance.rosterNote', { defaultValue: 'From report meta' })}</div>
               </div>
             </div>
 
             <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
               <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
-                <div className="text-sm font-semibold">Status percentages</div>
-                <div className="text-xs text-white/80">Total records: {Number(performanceAgg.total || 0)}</div>
+                <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.performance.statusPercentages', { defaultValue: 'Status percentages' })}</div>
+                <div className="text-xs text-white/80">{t('teachers.dashboard.attendance.performance.totalRecords', { defaultValue: 'Total records: {{count}}', count: Number(performanceAgg.total || 0) })}</div>
               </div>
               <div className="p-4 space-y-2">
                 {STATUSES
@@ -758,8 +762,8 @@ export default function TeacherAttendanceChartsCard() {
         ) : view === 'status' ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-800">Attendance status trend</div>
-              <div className="text-xs text-gray-500">All-day (DAY) and Per-period (LESSON)</div>
+              <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.statusTrend.title', { defaultValue: 'Attendance status trend' })}</div>
+              <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.statusTrend.subtitle', { defaultValue: 'All-day (DAY) and Per-period (LESSON)' })}</div>
             </div>
             <MiniLegend
               items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))}
@@ -767,19 +771,19 @@ export default function TeacherAttendanceChartsCard() {
 
             <div ref={chartCaptureRef} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
               <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
-                <div className="text-sm font-semibold">Daily trend</div>
-                <div className="text-xs text-white/80">One line per date (prefers ALL DAY)</div>
+                <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.statusTrend.dailyTrend', { defaultValue: 'Daily trend' })}</div>
+                <div className="text-xs text-white/80">{t('teachers.dashboard.attendance.statusTrend.dailyTrendNote', { defaultValue: 'One line per date (prefers ALL DAY)' })}</div>
               </div>
 
               <div className="p-4 space-y-2">
                 {combinedTrend.length === 0 ? (
-                  <div className="text-sm text-gray-600">No trend rows found.</div>
+                  <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.statusTrend.noTrendRows', { defaultValue: 'No trend rows found.' })}</div>
                 ) : (
                   combinedTrend.map(({ date, source, row }) => (
                     <div key={date} className="flex items-start gap-3">
                       <div className="w-16 shrink-0 pt-0.5 text-[11px] text-gray-600 tabular-nums">{String(date).slice(5)}</div>
                       <div className="w-20 shrink-0 pt-0.5">
-                        {source === 'DAY' ? <TinyBadge tone="emerald">ALL DAY</TinyBadge> : <TinyBadge tone="indigo">PERIOD</TinyBadge>}
+                        {source === 'DAY' ? <TinyBadge tone="emerald">{t('teachers.dashboard.attendance.badges.allDay', { defaultValue: 'ALL DAY' })}</TinyBadge> : <TinyBadge tone="indigo">{t('teachers.dashboard.attendance.badges.period', { defaultValue: 'PERIOD' })}</TinyBadge>}
                       </div>
                       <div className="flex-1">
                         <StackedBar
@@ -798,7 +802,7 @@ export default function TeacherAttendanceChartsCard() {
                 )}
 
                 {subjectPeriodCodes.length === 0 ? (
-                  <div className="text-xs text-gray-500">Note: no timetable periods found for this subject; PERIOD rows may be missing.</div>
+                  <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.statusTrend.noTimetablePeriodsNote', { defaultValue: 'Note: no timetable periods found for this subject; PERIOD rows may be missing.' })}</div>
                 ) : null}
               </div>
             </div>
@@ -806,13 +810,13 @@ export default function TeacherAttendanceChartsCard() {
         ) : (
           <div ref={chartCaptureRef} className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-800">Attendance by period</div>
-              <div className="text-xs text-gray-500">Present total</div>
+              <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.byPeriod.title', { defaultValue: 'Attendance by period' })}</div>
+              <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.byPeriod.subtitle', { defaultValue: 'Present total' })}</div>
             </div>
             <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
             <div className="space-y-2">
               {periodAgg.length === 0 ? (
-                <div className="text-sm text-gray-600">No lesson periods found in this range.</div>
+                <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.byPeriod.empty', { defaultValue: 'No lesson periods found in this range.' })}</div>
               ) : periodAgg.map((p) => (
                 <StackedBar
                   key={p.code}
@@ -830,9 +834,9 @@ export default function TeacherAttendanceChartsCard() {
         )}
 
         <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-          <div className="text-xs text-gray-500">Source: Attendance Reports summary (teacher-scoped)</div>
+          <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.source', { defaultValue: 'Source: Attendance Reports summary (teacher-scoped)' })}</div>
           <div className="text-xs text-gray-600">
-            KPIs: <span className="font-medium">Attendance %</span> • <span className="font-medium">Marked days</span> • <span className="font-medium">Roster</span>
+            {t('teachers.dashboard.common.kpis', { defaultValue: 'KPIs' })}: <span className="font-medium">{t('teachers.dashboard.attendance.kpis.attendancePct', { defaultValue: 'Attendance %' })}</span> • <span className="font-medium">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</span> • <span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>
           </div>
         </div>
       </div>

@@ -11,6 +11,7 @@ import { getSlotsWithOptions } from '../../../timetable/api/timetable';
 import { useAuth } from '../../../../auth/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 function uniqPeriodsFromSlots(slots = []) {
   const seen = new Set();
@@ -59,6 +60,7 @@ function localISODateOnly(d = new Date()) {
 export default function TimetableTab() {
   const { studentId: paramStudentId } = useParams();
   const { auth } = useAuth();
+  const { t } = useI18n();
 
   const studentIdFromAuth = useMemo(() => {
     const ref = auth?.user?.studentRef;
@@ -98,7 +100,7 @@ export default function TimetableTab() {
   const slots = slotsQuery.data || [];
   const classLoading = historyQuery.isLoading;
   const loading = slotsQuery.isLoading;
-  const error = (historyQuery.isError || slotsQuery.isError) ? 'Failed to load timetable' : '';
+  const error = (historyQuery.isError || slotsQuery.isError) ? t('students.timetableTab.loadFailed') : '';
 
   const periods = useMemo(() => uniqPeriodsFromSlots(slots), [slots]);
   const days = useMemo(() => uniqDaysFromSlots(slots), [slots]);
@@ -106,7 +108,15 @@ export default function TimetableTab() {
   const todayInfo = useMemo(() => {
     const now = new Date();
     const todayIdx = getTimetableDayIndexFromLocalDate(now);
-    const dayNames = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const dayNames = [
+      t('common.days.long.saturday'),
+      t('common.days.long.sunday'),
+      t('common.days.long.monday'),
+      t('common.days.long.tuesday'),
+      t('common.days.long.wednesday'),
+      t('common.days.long.thursday'),
+      t('common.days.long.friday'),
+    ];
     const dayName = dayNames[todayIdx] || '';
     const dateISO = localISODateOnly(now);
     const todaysSlots = (Array.isArray(slots) ? slots : [])
@@ -114,7 +124,7 @@ export default function TimetableTab() {
       .slice()
       .sort((a, b) => String(a?.startTime || '').localeCompare(String(b?.startTime || '')));
     return { todayIdx, dayName, dateISO, slots: todaysSlots };
-  }, [slots]);
+  }, [slots, t]);
 
   return (
     <Card className="p-4 with-print-header with-print-footer">
@@ -122,13 +132,13 @@ export default function TimetableTab() {
 
       <div className="mb-4">
         <div className="border-l-4 border-blue-600 bg-blue-50 rounded px-3 py-2">
-          <h2 className="text-lg font-semibold text-blue-900">Timetable</h2>
-          <div className="text-xs text-blue-800/80 mt-0.5">Your class timetable</div>
+          <h2 className="text-lg font-semibold text-blue-900">{t('nav.timetable')}</h2>
+          <div className="text-xs text-blue-800/80 mt-0.5">{t('students.timetableTab.subtitle')}</div>
         </div>
       </div>
 
       {(classLoading || loading) && (
-        <LoadingState variant="table" rows={6} columns={6} message="Loading timetable…" />
+        <LoadingState variant="table" rows={6} columns={6} message={t('students.timetableTab.loading')} />
       )}
 
       {!loading && error && (
@@ -136,19 +146,19 @@ export default function TimetableTab() {
       )}
 
       {!gradeSectionId && !error && !loading && !classLoading && (
-        <div className="text-lg font-semibold text-gray-800">No active class found for this student.</div>
+        <div className="text-lg font-semibold text-gray-800">{t('students.timetableTab.noActiveClass')}</div>
       )}
 
       {!loading && !error && gradeSectionId && (
         <>
           <div className="mb-4 border border-blue-100 rounded-lg bg-white overflow-hidden shadow-sm">
             <div className="px-4 py-2 bg-gray-800 text-white">
-              <div className="font-semibold">Today: {todayInfo.dayName || '—'}{todayInfo.dateISO ? ` • ${todayInfo.dateISO}` : ''}</div>
-              <div className="text-xs text-white/80 mt-0.5">Your classes for today</div>
+              <div className="font-semibold">{t('students.timetableTab.todayLabel')} {todayInfo.dayName || '—'}{todayInfo.dateISO ? ` • ${todayInfo.dateISO}` : ''}</div>
+              <div className="text-xs text-white/80 mt-0.5">{t('students.timetableTab.todaySubtitle')}</div>
             </div>
             <div className="p-4">
               {todayInfo.slots.filter(s => !s?.isBreak).length === 0 ? (
-                <div className="text-sm text-gray-600">No classes scheduled for today.</div>
+                <div className="text-sm text-gray-600">{t('students.timetableTab.noClassesToday')}</div>
               ) : (
                 (() => {
                   const byTeacher = new Map();
@@ -176,19 +186,19 @@ export default function TimetableTab() {
 
                   return (
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-                      {teacherCards.map((t) => (
-                        <div key={t.teacherName} className="border border-blue-100 rounded-lg bg-white shadow-sm overflow-hidden">
+                      {teacherCards.map((card) => (
+                        <div key={card.teacherName} className="border border-blue-100 rounded-lg bg-white shadow-sm overflow-hidden">
                           <div className="px-4 py-2 bg-blue-50 text-blue-900 border-b border-blue-100">
-                            <div className="font-semibold truncate">{t.teacherName}</div>
-                            {t.subjects.length > 0 ? (
-                              <div className="text-xs text-blue-900/70 mt-0.5 truncate">{t.subjects.join(' • ')}</div>
+                            <div className="font-semibold truncate">{card.teacherName}</div>
+                            {card.subjects.length > 0 ? (
+                              <div className="text-xs text-blue-900/70 mt-0.5 truncate">{card.subjects.join(' • ')}</div>
                             ) : null}
                           </div>
                           <div className="p-4 space-y-2">
-                            {t.items.map((s) => {
+                            {card.items.map((s) => {
                               const time = `${String(s?.startTime || '').trim()} - ${String(s?.endTime || '').trim()}`.trim();
                               const subject = String(s?.subject?.subjectName || '-').trim() || '-';
-                              const room = s?.room ? `Room ${s.room}` : '';
+                              const room = s?.room ? `${t('common.room')} ${s.room}` : '';
                               const meta = [time, room].filter(Boolean).join(' • ');
                               return (
                                 <div key={String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${subject}`)} className="border border-blue-100 rounded-lg p-3 bg-white">
@@ -208,7 +218,7 @@ export default function TimetableTab() {
           </div>
 
           {slots.length === 0 ? (
-            <div className="text-lg font-semibold text-gray-800">No timetable has been created for your class yet.</div>
+            <div className="text-lg font-semibold text-gray-800">{t('students.timetableTab.empty')}</div>
           ) : (
             <StandardTable
               isLoading={false}
@@ -223,9 +233,9 @@ export default function TimetableTab() {
                 useDefaultHeaderStyles: false,
                 renderHeader: () => (
                   <tr className="bg-gray-800 text-white border-b border-gray-700">
-                    <th className="text-left px-3 py-2 whitespace-nowrap sticky left-0 z-10 bg-gray-800">Day</th>
+                    <th className="text-left px-3 py-2 whitespace-nowrap sticky left-0 z-10 bg-gray-800">{t('students.timetableTab.table.day')}</th>
                     {periods.length === 0 ? (
-                      <th className="text-left px-3 py-2">No periods</th>
+                      <th className="text-left px-3 py-2">{t('students.timetableTab.table.noPeriods')}</th>
                     ) : (
                       periods.map((p, i) => (
                         <th key={i} className="text-left px-3 py-2 whitespace-nowrap min-w-40">{formatPeriodLabel(p)}</th>
@@ -275,22 +285,22 @@ export default function TimetableTab() {
 
               return (
                 <div className="mt-4">
-                  <div className="mb-2 text-sm font-semibold text-gray-900">Teachers & Subjects</div>
+                  <div className="mb-2 text-sm font-semibold text-gray-900">{t('students.timetableTab.teachersAndSubjects')}</div>
                   <StandardTable
                     isLoading={false}
                     items={rows}
                     rows={rows}
-                    emptyTitle="No teachers found."
+                    emptyTitle={t('students.timetableTab.noTeachers')}
                     columns={[
                       {
                         key: 'teacherName',
-                        label: 'Teacher',
+                        label: t('students.timetableTab.table.teacher'),
                         thClassName: 'text-left px-3 py-2 whitespace-nowrap',
                         tdClassName: 'px-3 py-2 font-medium text-gray-900 whitespace-nowrap',
                       },
                       {
                         key: 'subjects',
-                        label: 'Subjects',
+                        label: t('students.timetableTab.table.subjects'),
                         thClassName: 'text-left px-3 py-2',
                         tdClassName: 'px-3 py-2 text-sm text-gray-700',
                       },

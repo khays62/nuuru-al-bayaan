@@ -12,12 +12,15 @@ import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/Fi
 import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import DataTable from '../../../shared/components/table/DataTable.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
+  const { t } = useI18n();
   const [gradeId, setGradeId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [shiftId, setShiftId] = useState('');
+  const [removingId, setRemovingId] = useState('');
 
   const teacherId = teacher?._id ? String(teacher._id) : '';
   const queryClient = useQueryClient();
@@ -51,6 +54,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
     setShiftId('');
     setSectionId('');
     setSubjectId('');
+    setRemovingId('');
   }, [isOpen, teacherId]);
 
   const gradesQuery = useQuery({
@@ -125,13 +129,13 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
   const addAssignmentMutation = useMutation({
     mutationFn: (payload) => addAssignment(teacherId, payload),
     onSuccess: () => {
-      toast.success('Assignment added', { position: 'top-center' });
+      toast.success(t('teachers.assignments.added'), { position: 'top-center' });
       try {
         queryClient.invalidateQueries({ queryKey: teacherKeys.assignments(teacherId), refetchType: 'active' });
       } catch { /* ignore */ }
     },
     onError: (e) => {
-      toast.error(e?.data?.message || e?.message || 'Failed to add assignment', { position: 'top-center' });
+      toast.error(e?.data?.message || e?.message || t('teachers.assignments.addFailed'), { position: 'top-center' });
     },
   });
 
@@ -143,7 +147,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
       } catch { /* ignore */ }
     },
     onError: (e) => {
-      toast.error(e?.data?.message || e?.message || 'Failed to remove assignment', { position: 'top-center' });
+      toast.error(e?.data?.message || e?.message || t('teachers.assignments.removeFailed'), { position: 'top-center' });
     },
   });
 
@@ -159,8 +163,17 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
   };
 
   const onRemove = async (assignment) => {
-    if (!confirm('Remove this assignment?')) return;
-    await removeAssignmentMutation.mutateAsync({ assignmentId: assignment._id });
+    const assignmentId = assignment?._id ? String(assignment._id) : '';
+    if (!assignmentId) return;
+    if (removeAssignmentMutation.isPending && removingId === assignmentId) return;
+    if (!confirm(t('teachers.assignments.confirmRemove'))) return;
+
+    setRemovingId(assignmentId);
+    try {
+      await removeAssignmentMutation.mutateAsync({ assignmentId });
+    } finally {
+      setRemovingId('');
+    }
   };
 
   const grades = gradesQuery.data || [];
@@ -171,11 +184,11 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
 
   const error =
     assignmentsQuery.isError
-      ? (assignmentsQuery.error?.data?.message || assignmentsQuery.error?.message || 'Failed to load assignments')
+      ? (assignmentsQuery.error?.data?.message || assignmentsQuery.error?.message || t('teachers.assignments.errorLoadAssignments'))
       : (sectionsQuery.isError || subjectsQuery.isError)
-        ? 'Failed to load sections/subjects'
+        ? t('teachers.assignments.errorLoadSectionsSubjects')
         : (gradesQuery.isError || shiftsQuery.isError)
-          ? 'Failed to load data'
+          ? t('teachers.assignments.errorLoadData')
           : '';
 
   const loading = Boolean(
@@ -186,17 +199,21 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
   const submitting = Boolean(addAssignmentMutation.isPending || removeAssignmentMutation.isPending);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Assignments • ${teacher?.fullName || teacher?.teacherId || ''}`}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('teachers.assignments.title', { name: teacher?.fullName || teacher?.teacherId || '' })}
+    >
       <div className="space-y-4">
         {error && <div className="text-red-600 text-sm">{error}</div>}
-        {loading && <div className="text-sm text-gray-600">Loading assignments...</div>}
+        {loading && <div className="text-sm text-gray-600">{t('teachers.assignments.loading')}</div>}
         <FilterRow>
           <FilterItem>
             <DropdownSelect
               value={gradeId}
               onChange={onGradeChange}
               options={(grades || []).map((g) => ({ value: g._id, label: g.gradeName }))}
-              placeholder="Select level…"
+              placeholder={t('teachers.assignments.selectLevel')}
               maxHeightClassName="max-h-72"
             />
           </FilterItem>
@@ -206,7 +223,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
               value={shiftId}
               onChange={onShiftChange}
               options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
-              placeholder="Select shift…"
+              placeholder={t('teachers.assignments.selectShift')}
               disabled={!gradeId}
               className={gradeId ? '' : 'opacity-60'}
             />
@@ -218,9 +235,9 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
               onChange={onSectionChange}
               options={(sections || []).map((s) => ({
                 value: s._id,
-                label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}`,
+                label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • ${t('students.export.sectionPrefix')} ${s.section}`,
               }))}
-              placeholder="Select section…"
+              placeholder={t('teachers.assignments.selectSection')}
               disabled={!gradeId || !shiftId}
               className={gradeId && shiftId ? '' : 'opacity-60'}
             />
@@ -231,19 +248,19 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
               value={subjectId}
               onChange={setSubjectId}
               options={(subjects || []).map((s) => ({ value: s._id, label: s.subjectName }))}
-              placeholder="Select subject…"
+              placeholder={t('teachers.assignments.selectSubject')}
               disabled={!gradeId || !sectionId}
               className={gradeId && sectionId ? '' : 'opacity-60'}
             />
           </FilterItem>
         </FilterRow>
         <div className="flex justify-end">
-          <ActionButton type="button" variant="brand" onClick={onAdd} disabled={!canAdd || submitting}>Add Assignment</ActionButton>
+          <ActionButton type="button" variant="brand" onClick={onAdd} disabled={!canAdd || submitting}>{t('teachers.assignments.add')}</ActionButton>
         </div>
 
         <div className="border rounded-md overflow-hidden">
           {(assignments || []).length === 0 ? (
-            <div className="px-2 py-2 text-gray-500 text-sm">No assignments.</div>
+            <div className="px-2 py-2 text-gray-500 text-sm">{t('teachers.assignments.none')}</div>
           ) : (
             <DataTable
               rows={assignments}
@@ -253,10 +270,10 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
               baseRowClassName="border-t"
               useDefaultHeaderStyles={false}
               columns={[
-                { key: 'level', label: 'Level', thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
-                { key: 'shift', label: 'Shift', thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
-                { key: 'section', label: 'Section', thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
-                { key: 'subject', label: 'Subject', thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
+                { key: 'level', label: t('teachers.assignments.columns.level'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
+                { key: 'shift', label: t('teachers.assignments.columns.shift'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
+                { key: 'section', label: t('teachers.assignments.columns.section'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
+                { key: 'subject', label: t('teachers.assignments.columns.subject'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
                 { key: 'actions', label: '', align: 'right', noPrint: true, thClassName: 'text-right px-2 py-1', tdClassName: 'px-2 py-1 text-right' },
               ]}
               getRowKey={(a) => a._id}
@@ -271,7 +288,18 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
                   case 'subject':
                     return a.subject?.subjectName || '-';
                   case 'actions':
-                    return <ActionButton variant="danger" onClick={() => onRemove(a)}>Remove</ActionButton>;
+                    {
+                      const isRemovingThis = String(removingId || '') === String(a?._id || '');
+                      return (
+                        <ActionButton
+                          variant="danger"
+                          onClick={() => onRemove(a)}
+                          disabled={submitting || isRemovingThis}
+                        >
+                          {isRemovingThis ? t('common.loading') : t('teachers.assignments.remove')}
+                        </ActionButton>
+                      );
+                    }
                   default:
                     return '';
                 }

@@ -6,11 +6,13 @@ import { navItems } from './config/navigation'; // Import from the new central c
 import { useAuth } from './auth/AuthContext';
 import ForcePasswordChangeModal from './auth/components/ForcePasswordChangeModal';
 import TeacherDashboardPrefetcher from './features/teachers/components/dashboard/TeacherDashboardPrefetcher.jsx';
+import { useI18n } from './i18n/I18nProvider';
 
 export default function App() {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isCollapsed, setCollapsed] = useState(false);
     const { auth, refreshUser } = useAuth();
+    const { isRTL, t } = useI18n();
     
     const location = useLocation();
 
@@ -30,7 +32,11 @@ export default function App() {
 
     // Find the current page title based on the route from the central config (supports children)
     const currentNavItem = flatNavItems.find(item => item?.path && location.pathname.startsWith(item.path));
-    const currentPageTitle = currentNavItem ? currentNavItem.label : 'Dashboard';
+    const currentPageTitle = currentNavItem
+        ? (currentNavItem.labelKey
+            ? t(currentNavItem.labelKey, { defaultValue: currentNavItem.label })
+            : currentNavItem.label)
+        : t('nav.dashboard', { defaultValue: 'Dashboard' });
 
     const toggleMobileMenu = () => setMobileMenuOpen(!isMobileMenuOpen);
     const toggleCollapse = () => setCollapsed(!isCollapsed);
@@ -74,8 +80,31 @@ export default function App() {
         if (typeof refreshUser === 'function') await refreshUser();
     };
 
+    const sidebarEl = (
+        <Sidebar
+            isMobileMenuOpen={isMobileMenuOpen}
+            isCollapsed={isCollapsed}
+            closeMobileMenu={closeMobileMenu}
+        />
+    );
+
+    const mainEl = (
+        <div className="flex flex-col flex-1 overflow-hidden">
+            <Navbar
+                onToggleMobileMenu={toggleMobileMenu}
+                onToggleCollapse={toggleCollapse}
+                isCollapsed={isCollapsed}
+                currentPageTitle={currentPageTitle}
+            />
+            
+            <main className="flex-1 overflow-y-auto p-6">
+                <Outlet />
+            </main>
+        </div>
+    );
+
     return (
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-screen bg-gray-100" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
             {String(auth?.user?.role || '').toLowerCase() === 'teacher' ? <TeacherDashboardPrefetcher /> : null}
 
             <ForcePasswordChangeModal
@@ -85,24 +114,8 @@ export default function App() {
                 mode="user"
             />
 
-            <Sidebar
-                isMobileMenuOpen={isMobileMenuOpen}
-                isCollapsed={isCollapsed}
-                closeMobileMenu={closeMobileMenu}
-            />
-
-            <div className="flex flex-col flex-1 overflow-hidden">
-                <Navbar
-                    onToggleMobileMenu={toggleMobileMenu}
-                    onToggleCollapse={toggleCollapse}
-                    isCollapsed={isCollapsed}
-                    currentPageTitle={currentPageTitle}
-                />
-                
-                <main className="flex-1 overflow-y-auto p-6">
-                    <Outlet />
-                </main>
-            </div>
+            {isRTL ? mainEl : sidebarEl}
+            {isRTL ? sidebarEl : mainEl}
 
             {isMobileMenuOpen && (
                 <div 

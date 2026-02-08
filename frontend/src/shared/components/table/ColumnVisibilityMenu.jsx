@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Columns, Check, ChevronDown } from 'lucide-react';
 import ActionButton from '../ui/ActionButton.jsx';
 import Card from '../ui/Card.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function ColumnVisibilityMenu({
   columns = [],
@@ -10,6 +11,7 @@ export default function ColumnVisibilityMenu({
   className = '',
   buttonClassName = '',
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
@@ -30,13 +32,13 @@ export default function ColumnVisibilityMenu({
       <ActionButton
         variant="neutral"
         onClick={() => setOpen((v) => !v)}
-        title="Choose columns"
+        title={t('common.chooseColumns', { defaultValue: 'Choose columns' })}
         icon={<Columns size={16} />}
         className={
           (`bg-white! text-blue-700! border-blue-400! hover:bg-blue-50! ` + buttonClassName).trim()
         }
       >
-        <span>Columns</span>
+        <span>{t('common.columns', { defaultValue: 'Columns' })}</span>
         <ChevronDown size={16} className="text-blue-700" />
       </ActionButton>
 

@@ -3,6 +3,7 @@ import StandardTable from '../../../../shared/components/table/StandardTable.jsx
 import TimetableGrid from '../../../timetable/components/TimetableGrid.jsx';
 import { useAuth } from '../../../../auth/AuthContext';
 import Card from '../../../../shared/components/ui/Card.jsx';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 export default function TeacherTimetablePanel({
   sections,
@@ -21,11 +22,12 @@ export default function TeacherTimetablePanel({
   busy,
 }) {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const teacherRef = auth?.user?.teacherRef || null;
 
   const TEACHER_SECTION_SESSION_KEY = 'teacher:timetable:selectedSectionId:v1';
 
-  const dayNames = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const dayKeys = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
   function getTimetableDayIndexFromLocalDate(d = new Date()) {
     // TimetableGrid uses: 0=Saturday,1=Sunday,2=Monday,3=Tuesday,4=Wednesday,5=Thursday,6=Friday
@@ -64,13 +66,16 @@ export default function TeacherTimetablePanel({
       return String(a?._id || '').localeCompare(String(b?._id || ''));
     });
 
+    const dayKey = dayKeys[todayIdx];
+    const dayDefault = dayKey ? (dayKey.charAt(0).toUpperCase() + dayKey.slice(1)) : '—';
+
     return {
       todayIdx,
-      dayName: dayNames[todayIdx] || '—',
+      dayName: dayKey ? t(`common.days.long.${dayKey}`, { defaultValue: dayDefault }) : '—',
       dateISO,
       slots: list,
     };
-  }, [todaySlots]);
+  }, [todaySlots, t]);
 
   const slotSectionLabel = (slot) => {
     const gs = slot?.gradeSection;
@@ -78,25 +83,26 @@ export default function TeacherTimetablePanel({
     const gradeName = gs?.grade?.gradeName;
     const sectionNum = gs?.section;
     const shiftName = gs?.shift?.shiftName;
+    const sectionPrefix = t('teachers.dashboard.timetable.sectionPrefix', { defaultValue: 'Sec' });
     return [
       gradeName ? `${gradeName}` : null,
-      sectionNum ? `Sec ${sectionNum}` : null,
+      sectionNum ? `${sectionPrefix} ${sectionNum}` : null,
       shiftName ? `(${shiftName})` : null,
     ].filter(Boolean).join(' - ');
   };
 
   const todayBody = (() => {
     if (todayLoading) {
-      return <div className="text-sm text-gray-600">Fetching today’s schedule…</div>;
+      return <div className="text-sm text-gray-600">{t('teachers.dashboard.timetable.fetchingToday', { defaultValue: "Fetching today’s schedule…" })}</div>;
     }
     if (todayError) {
       return <div className="text-sm text-red-600">{String(todayError)}</div>;
     }
     if (!teacherRef) {
-      return <div className="text-sm text-gray-600">Teacher account is missing teacherRef.</div>;
+      return <div className="text-sm text-gray-600">{t('teachers.dashboard.timetable.missingTeacherRef', { defaultValue: 'Teacher account is missing teacherRef.' })}</div>;
     }
     if (todayInfo.slots.length === 0) {
-      return <div className="text-sm text-gray-600">No classes scheduled for today.</div>;
+      return <div className="text-sm text-gray-600">{t('teachers.dashboard.timetable.noClassesToday', { defaultValue: 'No classes scheduled for today.' })}</div>;
     }
 
     return (
@@ -106,8 +112,8 @@ export default function TeacherTimetablePanel({
             ? formatRangeWithAmPm(s?.startTime, s?.endTime)
             : `${String(s?.startTime || '').trim()} - ${String(s?.endTime || '').trim()}`.trim();
           const subject = String(s?.subject?.subjectName || '-').trim() || '-';
-          const klass = slotSectionLabel(s) || 'Class';
-          const room = s?.room ? `Room ${s.room}` : '';
+          const klass = slotSectionLabel(s) || t('teachers.dashboard.timetable.classFallback', { defaultValue: 'Class' });
+          const room = s?.room ? `${t('common.room', { defaultValue: 'Room' })} ${s.room}` : '';
           const meta = [time, room].filter(Boolean).join(' • ');
           const key = String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${klass}_${subject}`);
           return (
@@ -152,7 +158,7 @@ export default function TeacherTimetablePanel({
     <div className="no-print">
       <Card className="rounded-xl overflow-hidden mt-3">
         <div className="px-4 py-2 bg-gray-800 text-white">
-          <div className="font-semibold">Today's Schedule</div>
+          <div className="font-semibold">{t('teachers.dashboard.timetable.todayTitle', { defaultValue: "Today's Schedule" })}</div>
           <div className="text-xs text-white/80 mt-0.5">
             {todayInfo.dayName}{todayInfo.dateISO ? ` • ${todayInfo.dateISO}` : ''}
           </div>
@@ -164,10 +170,10 @@ export default function TeacherTimetablePanel({
 
       <div className="flex flex-col lg:flex-row gap-4 mt-6">
         <Card className="w-full lg:w-80 p-4 rounded-lg">
-          <div className="text-sm font-semibold text-gray-800">My Assigned Classes</div>
+          <div className="text-sm font-semibold text-gray-800">{t('teachers.dashboard.timetable.assignedClassesTitle', { defaultValue: 'My Assigned Classes' })}</div>
           <div className="mt-3 space-y-2 max-h-96 overflow-auto">
             {(sections || []).length === 0 ? (
-              <div className="text-sm text-gray-600">No assigned classes.</div>
+              <div className="text-sm text-gray-600">{t('teachers.dashboard.classes.empty', { defaultValue: 'No assigned classes.' })}</div>
             ) : (
               (sections || []).map((gs) => {
                 const active = String(gs?._id) === String(sectionId);
@@ -183,7 +189,7 @@ export default function TeacherTimetablePanel({
                         : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50')
                     }
                   >
-                    {sectionLabel?.(gs) || gs?.sectionName || 'Section'}
+                    {sectionLabel?.(gs) || gs?.sectionName || t('teachers.dashboard.timetable.sectionFallback', { defaultValue: 'Section' })}
                   </button>
                 );
               })
@@ -205,9 +211,9 @@ export default function TeacherTimetablePanel({
                 useDefaultHeaderStyles: false,
                 renderHeader: () => (
                   <tr className="bg-black text-white">
-                    <th className="text-left px-3 py-2">Day</th>
+                    <th className="text-left px-3 py-2">{t('teachers.dashboard.timetable.table.day', { defaultValue: 'Day' })}</th>
                     {periods.length === 0 ? (
-                      <th className="text-left px-3 py-2">No periods</th>
+                      <th className="text-left px-3 py-2">{t('timetable.grid.noPeriods', { defaultValue: 'No periods' })}</th>
                     ) : (
                       periods.map((p, i) => (
                         <th key={i} className="text-left px-3 py-2">
@@ -220,16 +226,16 @@ export default function TeacherTimetablePanel({
                 renderBody: () => (
                   <>
                     {loading && (
-                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Loading slots…</td></tr>
+                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>{t('teachers.dashboard.timetable.loadingSlots', { defaultValue: 'Loading slots…' })}</td></tr>
                     )}
                     {!loading && error && (
                       <tr><td className="px-3 py-2 text-sm text-red-600" colSpan={2}>{String(error)}</td></tr>
                     )}
                     {!loading && !error && !sectionId && (
-                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>Select a class to view timetable.</td></tr>
+                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>{t('teachers.dashboard.timetable.selectClass', { defaultValue: 'Select a class to view timetable.' })}</td></tr>
                     )}
                     {!loading && !error && sectionId && (slots || []).length === 0 && (
-                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>No timetable slots found for this class.</td></tr>
+                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>{t('teachers.dashboard.timetable.noSlotsForClass', { defaultValue: 'No timetable slots found for this class.' })}</td></tr>
                     )}
                     {!loading && !error && (slots || []).length > 0 && (
                       <TimetableGrid

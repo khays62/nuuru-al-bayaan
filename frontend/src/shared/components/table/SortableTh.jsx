@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function SortableTh({
 	label,
@@ -11,6 +12,7 @@ export default function SortableTh({
 	className = '',
 	align = 'left',
 }) {
+	const { t } = useI18n();
 	const active = String(sortBy || '') === String(field || '');
 	const dir = String(sortDir || '').toLowerCase() === 'asc' ? 'asc' : 'desc';
 
@@ -34,7 +36,7 @@ export default function SortableTh({
 				type="button"
 				onClick={() => onSort?.(field)}
 				className="inline-flex items-center gap-1.5 hover:opacity-90 active:opacity-80 select-none focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40 focus-visible:ring-offset-0 rounded-sm"
-				title={`Sort by ${label}`}
+				title={`${t('common.sortBy', { defaultValue: 'Sort by' })} ${label}`}
 			>
 				<span>{label}</span>
 				<Icon size={14} className={active ? 'opacity-100' : 'opacity-60'} />

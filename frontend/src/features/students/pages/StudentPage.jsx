@@ -35,6 +35,8 @@ import { useClientSort } from '../../../shared/hooks/useClientSort';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 
+import { useI18n } from '../../../i18n/I18nProvider';
+
 import { useAuth } from '../../../auth/AuthContext';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { studentKeys } from '../queryKeys';
@@ -42,6 +44,7 @@ import { studentKeys } from '../queryKeys';
 // Student listing page using reusable entity list hook + pagination controls
 export default function StudentPage() {
     const { auth, hasPermission } = useAuth();
+    const { t } = useI18n();
     const queryClient = useQueryClient();
     const isAdmin = String(auth?.user?.role || '').toLowerCase() === 'admin';
     const canAddStudent = isAdmin || hasPermission('students', 'add');
@@ -256,7 +259,7 @@ export default function StudentPage() {
 
     const handleAddNew = () => {
         if (!canAddStudent) {
-            toast.error('You do not have permission to add students');
+            toast.error(t('students.table.permissions.noAdd'));
             return;
         }
         setEditingStudent(null);
@@ -271,7 +274,7 @@ export default function StudentPage() {
     // ------------------------------------------------------------
     const handleEdit = async (student) => {
         if (!canEditStudent) {
-            toast.error('You do not have permission to edit students');
+            toast.error(t('students.table.permissions.noEdit'));
             return;
         }
         // Step 1: Immediate open with basic row data
@@ -302,13 +305,13 @@ export default function StudentPage() {
                 }
                 setEditingStudent(enriched);
             } else {
-                toast.error('Failed to load full student details');
+                toast.error(t('students.table.errors.loadDetailsFailed'));
             }
         } catch (e) {
             try {
                 if (import.meta?.env?.DEV || localStorage.getItem('debug:students') === '1') console.error(e);
             } catch { /* ignore */ }
-            toast.error('Error loading student details');
+            toast.error(t('students.table.errors.loadDetailsError'));
         } finally {
             setLoadingEdit(false);
         }
@@ -321,12 +324,12 @@ export default function StudentPage() {
             setIsSaving(true);
             if (editingStudent) {
                 if (!canEditStudent) {
-                    toast.error('You do not have permission to edit students');
+                    toast.error(t('students.table.permissions.noEdit'));
                     return;
                 }
                 const { ok, status, data } = await updateStudentApi(editingStudent._id, payload);
                 if (ok) {
-                    toast.success('Student updated');
+                    toast.success(t('students.table.toasts.updated'));
                     // Invalidate and warm profile cache for immediate re-edit
                     try { queryClient.removeQueries({ queryKey: studentKeys.adminProfile(editingStudent._id) }); } catch { /* ignore */ }
                     try {
@@ -339,30 +342,30 @@ export default function StudentPage() {
                     closeModal();
                     emitStudentsChanged({ source: 'local', action: 'update', id: String(editingStudent._id), ts: Date.now() });
                 } else {
-                    if (status === 409) toast.error(data.message || 'Conflict updating student');
-                    else toast.error(data.message || 'Update failed');
+                    if (status === 409) toast.error(data.message || t('students.table.errors.conflictUpdate'));
+                    else toast.error(data.message || t('students.table.errors.updateFailed'));
                 }
             } else {
                 if (!canAddStudent) {
-                    toast.error('You do not have permission to add students');
+                    toast.error(t('students.table.permissions.noAdd'));
                     return;
                 }
                 const { ok, status, data } = await createStudent(payload);
                 if (ok) {
-                    toast.success('Student created');
+                    toast.success(t('students.table.toasts.created'));
                     closeModal();
                     emitStudentsChanged({ source: 'local', action: 'create', id: String(data?.student?._id || ''), ts: Date.now() });
                 } else if (status === 409) {
-                    toast.error(data.message || 'Conflict creating student');
+                    toast.error(data.message || t('students.table.errors.conflictCreate'));
                 } else {
-                    toast.error(data.message || 'Error creating student');
+                    toast.error(data.message || t('students.table.errors.createFailed'));
                 }
             }
         } catch (e) {
             try {
                 if (import.meta?.env?.DEV || localStorage.getItem('debug:students') === '1') console.error(e);
             } catch { /* ignore */ }
-            toast.error('Network error');
+            toast.error(t('students.table.errors.network'));
         } finally {
             setIsSaving(false);
         }
@@ -379,7 +382,7 @@ export default function StudentPage() {
 
     const handlePrint = () => {
         if (!canDownloadStudents) {
-            toast.error('You do not have permission to export/print students');
+            toast.error(t('students.table.permissions.noExport'));
             return;
         }
         setTimeout(() => window.print(), 0);
@@ -403,15 +406,15 @@ export default function StudentPage() {
         const isVisible = (key) => visible?.[String(key)] !== false;
 
         const cols = [
-            { key: 'studentId', label: 'Student ID', get: (st) => st.studentId || '' },
-            { key: 'fullName', label: 'Full Name', get: (st) => st.fullName || '' },
-            { key: 'gender', label: 'Gender', get: (st) => st.gender || '' },
-            { key: 'grade', label: 'Grade', get: (st) => st.grade || '' },
-            { key: 'section', label: 'Section', get: (st) => (st.section ? `Sec ${st.section}` : '') },
-            { key: 'academicYear', label: 'Academic Year', get: (st) => st.academicYear || '' },
-            { key: 'shift', label: 'Shift', get: (st) => st.shift || '' },
-            { key: 'status', label: 'Status', get: (st) => st.status || '' },
-            { key: 'contact', label: 'Contact', get: (st) => st.contactNumber || '' },
+            { key: 'studentId', label: t('students.table.columns.studentId'), get: (st) => st.studentId || '' },
+            { key: 'fullName', label: t('students.table.columns.fullName'), get: (st) => st.fullName || '' },
+            { key: 'gender', label: t('students.table.columns.gender'), get: (st) => st.gender || '' },
+            { key: 'grade', label: t('students.table.columns.grade'), get: (st) => st.grade || '' },
+            { key: 'section', label: t('students.table.columns.section'), get: (st) => (st.section ? `${t('students.export.sectionPrefix')} ${st.section}` : '') },
+            { key: 'academicYear', label: t('students.table.columns.academicYear'), get: (st) => st.academicYear || '' },
+            { key: 'shift', label: t('students.table.columns.shift'), get: (st) => st.shift || '' },
+            { key: 'status', label: t('students.table.columns.status'), get: (st) => st.status || '' },
+            { key: 'contact', label: t('students.table.columns.contact'), get: (st) => st.contactNumber || '' },
             // actions are UI-only; never export
         ].filter((c) => isVisible(c.key));
 
@@ -419,29 +422,29 @@ export default function StudentPage() {
         const rows = (students || []).map((st) => cols.map((c) => c.get(st)));
 
         const gs = (sections || []).find(s => String(s._id) === String(gradeSectionFilter));
-        const secName = gs?.section ? `Sec ${gs.section}` : (gs?.sectionName || '');
-        const cohortLabel = cohortId ? ((students || [])[0]?.cohort || 'selected') : '';
+        const secName = gs?.section ? `${t('students.export.sectionPrefix')} ${gs.section}` : (gs?.sectionName || '');
+        const cohortLabel = cohortId ? ((students || [])[0]?.cohort || t('students.export.selected')) : '';
 
         const subtitleParts = [
-            yearFilter ? `Academic Year: ${years.find(y => String(y._id) === String(yearFilter))?.yearName || ''}` : null,
-            gradeFilter ? `Grade: ${grades.find(g => String(g._id) === String(gradeFilter))?.gradeName || ''}` : null,
-            shiftFilter ? `Shift: ${shifts.find(s => String(s._id) === String(shiftFilter))?.shiftName || ''}` : null,
-            gradeSectionFilter ? (secName ? `Section: ${secName}` : 'Section: selected') : null,
-            statusFilter ? `Status: ${statusFilter}` : null,
-            cohortId ? `Cohort: ${cohortLabel}` : null,
+            yearFilter ? `${t('students.export.labels.academicYear')}: ${years.find(y => String(y._id) === String(yearFilter))?.yearName || ''}` : null,
+            gradeFilter ? `${t('students.export.labels.grade')}: ${grades.find(g => String(g._id) === String(gradeFilter))?.gradeName || ''}` : null,
+            shiftFilter ? `${t('students.export.labels.shift')}: ${shifts.find(s => String(s._id) === String(shiftFilter))?.shiftName || ''}` : null,
+            gradeSectionFilter ? (secName ? `${t('students.export.labels.section')}: ${secName}` : `${t('students.export.labels.section')}: ${t('students.export.selected')}`) : null,
+            statusFilter ? `${t('students.export.labels.status')}: ${statusFilter}` : null,
+            cohortId ? `${t('students.export.labels.cohort')}: ${cohortLabel}` : null,
             // Per request: do not include Enrollment in PDF/exports
         ].filter(Boolean);
 
         return {
-            filename: 'students.pdf',
-            sheetName: 'Students',
+            filename: t('students.export.filename'),
+            sheetName: t('students.export.sheetName'),
             title: '',
             subtitle: subtitleParts.join(' • '),
             headerImageSrc: headerImg,
             headers,
             rows,
         };
-    }, [canExport, students, sections, gradeSectionFilter, cohortId, yearFilter, gradeFilter, shiftFilter, statusFilter, years, grades, shifts]);
+    }, [canExport, students, sections, gradeSectionFilter, cohortId, yearFilter, gradeFilter, shiftFilter, statusFilter, years, grades, shifts, t]);
 
     const handleReset = () => {
         setYearFilter('');
@@ -455,21 +458,21 @@ export default function StudentPage() {
     };
 
     return (
-        <div className="space-y-6 with-print-header with-print-footer">
+        <div className="space-y-6 with-print-header with-print-footer print-fit-wide">
             <PrintHeader />
-            <PrintFooter left="Generated by Nuuru Al-Bayaan" />
+            <PrintFooter left={t('common.generatedBy')} />
 
             <EnrollmentCohortToolbar
                 enrollmentStatus={enrollmentStatus}
                 enrollmentStatusOptions={[
-                    { value: 'open', label: 'Open' },
-                    { value: 'active', label: 'Active' },
-                    { value: 'inactive', label: 'Inactive' },
-                    { value: 'promoted', label: 'Promoted' },
-                    { value: 'graduated', label: 'Graduated' },
-                    { value: 'transferred', label: 'Transferred' },
-                    { value: 'withdrawn', label: 'Withdrawn' },
-                    { value: 'all', label: 'All' },
+                    { value: 'open', label: t('students.enrollmentStatus.open') },
+                    { value: 'active', label: t('students.enrollmentStatus.active') },
+                    { value: 'inactive', label: t('students.enrollmentStatus.inactive') },
+                    { value: 'promoted', label: t('students.enrollmentStatus.promoted') },
+                    { value: 'graduated', label: t('students.enrollmentStatus.graduated') },
+                    { value: 'transferred', label: t('students.enrollmentStatus.transferred') },
+                    { value: 'withdrawn', label: t('students.enrollmentStatus.withdrawn') },
+                    { value: 'all', label: t('students.enrollmentStatus.all') },
                 ]}
                 onEnrollmentStatusChange={(v) => { setEnrollmentStatus(v || 'open'); setPage(1); }}
                 cohortId={cohortId}
@@ -483,7 +486,7 @@ export default function StudentPage() {
                         setEnrollmentStatus('all');
                     }
                 }}
-                cohortPlaceholder="Cohort (optional)"
+                cohortPlaceholder={t('students.cohortOptional')}
                 cohortSelectId="students-cohort"
                 cohortSelectName="students-cohort"
                 cohortSelectProps={{ searchable: true, maxVisible: 5 }}
@@ -495,18 +498,18 @@ export default function StudentPage() {
                     {/* Row 1: Search + selections (left) */}
                     <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3">
                         <div className="w-full md:max-w-xs grow">
-                            <SearchInput value={searchTerm} onChange={setSearch} placeholder="Search by name or ID..." />
+                            <SearchInput value={searchTerm} onChange={setSearch} placeholder={t('students.searchPlaceholder')} />
                         </div>
 
                         <FilterRow className="flex-1">
                             <FilterItem grow minWidthClass="sm:min-w-40">
                                 <AcademicYearSelect
-                                    placeholder="Academic Year"
+                                    placeholder={t('students.filters.academicYear')}
                                     value={yearFilter}
                                     onChange={(v)=>{ setYearFilter(v); setPage(1); }}
                                     searchable
                                     maxVisible={5}
-                                    searchPlaceholder="Search academic years…"
+                                    searchPlaceholder={t('students.filters.searchAcademicYears')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -515,7 +518,7 @@ export default function StudentPage() {
                                 <DropdownSelect
                                     value={gradeFilter}
                                     onChange={(v)=>{ setGradeFilter(v); setPage(1); }}
-                                    placeholder="Grade"
+                                    placeholder={t('students.filters.grade')}
                                     options={[...(grades || [])]
                                         .sort((a, b) => {
                                             const at = a?.createdAt ? new Date(a.createdAt).getTime() : Number.POSITIVE_INFINITY;
@@ -530,7 +533,7 @@ export default function StudentPage() {
                                 <FilterDropdownSelect
                                     value={shiftFilter}
                                     onChange={(v)=>{ setShiftFilter(v); setPage(1); }}
-                                    placeholder="Shift"
+                                    placeholder={t('students.filters.shift')}
                                     options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
                                     maxVisible={5}
                                 />
@@ -540,7 +543,7 @@ export default function StudentPage() {
                                 <FilterDropdownSelect
                                     value={gradeSectionFilter}
                                     onChange={(v)=>{ setGradeSectionFilter(v); setPage(1); }}
-                                    placeholder="Section"
+                                    placeholder={t('students.filters.section')}
                                     disabled={!gradeFilter || !shiftFilter}
                                     options={(sections || []).map((gs) => {
                                         const gradeName = gs?.grade?.gradeName;
@@ -550,13 +553,13 @@ export default function StudentPage() {
                                         const tail = [yearName, shiftName].filter(Boolean).join(' - ');
                                         const label = [
                                             gradeName ? `${gradeName}` : null,
-                                            sectionNum ? `Sec ${sectionNum}` : null,
+                                            sectionNum ? `${t('students.export.sectionPrefix')} ${sectionNum}` : null,
                                             tail ? `(${tail})` : null,
                                         ].filter(Boolean).join(' - ');
-                                        return { value: gs._id, label: label || gs.sectionName || 'Section' };
+                                        return { value: gs._id, label: label || gs.sectionName || t('students.filters.section') };
                                     })}
                                     maxVisible={5}
-                                    searchPlaceholder="Type to search sections…"
+                                    searchPlaceholder={t('students.filters.searchSections')}
                                 />
                             </FilterItem>
 
@@ -564,11 +567,11 @@ export default function StudentPage() {
                                 <DropdownSelect
                                     value={statusFilter}
                                     onChange={(v) => { setStatusFilter(v); setPage(1); }}
-                                    placeholder="Status"
+                                    placeholder={t('students.filters.status')}
                                     options={[
-                                        { value: '', label: 'All' },
-                                        { value: 'Active', label: 'Active' },
-                                        { value: 'Inactive', label: 'Inactive' },
+                                        { value: '', label: t('students.filters.all') },
+                                        { value: 'Active', label: t('students.filters.active') },
+                                        { value: 'Inactive', label: t('students.filters.inactive') },
                                     ]}
                                 />
                             </FilterItem>
@@ -585,7 +588,7 @@ export default function StudentPage() {
                                 icon={<Plus size={20} />}
                                 className="w-full sm:w-auto justify-center"
                             >
-                                Add New Student
+                                {t('students.addNew')}
                             </Button>
                         )}
 
@@ -596,10 +599,10 @@ export default function StudentPage() {
                                         variant="neutral"
                                         className={outlineBtn}
                                         onClick={handlePrint}
-                                        title="Print"
+                                        title={t('common.actions.print')}
                                         icon={<Printer size={16} />}
                                     >
-                                        Print
+                                        {t('common.actions.print')}
                                     </ActionButton>
 
                                     <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
@@ -613,10 +616,10 @@ export default function StudentPage() {
                                 variant="neutral"
                                 className={outlineBtn}
                                 onClick={handleReset}
-                                title="Reset filters"
+                                title={t('students.resetFilters')}
                                 icon={<RotateCcw size={16} />}
                             >
-                                Reset
+                                {t('common.actions.reset')}
                             </ActionButton>
                         </div>
                     </div>
@@ -626,13 +629,13 @@ export default function StudentPage() {
                 isLoading={isLoading && students.length === 0}
                 error={error}
                 items={students}
-                loadingMessage="Loading students..."
+                loadingMessage={t('students.table.loading')}
                 loadingVariant="table"
                 loadingRows={6}
                 loadingColumns={8}
-                emptyTitle="No students found"
-                emptyDescription="Try adjusting filters or add a new student."
-                emptyActionLabel="Add Student"
+                emptyTitle={t('students.table.emptyTitle')}
+                emptyDescription={t('students.table.emptyDescription')}
+                emptyActionLabel={t('students.table.emptyAction')}
                 onEmptyAction={canAddStudent ? handleAddNew : undefined}
                 onRetry={refresh}
             >
@@ -656,11 +659,11 @@ export default function StudentPage() {
                 showRowsSelector={false}
             />
 
-            <Modal isOpen={isModalOpen} onClose={closeModal} title={editingStudent ? 'Edit Student' : 'Add New Student'}>
+            <Modal isOpen={isModalOpen} onClose={closeModal} title={editingStudent ? t('students.editTitle') : t('students.addTitle')}>
                 <div className="relative">
                     {loadingEdit && (
                         <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 text-sm text-gray-600">
-                            Loading full details...
+                            {t('students.loadingFullDetails')}
                         </div>
                     )}
                     <StudentForm student={editingStudent} onClose={closeModal} onSubmit={handleSubmit} classes={classes} submitting={isSaving} />

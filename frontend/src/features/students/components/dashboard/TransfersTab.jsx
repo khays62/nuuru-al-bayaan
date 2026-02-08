@@ -11,10 +11,12 @@ import Button from '../../../../shared/components/ui/Button.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 export default function TransfersTab() {
   const { studentId: paramStudentId } = useParams();
   const { auth } = useAuth();
+  const { t } = useI18n();
 
   const rawStudentRef = auth?.user?.studentRef;
   const studentRefId = rawStudentRef?._id || rawStudentRef || null;
@@ -31,27 +33,27 @@ export default function TransfersTab() {
 
   const items = transfersQuery.data || [];
   const loading = transfersQuery.isLoading;
-  const error = transfersQuery.isError ? 'Failed to load transfers' : null;
+  const error = transfersQuery.isError ? t('students.transfersTab.loadFailed') : null;
 
   return (
     <Card className="p-4">
-      <h2 className="text-lg font-medium mb-2">Transfers</h2>
+      <h2 className="text-lg font-medium mb-2">{t('nav.transfers')}</h2>
       {loading && (
         <div className="py-6">
-          <LoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+          <LoadingState label={t('common.loading')} className="border-0 bg-transparent p-0 justify-start" />
         </div>
       )}
       {error && (
         <Alert variant="danger" className="py-3 flex items-center justify-between gap-3">
           <span>{error}</span>
           <Button type="button" size="sm" variant="brand" onClick={() => transfersQuery.refetch()}>
-            Retry
+            {t('common.retry')}
           </Button>
         </Alert>
       )}
       {!loading && !error && (
         items.length === 0 ? (
-          <EmptyState title="No transfers" description="This student has no transfer history yet." />
+          <EmptyState title={t('students.transfersTab.emptyTitle')} description={t('students.transfersTab.emptyDescription')} />
         ) : (
           <TransferTimeline logs={items} />
         )

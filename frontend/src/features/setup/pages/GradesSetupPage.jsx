@@ -1,17 +1,24 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, RotateCcw, Printer } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 import ListPageShell from '../../../shared/components/ui/ListPageShell.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
-import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
-import ExportButtons from '../../../shared/components/exports/ExportButtons.jsx';
+import PdfDownloadButton from '../../../shared/components/exports/downloadButtons/PdfDownloadButton.jsx';
+import ExcelDownloadButton from '../../../shared/components/exports/downloadButtons/ExcelDownloadButton.jsx';
+import CsvDownloadButton from '../../../shared/components/exports/downloadButtons/CsvDownloadButton.jsx';
+import CopyTableButton from '../../../shared/components/exports/downloadButtons/CopyTableButton.jsx';
+import headerImg from '../../../assets/nuuruBayaanHeader.png';
+import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
+import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 
 import GradeSetupForm from '../components/GradeSetupForm.jsx';
 
@@ -156,21 +163,48 @@ export default function GradesSetupPage() {
     deleteMut.mutate(row._id);
   };
 
-  const exportPayload = async () => {
-    const headers = ['Grade', 'Order', 'Updated'];
-    const rows = (sorted || []).map((g) => ([
-      g?.gradeName || '',
-      Number.isFinite(Number(g?.order)) ? String(g.order) : '',
-      g?.updatedAt ? new Date(g.updatedAt).toLocaleDateString() : '',
-    ]));
+  const isLoading = Boolean(query.isLoading && query.data == null);
+  const canExport = Boolean(!isLoading && Array.isArray(sorted) && sorted.length > 0);
+  const buildExportPayload = async () => {
+    if (!canExport) return null;
+
+    // Export should match the currently visible table columns (excluding actions).
+    const STORAGE_KEY = 'setup:grades:columns:v1';
+    let visible = {};
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') visible = parsed;
+      }
+    } catch { /* ignore */ }
+    const isVisible = (key) => visible?.[String(key)] !== false;
+
+    const dtf = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+    const cols = [
+      { key: 'gradeName', label: 'Grade', get: (g) => g?.gradeName || '' },
+      { key: 'order', label: 'Order', get: (g) => (Number.isFinite(Number(g?.order)) ? String(g.order) : '') },
+      { key: 'updatedAt', label: 'Updated', get: (g) => (g?.updatedAt ? dtf.format(new Date(g.updatedAt)) : '') },
+      // actions are UI-only; never export
+    ].filter((c) => isVisible(c.key));
+
+    const headers = cols.map((c) => c.label);
+    const rows = (sorted || []).map((g) => cols.map((c) => c.get(g)));
 
     return {
-      filename: 'setup-grades',
-      title: 'Setup • Grades',
+      filename: 'setup-grades.pdf',
+      sheetName: 'Grades',
+      title: '',
       subtitle: `Total: ${sorted.length} • Generated: ${new Date().toLocaleString()}`,
+      headerImageSrc: headerImg,
       headers,
       rows,
     };
+  };
+
+  const handlePrint = () => {
+    if (!canExport) return;
+    setTimeout(() => window.print(), 0);
   };
 
   const onSort = (field) => {
@@ -188,124 +222,164 @@ export default function GradesSetupPage() {
     setSortBy((prev) => (String(prev || '') === nextField ? prev : nextField));
   };
 
+  const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
+  const onReset = () => {
+    setSearch('');
+    setSortBy('order');
+    setSortDir('asc');
+    setPage(1);
+    setLimit(20);
+  };
+
   return (
     <ListPageShell
-      title="Setup • Grades"
-      actions={
-        <Button variant="brand" icon={<Plus className="h-4 w-4" />} onClick={onAdd}>
-          Add Grade
-        </Button>
-      }
+      title={null}
+      actions={null}
       toolbar={(
-        <DataToolbar
-          searchSlot={(
-            <SearchInput
-              value={search}
-              onChange={(v) => {
-                setSearch(v);
-                setPage(1);
-              }}
-              placeholder="Search grades..."
-            />
-          )}
-          actionsSlot={(
-            <ExportButtons
-              getPayload={exportPayload}
-              disabled={query.isLoading || sorted.length === 0}
-            />
-          )}
-          onReset={() => {
-            setSearch('');
-            setSortBy('order');
-            setSortDir('asc');
-            setPage(1);
-            setLimit(20);
-          }}
-        />
+        <Card className="p-4 no-print">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div className="w-full lg:max-w-lg">
+                <SearchInput
+                  value={search}
+                  onChange={(v) => {
+                    setSearch(v);
+                    setPage(1);
+                  }}
+                  placeholder="Search grades..."
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="w-full sm:w-auto">
+                <Button
+                  variant="brand"
+                  size="lg"
+                  className="w-full sm:w-auto justify-center"
+                  onClick={onAdd}
+                  icon={<Plus size={20} />}
+                >
+                  Add Grade
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <ActionButton
+                  variant="brand"
+                  className={outlineBtn}
+                  icon={<Printer size={16} />}
+                  disabled={!canExport}
+                  onClick={handlePrint}
+                  title="Print"
+                >
+                  Print
+                </ActionButton>
+                <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                <ActionButton
+                  variant="neutral"
+                  className={outlineBtn}
+                  icon={<RotateCcw size={16} />}
+                  onClick={onReset}
+                >
+                  Reset
+                </ActionButton>
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
     >
-      <StandardTable
-        isLoading={query.isLoading && grades.length === 0}
-        error={query.error}
-        items={sorted}
-        loadingMessage="Loading grades..."
-        loadingVariant="table"
-        loadingRows={6}
-        loadingColumns={3}
-        emptyTitle="No grades found"
-        emptyDescription={search ? 'Try a different search.' : 'Create your first grade.'}
-        emptyActionLabel="Add Grade"
-        onEmptyAction={onAdd}
-        onRetry={() => query.refetch()}
+      <div className="space-y-6 with-print-header with-print-footer">
+        <PrintHeader />
+        <PrintFooter left="Generated by Nuuru Al-Bayaan" />
 
-        rows={currentRows}
-        columns={columns}
-        storageKey="setup:grades:columns:v1"
-        sortBy={sortBy}
-        sortDir={sortDir}
-        onSort={onSort}
-        controlsProps={{
-          limit,
-          total: sorted.length,
-          onLimit: (v) => {
+        <StandardTable
+          isLoading={query.isLoading && grades.length === 0}
+          error={query.error}
+          items={sorted}
+          loadingMessage="Loading grades..."
+          loadingVariant="table"
+          loadingRows={6}
+          loadingColumns={3}
+          emptyTitle="No grades found"
+          emptyDescription={search ? 'Try a different search.' : 'Create your first grade.'}
+          emptyActionLabel="Add Grade"
+          onEmptyAction={onAdd}
+          onRetry={() => query.refetch()}
+
+          rows={currentRows}
+          columns={columns}
+          storageKey="setup:grades:columns:v1"
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={onSort}
+          controlsProps={{
+            limit,
+            total: sorted.length,
+            onLimit: (v) => {
+              const next = Math.max(1, Number(v) || 20);
+              setLimit(next);
+              setPage(1);
+            },
+            limits: [10, 20, 30, 50, 100, 'all'],
+          }}
+          getRowKey={(g) => g._id}
+          renderCell={(g, col) => {
+            switch (col.key) {
+              case 'gradeName':
+                return g?.gradeName || '-';
+              case 'order':
+                return Number.isFinite(Number(g?.order)) ? String(g.order) : '-';
+              case 'updatedAt':
+                return g?.updatedAt ? new Date(g.updatedAt).toLocaleDateString() : '-';
+              case 'actions':
+                return (
+                  <RowActionButtons
+                    actions={[
+                      {
+                        key: 'edit',
+                        label: 'Edit',
+                        title: 'Edit grade',
+                        tone: 'edit',
+                        icon: <Pencil size={16} />,
+                        disabled: createMut.isPending || updateMut.isPending,
+                        onClick: () => onEdit(g),
+                      },
+                      {
+                        key: 'delete',
+                        label: 'Delete',
+                        title: 'Delete grade',
+                        tone: 'delete',
+                        icon: <Trash2 size={16} />,
+                        disabled: deleteMut.isPending,
+                        onClick: () => onDelete(g),
+                      },
+                    ]}
+                  />
+                );
+              default:
+                return '';
+            }
+          }}
+
+          page={page}
+          totalPages={totalPages}
+          limit={limit}
+          total={sorted.length}
+          onPage={(p) => setPage(p)}
+          onLimit={(v) => {
             const next = Math.max(1, Number(v) || 20);
             setLimit(next);
             setPage(1);
-          },
-          limits: [10, 20, 30, 50, 100, 'all'],
-        }}
-        getRowKey={(g) => g._id}
-        renderCell={(g, col) => {
-          switch (col.key) {
-            case 'gradeName':
-              return g?.gradeName || '-';
-            case 'order':
-              return Number.isFinite(Number(g?.order)) ? String(g.order) : '-';
-            case 'updatedAt':
-              return g?.updatedAt ? new Date(g.updatedAt).toLocaleDateString() : '-';
-            case 'actions':
-              return (
-                <RowActionButtons
-                  actions={[
-                    {
-                      key: 'edit',
-                      label: 'Edit',
-                      title: 'Edit grade',
-                      tone: 'edit',
-                      icon: <Pencil size={16} />,
-                      disabled: createMut.isPending || updateMut.isPending,
-                      onClick: () => onEdit(g),
-                    },
-                    {
-                      key: 'delete',
-                      label: 'Delete',
-                      title: 'Delete grade',
-                      tone: 'delete',
-                      icon: <Trash2 size={16} />,
-                      disabled: deleteMut.isPending,
-                      onClick: () => onDelete(g),
-                    },
-                  ]}
-                />
-              );
-            default:
-              return '';
-          }
-        }}
-
-        page={page}
-        totalPages={totalPages}
-        limit={limit}
-        total={sorted.length}
-        onPage={(p) => setPage(p)}
-        onLimit={(v) => {
-          const next = Math.max(1, Number(v) || 20);
-          setLimit(next);
-          setPage(1);
-        }}
-        showRowsSelector={false}
-        paginationProps={{ className: 'no-print', infoVariant: 'page' }}
-      />
+          }}
+          showRowsSelector={false}
+          paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+        />
+      </div>
 
       <Modal
         isOpen={open}

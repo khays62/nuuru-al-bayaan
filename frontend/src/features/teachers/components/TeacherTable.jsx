@@ -4,6 +4,7 @@ import { Eye, KeyRound, ListChecks, Pencil, RotateCcw, Trash2 } from 'lucide-rea
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function TeacherTable({
   items = [],
@@ -25,6 +26,8 @@ export default function TeacherTable({
 }) {
   const STORAGE_KEY = 'teachers:columns:v1';
 
+  const { t } = useI18n();
+
   const { auth, hasPermission } = useAuth();
   const roleLower = String(auth?.user?.role || '').toLowerCase();
   const isAdmin = roleLower === 'admin';
@@ -37,26 +40,26 @@ export default function TeacherTable({
   const canResetPassword = isAdmin || hasPermission('teachers', 'resetPassword');
 
   const columns = useMemo(() => ([
-    { key: 'name', label: 'Name', sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-    { key: 'teacherId', label: 'Teacher ID', sortable: true, field: 'teacherId' },
-    { key: 'email', label: 'Email', sortable: true, field: 'email' },
-    { key: 'phone', label: 'Phone', sortable: true, field: 'phone' },
-    { key: 'createdAt', label: 'Created', sortable: true, field: 'createdAt' },
-    { key: 'status', label: 'Status', sortable: true, field: 'status', tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
-    { key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
-  ]), []);
+    { key: 'name', label: t('teachers.table.columns.name'), sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+    { key: 'teacherId', label: t('teachers.table.columns.teacherId'), sortable: true, field: 'teacherId' },
+    { key: 'email', label: t('teachers.table.columns.email'), sortable: true, field: 'email' },
+    { key: 'phone', label: t('teachers.table.columns.phone'), sortable: true, field: 'phone' },
+    { key: 'createdAt', label: t('teachers.table.columns.createdAt'), sortable: true, field: 'createdAt' },
+    { key: 'status', label: t('teachers.table.columns.status'), sortable: true, field: 'status', tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
+    { key: 'actions', label: t('teachers.table.columns.actions'), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
+  ]), [t]);
 
   return (
     <StandardTable
       isLoading={isLoading}
       error={error}
       items={items}
-      loadingMessage="Loading teachers..."
+      loadingMessage={t('teachers.table.loading')}
       loadingVariant="table"
       loadingRows={6}
       loadingColumns={7}
-      emptyTitle="No teachers."
-      emptyDescription="Try adjusting search or add a new teacher."
+      emptyTitle={t('teachers.table.emptyTitle')}
+      emptyDescription={t('teachers.table.emptyDescription')}
 
       rows={rows}
       columns={columns}
@@ -74,25 +77,34 @@ export default function TeacherTable({
             }
           : undefined
       }
-      getRowKey={(t) => t._id || t.id}
-      renderCell={(t, col) => {
+      getRowKey={(row) => row?._id || row?.id}
+      renderCell={(row, col) => {
         switch (col.key) {
           case 'name':
-            return t.fullName || `${t.firstName || ''} ${t.lastName || ''}`.trim() || '-';
+            return row.fullName || `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-';
           case 'teacherId':
-            return t.teacherId || '-';
+            return row.teacherId || '-';
           case 'email':
-            return t.email || '-';
+            return row.email || '-';
           case 'phone':
-            return t.phone || '-';
+            return row.phone || '-';
           case 'createdAt':
-            return t.createdAt
-              ? new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(t.createdAt))
+            return row.createdAt
+              ? new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(row.createdAt))
               : '-';
           case 'status':
+            {
+              const statusNorm = String(row.status || '').toLowerCase();
+              const label =
+                statusNorm === 'active'
+                  ? t('common.status.active')
+                  : statusNorm === 'inactive'
+                    ? t('common.status.inactive')
+                    : (row.status || '-');
             return (
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ring-1 ${t.status === 'active' ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>{t.status || '-'}</span>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ring-1 ${row.status === 'active' ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>{label}</span>
             );
+            }
           case 'actions':
             return (
               <RowActionButtons
@@ -100,68 +112,68 @@ export default function TeacherTable({
                   canView
                     ? {
                         key: 'view',
-                        label: 'View',
-                        title: 'View teacher profile & audit history',
+                        label: t('teachers.table.actions.view'),
+                        title: t('teachers.table.actionTitles.viewProfile'),
                         tone: 'view',
                         icon: <Eye size={16} />,
-                        onClick: () => onView?.(t),
+                        onClick: () => onView?.(row),
                       }
                     : null,
                   canResetPassword
                     ? {
                         key: 'resetPassword',
-                        label: 'Reset Password',
-                        title: 'Reset password to default (clears 24h lock/cooldown)',
+                        label: t('teachers.table.actions.resetPassword'),
+                        title: t('teachers.table.actionTitles.resetPasswordDefault'),
                         tone: 'edit',
                         icon: <KeyRound size={16} />,
                         disabled:
-                          Boolean(pendingById?.[t._id || t.id]) ||
-                          String(t.status || '').toLowerCase() === 'inactive',
-                        onClick: () => onResetPassword?.(t),
+                          Boolean(pendingById?.[row._id || row.id]) ||
+                          String(row.status || '').toLowerCase() === 'inactive',
+                        onClick: () => onResetPassword?.(row),
                       }
                     : null,
                   canAssign
                     ? {
                         key: 'assign',
-                        label: 'Assignments',
-                        title: 'Assignments',
+                        label: t('teachers.table.actions.assignments'),
+                        title: t('teachers.table.actions.assignments'),
                         tone: 'view',
                         showLabel: true,
                         icon: <ListChecks size={16} />,
-                        onClick: () => onAssign?.(t),
+                        onClick: () => onAssign?.(row),
                       }
                     : null,
                   canEdit
                     ? {
                         key: 'edit',
-                        label: 'Edit',
-                        title: 'Edit Teacher',
+                        label: t('teachers.table.actions.edit'),
+                        title: t('teachers.table.actionTitles.editTeacher'),
                         tone: 'edit',
                         icon: <Pencil size={16} />,
-                        onClick: () => onEdit?.(t),
+                        onClick: () => onEdit?.(row),
                       }
                     : null,
-                  t.status === 'inactive'
+                  row.status === 'inactive'
                     ? (canReactivate
                         ? {
                             key: 'reactivate',
-                            label: 'Reactivate',
-                            title: 'Reactivate Teacher',
+                            label: t('teachers.table.actions.reactivate'),
+                            title: t('teachers.table.actionTitles.reactivateTeacher'),
                             tone: 'view',
                             icon: <RotateCcw size={16} />,
-                            disabled: Boolean(pendingById?.[t._id || t.id]),
-                            onClick: () => onToggleStatus?.(t),
+                            disabled: Boolean(pendingById?.[row._id || row.id]),
+                            onClick: () => onToggleStatus?.(row),
                           }
                         : null)
                     : (canDeactivate
                         ? {
                             key: 'deactivate',
-                            label: 'Deactivate',
-                            title: 'Deactivate Teacher',
+                            label: t('teachers.table.actions.deactivate'),
+                            title: t('teachers.table.actionTitles.deactivateTeacher'),
                             tone: 'delete',
                             icon: <Trash2 size={16} />,
-                            disabled: Boolean(pendingById?.[t._id || t.id]),
-                            onClick: () => onToggleStatus?.(t),
+                            disabled: Boolean(pendingById?.[row._id || row.id]),
+                            onClick: () => onToggleStatus?.(row),
                           }
                         : null),
                 ]}

@@ -141,6 +141,7 @@ export default function SubjectTable({
             onPage={onPage}
             onLimit={onLimit}
             showRowsSelector={false}
+            paginationProps={{ className: 'no-print', infoVariant: 'page' }}
         />
     );
 }

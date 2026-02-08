@@ -8,8 +8,10 @@ import { useAuth } from '../../../auth/AuthContext';
 import Badge from '../ui/Badge.jsx';
 import { useAnnouncementsUnread } from '../../../features/announcements/hooks/useAnnouncementsUnread';
 import { MODULE_PERMISSIONS } from '../../auth/permissionContract.js';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu }) {
+  const { isRTL, t } = useI18n();
   const navLinkClasses = ({ isActive }) =>
     `flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${
       isActive ? 'bg-(--nb-color-brand) text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
@@ -179,7 +181,10 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
       const Icon = item.icon;
       const hasChildren = Array.isArray(item.children) && item.children.length;
 
-      const group = String(item.group || '');
+      const itemLabel = item.labelKey ? t(item.labelKey, { defaultValue: item.label }) : item.label;
+      const itemGroup = item.groupKey ? t(item.groupKey, { defaultValue: item.group }) : item.group;
+
+      const group = String(itemGroup || '');
       const shouldRenderHeader = showGroupHeaders && group && group !== lastGroup;
       if (shouldRenderHeader) lastGroup = group;
 
@@ -212,26 +217,32 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
               title={collapsed ? item.label : ''}
             >
               {Icon ? <Icon size={22} /> : null}
-              {!collapsed ? <span className="ml-4 flex-1 text-left">{item.label}</span> : null}
+			  {!collapsed ? <span className="ms-4 flex-1 text-start">{itemLabel}</span> : null}
               {!collapsed ? (isOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />) : null}
             </button>
 
             {isOpen && !collapsed ? (
-              <div className="ml-6 border-l border-gray-700 pl-2">
-                {item.children.map((child) => (
-                  <NavLink
-                    key={child.key || child.path}
-                    to={child.path}
-                    className={({ isActive }) =>
-                      `flex items-center p-2 my-1 rounded-md transition-colors duration-200 ${
-                        isActive ? 'bg-(--nb-color-brand) text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                      }`
-                    }
-                    onClick={isMobile ? onMobileNavClick : undefined}
-                  >
-                    <span className="ml-2 text-sm">{child.label}</span>
-                  </NavLink>
-                ))}
+              <div className="ms-6 border-s border-gray-700 ps-2">
+                {item.children.map((child) => {
+                  const childLabel = child.labelKey
+                    ? t(child.labelKey, { defaultValue: child.label })
+                    : child.label;
+
+                  return (
+                    <NavLink
+                      key={child.key || child.path}
+                      to={child.path}
+                      className={({ isActive }) =>
+                        `flex items-center p-2 my-1 rounded-md transition-colors duration-200 ${
+                          isActive ? 'bg-(--nb-color-brand) text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                        }`
+                      }
+                      onClick={isMobile ? onMobileNavClick : undefined}
+                    >
+                      <span className="ms-2 text-sm">{childLabel}</span>
+                    </NavLink>
+                  );
+                })}
               </div>
             ) : null}
           </div>
@@ -257,8 +268,8 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         >
           {Icon ? <Icon size={22} className="shrink-0" /> : null}
           {!collapsed ? (
-            <span className="ml-4 flex-1 flex items-center justify-between gap-2">
-              <span>{item.label}</span>
+            <span className="ms-4 flex-1 flex items-center justify-between gap-2">
+              <span>{itemLabel}</span>
               {isAnnouncements && announcementsUnread > 0 ? (
                 <Badge variant="danger" className="px-2 py-0.5 text-[11px]">{announcementsUnread}</Badge>
               ) : null}
@@ -266,7 +277,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
           ) : (
             // Collapsed: still show a tiny dot for unread
             isAnnouncements && announcementsUnread > 0 ? (
-              <span className="ml-1 inline-block w-2 h-2 rounded-full bg-red-500" />
+              <span className="ms-1 inline-block w-2 h-2 rounded-full bg-red-500" />
             ) : null
           )}
           </NavLink>
@@ -282,7 +293,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         <Link to={homePath} className="flex items-center justify-center h-16 border-b border-gray-700 px-4 hover:bg-gray-700 transition-colors">
           <img src={logo} alt="Nuuru Al-Bayaan Logo" className={`h-10 transition-all shrink-0 ${isCollapsed ? 'w-10' : 'w-auto'}`} />
           {!isCollapsed ? (
-            <span className="ml-3 font-semibold text-lg whitespace-nowrap overflow-hidden">Nuuru Al-Bayaan</span>
+            <span className="ms-3 font-semibold text-lg whitespace-nowrap overflow-hidden">Nuuru Al-Bayaan</span>
           ) : null}
         </Link>
 
@@ -292,10 +303,15 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
       </aside>
 
       {/* Sidebar for Mobile */}
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-gray-800 text-white flex-col z-30 transition-transform duration-300 ease-in-out md:hidden flex no-print ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={
+        `fixed top-0 ${isRTL ? 'right-0' : 'left-0'} h-full w-64 bg-gray-800 text-white flex-col z-30 transition-transform duration-300 ease-in-out md:hidden flex no-print ` +
+        (isMobileMenuOpen
+          ? 'translate-x-0'
+          : (isRTL ? 'translate-x-full' : '-translate-x-full'))
+      }>
         <Link to={homePath} onClick={onMobileNavClick} className="flex items-center justify-center h-16 border-b border-gray-700 px-4 shrink-0">
           <img src={logo} alt="Nuuru Al-Bayaan Logo" className="h-10" />
-          <span className="ml-3 font-semibold text-lg">Nuuru Al-Bayaan</span>
+          <span className="ms-3 font-semibold text-lg">Nuuru Al-Bayaan</span>
         </Link>
 
         <nav className="flex-1 px-4 py-4 overflow-y-auto">

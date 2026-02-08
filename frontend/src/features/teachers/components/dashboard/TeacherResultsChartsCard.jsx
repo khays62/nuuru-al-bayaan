@@ -15,6 +15,7 @@ import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { getExamSummaryAbort, getExamTypes } from '../../../exams/api/exams';
 import { teacherKeys } from '../../queryKeys';
 import { getSessionSignal } from '../../../../api/sessionAbort';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
   return (
@@ -136,6 +137,7 @@ const ExamTypeBarChart = ({ rows }) => {
 };
 
 export default function TeacherResultsChartsCard() {
+  const { t } = useI18n();
   const { auth } = useAuth();
   const isTeacher = String(auth?.user?.role || '').toLowerCase() === 'teacher';
   const teacherRef = String(auth?.user?.teacherRef || '');
@@ -180,7 +182,9 @@ export default function TeacherResultsChartsCard() {
 
   const teacherAssignments = assignmentsQuery.data || [];
   const assignmentsLoading = assignmentsQuery.isLoading;
-  const assignmentsError = assignmentsQuery.isError ? 'Failed to load teacher assignments.' : '';
+  const assignmentsError = assignmentsQuery.isError
+    ? t('teachers.dashboard.results.assignmentsLoadFailed', { defaultValue: 'Failed to load teacher assignments.' })
+    : '';
 
   const teacherSections = useMemo(() => {
     const unique = [];
@@ -203,12 +207,15 @@ export default function TeacherResultsChartsCard() {
       const tail = [shiftName].filter(Boolean).join(' - ');
       const label = [
         gradeName ? `${gradeName}` : null,
-        sectionNum ? `Sec ${sectionNum}` : null,
+        sectionNum ? `${t('teachers.dashboard.common.sectionPrefix', { defaultValue: 'Sec' })} ${sectionNum}` : null,
         tail ? `(${tail})` : null,
       ].filter(Boolean).join(' - ');
-      return { value: String(gs?._id || ''), label: label || gs?.sectionName || 'Section' };
+      return {
+        value: String(gs?._id || ''),
+        label: label || gs?.sectionName || t('teachers.dashboard.common.section', { defaultValue: 'Section' }),
+      };
     });
-  }, [teacherSections]);
+  }, [teacherSections, t]);
 
   const subjectOptions = useMemo(() => {
     if (!gradeSectionId) return [];
@@ -217,12 +224,12 @@ export default function TeacherResultsChartsCard() {
       if (String(a?.gradeSection?._id || '') !== String(gradeSectionId)) continue;
       const sid = String(a?.subject?._id || '');
       if (!sid) continue;
-      if (!map.has(sid)) map.set(sid, String(a?.subject?.subjectName || 'Subject'));
+      if (!map.has(sid)) map.set(sid, String(a?.subject?.subjectName || t('teachers.dashboard.common.subject', { defaultValue: 'Subject' })));
     }
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => String(a.label).localeCompare(String(b.label)));
-  }, [teacherAssignments, gradeSectionId]);
+  }, [teacherAssignments, gradeSectionId, t]);
 
   // Keep teacher within allowed modes
   useEffect(() => {
@@ -288,14 +295,16 @@ export default function TeacherResultsChartsCard() {
     enabled: Boolean(canRun),
     queryFn: async () => {
       const { ok, data, error: err } = await getExamSummaryAbort(summaryParams, { signal: sessionSignal });
-      if (!ok) throw new Error(err || 'Failed to load summary');
+      if (!ok) throw new Error(err || t('teachers.dashboard.results.summaryLoadFailed', { defaultValue: 'Failed to load summary' }));
       return data || { results: [], classAverage: 0, subjects: [] };
     },
   });
 
   const summary = summaryQuery.data || { results: [], classAverage: 0, subjects: [] };
   const loading = summaryQuery.isLoading;
-  const error = summaryQuery.isError ? (summaryQuery.error?.message || 'Failed to load summary') : '';
+  const error = summaryQuery.isError
+    ? (summaryQuery.error?.message || t('teachers.dashboard.results.summaryLoadFailed', { defaultValue: 'Failed to load summary' }))
+    : '';
 
   const perfMode = (mode === 'subject' && subjectId) ? 'subject' : 'overall';
   const perfSummaryParams = useMemo(() => {
@@ -309,7 +318,7 @@ export default function TeacherResultsChartsCard() {
     enabled: Boolean(view === 'performance' && isTeacher && academicYearId && gradeSectionId),
     queryFn: async () => {
       const { ok, data, error: errMsg } = await getExamSummaryAbort(perfSummaryParams, { signal: sessionSignal });
-      if (!ok) throw new Error(errMsg || 'Failed to load performance');
+      if (!ok) throw new Error(errMsg || t('teachers.dashboard.results.performanceLoadFailed', { defaultValue: 'Failed to load performance' }));
       return data || { results: [] };
     },
   });
@@ -332,7 +341,7 @@ export default function TeacherResultsChartsCard() {
         const pct = maxScore > 0 ? (avg / maxScore) * 100 : 0;
         return {
           id: etId,
-          label: String(et?.typeName || 'Exam'),
+          label: String(et?.typeName || t('teachers.dashboard.results.examFallback', { defaultValue: 'Exam' })),
           avg,
           maxScore,
           pct,
@@ -346,7 +355,9 @@ export default function TeacherResultsChartsCard() {
   }, [view, perfSummaryQuery.data, examTypes]);
 
   const perfLoading = perfSummaryQuery.isLoading || examTypesQuery.isLoading;
-  const perfError = perfSummaryQuery.isError ? 'Failed to load performance.' : '';
+  const perfError = perfSummaryQuery.isError
+    ? t('teachers.dashboard.results.performanceLoadFailed', { defaultValue: 'Failed to load performance.' })
+    : '';
 
   const results = useMemo(() => Array.isArray(summary?.results) ? summary.results : [], [summary]);
 
@@ -376,7 +387,7 @@ export default function TeacherResultsChartsCard() {
       a.click();
     } catch (e) {
       console.error('PNG download failed:', e);
-      alert('Download failed. Please try again.');
+      alert(t('teachers.dashboard.common.downloadFailed', { defaultValue: 'Download failed. Please try again.' }));
     }
   };
 
@@ -406,7 +417,7 @@ export default function TeacherResultsChartsCard() {
       pdf.save(`results_${String(academicYearId || 'ay')}_${String(gradeSectionId || 'section')}_${String(mode)}_${String(mode === 'subject' ? subjectId : examTypeId) || 'filter'}_${String(view)}.pdf`);
     } catch (e) {
       console.error('PDF download failed:', e);
-      alert('Download failed. Please try again.');
+      alert(t('teachers.dashboard.common.downloadFailed', { defaultValue: 'Download failed. Please try again.' }));
     }
   };
 
@@ -441,30 +452,30 @@ export default function TeacherResultsChartsCard() {
     <div className="rounded-2xl border border-indigo-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
       <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="text-lg font-semibold">Results</div>
-          <div className="text-sm text-white/80 mt-1">Live data (teacher-scoped)</div>
+          <div className="text-lg font-semibold">{t('teachers.dashboard.results.title', { defaultValue: 'Results' })}</div>
+          <div className="text-sm text-white/80 mt-1">{t('teachers.dashboard.common.liveTeacherScoped', { defaultValue: 'Live data (teacher-scoped)' })}</div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <ActionButton disabled={!canDownload} onClick={downloadPng} icon={Download} label="PNG" />
-          <ActionButton disabled={!canDownload} onClick={downloadPdf} icon={FileDown} label="PDF" />
+          <ActionButton disabled={!canDownload} onClick={downloadPng} icon={Download} label={t('teachers.dashboard.common.downloadPng', { defaultValue: 'PNG' })} />
+          <ActionButton disabled={!canDownload} onClick={downloadPdf} icon={FileDown} label={t('teachers.dashboard.common.downloadPdf', { defaultValue: 'PDF' })} />
           <ToggleButton
             active={view === 'distribution'}
             onClick={() => setView('distribution')}
             icon={BarChart3}
-            label="Distribution"
+            label={t('teachers.dashboard.results.views.distribution', { defaultValue: 'Distribution' })}
           />
           <ToggleButton
             active={view === 'top'}
             onClick={() => setView('top')}
             icon={LineChart}
-            label="Top students"
+            label={t('teachers.dashboard.results.views.topStudents', { defaultValue: 'Top students' })}
           />
           <ToggleButton
             active={view === 'performance'}
             onClick={() => setView('performance')}
             icon={SlidersHorizontal}
-            label="Performance"
+            label={t('teachers.dashboard.results.views.performance', { defaultValue: 'Performance' })}
           />
         </div>
       </div>
@@ -475,65 +486,65 @@ export default function TeacherResultsChartsCard() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
               <SlidersHorizontal size={16} />
-              <span>Filters</span>
+              <span>{t('teachers.dashboard.common.filters', { defaultValue: 'Filters' })}</span>
             </div>
-            <div className="text-xs text-gray-500">Teacher modes: Subject / Exam Type</div>
+            <div className="text-xs text-gray-500">{t('teachers.dashboard.results.modesNote', { defaultValue: 'Teacher modes: Subject / Exam Type' })}</div>
           </div>
 
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">Academic Year</div>
+              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.results.filters.academicYear', { defaultValue: 'Academic Year' })}</div>
               <AcademicYearSelect
                 value={academicYearId}
                 onChange={(v) => { setAcademicYearId(v); setExamTypeId(''); }}
-                placeholder="Select year"
+                placeholder={t('teachers.dashboard.results.filters.selectYear', { defaultValue: 'Select year' })}
                 searchable
                 maxVisible={5}
                 className="w-full"
               />
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">Section</div>
+              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.common.section', { defaultValue: 'Section' })}</div>
               <DropdownSelect
                 value={gradeSectionId}
                 onChange={setGradeSectionId}
                 disabled={!isTeacher || assignmentsLoading || !teacherRef}
-                placeholder={assignmentsLoading ? 'Loading…' : 'Select section'}
+                placeholder={assignmentsLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('teachers.dashboard.common.selectSection', { defaultValue: 'Select section' })}
                 options={sectionOptions}
               />
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">Mode</div>
+              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.results.filters.mode', { defaultValue: 'Mode' })}</div>
               <DropdownSelect
                 value={mode}
                 onChange={(v) => setMode(v || 'subject')}
                 options={[
-                  { value: 'subject', label: 'Subject' },
-                  { value: 'examType', label: 'Exam Type' },
+                  { value: 'subject', label: t('teachers.dashboard.common.subject', { defaultValue: 'Subject' }) },
+                  { value: 'examType', label: t('teachers.dashboard.results.examType', { defaultValue: 'Exam Type' }) },
                 ]}
               />
             </div>
 
             {mode === 'subject' ? (
               <div className="lg:col-span-2">
-                <div className="text-xs font-medium text-gray-600 mb-1">Subject</div>
+                <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.common.subject', { defaultValue: 'Subject' })}</div>
                 <DropdownSelect
                   value={subjectId}
                   onChange={setSubjectId}
                   disabled={!gradeSectionId || subjectOptions.length === 0}
-                  placeholder={gradeSectionId ? 'Select subject' : 'Select section first'}
+                  placeholder={gradeSectionId ? t('teachers.dashboard.common.selectSubject', { defaultValue: 'Select subject' }) : t('teachers.dashboard.common.selectSectionFirst', { defaultValue: 'Select section first' })}
                   options={subjectOptions}
                 />
               </div>
             ) : (
               <div className="lg:col-span-2">
-                <div className="text-xs font-medium text-gray-600 mb-1">Exam Type</div>
+                <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.results.examType', { defaultValue: 'Exam Type' })}</div>
                 <DropdownSelect
                   value={examTypeId}
                   onChange={setExamTypeId}
                   disabled={!gradeSectionId || !academicYearId}
-                  placeholder={!academicYearId ? 'Select year first' : 'Select exam type'}
-                  options={(examTypes || []).map((et) => ({ value: String(et?._id || ''), label: String(et?.typeName || 'Exam Type') }))}
+                  placeholder={!academicYearId ? t('teachers.dashboard.results.filters.selectYearFirst', { defaultValue: 'Select year first' }) : t('teachers.dashboard.results.filters.selectExamType', { defaultValue: 'Select exam type' })}
+                  options={(examTypes || []).map((et) => ({ value: String(et?._id || ''), label: String(et?.typeName || t('teachers.dashboard.results.examType', { defaultValue: 'Exam Type' })) }))}
                 />
               </div>
             )}
@@ -542,77 +553,79 @@ export default function TeacherResultsChartsCard() {
           <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
             <div className="text-xs text-gray-600">{assignmentsError ? assignmentsError : ''}</div>
             <div className="text-xs text-gray-700">
-              <span className="font-medium">Class Avg</span>: {Number(summary?.classAverage ?? 0).toFixed?.(2) ?? summary?.classAverage}
+              <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg', { defaultValue: 'Class Avg' })}</span>: {Number(summary?.classAverage ?? 0).toFixed?.(2) ?? summary?.classAverage}
             </div>
           </div>
         </div>
 
         {!isTeacher ? (
-          <div className="text-sm text-gray-600">This card is available for teachers only.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.common.teachersOnly', { defaultValue: 'This card is available for teachers only.' })}</div>
         ) : !teacherRef ? (
-          <div className="text-sm text-gray-600">No teacherRef found on your account.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.common.noTeacherRef', { defaultValue: 'No teacherRef found on your account.' })}</div>
         ) : (view === 'performance' && perfError) ? (
           <Alert variant="danger">{perfError}</Alert>
         ) : error ? (
           <Alert variant="danger">{error}</Alert>
         ) : (view === 'performance' && perfLoading) ? (
-          <UiLoadingState label="Loading performance…" className="border-0 bg-transparent p-0 justify-start" />
+          <UiLoadingState label={t('teachers.dashboard.results.loadingPerformance', { defaultValue: 'Loading performance…' })} className="border-0 bg-transparent p-0 justify-start" />
         ) : loading ? (
-          <UiLoadingState label="Loading results…" className="border-0 bg-transparent p-0 justify-start" />
+          <UiLoadingState label={t('teachers.dashboard.results.loading', { defaultValue: 'Loading results…' })} className="border-0 bg-transparent p-0 justify-start" />
         ) : !canRun ? (
-          <div className="text-sm text-gray-600">Select Academic Year + Section + (Subject/Exam Type) to view charts.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.results.selectFilters', { defaultValue: 'Select Academic Year + Section + (Subject/Exam Type) to view charts.' })}</div>
         ) : (view === 'performance' && (perf?.rows || []).length === 0) ? (
-          <div className="text-sm text-gray-600">No performance data found for the selected filters.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.results.noPerformanceData', { defaultValue: 'No performance data found for the selected filters.' })}</div>
         ) : results.length === 0 ? (
-          <div className="text-sm text-gray-600">No exam marks found for the selected filters.</div>
+          <div className="text-sm text-gray-600">{t('teachers.dashboard.results.noMarks', { defaultValue: 'No exam marks found for the selected filters.' })}</div>
         ) : view === 'performance' ? (
           <div ref={chartCaptureRef} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
             <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
-              <div className="text-sm font-semibold">Exam type performance</div>
+              <div className="text-sm font-semibold">{t('teachers.dashboard.results.performance.title', { defaultValue: 'Exam type performance' })}</div>
               <div className="text-xs text-white/80">
-                {String((mode === 'subject' && subjectId) ? 'Subject' : 'Overall')} • Template {perf?.templateVersion ? `v${String(perf.templateVersion)}` : '—'}
+                {t((mode === 'subject' && subjectId) ? 'teachers.dashboard.results.performance.subjectMode' : 'teachers.dashboard.results.performance.overallMode', {
+                  defaultValue: (mode === 'subject' && subjectId) ? 'Subject' : 'Overall',
+                })} • {t('teachers.dashboard.results.performance.template', { defaultValue: 'Template' })} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : '—'}
               </div>
             </div>
             <div className="p-4 space-y-3">
-              <div className="text-xs text-gray-600">Vertical bars = exam types • Left axis = percentage (avg / maxScore)</div>
+              <div className="text-xs text-gray-600">{t('teachers.dashboard.results.performance.help', { defaultValue: 'Vertical bars = exam types • Left axis = percentage (avg / maxScore)' })}</div>
               <ExamTypeBarChart rows={perf.rows} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {perf.rows.map((r) => (
                   <div key={r.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
                     <div className="text-xs font-semibold text-gray-900 truncate">{r.label}</div>
-                    <div className="text-[11px] text-gray-600">Avg: {Number(r.avg || 0).toFixed(1)} / {Number(r.maxScore || 0).toFixed(0)} ({Number(r.pct || 0).toFixed(1)}%)</div>
+                    <div className="text-[11px] text-gray-600">{t('teachers.dashboard.results.performance.avg', { defaultValue: 'Avg' })}: {Number(r.avg || 0).toFixed(1)} / {Number(r.maxScore || 0).toFixed(0)} ({Number(r.pct || 0).toFixed(1)}%)</div>
                   </div>
                 ))}
               </div>
-              <div className="text-[11px] text-gray-500">Tip: switch Mode=Subject to see performance for a single subject; otherwise it uses Overall.</div>
+              <div className="text-[11px] text-gray-500">{t('teachers.dashboard.results.performance.tip', { defaultValue: 'Tip: switch Mode=Subject to see performance for a single subject; otherwise it uses Overall.' })}</div>
             </div>
           </div>
         ) : view === 'distribution' ? (
           <div ref={chartCaptureRef} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
             <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between">
-              <div className="text-sm font-semibold">Score distribution</div>
-              <div className="text-xs text-white/80">Students per range</div>
+              <div className="text-sm font-semibold">{t('teachers.dashboard.results.distribution.title', { defaultValue: 'Score distribution' })}</div>
+              <div className="text-xs text-white/80">{t('teachers.dashboard.results.distribution.subtitle', { defaultValue: 'Students per range' })}</div>
             </div>
             <div className="p-4 space-y-2">
               {histogram.map((b) => (
                 <HistogramBar key={b.label} label={b.label} value={b.value} max={maxBin} />
               ))}
               <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800 mt-2">
-                KPI idea: <span className="font-medium">Class Avg</span> • <span className="font-medium">Pass %</span> • <span className="font-medium">Top/Bottom</span>
+                {t('teachers.dashboard.results.distribution.kpiIdea', { defaultValue: 'KPI idea:' })} <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg', { defaultValue: 'Class Avg' })}</span> • <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct', { defaultValue: 'Pass %' })}</span> • <span className="font-medium">{t('teachers.dashboard.results.kpis.topBottom', { defaultValue: 'Top/Bottom' })}</span>
               </div>
             </div>
           </div>
         ) : (
           <div ref={chartCaptureRef} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
             <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between">
-              <div className="text-sm font-semibold">Top students</div>
-              <div className="text-xs text-white/80">By average</div>
+              <div className="text-sm font-semibold">{t('teachers.dashboard.results.top.title', { defaultValue: 'Top students' })}</div>
+              <div className="text-xs text-white/80">{t('teachers.dashboard.results.top.subtitle', { defaultValue: 'By average' })}</div>
             </div>
             <div className="p-4 space-y-2">
               {topStudents.map((s) => (
                 <HistogramBar
                   key={String(s?.studentId || s?._id || s?.fullName || Math.random())}
-                  label={String(s?.fullName || '').slice(0, 12) || 'Student'}
+                  label={String(s?.fullName || '').slice(0, 12) || t('teachers.dashboard.results.studentFallback', { defaultValue: 'Student' })}
                   value={Number(s?.average || 0)}
                   max={topMax}
                 />
@@ -622,8 +635,8 @@ export default function TeacherResultsChartsCard() {
         )}
 
         <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-          <div className="text-xs text-gray-500">Source: Exams summary (teacher-scoped)</div>
-          <div className="text-xs text-gray-600">Modes: <span className="font-medium">Subject</span> / <span className="font-medium">Exam Type</span></div>
+          <div className="text-xs text-gray-500">{t('teachers.dashboard.results.source', { defaultValue: 'Source: Exams summary (teacher-scoped)' })}</div>
+          <div className="text-xs text-gray-600">{t('teachers.dashboard.results.modesFooter', { defaultValue: 'Modes:' })} <span className="font-medium">{t('teachers.dashboard.common.subject', { defaultValue: 'Subject' })}</span> / <span className="font-medium">{t('teachers.dashboard.results.examType', { defaultValue: 'Exam Type' })}</span></div>
         </div>
       </div>
     </div>

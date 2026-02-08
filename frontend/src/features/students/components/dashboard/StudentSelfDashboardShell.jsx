@@ -13,6 +13,7 @@ import { studentKeys } from '../../queryKeys';
 import PageLoading from '../../../../shared/components/feedback/PageLoading.jsx';
 import ForcePasswordChangeModal from '../../../../auth/components/ForcePasswordChangeModal';
 import { useStudentDashboardRealtimeInvalidation } from './useStudentDashboardRealtimeInvalidation';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 function isoDateOnly(d) {
   return new Date(d).toISOString().slice(0, 10);
@@ -116,7 +117,7 @@ function DashboardSkeletonCard() {
   );
 }
 
-function StudentDashboardSkeleton() {
+function StudentDashboardSkeleton({ t }) {
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-blue-200 bg-linear-to-r from-blue-50 to-indigo-50 p-5 animate-pulse">
@@ -131,8 +132,8 @@ function StudentDashboardSkeleton() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-gray-800 text-white">
-            <div className="font-semibold">Attendance</div>
-            <div className="text-xs text-white/80 mt-0.5">Loading…</div>
+            <div className="font-semibold">{t('nav.attendance')}</div>
+            <div className="text-xs text-white/80 mt-0.5">{t('common.loading')}</div>
           </div>
           <div className="p-5 animate-pulse">
             <div className="h-5 w-36 bg-gray-100 rounded" />
@@ -147,8 +148,8 @@ function StudentDashboardSkeleton() {
 
         <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-gray-800 text-white">
-            <div className="font-semibold">Today's Schedule</div>
-            <div className="text-xs text-white/80 mt-0.5">Loading…</div>
+            <div className="font-semibold">{t('students.selfDashboard.todayScheduleTitle')}</div>
+            <div className="text-xs text-white/80 mt-0.5">{t('common.loading')}</div>
           </div>
           <div className="p-5 animate-pulse space-y-2">
             <div className="h-10 rounded bg-gray-100" />
@@ -160,8 +161,8 @@ function StudentDashboardSkeleton() {
 
         <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden xl:col-span-2">
           <div className="px-4 py-2 bg-gray-800 text-white">
-            <div className="font-semibold">Transcript</div>
-            <div className="text-xs text-white/80 mt-0.5">Loading…</div>
+            <div className="font-semibold">{t('nav.transcript')}</div>
+            <div className="text-xs text-white/80 mt-0.5">{t('common.loading')}</div>
           </div>
           <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-4 animate-pulse">
             <div className="lg:col-span-2 rounded-lg border border-blue-100 bg-white p-4">
@@ -626,6 +627,7 @@ function StudentSelfPrefetcher() {
 
 export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   const { auth } = useAuth();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const isStudentSelf = auth?.user?.role === 'student' && !studentIdOverride;
 
@@ -644,8 +646,8 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   });
 
   const name = isStudentSelf
-    ? (auth?.user?.fullName || auth?.user?.username || 'Student')
-    : (profileNameQuery.data?.student?.fullName || 'Student');
+    ? (auth?.user?.fullName || auth?.user?.username || t('students.common.studentFallback'))
+    : (profileNameQuery.data?.student?.fullName || t('students.common.studentFallback'));
 
   const [attendanceHover, setAttendanceHover] = useState(null);
 
@@ -768,12 +770,28 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   const attendanceTotal = Object.values(attendanceCounts).reduce((a, b) => a + Number(b || 0), 0);
   const attendancePresentPct = attendanceTotal > 0 ? Math.round((attendanceCounts.present / attendanceTotal) * 100) : 0;
 
-  const dayLabels = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const dayLabels = [
+    t('common.days.short.sat'),
+    t('common.days.short.sun'),
+    t('common.days.short.mon'),
+    t('common.days.short.tue'),
+    t('common.days.short.wed'),
+    t('common.days.short.thu'),
+    t('common.days.short.fri'),
+  ];
 
   const todaySchedule = useMemo(() => {
     const now = new Date();
     const todayIdx = getTimetableDayIndexFromLocalDate(now);
-    const dayNames = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const dayNames = [
+      t('common.days.long.saturday'),
+      t('common.days.long.sunday'),
+      t('common.days.long.monday'),
+      t('common.days.long.tuesday'),
+      t('common.days.long.wednesday'),
+      t('common.days.long.thursday'),
+      t('common.days.long.friday'),
+    ];
     const dateISO = localISODateOnly(now);
     const list = (Array.isArray(timetableSlots) ? timetableSlots : [])
       .filter(s => Number(s?.dayOfWeek) === todayIdx && !s?.isBreak)
@@ -785,7 +803,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
       dateISO,
       slots: list,
     };
-  }, [timetableSlots]);
+  }, [timetableSlots, t]);
 
   const levelLinePoints = useMemo(() => {
     const arr = Array.isArray(levelStats) ? levelStats : [];
@@ -815,47 +833,47 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   return (
     <div className="space-y-4">
       {showWarmupLoading ? (
-        <StudentDashboardSkeleton />
+        <StudentDashboardSkeleton t={t} />
       ) : (
         <>
           <div className="rounded-xl border border-blue-200 bg-linear-to-r from-blue-50 to-indigo-50 p-5">
-            <div className="text-xl md:text-2xl font-semibold text-blue-900">{`Welcome, ${name}`}</div>
-            <div className="text-sm text-blue-900/70 mt-1">Choose what you want to view below.</div>
+            <div className="text-xl md:text-2xl font-semibold text-blue-900">{t('students.selfDashboard.welcome', { name })}</div>
+            <div className="text-sm text-blue-900/70 mt-1">{t('students.selfDashboard.chooseBelow')}</div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
             <Card
               to="transcript"
-              title="Transcript"
-              description="View your results by level"
+              title={t('nav.transcript')}
+              description={t('students.selfDashboard.cards.transcriptDesc')}
               Icon={BarChart2}
               tone="indigo"
             />
             <Card
               to="attendance"
-              title="Attendance"
-              description="See your attendance records"
+              title={t('nav.attendance')}
+              description={t('students.selfDashboard.cards.attendanceDesc')}
               Icon={ClipboardList}
               tone="emerald"
             />
             <Card
               to="timetable"
-              title="Timetable"
-              description="View your class timetable"
+              title={t('nav.timetable')}
+              description={t('students.selfDashboard.cards.timetableDesc')}
               Icon={CalendarDays}
               tone="sky"
             />
             <Card
               to="library"
-              title="Library"
-              description="View your library activity"
+              title={t('nav.library')}
+              description={t('students.selfDashboard.cards.libraryDesc')}
               Icon={BookOpenCheck}
               tone="amber"
             />
             <Card
               to="profile"
-              title="Profile"
-              description="View your student profile"
+              title={t('nav.profile')}
+              description={t('students.selfDashboard.cards.profileDesc')}
               Icon={Users}
               tone="sky"
             />
@@ -864,26 +882,26 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-gray-800 text-white">
-            <div className="font-semibold">Attendance</div>
+            <div className="font-semibold">{t('nav.attendance')}</div>
             <div className="text-xs text-white/80 mt-0.5">
-              {currentLevelLabel ? `${currentLevelLabel} • ` : ''}Recorded attendance overview
+              {currentLevelLabel ? `${currentLevelLabel} • ` : ''}{t('students.selfDashboard.attendance.overview')}
             </div>
           </div>
           <div className="p-5 h-full">
             <div className="h-full flex flex-col gap-5">
               <div className="flex items-baseline justify-between gap-3">
-                <div className="text-base font-semibold text-gray-900">{attendancePresentPct}% Present</div>
+                <div className="text-base font-semibold text-gray-900">{attendancePresentPct}% {t('students.attendance.status.present')}</div>
                 {/* <div className="text-xs text-gray-500">Recorded entries only</div> */}
               </div>
 
               {/* <div className="text-xs text-gray-600">Present = attended class</div> */}
 
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                <SmallStat size="sm" label="Present" value={attendanceCounts.present} tone="emerald" />
-                <SmallStat size="sm" label="Late" value={attendanceCounts.late} tone="amber" />
-                <SmallStat size="sm" label="Excused" value={attendanceCounts.excused} tone="blue" />
-                <SmallStat size="sm" label="Absent" value={attendanceCounts.absent} tone="red" />
-                <SmallStat size="sm" label="Other" value={attendanceCounts.other} tone="gray" />
+                <SmallStat size="sm" label={t('students.attendance.status.present')} value={attendanceCounts.present} tone="emerald" />
+                <SmallStat size="sm" label={t('students.attendance.status.late')} value={attendanceCounts.late} tone="amber" />
+                <SmallStat size="sm" label={t('students.attendance.status.excused')} value={attendanceCounts.excused} tone="blue" />
+                <SmallStat size="sm" label={t('students.attendance.status.absent')} value={attendanceCounts.absent} tone="red" />
+                <SmallStat size="sm" label={t('students.attendance.status.other')} value={attendanceCounts.other} tone="gray" />
               </div>
 
               <div className="relative pt-10 mt-auto pb-20">
@@ -893,11 +911,11 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                   <VerticalBarChart
                     height={96}
                     items={[
-                      { label: 'Present', value: attendanceCounts.present, className: 'bg-emerald-500' },
-                      { label: 'Late', value: attendanceCounts.late, className: 'bg-amber-500' },
-                      { label: 'Excused', value: attendanceCounts.excused, className: 'bg-blue-500' },
-                      { label: 'Absent', value: attendanceCounts.absent, className: 'bg-red-500' },
-                      { label: 'Other', value: attendanceCounts.other, className: 'bg-gray-500' },
+                      { label: t('students.attendance.status.present'), value: attendanceCounts.present, className: 'bg-emerald-500' },
+                      { label: t('students.attendance.status.late'), value: attendanceCounts.late, className: 'bg-amber-500' },
+                      { label: t('students.attendance.status.excused'), value: attendanceCounts.excused, className: 'bg-blue-500' },
+                      { label: t('students.attendance.status.absent'), value: attendanceCounts.absent, className: 'bg-red-500' },
+                      { label: t('students.attendance.status.other'), value: attendanceCounts.other, className: 'bg-gray-500' },
                     ]}
                     onHover={(it) => {
                       const value = Number(it?.value || 0);
@@ -922,7 +940,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
 
         <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-gray-800 text-white">
-            <div className="font-semibold">Today's Schedule</div>
+            <div className="font-semibold">{t('students.selfDashboard.todayScheduleTitle')}</div>
             <div className="text-xs text-white/80 mt-0.5">{todaySchedule.dayName} • {todaySchedule.dateISO}</div>
           </div>
           <div className="p-5">
@@ -933,14 +951,14 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                 <div className="h-10 rounded bg-gray-100" />
               </div>
             ) : (todaySchedule.slots.length === 0 ? (
-              <div className="text-sm text-gray-600">No classes scheduled for today.</div>
+              <div className="text-sm text-gray-600">{t('students.timetableTab.noClassesToday')}</div>
             ) : (
               <div className="space-y-2">
                 {todaySchedule.slots.map((s) => {
                   const time = `${String(s?.startTime || '').trim()} - ${String(s?.endTime || '').trim()}`.trim();
                   const subject = String(s?.subject?.subjectName || '-').trim() || '-';
                   const teacher = String(s?.teacher?.fullName || '—').trim() || '—';
-                  const room = s?.room ? `Room ${s.room}` : '';
+                  const room = s?.room ? `${t('common.room')} ${s.room}` : '';
                   const meta = [time, room].filter(Boolean).join(' • ');
                   const key = String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${subject}`);
                   return (
@@ -960,7 +978,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
 
             {!timetableLoading && timetableCountsByDay.some(n => Number(n || 0) > 0) ? (
               <div className="mt-4">
-                <div className="text-xs font-semibold text-gray-700 mb-2">Classes per day</div>
+                <div className="text-xs font-semibold text-gray-700 mb-2">{t('students.selfDashboard.timetable.classesPerDay')}</div>
                 <MiniBars values={timetableCountsByDay} height={64} />
                 <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-gray-500">
                   {dayLabels.map((d) => (
@@ -974,13 +992,13 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
 
         <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden xl:col-span-2">
           <div className="px-4 py-2 bg-gray-800 text-white">
-            <div className="font-semibold">Transcript</div>
-            <div className="text-xs text-white/80 mt-0.5">Level summary charts</div>
+            <div className="font-semibold">{t('nav.transcript')}</div>
+            <div className="text-xs text-white/80 mt-0.5">{t('students.selfDashboard.transcript.subtitle')}</div>
           </div>
           <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 rounded-lg border border-blue-100 bg-white p-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-gray-900">Average (%) by level</div>
+                <div className="text-sm font-semibold text-gray-900">{t('students.selfDashboard.transcript.avgByLevel')}</div>
                 {lineHover ? (
                   <div className="text-xs text-gray-600">
                     <span className="font-semibold text-gray-900">{lineHover.label}</span>: {Number(lineHover.value || 0).toFixed(1)}%
@@ -991,7 +1009,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                 {transcriptLoading || levelsLoading ? (
                   <div className="h-36 rounded bg-gray-100" />
                 ) : (levelLinePoints.length < 2 ? (
-                  <div className="text-sm text-gray-600">Not enough transcript data yet.</div>
+                  <div className="text-sm text-gray-600">{t('students.selfDashboard.transcript.notEnoughData')}</div>
                 ) : (
                   <LineChart
                     points={levelLinePoints}
@@ -1002,16 +1020,16 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
               </div>
               {!transcriptLoading && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <SmallStat label="Overall" value={Math.round(Number(overallSummary?.overallTotal || 0))} tone="gray" />
-                  <SmallStat label="Average" value={`${Number(overallSummary?.weightedAverage || 0).toFixed(1)}%`} tone="blue" />
-                  <SmallStat label="Rank" value={overallSummary?.cumulativeRank != null ? `${overallSummary.cumulativeRank}` : '-'} tone="amber" />
+                  <SmallStat label={t('students.transcriptTab.labels.overall')} value={Math.round(Number(overallSummary?.overallTotal || 0))} tone="gray" />
+                  <SmallStat label={t('students.transcriptTab.labels.average')} value={`${Number(overallSummary?.weightedAverage || 0).toFixed(1)}%`} tone="blue" />
+                  <SmallStat label={t('students.transcriptTab.labels.rank')} value={overallSummary?.cumulativeRank != null ? `${overallSummary.cumulativeRank}` : '-'} tone="amber" />
                 </div>
               )}
             </div>
 
             <div className="rounded-lg border border-blue-100 bg-white p-4">
-              <div className="text-sm font-semibold text-gray-900">Levels distribution</div>
-              <div className="text-xs text-gray-500 mt-0.5">(By total points; falls back to average)</div>
+              <div className="text-sm font-semibold text-gray-900">{t('students.selfDashboard.transcript.levelsDistribution')}</div>
+              <div className="text-xs text-gray-500 mt-0.5">{t('students.selfDashboard.transcript.levelsDistributionNote')}</div>
               <div className="mt-4 flex items-center gap-4">
                 <div className="relative">
                   {levelsLoading ? (

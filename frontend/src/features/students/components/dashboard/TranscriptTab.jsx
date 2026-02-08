@@ -10,10 +10,12 @@ import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 export default function TranscriptTab() {
   const { studentId: paramStudentId } = useParams();
   const { auth } = useAuth();
+  const { t } = useI18n();
 
   const rawStudentRef = auth?.user?.studentRef;
   const studentRefId = rawStudentRef?._id || rawStudentRef || null;
@@ -46,7 +48,7 @@ export default function TranscriptTab() {
 
   const enrollments = enrollmentsQuery.data || [];
   const enrLoading = enrollmentsQuery.isLoading;
-  const enrError = enrollmentsQuery.isError ? 'Failed to load enrollments' : null;
+  const enrError = enrollmentsQuery.isError ? t('students.transcriptTab.enrollmentsLoadFailed') : null;
 
   useEffect(() => {
     if (!enrollments?.length) return;
@@ -107,20 +109,20 @@ export default function TranscriptTab() {
 
       <div className="mb-4">
         <div className="border-l-4 border-blue-600 bg-blue-50 rounded px-3 py-2">
-          <h2 className="text-lg font-semibold text-blue-900">Transcript</h2>
-          <div className="text-xs text-blue-800/80 mt-0.5">Your results by level</div>
+          <h2 className="text-lg font-semibold text-blue-900">{t('nav.transcript')}</h2>
+          <div className="text-xs text-blue-800/80 mt-0.5">{t('students.transcriptTab.subtitle')}</div>
         </div>
       </div>
       {enrLoading && (
         <div className="py-6">
-          <LoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+          <LoadingState label={t('common.loading')} className="border-0 bg-transparent p-0 justify-start" />
         </div>
       )}
       {enrError && <Alert variant="danger" title={enrError} className="py-3" />}
       {!enrLoading && !enrError && (
         <div className="space-y-4">
           {enrollments.length === 0 && (
-            <div className="text-sm text-gray-500">No enrollments found for this student.</div>
+            <div className="text-sm text-gray-500">{t('students.transcriptTab.noEnrollments')}</div>
           )}
           {enrollments.length > 0 && (
             <LevelsTabs
@@ -135,8 +137,8 @@ export default function TranscriptTab() {
           {activeTab === 'summary' ? (
             <Card className="p-4 shadow-none">
               <div className="flex items-center justify-between bg-gray-50 text-gray-700 border border-gray-200 px-3 py-2 rounded">
-                <div className="text-sm font-medium">Overall Summary</div>
-                {overallLoading && <span className="text-xs text-slate-500">Loading…</span>}
+                <div className="text-sm font-medium">{t('students.transcriptTab.overallSummary')}</div>
+                {overallLoading && <span className="text-xs text-slate-500">{t('common.loading')}</span>}
               </div>
               <div className="mt-3">
                 {overallError && <Alert variant="danger" title={overallError} className="mt-2" />}
@@ -147,15 +149,15 @@ export default function TranscriptTab() {
                   return (
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-emerald-50 text-emerald-700">
-                        <span className="font-semibold">Overall:</span>
+                        <span className="font-semibold">{t('students.transcriptTab.labels.overall')}:</span>
                         <span>{formatNumber(overallTotal)}</span>
                       </div>
                       <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-blue-50 text-blue-700">
-                        <span className="font-semibold">Average:</span>
+                        <span className="font-semibold">{t('students.transcriptTab.labels.average')}:</span>
                         <span>{formatPercent(weightedAvg)}</span>
                       </div>
-                      <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-purple-50 text-purple-700" title="Booska ardayga marka la kala hormariyo wadarta dhibcaha taariikhdiisa, waxaa la barbar dhigay ardayda fasalka ugu dambeeya (dhammaan statuses).">
-                        <span className="font-semibold">Rank:</span>
+                      <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-purple-50 text-purple-700" title={t('students.transcriptTab.rankTooltip')}>
+                        <span className="font-semibold">{t('students.transcriptTab.labels.rank')}:</span>
                         <span>{rankDisp != null ? `${rankDisp}` : '-'}</span>
                       </div>
                     </div>
@@ -166,69 +168,69 @@ export default function TranscriptTab() {
           ) : activeEnrId && (() => {
             const en = activeEnr;
             if (!en) return null;
-            const t = txQuery.data;
-            const orderedExamTypes = t ? orderExamTypes(t.examTypes) : [];
+            const tx = txQuery.data;
+            const orderedExamTypes = tx ? orderExamTypes(tx.examTypes) : [];
             return (
               <Card className="p-4 border-blue-100 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 bg-blue-50 text-blue-900 border border-blue-100 px-3 py-3 rounded">
                   <div className="text-sm">
-                    <span className="font-semibold text-blue-900">AY:</span>{' '}
+                    <span className="font-semibold text-blue-900">{t('students.table.columns.academicYear')}:</span>{' '}
                     <span className="text-blue-900/90">{en.academicYear?.yearName || '-'}</span>
                     <span className="mx-2 text-blue-900/60">•</span>
-                    <span className="font-semibold text-blue-900">Grade:</span>{' '}
+                    <span className="font-semibold text-blue-900">{t('students.table.columns.grade')}:</span>{' '}
                     <span className="text-blue-900/90">{en.grade?.gradeName || en.gradeSection?.grade?.gradeName || '-'}</span>
                     <span className="mx-2 text-blue-900/60">•</span>
-                    <span className="font-semibold text-blue-900">Section:</span>{' '}
+                    <span className="font-semibold text-blue-900">{t('students.table.columns.section')}:</span>{' '}
                     <span className="text-blue-900/90">{en.gradeSection?.section || '-'}</span>
                     {en.gradeSection?.shift && (<>
                       <span className="mx-2 text-blue-900/60">•</span>
-                      <span className="font-semibold text-blue-900">Shift:</span>{' '}
+                      <span className="font-semibold text-blue-900">{t('students.table.columns.shift')}:</span>{' '}
                       <span className="text-blue-900/90">{en.shift?.shiftName || en.gradeSection?.shift?.shiftName || en.gradeSection?.shift || '-'}</span>
                     </>)}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-700 font-semibold">Overall: {formatNumber(t?.overall?.total || 0)}</span>
-                    <span className="inline-flex items-center text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 font-semibold">Average: {formatNumber(t?.overall?.average || 0)}</span>
+                    <span className="inline-flex items-center text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-700 font-semibold">{t('students.transcriptTab.labels.overall')}: {formatNumber(tx?.overall?.total || 0)}</span>
+                    <span className="inline-flex items-center text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 font-semibold">{t('students.transcriptTab.labels.average')}: {formatNumber(tx?.overall?.average || 0)}</span>
                   </div>
                 </div>
                 <div className="mt-3">
-                  {txLoading && !t && (
+                  {txLoading && !tx && (
                     <LoadingState
                       variant="table"
                       rows={7}
                       columns={5}
-                      message="Loading transcript…"
+                      message={t('students.transcriptTab.loadingTranscript')}
                     />
                   )}
-                  {txError && !t && (
+                  {txError && !tx && (
                     <Alert variant="danger" title={txError} className="mt-2" />
                   )}
-                  {t && (
-                    t.subjects?.length === 0 || t.examTypes?.length === 0 ? (
-                      <div className="text-sm text-gray-500">No exams recorded for this enrollment.</div>
+                  {tx && (
+                    tx.subjects?.length === 0 || tx.examTypes?.length === 0 ? (
+                      <div className="text-sm text-gray-500">{t('students.transcriptTab.noExams')}</div>
                     ) : (
                       <div className="space-y-3">
                         <StandardTable
                           isLoading={false}
-                          items={t.rows}
-                          rows={t.rows}
+                          items={tx.rows}
+                          rows={tx.rows}
                           columns={[
                             {
                               key: 'subject',
-                              label: 'Subject',
+                              label: t('students.transcriptTab.table.subject'),
                               thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide',
                               tdClassName: 'px-4 py-3 font-medium text-gray-900 whitespace-nowrap',
                             },
                             ...orderedExamTypes.map((et) => ({
                               key: `et:${String(et._id)}`,
-                              label: et.typeName || 'Exam',
+                              label: et.typeName || t('students.transcriptTab.examFallback'),
                               examTypeId: String(et._id),
                               thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap',
                               tdClassName: 'px-4 py-3 text-gray-800',
                             })),
                             {
                               key: 'total',
-                              label: 'Total',
+                              label: t('students.transcriptTab.table.total'),
                               thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide',
                               tdClassName: 'px-4 py-3 font-semibold text-gray-900',
                             },
@@ -265,13 +267,16 @@ export default function TranscriptTab() {
 }
 
 function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActiveEnrId }) {
+  const { t } = useI18n();
   const MAX_PRIMARY = 3; // inta ugu horeysa ee la soo bandhigo mobile
+
   // Ku bilow order isla marka enrollments ay yimaadaan si aan u helno tabs isla markiiba
   const [order, setOrder] = useState(() => enrollments.map(e => String(e._id)));
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const btnRef = useRef(null);
   const [menuPos, setMenuPos] = useState(null); // { top, left, width }
+
   // Initialize / sync order marka enrollments beddelaan
   useEffect(() => {
     if (!enrollments.length) return;
@@ -284,6 +289,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
       return [...kept, ...added];
     });
   }, [enrollments]);
+
   // Outside click si loo xiro menu
   useEffect(() => {
     if (!open) return;
@@ -298,6 +304,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
       document.removeEventListener('touchstart', onOutside);
     };
   }, [open]);
+
   // Mobile-only: haddii user uu ka doorto overflow (⋯), ka dhig id-ga la doortay inuu galo primary (swap la samee last primary)
   const promote = (id) => {
     setOrder(prev => {
@@ -312,9 +319,15 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
       return arr;
     });
   };
+
   const idToEnrollment = (id) => enrollments.find(e => String(e._id) === String(id));
   const primaryIds = order.slice(0, MAX_PRIMARY);
   const overflowIds = order.slice(MAX_PRIMARY);
+
+  // Haddii order weli madhan yahay laakiin enrollments jiro, ha muujin wax ka hor inta uu effect-ka soconayo => fallback degdeg ah
+  const effectivePrimary = primaryIds.length ? primaryIds : enrollments.slice(0, MAX_PRIMARY).map(e => String(e._id));
+  const effectiveOverflow = primaryIds.length ? overflowIds : enrollments.slice(MAX_PRIMARY).map(e => String(e._id));
+
   const handleSelectDesktop = (id) => {
     // Desktop: wax swap/switch ah ha dhicin
     setActiveEnrId(id);
@@ -328,54 +341,54 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
     setActiveTab(id);
     setOpen(false);
   };
-  // Haddii order weli madhan yahay laakiin enrollments jiro, ha muujin wax ka hor inta uu effect-ka soconayo => fallback degdeg ah
-  const effectivePrimary = primaryIds.length ? primaryIds : enrollments.slice(0, MAX_PRIMARY).map(e => String(e._id));
-  const effectiveOverflow = primaryIds.length ? overflowIds : enrollments.slice(MAX_PRIMARY).map(e => String(e._id));
+
   return (
-    <div className="overflow-x-auto overflow-visible">
+    <div>
       {/* Desktop: dhammaan levels + summary */}
       <div className="hidden md:flex items-center gap-4 border-b">
         <button
           onClick={() => setActiveTab('summary')}
           className={`${activeTab === 'summary' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} pb-2 px-1 text-sm whitespace-nowrap`}
-        >Summary</button>
+        >{t('common.summary')}</button>
         {order.map((id) => {
           const en = idToEnrollment(id);
           if (!en) return null;
           const active = activeTab !== 'summary' && id === activeEnrId;
-          const label = getLevelLabel(en);
+          const label = getLevelLabel(en, t);
           return (
             <button
               key={id}
               onClick={() => handleSelectDesktop(id)}
               className={`${active ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} pb-2 px-1 text-sm whitespace-nowrap`}
-              title={`${en.academicYear?.yearName || ''} • ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} • Sec ${en.gradeSection?.section || ''}`}
+              title={`${en.academicYear?.yearName || ''} • ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} • ${t('students.table.columns.section')} ${en.gradeSection?.section || ''}`}
             >{label}</button>
           );
         })}
       </div>
+
       {/* Mobile: primary + overflow menu (⋯) */}
       <div className="flex md:hidden items-center justify-between border-b">
         <div className="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto">
           <button
             onClick={() => setActiveTab('summary')}
             className={`${activeTab === 'summary' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} pb-2 px-1 text-xs whitespace-nowrap shrink-0`}
-          >Summary</button>
+          >{t('common.summary')}</button>
           {effectivePrimary.map((id) => {
             const en = idToEnrollment(id);
             if (!en) return null;
             const active = activeTab !== 'summary' && id === activeEnrId;
-            const label = getLevelLabel(en);
+            const label = getLevelLabel(en, t);
             return (
               <button
                 key={id}
                 onClick={() => handleSelectMobile(id)}
                 className={`${active ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} pb-2 px-1 text-xs whitespace-nowrap shrink-0`}
-                title={`${en.academicYear?.yearName || ''} • ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} • Sec ${en.gradeSection?.section || ''}`}
+                title={`${en.academicYear?.yearName || ''} • ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} • ${t('students.table.columns.section')} ${en.gradeSection?.section || ''}`}
               >{label}</button>
             );
           })}
         </div>
+
         {effectiveOverflow.length > 0 && (
           <div ref={menuRef} className="relative ml-1">
             <button
@@ -384,7 +397,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
               aria-haspopup="true"
               aria-expanded={open ? 'true' : 'false'}
               className="text-xs text-gray-600 px-2 py-1 rounded border bg-white hover:bg-gray-50 flex items-center justify-center w-10 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              title="Levels kale"
+              title={t('students.transcriptTab.moreLevelsTooltip')}
               ref={btnRef}
             >
               <span className="font-semibold tracking-wider">⋯</span>
@@ -396,7 +409,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
                     const en = idToEnrollment(id);
                     if (!en) return null;
                     const active = activeTab !== 'summary' && id === activeEnrId;
-                    const label = getLevelLabel(en);
+                    const label = getLevelLabel(en, t);
                     return (
                       <li key={id}>
                         <button
@@ -408,7 +421,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
                     );
                   })}
                   {effectiveOverflow.length === 0 && (
-                    <li className="px-3 py-1 text-gray-400 text-xs">Empty</li>
+                    <li className="px-3 py-1 text-gray-400 text-xs">{t('common.empty')}</li>
                   )}
                 </ul>
               </FixedMenu>
@@ -447,10 +460,10 @@ function FixedMenu({ btnRef, setMenuPos, menuPos, children }) {
   );
 }
 
-function getLevelLabel(enrollment) {
+function getLevelLabel(enrollment, t) {
   const name = enrollment?.grade?.gradeName || enrollment?.gradeSection?.grade?.gradeName;
   if (name && String(name).trim()) return String(name).trim();
-  return 'Level';
+  return typeof t === 'function' ? t('students.transcriptTab.levelFallback') : 'Level';
 }
 
 function formatNumber(n) {

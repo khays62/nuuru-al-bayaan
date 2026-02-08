@@ -14,6 +14,7 @@ import { useAuth } from '../../../auth/AuthContext';
 import TeacherAttendanceChartsCard from '../components/dashboard/TeacherAttendanceChartsCard';
 import TeacherResultsChartsCard from '../components/dashboard/TeacherResultsChartsCard';
 import TeacherDashboardPrefetcher from '../components/dashboard/TeacherDashboardPrefetcher';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const QuickCard = ({ title, description, to, Icon, tone = 'indigo' }) => {
 	const cardBg = {
@@ -54,63 +55,67 @@ const QuickCard = ({ title, description, to, Icon, tone = 'indigo' }) => {
 
 export default function TeacherDashboardPage() {
 	const { auth } = useAuth();
+	const { t } = useI18n();
 	const fullName = String(auth?.user?.fullName || '').trim();
-	const summaryLine = 'Choose what you want to do below.';
+	const summaryLine = t('teachers.dashboard.home.summaryLine', { defaultValue: 'Choose what you want to do below.' });
+	const welcomeText = fullName
+		? t('teachers.dashboard.home.welcomeWithName', { name: fullName, defaultValue: `Welcome, ${fullName}` })
+		: t('teachers.dashboard.home.welcome', { defaultValue: 'Welcome' });
 
 	return (
 		<div className="space-y-4">
 			<TeacherDashboardPrefetcher />
 			<div className="rounded-xl border border-blue-200 border-b-4 border-b-blue-300 bg-linear-to-r from-blue-50 to-indigo-50 p-5 shadow-md">
-				<div className="text-xl md:text-2xl font-semibold text-blue-900">{fullName ? `Welcome, ${fullName}` : 'Welcome'}</div>
+				<div className="text-xl md:text-2xl font-semibold text-blue-900">{welcomeText}</div>
 				<div className="text-sm text-blue-900/70 mt-1">{summaryLine}</div>
 			</div>
 
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 				<QuickCard
-					title="My Classes"
-					description="View your assigned classes and active rosters"
+					title={t('teachers.dashboard.home.cards.myClasses.title', { defaultValue: 'My Classes' })}
+					description={t('teachers.dashboard.home.cards.myClasses.description', { defaultValue: 'View your assigned classes and active rosters' })}
 					to="/teacher-classes"
 					Icon={Layers3}
 					tone="indigo"
 				/>
 				<QuickCard
-					title="Timetable"
-					description="See your schedule and class timetables"
+					title={t('teachers.dashboard.home.cards.timetable.title', { defaultValue: 'Timetable' })}
+					description={t('teachers.dashboard.home.cards.timetable.description', { defaultValue: 'See your schedule and class timetables' })}
 					to="/timetable"
 					Icon={CalendarDays}
 					tone="sky"
 				/>
 				<QuickCard
-					title="Attendance"
-					description="Mark and review attendance for your classes"
+					title={t('teachers.dashboard.home.cards.attendance.title', { defaultValue: 'Attendance' })}
+					description={t('teachers.dashboard.home.cards.attendance.description', { defaultValue: 'Mark and review attendance for your classes' })}
 					to="/attendance"
 					Icon={ClipboardList}
 					tone="emerald"
 				/>
 				<QuickCard
-					title="Attendance Reports"
-					description="Summary reports by date range"
+					title={t('teachers.dashboard.home.cards.attendanceReports.title', { defaultValue: 'Attendance Reports' })}
+					description={t('teachers.dashboard.home.cards.attendanceReports.description', { defaultValue: 'Summary reports by date range' })}
 					to="/attendance-reports"
 					Icon={BarChart2}
 					tone="indigo"
 				/>
 				<QuickCard
-					title="Exam"
-					description="Enter scores and review results"
+					title={t('teachers.dashboard.home.cards.exam.title', { defaultValue: 'Exam' })}
+					description={t('teachers.dashboard.home.cards.exam.description', { defaultValue: 'Enter scores and review results' })}
 					to="/exams"
 					Icon={TrendingUp}
 					tone="amber"
 				/>
 				<QuickCard
-					title="Profile"
-					description="Account details and change password"
+					title={t('teachers.dashboard.home.cards.profile.title', { defaultValue: 'Profile' })}
+					description={t('teachers.dashboard.home.cards.profile.description', { defaultValue: 'Account details and change password' })}
 					to="/teacher-profile"
 					Icon={UserCircle2}
 					tone="sky"
 				/>
 				<QuickCard
-					title="Announcements"
-					description="School announcements and updates"
+					title={t('teachers.dashboard.home.cards.announcements.title', { defaultValue: 'Announcements' })}
+					description={t('teachers.dashboard.home.cards.announcements.description', { defaultValue: 'School announcements and updates' })}
 					to="/announcements"
 					Icon={Megaphone}
 					tone="sky"

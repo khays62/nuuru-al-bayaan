@@ -24,7 +24,10 @@ import { useQuery } from '@tanstack/react-query';
 import { userKeys } from '../queryKeys';
 import { useUsersRealtimeInvalidation } from '../useUsersRealtimeInvalidation';
 
+import { useI18n } from '../../../i18n/I18nProvider';
+
 export default function UserProfilePage() {
+  const { t } = useI18n();
   const { userId } = useParams();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -61,20 +64,20 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     if (userQuery.isError) {
-      toast.error('Failed to load profile');
+      toast.error(t('users.profile.failedLoad'));
     }
-  }, [userQuery.isError]);
+  }, [userQuery.isError, t]);
 
-  if (loading) return <LoadingState message="Loading user details…" />;
+  if (loading) return <LoadingState message={t('users.profile.loadingDetails')} />;
 
   if (!user || userQuery.isError) {
-    return <Alert variant="danger" title="Could not load user profile." />;
+    return <Alert variant="danger" title={t('users.profile.couldNotLoad')} />;
   }
 
   return (
     <div className="space-y-8">
       <Button as={Link} to="/users" variant="neutral" size="md" icon={<ArrowLeft size={15} />}>
-        Back to Users
+        {t('users.profile.backToUsers')}
       </Button>
 
       <Card className="overflow-hidden">
@@ -89,35 +92,35 @@ export default function UserProfilePage() {
 
           <div className="flex gap-3 items-center">
             <StatusBadge status={user.status} />
-            <Badge variant="primary">Role: {user.role}</Badge>
+            <Badge variant="primary">{t('users.profile.rolePrefix', { role: user.role })}</Badge>
           </div>
         </div>
 
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Info label="Full Name" value={user.fullName} icon={<User size={18} />} />
-          <Info label="Username" value={user.username} icon={<IdCard size={18} />} />
+          <Info label={t('users.profile.labels.fullName')} value={user.fullName} icon={<User size={18} />} />
+          <Info label={t('users.profile.labels.username')} value={user.username} icon={<IdCard size={18} />} />
 
-          <Info label="Email" value={user.email} icon={<Mail size={18} />} />
-          <Info label="Phone" value={user.phone || '—'} icon={<Phone size={18} />} />
+          <Info label={t('users.profile.labels.email')} value={user.email} icon={<Mail size={18} />} />
+          <Info label={t('users.profile.labels.phone')} value={user.phone || '—'} icon={<Phone size={18} />} />
 
-          <Info label="Role" value={user.role} icon={<ShieldCheck size={18} />} />
-          <Info label="Status" value={user.status} icon={<ShieldCheck size={18} />} />
+          <Info label={t('users.profile.labels.role')} value={user.role} icon={<ShieldCheck size={18} />} />
+          <Info label={t('users.profile.labels.status')} value={user.status} icon={<ShieldCheck size={18} />} />
 
-          <Info label="Created At" value={format(user.createdAt)} icon={<Calendar size={18} />} />
+          <Info label={t('users.profile.labels.createdAt')} value={format(user.createdAt)} icon={<Calendar size={18} />} />
           <Info
-            label="Last Login"
-            value={user.lastLogin ? format(user.lastLogin) : 'Never'}
+            label={t('users.profile.labels.lastLogin')}
+            value={user.lastLogin ? format(user.lastLogin) : t('users.profile.never')}
             icon={<Clock size={18} />}
           />
         </div>
 
         <div className="border-t border-slate-200 px-6 py-6">
-          <h2 className="text-lg font-semibold mb-4">Audit History</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('users.profile.auditHistory')}</h2>
 
           <AuditHistoryTable
             logs={logs}
             isLoading={Boolean(logsQuery.isLoading && logs.length === 0)}
-            error={logsQuery.isError ? (logsQuery.error?.data?.message || logsQuery.error?.message || 'Failed to load audit history') : null}
+            error={logsQuery.isError ? (logsQuery.error?.data?.message || logsQuery.error?.message || t('users.profile.auditLoadFailed')) : null}
             meta={logsMeta}
             onPage={setPage}
             onLimit={(v) => {
@@ -125,8 +128,8 @@ export default function UserProfilePage() {
               setPage(1);
             }}
             storageKey="users:auditLogs:columns:v2"
-            emptyTitle="No audit history."
-            emptyDescription="This user has no recorded actions yet."
+            emptyTitle={t('users.profile.auditEmptyTitle')}
+            emptyDescription={t('users.profile.auditEmptyDescription')}
           />
         </div>
       </Card>

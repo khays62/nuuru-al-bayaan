@@ -8,6 +8,7 @@ import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { teacherKeys } from '../../queryKeys';
 import { EVENTS } from '../../../../utils/events';
 import { useRealtimeInvalidation } from '../../../../shared/realtime/useRealtimeInvalidation';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 const CARD_THEMES = [
 	{ header: 'bg-gradient-to-r from-blue-600 to-indigo-600' },
@@ -41,20 +42,24 @@ const titleCaseWords = (value) => {
 		.join(' ');
 };
 
-const buildSectionLabel = (gs) => {
+const buildSectionLabel = (gs, { sectionPrefix = 'Sec' } = {}) => {
 	if (!gs) return '';
 	const gradeName = titleCaseWords(gs?.grade?.gradeName);
 	const sectionNum = gs?.section;
 	const shiftName = titleCaseWords(gs?.shift?.shiftName);
-	return [gradeName || null, sectionNum ? `Sec ${sectionNum}` : null, shiftName || null]
+	return [gradeName || null, sectionNum ? `${sectionPrefix} ${sectionNum}` : null, shiftName || null]
 		.filter(Boolean)
 		.join(' • ');
 };
 
 export default function TeacherClassesPage() {
 	const { auth } = useAuth();
+	const { t } = useI18n();
 	const teacherRef = String(auth?.user?.teacherRef || '');
 	const queryClient = useQueryClient();
+
+	const sectionPrefix = t('teachers.dashboard.classes.sectionPrefix', { defaultValue: 'Sec' });
+	const classFallback = t('teachers.dashboard.classes.classFallback', { defaultValue: 'Class' });
 
 	const [rosterUi, setRosterUi] = useState({ isOpen: false, sectionId: '', label: '' });
 	const assignmentsQuery = useQuery({
@@ -130,7 +135,7 @@ export default function TeacherClassesPage() {
 			out[id] = {
 				loading: Boolean(q?.isLoading && q?.data == null),
 				total: Number(q?.data ?? 0),
-				error: q?.isError ? 'Failed' : '',
+				error: q?.isError ? t('teachers.dashboard.classes.countFailed', { defaultValue: 'Failed' }) : '',
 			};
 		}
 		return out;
@@ -165,18 +170,18 @@ export default function TeacherClassesPage() {
 
 	const students = rosterQuery.data || [];
 	const loadingStudents = Boolean(rosterQuery.isLoading && rosterQuery.data == null);
-	const studentsError = rosterQuery.isError ? 'Failed to load roster' : '';
+	const studentsError = rosterQuery.isError ? t('teachers.dashboard.classes.rosterLoadFailed', { defaultValue: 'Failed to load roster' }) : '';
 
 	const cards = useMemo(() => {
 		const list = Array.isArray(sections) ? sections : [];
 		return list
 			.map((gs) => ({
 				id: String(gs?._id || ''),
-				label: buildSectionLabel(gs) || 'Class',
+				label: buildSectionLabel(gs, { sectionPrefix }) || classFallback,
 				raw: gs,
 			}))
 			.filter((x) => x.id);
-	}, [sections]);
+	}, [sections, sectionPrefix, classFallback]);
 
 	const gridColsClass = useMemo(() => {
 		const n = cards.length;
@@ -193,28 +198,28 @@ export default function TeacherClassesPage() {
 	return (
 		<div className="space-y-4">
 			<div className="rounded-2xl border border-blue-200/80 bg-white shadow-md p-4">
-				<div className="text-lg font-semibold text-gray-900">My Classes</div>
-				<div className="text-sm text-gray-600 mt-0.5">View active students for your assigned classes.</div>
+				<div className="text-lg font-semibold text-gray-900">{t('teachers.dashboard.classes.title', { defaultValue: 'My Classes' })}</div>
+				<div className="text-sm text-gray-600 mt-0.5">{t('teachers.dashboard.classes.subtitle', { defaultValue: 'View active students for your assigned classes.' })}</div>
 			</div>
 
 			{assignmentsQuery.isLoading && cards.length === 0 ? (
-				<div className="text-sm text-gray-600">Loading classes…</div>
+				<div className="text-sm text-gray-600">{t('teachers.dashboard.classes.loading', { defaultValue: 'Loading classes…' })}</div>
 			) : assignmentsQuery.isError ? (
-				<div className="text-sm text-red-600">Failed to load classes</div>
+				<div className="text-sm text-red-600">{t('teachers.dashboard.classes.loadFailed', { defaultValue: 'Failed to load classes' })}</div>
 			) : cards.length === 0 ? (
-				<div className="text-sm text-gray-600">No assigned classes.</div>
+				<div className="text-sm text-gray-600">{t('teachers.dashboard.classes.empty', { defaultValue: 'No assigned classes.' })}</div>
 			) : (
 				<div className="w-full">
 					<div className={`grid ${gridColsClass} gap-4 items-stretch`}>
 						{cards.map((c, idx) => {
 							const info = countsBySectionId?.[c.id] || { loading: false, total: 0, error: '' };
 							const countText = info.loading
-								? 'Checking students…'
+								? t('teachers.dashboard.classes.checkingStudents', { defaultValue: 'Checking students…' })
 								: info.error
-									? 'Students unavailable'
+									? t('teachers.dashboard.classes.studentsUnavailable', { defaultValue: 'Students unavailable' })
 									: info.total > 0
-										? `${info.total} active students`
-										: 'No active students';
+										? t('teachers.dashboard.classes.activeStudentsCount', { defaultValue: '{{count}} active students', count: info.total })
+										: t('teachers.dashboard.classes.noActiveStudents', { defaultValue: 'No active students' });
 
 							const theme = CARD_THEMES[idx % CARD_THEMES.length];
 
@@ -232,21 +237,21 @@ export default function TeacherClassesPage() {
 										<div className="flex items-start justify-between gap-3">
 											<div className="min-w-0">
 												<div className="text-base font-semibold text-white leading-snug tracking-tight truncate">{c.label}</div>
-												<div className="text-xs text-white/85 mt-1">Tap to view students</div>
+												<div className="text-xs text-white/85 mt-1">{t('teachers.dashboard.classes.tapToViewStudents', { defaultValue: 'Tap to view students' })}</div>
 											</div>
 										</div>
 									</div>
 
 									<div className="p-4 flex-1">
 										<div className="rounded-xl border border-gray-200/70 bg-gray-50 p-4">
-											<div className="text-sm font-semibold text-gray-900">Students</div>
+											<div className="text-sm font-semibold text-gray-900">{t('teachers.dashboard.classes.studentsCardTitle', { defaultValue: 'Students' })}</div>
 											<div className="text-sm text-gray-600 mt-1">{countText}</div>
 										</div>
 									</div>
 
 									<div className="px-4 pb-4">
 										<div className="w-full text-center px-4 py-3 rounded-xl bg-(--nb-color-brand) text-white font-semibold shadow-sm group-hover:opacity-95 transition-colors">
-											View Students
+											{t('teachers.dashboard.classes.viewStudents', { defaultValue: 'View Students' })}
 										</div>
 									</div>
 								</button>
@@ -263,42 +268,42 @@ export default function TeacherClassesPage() {
 				closeButtonClassName="text-white/80 hover:text-white p-1 rounded-full hover:bg-white/15 transition-colors"
 				title={(
 					<div className="flex flex-col">
-						<div className="text-xs uppercase tracking-wide text-white/90">Active Roster</div>
+						<div className="text-xs uppercase tracking-wide text-white/90">{t('teachers.dashboard.classes.activeRoster', { defaultValue: 'Active Roster' })}</div>
 						<div className="text-base font-semibold text-white leading-snug mt-0.5">
-							{rosterUi?.label || 'Class'}
+							{rosterUi?.label || classFallback}
 						</div>
 					</div>
 				)}
 			>
 				{loadingStudents ? (
-					<div className="text-sm text-gray-600">Loading roster…</div>
+					<div className="text-sm text-gray-600">{t('teachers.dashboard.classes.loadingRoster', { defaultValue: 'Loading roster…' })}</div>
 				) : (studentsError ? (
 					<div className="text-sm text-red-600">{studentsError}</div>
 				) : ((students || []).length === 0 ? (
-					<div className="text-sm text-gray-600">No active students found.</div>
+					<div className="text-sm text-gray-600">{t('teachers.dashboard.classes.noActiveStudentsFound', { defaultValue: 'No active students found.' })}</div>
 				) : (
 					<div className="max-h-[65vh] overflow-auto">
 						<StandardTable
 							isLoading={false}
 							items={students}
 							rows={students}
-							emptyTitle="No active students found."
+							emptyTitle={t('teachers.dashboard.classes.noActiveStudentsFound', { defaultValue: 'No active students found.' })}
 							columns={[
 								{
 									key: 'studentId',
-									label: 'Student ID',
+									label: t('teachers.dashboard.classes.rosterTable.studentId', { defaultValue: 'Student ID' }),
 									thClassName: 'text-left px-3 py-2',
 									tdClassName: 'px-3 py-2 text-sm text-gray-700',
 								},
 								{
 									key: 'fullName',
-									label: 'Full Name',
+									label: t('teachers.dashboard.classes.rosterTable.fullName', { defaultValue: 'Full Name' }),
 									thClassName: 'text-left px-3 py-2',
 									tdClassName: 'px-3 py-2 text-sm text-gray-900',
 								},
 								{
 									key: 'gender',
-									label: 'Gender',
+									label: t('teachers.dashboard.classes.rosterTable.gender', { defaultValue: 'Gender' }),
 									thClassName: 'text-left px-3 py-2',
 									tdClassName: 'px-3 py-2 text-sm text-gray-700',
 								},

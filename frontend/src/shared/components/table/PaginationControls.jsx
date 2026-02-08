@@ -3,6 +3,7 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Select from '../ui/Select.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 function buildPageItems(_current, total) {
 	const totalPages = Math.max(1, Number(total) || 1);
@@ -26,6 +27,7 @@ export default function PaginationControls({
 	showRowsSelector = true,
 	infoVariant = 'auto', // 'auto' | 'range' | 'page'
 }) {
+	const { t } = useI18n();
 	const p = Math.max(1, Number(page) || 1);
 	const tp = Math.max(1, Number(totalPages) || 1);
 	const lim = Math.max(1, Number(limit) || 10);
@@ -62,8 +64,8 @@ export default function PaginationControls({
 						onPage(next);
 					}}
 					className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed border-r border-slate-300"
-					aria-label="Previous page"
-					title="Previous"
+					aria-label={t('common.previous', { defaultValue: 'Previous' })}
+					title={t('common.previous', { defaultValue: 'Previous' })}
 				>
 					<ChevronLeft size={18} />
 				</button>
@@ -111,8 +113,8 @@ export default function PaginationControls({
 						onPage(next);
 					}}
 					className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-					aria-label="Next page"
-					title="Next"
+					aria-label={t('common.next', { defaultValue: 'Next' })}
+					title={t('common.next', { defaultValue: 'Next' })}
 				>
 					<ChevronRight size={18} />
 				</button>
@@ -122,32 +124,56 @@ export default function PaginationControls({
 				<div className="hidden sm:block text-slate-600">
 					{infoVariant === 'range' ? (
 						start != null && end != null ? (
-							<span>Showing <span className="font-medium text-slate-800">{start}–{end}</span> of <span className="font-medium text-slate-800">{tot}</span> Rows</span>
+							<span>
+								{t('common.showing', { defaultValue: 'Showing' })}{' '}
+								<span className="font-medium text-slate-800">{start}–{end}</span>{' '}
+								{t('common.of', { defaultValue: 'of' })}{' '}
+								<span className="font-medium text-slate-800">{tot}</span>{' '}
+								{t('common.rows', { defaultValue: 'Rows' })}
+							</span>
 						) : (
-							<span>Page <span className="font-medium text-slate-800">{effectivePage}</span> of <span className="font-medium text-slate-800">{tp}</span></span>
+							<span>
+								{t('common.page', { defaultValue: 'Page' })}{' '}
+								<span className="font-medium text-slate-800">{effectivePage}</span>{' '}
+								{t('common.of', { defaultValue: 'of' })}{' '}
+								<span className="font-medium text-slate-800">{tp}</span>
+							</span>
 						)
 					) : infoVariant === 'page' ? (
 						<span>
-							Page <span className="font-medium text-slate-800">{effectivePage}</span> of <span className="font-medium text-slate-800">{tp}</span>
+							{t('common.page', { defaultValue: 'Page' })}{' '}
+							<span className="font-medium text-slate-800">{effectivePage}</span>{' '}
+							{t('common.of', { defaultValue: 'of' })}{' '}
+							<span className="font-medium text-slate-800">{tp}</span>
 							{tot != null ? (
 								<>
 									{' '}
-									— <span className="font-medium text-slate-800">{tot}</span> total
+									— <span className="font-medium text-slate-800">{tot}</span> {t('common.total', { defaultValue: 'total' })}
 								</>
 							) : null}
 						</span>
 					) : (
 						start != null && end != null ? (
-							<span>Showing <span className="font-medium text-slate-800">{start}–{end}</span> of <span className="font-medium text-slate-800">{tot}</span></span>
+							<span>
+								{t('common.showing', { defaultValue: 'Showing' })}{' '}
+								<span className="font-medium text-slate-800">{start}–{end}</span>{' '}
+								{t('common.of', { defaultValue: 'of' })}{' '}
+								<span className="font-medium text-slate-800">{tot}</span>
+							</span>
 						) : (
-							<span>Page <span className="font-medium text-slate-800">{effectivePage}</span> of <span className="font-medium text-slate-800">{tp}</span></span>
+							<span>
+								{t('common.page', { defaultValue: 'Page' })}{' '}
+								<span className="font-medium text-slate-800">{effectivePage}</span>{' '}
+								{t('common.of', { defaultValue: 'of' })}{' '}
+								<span className="font-medium text-slate-800">{tp}</span>
+							</span>
 						)
 					)}
 				</div>
 
 				{showRowsSelector ? (
 					<div className="flex items-center gap-2">
-						<span className="text-slate-600">Rows</span>
+						<span className="text-slate-600">{t('common.rows', { defaultValue: 'Rows' })}</span>
 						<Select
 							value={selectValue}
 							onChange={(e) => {
@@ -165,7 +191,7 @@ export default function PaginationControls({
 						>
 							{limits.map((l) => (
 								<option key={String(l)} value={String(l).toLowerCase() === 'all' ? 'all' : l}>
-									{String(l).toLowerCase() === 'all' ? 'All' : l}
+									{String(l).toLowerCase() === 'all' ? t('common.all', { defaultValue: 'All' }) : l}
 								</option>
 							))}
 						</Select>

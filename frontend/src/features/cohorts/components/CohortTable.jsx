@@ -45,7 +45,7 @@ export default function CohortTable({
       onEmptyAction={canAdd ? onEmptyAction : undefined}
       onRetry={onRetry}
       topSlot={
-        <div className="flex justify-between items-center mb-2 text-sm text-gray-600">
+        <div className="flex justify-between items-center mb-2 text-sm text-gray-600 no-print">
           <div>
             Page {meta.page} of {meta.totalPages || meta.pages || 1} — {meta.total} total
           </div>
@@ -152,6 +152,7 @@ export default function CohortTable({
       onPage={onPage}
       onLimit={onLimit}
       showRowsSelector={false}
+      paginationProps={{ className: 'no-print', infoVariant: 'page' }}
     />
   );
 }

@@ -4,12 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 import { getStudentProfile } from '../api/studentsApi';
 import { studentKeys } from '../queryKeys';
 import Card from '../../../shared/components/ui/Card.jsx';
 import { useStudentDashboardRealtimeInvalidation } from '../components/dashboard/useStudentDashboardRealtimeInvalidation';
 
 function TabNav({ tabs = [] }) {
+  const { t } = useI18n();
   const PRIMARY_SIZE = 3;
   const [tabsOrder, setTabsOrder] = useState(Array.isArray(tabs) ? tabs : []);
   const [open, setOpen] = useState(false);
@@ -94,7 +96,7 @@ function TabNav({ tabs = [] }) {
               type="button"
               onClick={() => setOpen(o => !o)}
               className="text-xs text-gray-600 px-2 py-1 rounded border bg-white hover:bg-gray-50 flex items-center justify-center w-10"
-              title="More tabs"
+              title={t('students.dashboard.moreTabs')}
             >
               <span className="font-semibold tracking-wider">⋯</span>
             </button>
@@ -135,6 +137,7 @@ function StudentDashboardInner({ studentId }) {
   const base = `/students/${studentId}`;
 
   const { auth, hasPermission } = useAuth();
+  const { t } = useI18n();
 
   const canAny = (module, actions) => {
     if (!Array.isArray(actions) || actions.length === 0) return false;
@@ -151,7 +154,7 @@ function StudentDashboardInner({ studentId }) {
     staleTime: 60_000,
   });
 
-  const studentName = profileQuery.data?.student?.fullName || profileQuery.data?.student?.name || 'Student';
+  const studentName = profileQuery.data?.student?.fullName || profileQuery.data?.student?.name || t('students.common.studentFallback');
 
   useStudentDashboardRealtimeInvalidation({ studentId, isStudentSelf: false, enabled: true });
 
@@ -159,44 +162,44 @@ function StudentDashboardInner({ studentId }) {
     const out = [];
 
     // The route itself should already be protected by students access.
-    out.push({ to: `${base}/dashboard`, label: 'Dashboard' });
-    out.push({ to: `${base}/profile`, label: 'Profile' });
-    out.push({ to: `${base}/enrollments`, label: 'Enrollments' });
+    out.push({ to: `${base}/dashboard`, label: t('nav.dashboard') });
+    out.push({ to: `${base}/profile`, label: t('nav.profile') });
+    out.push({ to: `${base}/enrollments`, label: t('nav.enrollments') });
 
     if (canAny('transcript', ['view', 'print', 'download'])) {
-      out.push({ to: `${base}/transcript`, label: 'Transcript' });
+      out.push({ to: `${base}/transcript`, label: t('nav.transcript') });
     }
 
     if (canAny('attendanceReports', ['view', 'print', 'download']) || canAny('attendance', ['view', 'edit'])) {
-      out.push({ to: `${base}/attendance`, label: 'Attendance' });
+      out.push({ to: `${base}/attendance`, label: t('nav.attendance') });
     }
 
     // Timetable read is allowed if user has timetable access OR attendance access.
     if (canAny('timetable', ['view', 'add', 'edit', 'delete', 'print', 'download']) || canAny('attendance', ['view', 'edit'])) {
-      out.push({ to: `${base}/timetable`, label: 'Timetable' });
+      out.push({ to: `${base}/timetable`, label: t('nav.timetable') });
     }
 
     if (canAny('transfers', ['view', 'transfer'])) {
-      out.push({ to: `${base}/transfers`, label: 'Transfers' });
+      out.push({ to: `${base}/transfers`, label: t('nav.transfers') });
     }
 
     // Note: "Library" isn't permission-modeled for staff/admin yet, so we hide it here.
     return out;
-  }, [base, hasPermission]);
+  }, [base, hasPermission, t]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Student Dashboard</h1>
+          <h1 className="text-2xl font-semibold">{t('students.dashboard.title')}</h1>
           <div className="text-sm text-gray-600">
-            {profileQuery.isLoading ? 'Loading student…' : studentName}
+            {profileQuery.isLoading ? t('students.dashboard.loadingStudent') : studentName}
           </div>
         </div>
       </div>
 
       <TabNav tabs={tabs} />
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={<div>{t('common.loading')}</div>}>
         <Outlet />
       </Suspense>
     </div>

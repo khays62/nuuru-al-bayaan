@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Printer, RotateCcw } from 'lucide-react';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import SubjectForm from '../components/SubjectForm';
 import { toast } from 'react-hot-toast';
 
@@ -9,13 +11,18 @@ import { useAuth } from '../../../auth/AuthContext';
 
 // Reusable infrastructure
 import { useEntityList } from '../../../hooks/useEntityList';
-import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect';
-import SortControls from '../../../shared/components/DataToolbar/SortControls.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import { useClientSort } from '../../../shared/hooks/useClientSort';
 import SubjectTable from '../components/SubjectTable.jsx';
+import PdfDownloadButton from '../../../shared/components/exports/downloadButtons/PdfDownloadButton.jsx';
+import ExcelDownloadButton from '../../../shared/components/exports/downloadButtons/ExcelDownloadButton.jsx';
+import CsvDownloadButton from '../../../shared/components/exports/downloadButtons/CsvDownloadButton.jsx';
+import CopyTableButton from '../../../shared/components/exports/downloadButtons/CopyTableButton.jsx';
+import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
+import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
+import headerImg from '../../../assets/nuuruBayaanHeader.png';
 
 // API services (existing ones for now)
 import { getSubjects, addSubject, updateSubject, deleteSubject } from '../api/subjects';
@@ -31,6 +38,7 @@ export default function SubjectPage() {
   const canAdd = isAdmin || hasPermission('subjects', 'add');
   const canEdit = isAdmin || hasPermission('subjects', 'edit');
   const canDelete = isAdmin || hasPermission('subjects', 'delete');
+  const canView = isAdmin || hasPermission('subjects', 'view');
 
   // --- Additional State Not Covered by useEntityList ---
   const [grades, setGrades] = useState([]); // For filter + form
@@ -196,69 +204,138 @@ export default function SubjectPage() {
     />
   );
 
-  const sortSlot = (
-    <SortControls
-      currentField={sortBy}
-      currentDir={sortDir}
-      onSort={onSort}
-      fields={[
-        { field: 'subjectName', label: 'Name' },
-        { field: 'subjectCode', label: 'Code' },
-        { field: 'createdAt', label: 'Created' }
-      ]}
-    />
-  );
+  const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
+  const isPageLoading = Boolean(isLoading);
+  const canExport = Boolean(canView && !isPageLoading && Array.isArray(sortedSubjectsForView) && sortedSubjectsForView.length > 0);
 
-  // Button hadda waxa aan u raraynaa header-ka sare (title row) si ay uga ekaato Classes page
+  const handlePrint = () => {
+    if (!canView) {
+      toast.error('You do not have permission to export/print subjects');
+      return;
+    }
+    setTimeout(() => window.print(), 0);
+  };
+
+  const buildExportPayload = async () => {
+    if (!canExport) return null;
+    const STORAGE_KEY = 'subjects:columns:v1';
+    let visible = {};
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') visible = parsed;
+      }
+    } catch { /* ignore */ }
+    const isVisible = (key) => visible?.[String(key)] !== false;
+
+    const cols = [
+      isVisible('subjectName') ? { key: 'subjectName', label: 'Subject Name' } : null,
+      isVisible('subjectCode') ? { key: 'subjectCode', label: 'Subject Code' } : null,
+      isVisible('grades') ? { key: 'grades', label: 'Associated Grades' } : null,
+    ].filter(Boolean);
+
+    const headers = cols.map((c) => c.label);
+    const rows = (sortedSubjectsForView || []).map((s) => cols.map((col) => {
+      switch (col.key) {
+        case 'subjectName':
+          return s?.subjectName || '';
+        case 'subjectCode':
+          return s?.subjectCode || '';
+        case 'grades':
+          return Array.isArray(s?.grades)
+            ? s.grades.map((g) => g?.gradeName || g?.name || '').filter(Boolean).join(', ')
+            : '';
+        default:
+          return '';
+      }
+    }));
+
+    return {
+      filename: 'subjects',
+      title: 'Subjects',
+      subtitle: `Total: ${sortedSubjectsForView.length} • Generated: ${new Date().toLocaleString()}`,
+      headerImageSrc: headerImg,
+      headers,
+      rows,
+    };
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Subject Management</h1>
-          <p className="mt-1 text-sm text-gray-600">Manage all subjects and assign them to grades.</p>
-        </div>
-        <div className="sm:self-auto">
-          {canAdd && (
-            <Button variant="brand" size="lg" onClick={handleAddNew} icon={<Plus className="w-4 h-4" />}>
-              Add New Subject
-            </Button>
-          )}
-        </div>
-      </div>
+      <Card className="p-4 no-print">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="w-full lg:max-w-lg">
+              {searchSlot}
+            </div>
+            <div className="w-full lg:max-w-2xl">
+              <FilterRow align="end">
+                <FilterItem grow minWidthClass="min-w-35">
+                  <GradeSelect
+                    id="subjects-grade-filter"
+                    name="subjects-grade-filter"
+                    aria-label="Grade"
+                    value={gradeFilter}
+                    onChange={(v) => {
+                      setGradeFilter(v);
+                      setPage(1);
+                    }}
+                    placeholder="Grade"
+                  />
+                </FilterItem>
+              </FilterRow>
+            </div>
+          </div>
 
-      <DataToolbar
-        showReset={false}
-        searchSlot={searchSlot}
-        filtersSlot={
-          <FilterRow>
-            <FilterItem grow minWidthClass="min-w-35">
-              <GradeSelect
-                id="subjects-grade-filter"
-                name="subjects-grade-filter"
-                aria-label="Grade"
-                value={gradeFilter}
-                onChange={(v) => { setGradeFilter(v); setPage(1); }}
-                placeholder="Grade"
-              />
-            </FilterItem>
-
-            <FilterItem className="sm:ml-auto">
-              <div className="flex items-center gap-2 flex-wrap">
-                {sortSlot}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="w-full sm:w-auto">
+              {canAdd ? (
                 <Button
-                  type="button"
-                  variant="neutral"
-                  size="md"
-                  onClick={() => { setGradeFilter(''); resetAndReload({ filters: {}, search: '' }); }}
+                  variant="brand"
+                  size="lg"
+                  className="w-full sm:w-auto justify-center"
+                  onClick={handleAddNew}
+                  icon={<Plus size={20} />}
                 >
-                  Reset
+                  Add New Subject
                 </Button>
-              </div>
-            </FilterItem>
-          </FilterRow>
-        }
-      />
+              ) : null}
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <ActionButton
+                variant="neutral"
+                className={outlineBtn}
+                icon={<Printer size={16} />}
+                disabled={!canExport}
+                onClick={handlePrint}
+                title="Print"
+              >
+                Print
+              </ActionButton>
+              <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <ActionButton
+                variant="neutral"
+                className={outlineBtn}
+                icon={<RotateCcw size={16} />}
+                onClick={() => {
+                  setGradeFilter('');
+                  resetAndReload({ filters: {}, search: '' });
+                }}
+              >
+                Reset
+              </ActionButton>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="with-print-header with-print-footer">
+        <PrintHeader />
 
       <SubjectTable
         items={subjects}
@@ -275,6 +352,9 @@ export default function SubjectPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
+
+        <PrintFooter />
+      </div>
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingSubject ? 'Edit Subject' : 'Add New Subject'}>
         {formError && <div className="mb-3 text-red-600 text-sm">{formError}</div>}
