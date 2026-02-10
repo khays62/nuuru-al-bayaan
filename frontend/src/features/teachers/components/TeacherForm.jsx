@@ -11,6 +11,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     teacherId: '',
     email: '',
     phone: '',
+    salary: '',
     status: 'active',
   });
 
@@ -21,6 +22,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
         teacherId: initialValue.teacherId || '',
         email: initialValue.email || '',
         phone: initialValue.phone || '',
+        salary: initialValue.salary ?? '',
         status: initialValue.status || 'active',
       });
     }
@@ -36,7 +38,11 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     e.preventDefault();
     try {
       setSaving(true);
-      await onSave(form);
+      const payload = {
+        ...form,
+        salary: form.salary === '' || form.salary == null ? 0 : Number(form.salary),
+      };
+      await onSave(payload);
     } finally {
       setSaving(false);
     }
@@ -67,6 +73,18 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
         <label className="block">
           <span className="text-sm">{t('teachers.form.phone')}</span>
           <Input name="phone" value={form.phone} onChange={onChange} className="mt-1" />
+        </label>
+        <label className="block">
+          <span className="text-sm">{t('teachers.form.salary')}</span>
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            name="salary"
+            value={form.salary}
+            onChange={onChange}
+            className="mt-1"
+          />
         </label>
         <label className="block">
           <span className="text-sm">{t('teachers.form.status')}</span>

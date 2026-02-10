@@ -41,8 +41,16 @@ const safeActorLabel = (req) => {
 // CREATE USER
 export const createUser = async (req, res) => {
   try {
-    const { fullName, username, email, phone, role, permissions, password } = req.body;
+    let { fullName, username, email, phone, role, permissions, password, salary } = req.body;
     if (!password) return res.status(400).json({ message: "Password required" });
+
+    if (salary !== undefined && salary !== null && salary !== '') {
+      const n = Number(salary);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ message: 'salary must be a non-negative number', field: 'salary' });
+      salary = n;
+    } else {
+      salary = undefined;
+    }
 
     const normalizedRole = String(role || 'staff').trim().toLowerCase();
     if (normalizedRole === 'student' || normalizedRole === 'teacher') {
@@ -76,6 +84,7 @@ export const createUser = async (req, res) => {
       username,
       email,
       phone,
+      salary,
       role: normalizedRole,
       permissions: safePermissions,
       password: hashedPassword,
@@ -119,7 +128,15 @@ export const updateUser = async (req, res) => {
     const beforeStatus = String(user.status || '').toLowerCase();
     const beforePerms = user.permissions ? JSON.parse(JSON.stringify(user.permissions)) : null;
 
-    const { fullName, username, email, phone, role, permissions, password } = req.body;
+    let { fullName, username, email, phone, role, permissions, password, salary } = req.body;
+
+    if (salary !== undefined && salary !== null && salary !== '') {
+      const n = Number(salary);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ message: 'salary must be a non-negative number', field: 'salary' });
+      salary = n;
+    } else if (salary === '') {
+      salary = 0;
+    }
 
     const normalizedRole = String(role || user.role || 'staff').trim().toLowerCase();
     if (normalizedRole === 'student' || normalizedRole === 'teacher') {
@@ -150,6 +167,7 @@ export const updateUser = async (req, res) => {
     user.username = username;
     user.email = email;
     user.phone = phone;
+    if (salary !== undefined) user.salary = salary;
     user.role = normalizedRole;
     if (safePermissions !== null) {
       user.permissions = safePermissions; // must be object matching schema
@@ -235,18 +253,25 @@ export const updateUser = async (req, res) => {
 // Get all users
 export const getUsers = async (req, res) => {
   try {
-    const { search, role, status, sortBy, sortOrder } = req.query;
+    const { search, role, status, sortBy, sortOrder, includeTeachers } = req.query;
     const query = {};
 
     const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // User Management should only list staff/admin accounts.
-    // Students and teachers have their own dedicated pages and APIs.
-    query.role = { $nin: ['student', 'teacher'] };
+    const includeTeachersBool =
+      includeTeachers === true ||
+      includeTeachers === 1 ||
+      String(includeTeachers || '').trim().toLowerCase() === 'true' ||
+      String(includeTeachers || '').trim() === '1';
+
+    // User Management should only list staff/admin accounts by default.
+    // Finance/Payroll flows can pass includeTeachers=true to include teacher accounts.
+    query.role = includeTeachersBool ? { $nin: ['student'] } : { $nin: ['student', 'teacher'] };
 
     if (role) {
       const normalizedRole = String(role).trim().toLowerCase();
-      if (normalizedRole !== 'admin' && normalizedRole !== 'staff') {
+      const allowed = includeTeachersBool ? ['admin', 'staff', 'teacher'] : ['admin', 'staff'];
+      if (!allowed.includes(normalizedRole)) {
         return res.status(400).json({ message: "Invalid role filter" });
       }
       query.role = normalizedRole;
@@ -276,7 +301,12 @@ export const getUsers = async (req, res) => {
       ? String(sortBy)
       : 'createdAt';
     const direction = String(sortOrder || '').toLowerCase() === 'asc' ? 1 : -1;
-    const users = await User.find(query).sort({ [safeSortBy]: direction });
+
+    // Never return sensitive fields like password hashes.
+    const users = await User.find(query)
+      .select('_id fullName username email phone salary role status permissions teacherRef studentRef mustChangePassword createdAt updatedAt')
+      .sort({ [safeSortBy]: direction })
+      .lean();
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });

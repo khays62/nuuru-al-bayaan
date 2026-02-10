@@ -33,6 +33,9 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true, sparse: true },
   phone: { type: String, unique: true, sparse: true },
 
+  // Used by finance/payroll flows for staff/teacher salaries.
+  salary: { type: Number, default: 0, min: 0 },
+
   password: String,
 
   // Session invalidation: increment to invalidate all existing JWTs for this account.

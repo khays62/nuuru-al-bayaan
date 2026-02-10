@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
+import { getGrades, getShifts } from '../../lookups/api/lookups';
 import { listStudents, getFullTranscript } from '../../students/api/studentsApi';
 import { getCohortTimeline } from '../../cohorts/api/cohorts';
 import { useCascadingFilters } from '../../../hooks/useCascadingFilters';
@@ -44,7 +44,6 @@ export default function TranscriptPage() {
   useTranscriptRealtimeInvalidation();
 
   // Lookups (for labels only)
-  const [years, setYears] = useState([]);
   // Grade/Shift data no longer displayed; timeline covers progression
   const [grades, setGrades] = useState([]); // grade levels list
   const [shifts, setShifts] = useState([]);
@@ -227,16 +226,6 @@ export default function TranscriptPage() {
     })),
   });
 
-  const enrollmentQueryByStudentAndEnrollment = useMemo(() => {
-    const map = {};
-    for (let i = 0; i < enrollmentTargets.length; i += 1) {
-      const { studentId, enrollmentId } = enrollmentTargets[i];
-      if (!map[studentId]) map[studentId] = {};
-      map[studentId][enrollmentId] = enrollmentTranscriptQueries[i];
-    }
-    return map;
-  }, [enrollmentTargets, enrollmentTranscriptQueries]);
-
   const enrollmentDataByStudentAndEnrollment = useMemo(() => {
     const map = {};
     for (let i = 0; i < enrollmentTargets.length; i += 1) {
@@ -276,22 +265,10 @@ export default function TranscriptPage() {
     toast.error(unique.length === 1 ? unique[0] : unique.join(' '));
   }, [mode, selectedLevels, selectedStudentIds, grades, indexByStudentId]);
 
-  const loading = useMemo(() => {
-    if (!selectedStudentIds.length) return false;
-    if (isLatestMode) {
-      return latestTranscriptQueries.some((q) => Boolean(q?.isLoading && q?.data == null));
-    }
-    const indexBusy = indexQueries.some((q) => Boolean(q?.isLoading && q?.data == null));
-    const enrollBusy = enrollmentTranscriptQueries.some((q) => Boolean(q?.isLoading && q?.data == null));
-    return indexBusy || enrollBusy;
-  }, [selectedStudentIds.length, isLatestMode, latestTranscriptQueries, indexQueries, enrollmentTranscriptQueries]);
-
   // Load lookups once for labels + levels
   useEffect(() => {
     (async () => {
       try {
-        const ys = await getAcademicYears();
-        setYears(Array.isArray(ys) ? ys : (ys?.data || []));
         const gRes = await getGrades?.();
         if (gRes) {
           const gData = Array.isArray(gRes?.data) ? gRes.data : (gRes?.data || gRes || []);
@@ -1157,7 +1134,6 @@ export default function TranscriptPage() {
                     ) : (
                       targetMeta.map((meta, idx2) => {
                         const enrollmentId = String(meta?.enrollmentId || meta?._id || idx2);
-                        const q = enrollmentQueryByStudentAndEnrollment?.[studentId]?.[enrollmentId];
                         const resp = enrollmentDataByStudentAndEnrollment?.[studentId]?.[enrollmentId];
                         const ok = resp?.ok && resp?.data;
                         const en = ok ? (resp.data?.enrollments?.[0] || null) : null;

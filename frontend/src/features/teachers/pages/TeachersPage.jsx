@@ -78,7 +78,7 @@ export default function TeachersPage() {
 
 	const createTeacherMutation = useMutation({
 		mutationFn: (payload) => createTeacher(payload),
-		onSuccess: (res) => {
+		onSuccess: () => {
 			toast.success(t('teachers.table.toasts.created'));
 			try {
 				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
@@ -91,7 +91,7 @@ export default function TeachersPage() {
 
 	const updateTeacherMutation = useMutation({
 		mutationFn: ({ id, payload }) => updateTeacher(id, payload),
-		onSuccess: (res, vars) => {
+		onSuccess: () => {
 			toast.success(t('teachers.table.toasts.updated'));
 			try {
 				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
@@ -107,7 +107,7 @@ export default function TeachersPage() {
 			if (nextStatus === 'inactive') return deactivateTeacher(id);
 			return reactivateTeacher(id);
 		},
-		onSuccess: (_, vars) => {
+		onSuccess: () => {
 			try {
 				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
 			} catch { /* ignore */ }
@@ -116,7 +116,7 @@ export default function TeachersPage() {
 
 	const resetPasswordMutation = useMutation({
 		mutationFn: (id) => resetTeacherPassword(id),
-		onSuccess: (_, id) => {
+		onSuccess: () => {
 			toast.success(t('teachers.table.toasts.passwordReset'));
 		},
 		onError: (e) => {

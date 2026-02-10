@@ -29,6 +29,12 @@ import TeachersPage from '../features/teachers/pages/TeachersPage';
 import TimetablePage from '../features/timetable/pages/TimetablePage';
 import AnnouncementsPage from '../features/announcements/pages/Announcements';
 
+import FinanceDashboardPage from '../features/finance/pages/FinanceDashboardPage.jsx';
+import FinanceAccountsPage from '../features/finance/pages/FinanceAccountsPage.jsx';
+import FinanceStudentFinancePage from '../features/finance/pages/FinanceStudentFinancePage.jsx';
+import FinancePayrollPage from '../features/finance/pages/FinancePayrollPage.jsx';
+import FinanceExpensesPage from '../features/finance/pages/FinanceExpensesPage.jsx';
+
 import GradesSetupPage from '../features/setup/pages/GradesSetupPage.jsx';
 import ShiftsSetupPage from '../features/setup/pages/ShiftsSetupPage.jsx';
 import AcademicYearsSetupPage from '../features/setup/pages/AcademicYearsSetupPage.jsx';
@@ -294,6 +300,56 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['admin', 'staff', 'teacher', 'student']}>
             <AnnouncementsPage />
+          </ProtectedRoute>
+        ),
+      },
+
+      {
+        path: 'finance',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+            <Navigate to="/finance/dashboard" replace />
+          </ProtectedRoute>
+        ),
+      },
+
+      {
+        path: 'finance/dashboard',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+            <FinanceDashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'finance/accounts',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+            <FinanceAccountsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'finance/student-finance',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+            <FinanceStudentFinancePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'finance/payroll',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+            <FinancePayrollPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'finance/expenses',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+            <FinanceExpensesPage />
           </ProtectedRoute>
         ),
       },

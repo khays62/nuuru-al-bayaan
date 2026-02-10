@@ -5,6 +5,7 @@ const TeacherSchema = new mongoose.Schema({
   teacherId: { type: String, required: true, unique: true, index: true },
   email: { type: String, trim: true, unique: true, sparse: true },
   phone: { type: String, trim: true, unique: true, sparse: true },
+  salary: { type: Number, default: 0, min: 0 },
   status: { type: String, enum: ['active','inactive'], default: 'active' },
   lastAcademicYear: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicYear' },
 }, { timestamps: true });

@@ -180,10 +180,6 @@ export default function StudentPage() {
         studentsQuery.refetch();
     }, [studentsQuery]);
 
-    const silentRefresh = useCallback(() => {
-        queryClient.invalidateQueries({ queryKey: studentKeys.adminListBase });
-    }, [queryClient]);
-
     const resetAndReload = useCallback(({ search = '' } = {}) => {
         setSearchTerm(search);
         setPage(1);

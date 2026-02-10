@@ -1045,6 +1045,12 @@ export default {
 
   nav: {
     dashboard: 'Dashboard',
+    finance: 'Maaliyad',
+    financeDashboard: 'Dashboard',
+    financeAccounts: 'Xisaabaad',
+    financeStudentFinance: 'Maaliyadda Ardayda',
+    financePayroll: 'Mushahar',
+    financeExpenses: 'Kharashaad',
     myClasses: 'Fasaladayda',
     profile: 'Profile',
 
@@ -1777,6 +1783,7 @@ export default {
       teacherIdHelp: 'Macallinku wuxuu ku geli karaa username-kan ama email-kiisa.',
       email: 'Email',
       phone: 'Telefoon',
+      salary: 'Mushahar',
       status: 'Xaalad',
       active: 'Firfircoon',
       inactive: 'Aan firfircoonayn',
@@ -2351,6 +2358,7 @@ export default {
         username: 'Username',
         email: 'Email',
         phone: 'Telefoon',
+        salary: 'Mushahar',
         role: 'Role',
         status: 'Xaalad',
         actions: 'Falal',
@@ -2387,6 +2395,7 @@ export default {
         username: 'Username',
         email: 'Email',
         phone: 'Telefoon',
+        salary: 'Mushahar',
         password: 'Password',
         confirmPassword: 'Xaqiiji Password',
       },

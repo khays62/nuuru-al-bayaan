@@ -23,6 +23,7 @@ const userBodySchema = z.object({
   username: z.string().trim().min(1).max(64),
   email: z.string().trim().email().max(128).optional().or(z.literal('')).optional(),
   phone: z.string().trim().max(32).optional().or(z.literal('')).optional(),
+  salary: z.coerce.number().min(0).optional(),
   role: z.enum(['admin', 'staff']).optional(),
   // Zod v4: record() expects (keySchema, valueSchema). One-arg form causes `_zod` crashes.
   permissions: z.record(z.string(), z.unknown()).optional(),
@@ -42,6 +43,7 @@ router.get(
       search: z.string().trim().max(64).optional(),
       role: z.enum(['admin', 'staff']).optional(),
       status: z.enum(['active', 'inactive']).optional(),
+      includeTeachers: z.enum(['true', 'false', '1', '0']).optional(),
       sortBy: z.enum(['createdAt', 'updatedAt', 'fullName', 'username', 'email', 'role', 'status']).optional(),
       sortOrder: z.enum(['asc', 'desc']).optional(),
     }).strip(),

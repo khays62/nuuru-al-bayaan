@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
 import { getGradeSectionById, listGradeSections } from '../../grades/api/gradeSections';
@@ -43,8 +43,6 @@ export default function ResultPage() {
     // Requirement: teachers should be able to Print/Download results like admins.
     const canPrintResults = isAdmin || isTeacher || hasPermission('results', 'print');
     const canDownloadResults = isAdmin || isTeacher || hasPermission('results', 'download');
-
-    const queryClient = useQueryClient();
 
     // Persist filters in sessionStorage (not URL)
     const SESSION_KEY = 'results:filters:v1';

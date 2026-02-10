@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 import { listStudents } from '../../../../api';
 import Modal from '../../../../shared/components/ui/Modal.jsx';

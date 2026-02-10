@@ -46,6 +46,7 @@ async function ensureTeacherUser({ teacherId, teacherDoc }) {
     username,
     email: teacherDoc.email || undefined,
     phone: teacherDoc.phone || undefined,
+    salary: Number(teacherDoc.salary || 0),
     password: hashed,
     role: 'teacher',
     teacherRef: teacherDoc._id,
@@ -71,7 +72,7 @@ export const listTeachers = async (req, res) => {
       ];
     }
     const docs = await Teacher.find(q)
-      .select('fullName teacherId email phone status lastAcademicYear createdAt')
+      .select('fullName teacherId email phone salary status lastAcademicYear createdAt')
       .populate({ path: 'lastAcademicYear', select: 'yearName' })
       .lean();
     res.json({ data: docs });
@@ -82,7 +83,15 @@ export const listTeachers = async (req, res) => {
 
 export const createTeacher = async (req, res) => {
   try {
-    let { fullName, teacherId, email, phone, status } = req.body;
+    let { fullName, teacherId, email, phone, status, salary } = req.body;
+
+    if (salary !== undefined && salary !== null && salary !== '') {
+      const n = Number(salary);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ message: 'salary must be a non-negative number' });
+      salary = n;
+    } else {
+      salary = undefined;
+    }
     // Auto-generate teacherId like ID01, ID02 if not provided
     if (!teacherId) {
       const c = await Counter.findOneAndUpdate(
@@ -134,7 +143,7 @@ export const createTeacher = async (req, res) => {
       return res.status(409).json({ message: 'Teacher login already exists (username/email conflict)' });
     }
 
-    const doc = await Teacher.create({ fullName, teacherId, email, phone, status, lastAcademicYear });
+    const doc = await Teacher.create({ fullName, teacherId, email, phone, status, salary, lastAcademicYear });
 
     try {
       await ensureTeacherUser({ teacherId, teacherDoc: doc });
@@ -150,7 +159,7 @@ export const createTeacher = async (req, res) => {
     publishRealtime({ type: 'teachers:changed', id: String(doc._id), ts: Date.now() });
     publishRealtime({ type: 'users:changed', ts: Date.now() });
 
-    res.status(201).json({ data: { _id: String(doc._id), fullName: doc.fullName, teacherId: doc.teacherId, email: doc.email, phone: doc.phone, status: doc.status, lastAcademicYear: doc.lastAcademicYear, createdAt: doc.createdAt } });
+    res.status(201).json({ data: { _id: String(doc._id), fullName: doc.fullName, teacherId: doc.teacherId, email: doc.email, phone: doc.phone, salary: doc.salary || 0, status: doc.status, lastAcademicYear: doc.lastAcademicYear, createdAt: doc.createdAt } });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
   }
@@ -160,7 +169,7 @@ export const createTeacherLoginUser = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
-    const teacher = await Teacher.findById(id).select('fullName teacherId email phone status').lean();
+    const teacher = await Teacher.findById(id).select('fullName teacherId email phone salary status').lean();
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
 
     // If a user already exists for this teacherRef, do nothing.
@@ -185,7 +194,15 @@ export const updateTeacher = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
-    const { fullName, teacherId, email, phone, status } = req.body;
+    let { fullName, teacherId, email, phone, status, salary } = req.body;
+
+    if (salary !== undefined && salary !== null && salary !== '') {
+      const n = Number(salary);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ message: 'salary must be a non-negative number' });
+      salary = n;
+    } else if (salary === '') {
+      salary = 0;
+    }
 
     const existingTeacher = await Teacher.findById(id).select('teacherId email status').lean();
     if (!existingTeacher) return res.status(404).json({ message: 'Not found' });
@@ -220,7 +237,7 @@ export const updateTeacher = async (req, res) => {
       if (emailConflict) return res.status(409).json({ message: 'Teacher login email already exists' });
     }
 
-    const updated = await Teacher.findByIdAndUpdate(id, { $set: { fullName, teacherId, email, phone, status } }, { new: true }).select('fullName teacherId email phone status lastAcademicYear createdAt').lean();
+    const updated = await Teacher.findByIdAndUpdate(id, { $set: { fullName, teacherId, email, phone, salary, status } }, { new: true }).select('fullName teacherId email phone salary status lastAcademicYear createdAt').lean();
     if (!updated) return res.status(404).json({ message: 'Not found' });
 
     // Best-effort sync to linked User account (if exists)
@@ -229,6 +246,7 @@ export const updateTeacher = async (req, res) => {
       if (nextTeacherId) patch.username = nextTeacherId;
       if (email !== undefined) patch.email = nextEmail || undefined;
       if (phone !== undefined) patch.phone = phone || undefined;
+      if (salary !== undefined) patch.salary = Number(updated.salary || 0);
 
       const statusChanged =
         status !== undefined &&
@@ -290,7 +308,7 @@ export const deactivateTeacher = async (req, res) => {
       { $set: { status: 'inactive' } },
       { new: true }
     )
-      .select('fullName teacherId email phone status lastAcademicYear createdAt')
+      .select('fullName teacherId email phone salary status lastAcademicYear createdAt')
       .lean();
     if (!updated) return res.status(404).json({ message: 'Not found' });
 
@@ -324,7 +342,7 @@ export const reactivateTeacher = async (req, res) => {
       { $set: { status: 'active' } },
       { new: true }
     )
-      .select('fullName teacherId email phone status lastAcademicYear createdAt')
+      .select('fullName teacherId email phone salary status lastAcademicYear createdAt')
       .lean();
     if (!updated) return res.status(404).json({ message: 'Not found' });
 
@@ -505,13 +523,13 @@ export const getTeacherProfile = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
 
     const teacher = await Teacher.findById(id)
-      .select('fullName teacherId email phone status lastAcademicYear createdAt')
+      .select('fullName teacherId email phone salary status lastAcademicYear createdAt')
       .populate({ path: 'lastAcademicYear', select: 'yearName' })
       .lean();
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
 
     const user = await User.findOne({ teacherRef: id })
-      .select('_id fullName username email phone role status lastLogin mustChangePassword')
+      .select('_id fullName username email phone salary role status lastLogin mustChangePassword')
       .lean();
 
     return res.json({ data: { teacher, user } });

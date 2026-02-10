@@ -1,0 +1,284 @@
+import React, { useState, useEffect } from 'react';
+import { X, DollarSign, Save, Printer, Calendar, Info, History, Layers, CheckCircle, Smartphone } from 'lucide-react';
+import financeService from '../api/finance';
+import toast from 'react-hot-toast';
+
+export default function StudentResponsibilityModal({ student, row, onClose, onSuccess }) {
+    const [view, setView] = useState('finance'); // finance (ledger), history (responsible history)
+    const [loading, setLoading] = useState(false);
+    const [invoices, setInvoices] = useState([]);
+    const [accounts, setAccounts] = useState([]);
+    const [accountId, setAccountId] = useState('');
+    const [paymentType, setPaymentType] = useState('level'); // level or receipt
+    const [feeTypeFilter, setFeeTypeFilter] = useState('all'); // Filter by fee type
+    const [amountTypes, setAmountTypes] = useState([]);
+    const [processingId, setProcessingId] = useState(null);
+    const [editingPaid, setEditingPaid] = useState({});
+
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            try {
+                const [invRes, accRes, catsRes] = await Promise.all([
+                    financeService.getInvoices({ studentId: student._id }),
+                    financeService.getAccounts(),
+                    financeService.getFinanceCategories()
+                ]);
+                setInvoices(invRes.data || []);
+                setAccounts(accRes.data || accRes || []);
+                const cats = catsRes.data ? catsRes.data.filter(c => c.type === 'fee') : (Array.isArray(catsRes) ? catsRes.filter(c => c.type === 'fee') : []);
+                setAmountTypes(cats);
+            } catch {
+                toast.error("Failed to sync responsibility records");
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, [student]);
+
+    const filteredInvoices = invoices.filter(inv => {
+        if (feeTypeFilter === 'all') return true;
+        return inv.category?._id === feeTypeFilter;
+    });
+
+    const handlePaidChange = (id, val) => {
+        setEditingPaid(prev => ({ ...prev, [id]: val }));
+    };
+
+    const handleSavePayment = async (inv) => {
+        const amount = editingPaid[inv._id];
+        if (!amount || Number(amount) <= 0) return toast.error("Enter valid amount");
+        if (!accountId) return toast.error("Select target account");
+
+        setProcessingId(inv._id);
+        try {
+            await financeService.payChargedMonth({
+                studentId: student._id,
+                month: inv.billingMonth,
+                academicYearId: inv.academicYear,
+                accountId,
+                amount: Number(amount),
+                paymentType,
+                description: `Payment for ${inv.title || inv.billingMonth}`
+            });
+            toast.success("Payment Captured");
+            setEditingPaid(prev => ({ ...prev, [inv._id]: '' }));
+            onSuccess?.();
+            const invRes = await financeService.getInvoices({ studentId: student._id });
+            setInvoices(invRes.data || []);
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Payment processing failed");
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-slate-50 w-full max-w-6xl h-[90vh] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
+
+                {/* Header Branding */}
+                <div className="bg-slate-900 px-10 py-8 flex justify-between items-center shrink-0 border-b border-white/5">
+                    <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 bg-blue-600/20 rounded-[2rem] flex items-center justify-center border border-white/10 backdrop-blur-xl">
+                            <Layers className="text-blue-500" size={32} />
+                        </div>
+                        <div>
+                            <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">Student Responsibility</h2>
+                            <div className="flex items-center gap-4 mt-2">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5 border border-white/10 px-2 py-1 rounded-md">
+                                    <Smartphone size={10} className="text-blue-500" /> {student?.studentId}
+                                </span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5 border border-white/10 px-2 py-1 rounded-md">
+                                    <Info size={10} className="text-blue-500" /> {student?.fullName}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-4 hover:bg-white/10 text-white/30 hover:text-white rounded-[2rem] transition-all">
+                        <X size={32} />
+                    </button>
+                </div>
+
+                {/* Sub Navigation */}
+                <div className="bg-white border-b border-slate-200 px-10 flex justify-between items-center shrink-0">
+                    <div className="flex gap-10">
+                        <button
+                            onClick={() => setView('finance')}
+                            className={`py-6 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${view === 'finance' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Finance History
+                            {view === 'finance' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
+                        </button>
+                        <button
+                            onClick={() => setView('history')}
+                            className={`py-6 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${view === 'history' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Responsible History
+                            {view === 'history' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
+                        </button>
+                    </div>
+
+                    {view === 'finance' && (
+                        <div className="flex items-center gap-4">
+                            <select
+                                className="h-10 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
+                                value={feeTypeFilter}
+                                onChange={e => setFeeTypeFilter(e.target.value)}
+                            >
+                                <option value="all">All Fee Types</option>
+                                {amountTypes.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                            </select>
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex-1 overflow-hidden flex flex-col p-10 space-y-8">
+                    {view === 'finance' ? (
+                        <>
+                            {/* Controls */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Account</label>
+                                    <select
+                                        className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900 outline-none"
+                                        value={accountId}
+                                        onChange={e => setAccountId(e.target.value)}
+                                    >
+                                        <option value="">Select Account...</option>
+                                        {accounts.map(acc => <option key={acc._id} value={acc._id}>{acc.name} (${acc.balance.toLocaleString()})</option>)}
+                                    </select>
+                                </div>
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Payment Mode</label>
+                                    <div className="flex h-14 p-1.5 bg-slate-100 rounded-2xl">
+                                        <button
+                                            onClick={() => setPaymentType('level')}
+                                            className={`flex-1 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${paymentType === 'level' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                                        >
+                                            By Level
+                                        </button>
+                                        <button
+                                            onClick={() => setPaymentType('receipt')}
+                                            className={`flex-1 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${paymentType === 'receipt' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                                        >
+                                            By Receipt
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2 flex items-center justify-end">
+                                    <div className="h-20 bg-blue-600/5 p-6 rounded-[2rem] border-2 border-blue-600/10 flex justify-between items-center w-full max-w-xs">
+                                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Responsibility Due</span>
+                                        <span className="text-3xl font-black text-blue-600 tracking-tighter">${Number(row?.totalBalance || 0).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Table */}
+                            <div className="flex-1 bg-white rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/30 overflow-hidden flex flex-col">
+                                <div className="overflow-y-auto flex-1 custom-scrollbar">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-md">
+                                            <tr className="border-b border-slate-200">
+                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Month</th>
+                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Description</th>
+                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Dr</th>
+                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Cr</th>
+                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40 text-center">Paid</th>
+                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Actions</th>
+                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Balance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 font-bold">
+                                            {loading ? (
+                                                <tr><td colSpan={7} className="py-24 text-center text-slate-400 font-black animate-pulse uppercase tracking-widest">Compiling Records...</td></tr>
+                                            ) : filteredInvoices.length === 0 ? (
+                                                <tr><td colSpan={7} className="py-24 text-center text-slate-300 font-bold">No records for this selection.</td></tr>
+                                            ) : (
+                                                filteredInvoices.map((inv) => {
+                                                    const balance = inv.amount - inv.paidAmount;
+                                                    const normalizeMonth = (value) => {
+                                                        if (!value || typeof value !== 'string') return null;
+                                                        const raw = value.trim();
+                                                        const m2 = raw.match(/^(\d{4})-(\d{2})$/);
+                                                        if (m2) return `${m2[1]}-${m2[2]}`;
+                                                        const m1 = raw.match(/^(\d{4})-(\d{1})$/);
+                                                        if (m1) return `${m1[1]}-0${m1[2]}`;
+                                                        return null;
+                                                    };
+                                                    const createdMonth = inv.createdAt ? new Date(inv.createdAt).toISOString().slice(0, 7) : '';
+                                                    const billingMonthNorm = normalizeMonth(inv.billingMonth);
+                                                    const isHormaris = typeof inv?.isHormaris === 'boolean'
+                                                        ? inv.isHormaris
+                                                        : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
+
+                                                    return (
+                                                        <tr key={inv._id} className="hover:bg-slate-50/50 transition-all">
+                                                            <td className="py-5 px-8">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="bg-slate-100 text-slate-900 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{inv.billingMonth || '—'}</span>
+                                                                    {isHormaris ? (
+                                                                        <span className="bg-slate-900 text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Hormaris</span>
+                                                                    ) : null}
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-5 px-8">
+                                                                <span className="text-sm text-slate-900">{inv.title || 'Tuition Fee'}</span>
+                                                            </td>
+                                                            <td className="py-5 px-8 text-right tabular-nums text-slate-900 font-black">${Number(inv.amount).toFixed(2)}</td>
+                                                            <td className="py-5 px-8 text-right tabular-nums text-green-600">${Number(inv.paidAmount).toFixed(2)}</td>
+                                                            <td className="py-5 px-8">
+                                                                <input
+                                                                    type="number"
+                                                                    className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-900 outline-none text-center focus:bg-white focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                                                    placeholder="0.00"
+                                                                    value={editingPaid[inv._id] || ''}
+                                                                    onChange={e => handlePaidChange(inv._id, e.target.value)}
+                                                                />
+                                                            </td>
+                                                            <td className="py-5 px-8">
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button
+                                                                        onClick={() => handleSavePayment(inv)}
+                                                                        disabled={processingId === inv._id || inv.paidAmount >= inv.amount}
+                                                                        className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:opacity-90 shadow-lg disabled:opacity-20"
+                                                                    >
+                                                                        <Save size={16} />
+                                                                    </button>
+                                                                    <button className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black shadow-lg">
+                                                                        <Printer size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-5 px-8 text-right tabular-nums">
+                                                                <div className="flex flex-col items-end leading-tight">
+                                                                    <span className="text-red-500">${balance.toFixed(2)}</span>
+                                                                    {isHormaris && balance > 0 ? (
+                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-red-600">Hormaris</span>
+                                                                    ) : null}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex-1 bg-white rounded-[3.5rem] border border-slate-100 shadow-xl flex items-center justify-center">
+                            <div className="text-center space-y-4">
+                                <History className="w-20 h-20 text-slate-200 mx-auto" />
+                                <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter">History Under Reconstruction</h4>
+                                <p className="text-slate-400 text-sm max-w-xs mx-auto">This module is currently being optimized for faster record retrieval.</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DataToolbar from '../../../shared/components/DataToolbar/DataToolbar.jsx';
@@ -78,18 +78,6 @@ export default function TimetablePage() {
     if (js === 6) return 0;
     if (js === 0) return 1;
     return js + 1;
-  };
-
-  const formatTime12h = (t) => {
-    const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) return String(t || '');
-    let hh = Number(m[1]);
-    const mm = m[2];
-    if (!Number.isFinite(hh)) return String(t || '');
-    const ampm = hh >= 12 ? t('common.time.pm') : t('common.time.am');
-    hh = hh % 12;
-    if (hh === 0) hh = 12;
-    return `${hh}:${mm} ${ampm}`;
   };
 
   const isValidTime24h = (raw) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(raw || ''));

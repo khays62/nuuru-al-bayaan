@@ -38,6 +38,14 @@ import { useGradeSectionsRealtimeInvalidation } from '../useGradeSectionsRealtim
 import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function GradePage() {
+	const { auth } = useAuth();
+	const role = auth?.user?.role;
+	// Safety: teachers should use the dedicated My Classes page.
+	if (role === 'teacher') return <Navigate to="/teacher-classes" replace />;
+	return <GradePageInner />;
+}
+
+function GradePageInner() {
 	const { t } = useI18n();
 	const { auth, hasPermission } = useAuth();
 	const role = auth?.user?.role;
@@ -46,8 +54,6 @@ export default function GradePage() {
 	const canAdd = isAdmin || hasPermission('grades', 'add');
 	const canEdit = isAdmin || hasPermission('grades', 'edit');
 	const canDelete = isAdmin || hasPermission('grades', 'delete');
-	// Safety: teachers should use the dedicated My Classes page.
-	if (role === 'teacher') return <Navigate to="/teacher-classes" replace />;
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingClass, setEditingClass] = useState(null);

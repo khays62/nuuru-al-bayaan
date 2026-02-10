@@ -1,0 +1,207 @@
+﻿
+> frontend@0.0.0 lint
+> eslint .
+
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\App.jsx
+  63:8  warning  React Hook useEffect has a missing dependency: 'auth?.user'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\api\sessionAbort.js
+  29:7  warning  Unused eslint-disable directive (no problems were reported from 'no-undef')
+  31:9  warning  Unused eslint-disable directive (no problems were reported from 'no-undef')
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\auth\AuthContext.jsx
+  245:5  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\auth\pages\LoginPage.jsx
+  106:6  warning  React Hook useEffect has a missing dependency: 'startAutofillClearUntilFocus'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  117:6  warning  React Hook useEffect has a missing dependency: 'startAutofillClearUntilFocus'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\announcements\pages\Announcements.jsx
+  62:6  warning  React Hook useEffect has missing dependencies: 'queryClient' and 'userKey'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\attendance\pages\AttendancePage.jsx
+  360:6  warning  React Hook useEffect has a missing dependency: 'periodCode'. Either include it or remove the dependency array                                                                                          react-hooks/exhaustive-deps
+  561:6  warning  React Hook useEffect has missing dependencies: 'auth?.user?.teacherRef', 'sectionId', 'selectedDayLabel', 'slotsForSectionId', and 'slotsLoading'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  744:6  warning  React Hook useEffect has missing dependencies: 'isTeacher' and 't'. Either include them or remove the dependency array                                                                                 react-hooks/exhaustive-deps
+  948:6  warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                   react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\attendance\pages\AttendanceReportsPage.jsx
+   76:9  warning  The 'formatDateWithDay' function makes the dependencies of useMemo Hook (at line 967) change on every render. To fix this, wrap the definition of 'formatDateWithDay' in its own useCallback() Hook   react-hooks/exhaustive-deps
+   76:9  warning  The 'formatDateWithDay' function makes the dependencies of useMemo Hook (at line 1033) change on every render. To fix this, wrap the definition of 'formatDateWithDay' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  382:6  warning  React Hook useEffect has a missing dependency: 'clampRangeToMonth'. Either include it or remove the dependency array                                                                                  react-hooks/exhaustive-deps
+  852:6  warning  React Hook useEffect has missing dependencies: 'isSummary', 'runDetailsRange', and 'runSummary'. Either include them or remove the dependency array                                                   react-hooks/exhaustive-deps
+  899:6  warning  React Hook useMemo has an unnecessary dependency: 'formatActor'. Either exclude it or remove the dependency array                                                                                     react-hooks/exhaustive-deps
+  943:6  warning  React Hook useMemo has a missing dependency: 'formatDateWithDay'. Either include it or remove the dependency array                                                                                    react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\components\AnnouncementsMixCard.jsx
+  101:11  warning  The 'safeInRange' conditional could make the dependencies of useMemo Hook (at line 150) change on every render. To fix this, wrap the initialization of 'safeInRange' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\components\AttendanceChartsCard.jsx
+  283:11  warning  The 'attendanceByDay' conditional could make the dependencies of useMemo Hook (at line 332) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'attendanceByDay' in its own useMemo() Hook              react-hooks/exhaustive-deps
+  284:11  warning  The 'attendanceStatusTrend' conditional could make the dependencies of useMemo Hook (at line 332) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'attendanceStatusTrend' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\components\ResultsChartsCard.jsx
+  285:11  warning  The 'examTypes' logical expression could make the dependencies of useEffect Hook (at line 292) change on every render. To fix this, wrap the initialization of 'examTypes' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  285:11  warning  The 'examTypes' logical expression could make the dependencies of useMemo Hook (at line 377) change on every render. To fix this, wrap the initialization of 'examTypes' in its own useMemo() Hook    react-hooks/exhaustive-deps
+  327:11  warning  The 'summary' logical expression could make the dependencies of useMemo Hook (at line 382) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook        react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\components\ScoreActivityCard.jsx
+  164:11  warning  The 'safeSeries' conditional could make the dependencies of useMemo Hook (at line 219) change on every render. To fix this, wrap the initialization of 'safeSeries' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  164:11  warning  The 'safeSeries' conditional could make the dependencies of useMemo Hook (at line 291) change on every render. To fix this, wrap the initialization of 'safeSeries' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\pages\DashboardPage.jsx
+  690:11  warning  The 'scoreActivityByDayRaw' conditional could make the dependencies of useMemo Hook (at line 708) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'scoreActivityByDayRaw' in its own useMemo() Hook          react-hooks/exhaustive-deps
+  712:11  warning  The 'newStudentsByAcademicYear' conditional could make the dependencies of useMemo Hook (at line 782) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'newStudentsByAcademicYear' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  716:11  warning  The 'newStudentsByDay' conditional could make the dependencies of useMemo Hook (at line 782) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'newStudentsByDay' in its own useMemo() Hook                    react-hooks/exhaustive-deps
+  717:11  warning  The 'newStudentsByWeek' conditional could make the dependencies of useMemo Hook (at line 782) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'newStudentsByWeek' in its own useMemo() Hook                  react-hooks/exhaustive-deps
+  718:11  warning  The 'newStudentsByMonth' conditional could make the dependencies of useMemo Hook (at line 782) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'newStudentsByMonth' in its own useMemo() Hook                react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\exams\pages\ExamManagementPage.jsx
+   72:11  warning  The 'teacherSections' logical expression could make the dependencies of useEffect Hook (at line 161) change on every render. To fix this, wrap the initialization of 'teacherSections' in its own useMemo() Hook                                             react-hooks/exhaustive-deps
+   74:11  warning  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 259) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  152:8   warning  React Hook useEffect has missing dependencies: 'gradeId' and 'shiftId'. Either include them or remove the dependency array                                                                                                                                   react-hooks/exhaustive-deps
+  216:8   warning  React Hook useEffect has a missing dependency: 'isTeacher'. Either include it or remove the dependency array                                                                                                                                                 react-hooks/exhaustive-deps
+  241:9   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  248:8   warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                         react-hooks/exhaustive-deps
+  508:8   warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                         react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\ExpenseManagement.jsx
+  97:9  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\FeeManagement.jsx
+  86:8  warning  React Hook useEffect has missing dependencies: 'fetchInvoices' and 'meta.limit'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  94:8  warning  React Hook useEffect has missing dependencies: 'fetchInvoices' and 'meta.limit'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\FinanceAppointments.jsx
+  438:8  warning  React Hook useEffect has a missing dependency: 'handleStudentSearch'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\StudentChargeModal.jsx
+  76:8  warning  React Hook useEffect has a missing dependency: 'feeType'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\grades\components\GradeForm.jsx
+  70:6  warning  React Hook useEffect has a missing dependency: 'refreshSubjects'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\lookups\components\AcademicYearSelect.jsx
+  79:6  warning  React Hook useEffect has a missing dependency: 'onChange'. Either include it or remove the dependency array. If 'onChange' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\promotions\components\StudentsRosterTable.jsx
+  18:9  warning  The 'safeStudents' conditional could make the dependencies of useMemo Hook (at line 22) change on every render. To fix this, wrap the initialization of 'safeStudents' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\promotions\pages\PromotionPage.jsx
+  110:7  warning  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\results\pages\ResultPage.jsx
+  101:11  warning  The 'teacherSections' logical expression could make the dependencies of useEffect Hook (at line 131) change on every render. To fix this, wrap the initialization of 'teacherSections' in its own useMemo() Hook                                             react-hooks/exhaustive-deps
+  103:11  warning  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 142) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  124:8   warning  React Hook useEffect has missing dependencies: 'setGradeId' and 'setShiftId'. Either include them or remove the dependency array                                                                                                                             react-hooks/exhaustive-deps
+  223:11  warning  The 'examTypes' logical expression could make the dependencies of useMemo Hook (at line 361) change on every render. To fix this, wrap the initialization of 'examTypes' in its own useMemo() Hook                                                           react-hooks/exhaustive-deps
+  248:9   warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')
+  309:11  warning  The 'summary' logical expression could make the dependencies of useEffect Hook (at line 322) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook                                                             react-hooks/exhaustive-deps
+  309:11  warning  The 'summary' logical expression could make the dependencies of useMemo Hook (at line 348) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook                                                               react-hooks/exhaustive-deps
+  309:11  warning  The 'summary' logical expression could make the dependencies of useMemo Hook (at line 349) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook                                                               react-hooks/exhaustive-deps
+  346:8   warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                         react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\setup\components\AcademicYearSetupForm.jsx
+  18:6  warning  React Hook useEffect has a missing dependency: 'init.yearName'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\setup\components\GradeSetupForm.jsx
+  20:6  warning  React Hook useEffect has missing dependencies: 'init.gradeName' and 'init.order'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\setup\components\ShiftSetupForm.jsx
+  18:6  warning  React Hook useEffect has a missing dependency: 'init.shiftName'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\StudentForm.jsx
+  132:8  warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\dashboard\AttendanceTab.jsx
+  106:9  warning  The 'items' logical expression could make the dependencies of useMemo Hook (at line 129) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'items' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\dashboard\StudentSelfDashboardShell.jsx
+  672:9  warning  The 'historyRows' logical expression could make the dependencies of useMemo Hook (at line 677) change on every render. To fix this, wrap the initialization of 'historyRows' in its own useMemo() Hook        react-hooks/exhaustive-deps
+  672:9  warning  The 'historyRows' logical expression could make the dependencies of useMemo Hook (at line 745) change on every render. To fix this, wrap the initialization of 'historyRows' in its own useMemo() Hook        react-hooks/exhaustive-deps
+  723:9  warning  The 'timetableSlots' logical expression could make the dependencies of useMemo Hook (at line 732) change on every render. To fix this, wrap the initialization of 'timetableSlots' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  723:9  warning  The 'timetableSlots' logical expression could make the dependencies of useMemo Hook (at line 806) change on every render. To fix this, wrap the initialization of 'timetableSlots' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  766:9  warning  The 'levelStats' logical expression could make the dependencies of useMemo Hook (at line 814) change on every render. To fix this, wrap the initialization of 'levelStats' in its own useMemo() Hook          react-hooks/exhaustive-deps
+  766:9  warning  The 'levelStats' logical expression could make the dependencies of useMemo Hook (at line 831) change on every render. To fix this, wrap the initialization of 'levelStats' in its own useMemo() Hook          react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\dashboard\TimetableTab.jsx
+  100:9  warning  The 'slots' logical expression could make the dependencies of useMemo Hook (at line 105) change on every render. To fix this, wrap the initialization of 'slots' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  100:9  warning  The 'slots' logical expression could make the dependencies of useMemo Hook (at line 106) change on every render. To fix this, wrap the initialization of 'slots' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  100:9  warning  The 'slots' logical expression could make the dependencies of useMemo Hook (at line 127) change on every render. To fix this, wrap the initialization of 'slots' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\dashboard\TranscriptTab.jsx
+  49:9  warning  The 'enrollments' logical expression could make the dependencies of useEffect Hook (at line 60) change on every render. To fix this, wrap the initialization of 'enrollments' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  49:9  warning  The 'enrollments' logical expression could make the dependencies of useMemo Hook (at line 65) change on every render. To fix this, wrap the initialization of 'enrollments' in its own useMemo() Hook    react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\pages\StudentDashboardPage.jsx
+  187:6  warning  React Hook useMemo has a missing dependency: 'canAny'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\pages\StudentPage.jsx
+  119:11  warning  The 'years' logical expression could make the dependencies of useCallback Hook (at line 443) change on every render. Move it inside the useCallback callback. Alternatively, wrap the initialization of 'years' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  120:11  warning  The 'grades' logical expression could make the dependencies of useCallback Hook (at line 443) change on every render. To fix this, wrap the initialization of 'grades' in its own useMemo() Hook                                           react-hooks/exhaustive-deps
+  121:11  warning  The 'shifts' logical expression could make the dependencies of useCallback Hook (at line 443) change on every render. To fix this, wrap the initialization of 'shifts' in its own useMemo() Hook                                           react-hooks/exhaustive-deps
+  132:11  warning  The 'sections' logical expression could make the dependencies of useCallback Hook (at line 443) change on every render. To fix this, wrap the initialization of 'sections' in its own useMemo() Hook                                       react-hooks/exhaustive-deps
+  174:11  warning  The 'students' logical expression could make the dependencies of useCallback Hook (at line 443) change on every render. To fix this, wrap the initialization of 'students' in its own useMemo() Hook                                       react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherAttendanceChartsCard.jsx
+  178:9  warning  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 249) change on every render. To fix this, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  178:9  warning  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 278) change on every render. To fix this, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  362:6  warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherClassesPage.jsx
+   98:8  warning  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 111) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  142:5  warning  React Hook useMemo has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                           react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherResultsChartsCard.jsx
+  183:9  warning  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 200) change on every render. To fix this, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  183:9  warning  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 232) change on every render. To fix this, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  266:9  warning  The 'examTypes' logical expression could make the dependencies of useEffect Hook (at line 273) change on every render. To fix this, wrap the initialization of 'examTypes' in its own useMemo() Hook                  react-hooks/exhaustive-deps
+  303:9  warning  The 'summary' logical expression could make the dependencies of useMemo Hook (at line 362) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook                        react-hooks/exhaustive-deps
+  355:6  warning  React Hook useMemo has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                    react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherTimetablePanel.jsx
+  78:6  warning  React Hook useMemo has a missing dependency: 'dayKeys'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\pages\TeachersPage.jsx
+  127:8  warning  The 'items' logical expression could make the dependencies of useMemo Hook (at line 136) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'items' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\transcript\pages\TranscriptPage.jsx
+  214:6  warning  React Hook useMemo has a missing dependency: 'getTargetEnrollmentsFromIndex'. Either include it or remove the dependency array                                               react-hooks/exhaustive-deps
+  266:6  warning  React Hook useEffect has missing dependencies: 'getLevelNamesForSelected' and 't'. Either include them or remove the dependency array                                        react-hooks/exhaustive-deps
+  286:6  warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                         react-hooks/exhaustive-deps
+  317:6  warning  React Hook useEffect has missing dependencies: 'setAcademicYearId', 'setGradeId', 'setGradeSectionId', and 'setShiftId'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\users\pages\UserManagementPage.jsx
+  406:6  warning  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\hooks\useEntityList.js
+   75:9  warning  The 'effectiveParams' object makes the dependencies of useMemo Hook (at line 107) change on every render. To fix this, wrap the initialization of 'effectiveParams' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  221:6  warning  React Hook useCallback has missing dependencies: 'effectiveParams' and 'rqQueryKey'. Either include them or remove the dependency array                                                        react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\exports\downloadButtons\CopyTableButton.jsx
+  28:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\exports\downloadButtons\ExcelDownloadButton.jsx
+  41:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\exports\downloadButtons\PdfDownloadButton.jsx
+  24:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\layout\Sidebar.jsx
+  139:6  warning  React Hook useMemo has a missing dependency: 'isItemVisibleForRole'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\table\DataTable.jsx
+  78:75  warning  React Hook useMemo has a missing dependency: 'isVisible'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\realtime\realtimeDispatcher.js
+  62:9  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\realtime\useRealtimeStream.js
+   54:11  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+   85:13  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  128:15  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+Γ£û 105 problems (0 errors, 105 warnings)
+  0 errors and 13 warnings potentially fixable with the `--fix` option.
+

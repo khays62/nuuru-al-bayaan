@@ -1,7 +1,6 @@
 import React, { Suspense, useMemo, useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useParams, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
 
 import { useAuth } from '../../../auth/AuthContext';
 import { useI18n } from '../../../i18n/I18nProvider';
@@ -136,7 +135,7 @@ export default function StudentDashboardPage() {
 function StudentDashboardInner({ studentId }) {
   const base = `/students/${studentId}`;
 
-  const { auth, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const { t } = useI18n();
 
   const canAny = (module, actions) => {

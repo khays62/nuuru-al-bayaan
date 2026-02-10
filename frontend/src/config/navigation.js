@@ -6,6 +6,11 @@ import {
     BarChart2,
     UserCog,
   Settings,
+    Banknote,
+    ReceiptText,
+    Wallet,
+    Briefcase,
+    LayoutDashboard as DashboardIcon,
     Megaphone,
     TrendingUp,
     CalendarDays,
@@ -20,6 +25,25 @@ import {
 	{ key: 'teacher-dashboard', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-dashboard", label: "Dashboard", labelKey: 'nav.dashboard', roles: ["teacher"], icon: LayoutDashboard },
     { key: 'teacher-classes', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-classes", label: "My Classes", labelKey: 'nav.myClasses', roles: ["teacher"], icon: Layers3 },
     { key: 'teacher-profile', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-profile", label: "Profile", labelKey: 'nav.profile', roles: ["teacher"], icon: Users },
+
+    // Finance (dropdown)
+    {
+      key: 'finance',
+      group: 'Finance',
+      label: 'Finance',
+      groupKey: 'nav.finance',
+      labelKey: 'nav.finance',
+      icon: Banknote,
+      roles: ['admin', 'staff'],
+      collapsible: true,
+      children: [
+        { key: 'finance-dashboard', path: '/finance/dashboard', label: 'Dashboard', labelKey: 'nav.financeDashboard', roles: ['admin', 'staff'], icon: DashboardIcon },
+        { key: 'finance-accounts', path: '/finance/accounts', label: 'Accounts', labelKey: 'nav.financeAccounts', roles: ['admin', 'staff'], icon: Banknote },
+        { key: 'finance-student', path: '/finance/student-finance', label: 'Student Finance', labelKey: 'nav.financeStudentFinance', roles: ['admin', 'staff'], icon: ReceiptText },
+        { key: 'finance-payroll', path: '/finance/payroll', label: 'Payroll', labelKey: 'nav.financePayroll', roles: ['admin', 'staff'], icon: Wallet },
+        { key: 'finance-expenses', path: '/finance/expenses', label: 'Expenses', labelKey: 'nav.financeExpenses', roles: ['admin', 'staff'], icon: Briefcase },
+      ],
+    },
 
     // Users (dropdown)
     {

@@ -102,22 +102,25 @@ export default function UserFormModal({
 
         {isFormLoading && <div className="col-span-full text-sm text-gray-600">{t('users.form.loadingDetails')}</div>}
 
-        {['fullName', 'username', 'email', 'phone', 'password', 'confirmPassword'].map((field) => {
+        {['fullName', 'username', 'email', 'phone', 'salary', 'password', 'confirmPassword'].map((field) => {
           const isPassword = field.toLowerCase().includes('password');
           const isConfirm = field === 'confirmPassword';
           const passwordsMismatch = form.confirmPassword && form.password !== form.confirmPassword;
+          const isSalary = field === 'salary';
 
           return (
             <div key={field}>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t(`users.form.fields.${field}`)}</label>
 
               <Input
-                type={field === 'email' ? 'email' : isPassword ? 'password' : 'text'}
+                type={field === 'email' ? 'email' : isSalary ? 'number' : isPassword ? 'password' : 'text'}
                 name={field}
-                value={form[field]}
+                value={form[field] ?? ''}
                 onChange={handleChange}
                 placeholder={editingUser && field === 'password' ? t('users.form.newPasswordOptional') : ''}
                 disabled={isFormLoading || isSaving}
+                min={isSalary ? 0 : undefined}
+                step={isSalary ? '0.01' : undefined}
                 readOnly={
                   !editingUser && ['username', 'password', 'confirmPassword'].includes(field) ? !!createReadOnly[field] : false
                 }

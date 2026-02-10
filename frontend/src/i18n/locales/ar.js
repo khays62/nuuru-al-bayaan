@@ -642,6 +642,12 @@ export default {
 
   nav: {
     dashboard: 'لوحة التحكم',
+    finance: 'المالية',
+    financeDashboard: 'لوحة التحكم',
+    financeAccounts: 'الحسابات',
+    financeStudentFinance: 'مالية الطلاب',
+    financePayroll: 'الرواتب',
+    financeExpenses: 'المصاريف',
     myClasses: 'صفوفي',
     profile: 'الملف الشخصي',
 
@@ -1875,6 +1881,7 @@ export default {
       teacherIdHelp: 'يمكن للمعلم تسجيل الدخول باستخدام اسم المستخدم هذا أو البريد الإلكتروني.',
       email: 'البريد الإلكتروني',
       phone: 'الهاتف',
+      salary: 'الراتب',
       status: 'الحالة',
       active: 'نشط',
       inactive: 'غير نشط',
@@ -1938,6 +1945,7 @@ export default {
         username: 'اسم المستخدم',
         email: 'البريد الإلكتروني',
         phone: 'الهاتف',
+        salary: 'الراتب',
         role: 'الدور',
         status: 'الحالة',
         actions: 'الإجراءات',
@@ -1974,6 +1982,7 @@ export default {
         username: 'اسم المستخدم',
         email: 'البريد الإلكتروني',
         phone: 'الهاتف',
+        salary: 'الراتب',
         password: 'كلمة المرور',
         confirmPassword: 'تأكيد كلمة المرور',
       },

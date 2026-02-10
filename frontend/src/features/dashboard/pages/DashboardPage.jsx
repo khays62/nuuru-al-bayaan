@@ -265,11 +265,10 @@ const ModuleCard = ({ title, subtitle, to, Icon, count, tone = 'blue', disabled 
 const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' }) => {
     const { t } = useI18n();
     const rows = Array.isArray(series) ? series : [];
+    const [hoverIdx, setHoverIdx] = useState(null);
     if (rows.length < 2) {
         return <div className="h-40 flex items-center justify-center text-sm text-gray-600">{t('common.emptyStates.notEnoughDataForChart', { defaultValue: 'Not enough data for a chart.' })}</div>;
     }
-
-    const [hoverIdx, setHoverIdx] = useState(null);
 
     const w = 760;
     const h = height;

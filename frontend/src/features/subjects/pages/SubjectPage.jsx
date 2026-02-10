@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Plus, Printer, RotateCcw } from 'lucide-react';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
@@ -76,7 +76,6 @@ export default function SubjectPage() {
     setSearch,
     setPage,
     setLimit,
-    refresh,
     resetAndReload
   } = list;
 

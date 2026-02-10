@@ -93,7 +93,7 @@ const RangeTabs = ({ value, onChange, items }) => {
     );
 };
 
-export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime, totalInRange, totalAllTime }) {
+export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime, totalAllTime }) {
     const { t } = useI18n();
     const [range, setRange] = useState('week');
 

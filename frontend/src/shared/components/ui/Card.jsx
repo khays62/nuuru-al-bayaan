@@ -1,7 +1,8 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
 
-export default function Card({ className = '', children, ...rest }) {
+export default function Card({ className = '', children, noPadding, ...rest }) {
+  void noPadding;
   return (
     <div
       className={cn(

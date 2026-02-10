@@ -1,0 +1,345 @@
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\App.jsx[24m[0m
+[0m  [2m63:8[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'auth?.user'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\api\sessionAbort.js[24m[0m
+[0m  [2m29:7[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-undef')[0m
+[0m  [2m31:9[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-undef')[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\auth\AuthContext.jsx[24m[0m
+[0m  [2m245:5[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\auth\pages\LoginPage.jsx[24m[0m
+[0m  [2m106:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'startAutofillClearUntilFocus'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m117:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'startAutofillClearUntilFocus'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\announcements\pages\Announcements.jsx[24m[0m
+[0m  [2m62:6[22m  [33mwarning[39m  React Hook useEffect has missing dependencies: 'queryClient' and 'userKey'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\attendance\pages\AttendancePage.jsx[24m[0m
+[0m  [2m360:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'periodCode'. Either include it or remove the dependency array                                                                                          [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m561:6[22m  [33mwarning[39m  React Hook useEffect has missing dependencies: 'auth?.user?.teacherRef', 'sectionId', 'selectedDayLabel', 'slotsForSectionId', and 'slotsLoading'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m744:6[22m  [33mwarning[39m  React Hook useEffect has missing dependencies: 'isTeacher' and 't'. Either include them or remove the dependency array                                                                                 [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m948:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                   [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\attendance\pages\AttendanceReportsPage.jsx[24m[0m
+[0m   [2m76:9[22m  [33mwarning[39m  The 'formatDateWithDay' function makes the dependencies of useMemo Hook (at line 967) change on every render. To fix this, wrap the definition of 'formatDateWithDay' in its own useCallback() Hook   [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m76:9[22m  [33mwarning[39m  The 'formatDateWithDay' function makes the dependencies of useMemo Hook (at line 1033) change on every render. To fix this, wrap the definition of 'formatDateWithDay' in its own useCallback() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m382:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'clampRangeToMonth'. Either include it or remove the dependency array                                                                                  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m852:6[22m  [33mwarning[39m  React Hook useEffect has missing dependencies: 'isSummary', 'runDetailsRange', and 'runSummary'. Either include them or remove the dependency array                                                   [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m899:6[22m  [33mwarning[39m  React Hook useMemo has an unnecessary dependency: 'formatActor'. Either exclude it or remove the dependency array                                                                                     [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m943:6[22m  [33mwarning[39m  React Hook useMemo has a missing dependency: 'formatDateWithDay'. Either include it or remove the dependency array                                                                                    [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\components\AnnouncementsMixCard.jsx[24m[0m
+[0m   [2m96:83[22m  [31merror[39m    'totalInRange' is defined but never used                                                                                                                                                         [2mno-unused-vars[22m[0m
+[0m  [2m101:11[22m  [33mwarning[39m  The 'safeInRange' conditional could make the dependencies of useMemo Hook (at line 150) change on every render. To fix this, wrap the initialization of 'safeInRange' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\components\AttendanceChartsCard.jsx[24m[0m
+[0m  [2m283:11[22m  [33mwarning[39m  The 'attendanceByDay' conditional could make the dependencies of useMemo Hook (at line 332) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'attendanceByDay' in its own useMemo() Hook              [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m284:11[22m  [33mwarning[39m  The 'attendanceStatusTrend' conditional could make the dependencies of useMemo Hook (at line 332) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'attendanceStatusTrend' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m450:33[22m  [31merror[39m    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                                   [2mreact-hooks/rules-of-hooks[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\components\ResultsChartsCard.jsx[24m[0m
+[0m  [2m285:11[22m  [33mwarning[39m  The 'examTypes' logical expression could make the dependencies of useEffect Hook (at line 292) change on every render. To fix this, wrap the initialization of 'examTypes' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m285:11[22m  [33mwarning[39m  The 'examTypes' logical expression could make the dependencies of useMemo Hook (at line 377) change on every render. To fix this, wrap the initialization of 'examTypes' in its own useMemo() Hook    [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m327:11[22m  [33mwarning[39m  The 'summary' logical expression could make the dependencies of useMemo Hook (at line 382) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook        [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\components\ScoreActivityCard.jsx[24m[0m
+[0m  [2m164:11[22m  [33mwarning[39m  The 'safeSeries' conditional could make the dependencies of useMemo Hook (at line 219) change on every render. To fix this, wrap the initialization of 'safeSeries' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m164:11[22m  [33mwarning[39m  The 'safeSeries' conditional could make the dependencies of useMemo Hook (at line 291) change on every render. To fix this, wrap the initialization of 'safeSeries' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\dashboard\pages\DashboardPage.jsx[24m[0m
+[0m  [2m272:37[22m  [31merror[39m    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                                         [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m691:11[22m  [33mwarning[39m  The 'scoreActivityByDayRaw' conditional could make the dependencies of useMemo Hook (at line 709) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'scoreActivityByDayRaw' in its own useMemo() Hook          [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m713:11[22m  [33mwarning[39m  The 'newStudentsByAcademicYear' conditional could make the dependencies of useMemo Hook (at line 783) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'newStudentsByAcademicYear' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m717:11[22m  [33mwarning[39m  The 'newStudentsByDay' conditional could make the dependencies of useMemo Hook (at line 783) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'newStudentsByDay' in its own useMemo() Hook                    [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m718:11[22m  [33mwarning[39m  The 'newStudentsByWeek' conditional could make the dependencies of useMemo Hook (at line 783) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'newStudentsByWeek' in its own useMemo() Hook                  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m719:11[22m  [33mwarning[39m  The 'newStudentsByMonth' conditional could make the dependencies of useMemo Hook (at line 783) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'newStudentsByMonth' in its own useMemo() Hook                [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\exams\pages\ExamManagementPage.jsx[24m[0m
+[0m   [2m72:11[22m  [33mwarning[39m  The 'teacherSections' logical expression could make the dependencies of useEffect Hook (at line 161) change on every render. To fix this, wrap the initialization of 'teacherSections' in its own useMemo() Hook                                             [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m74:11[22m  [33mwarning[39m  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 259) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m152:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'gradeId' and 'shiftId'. Either include them or remove the dependency array                                                                                                                                   [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m216:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'isTeacher'. Either include it or remove the dependency array                                                                                                                                                 [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m241:9[22m   [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')[0m
+[0m  [2m248:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                         [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m508:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                         [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\common\Table.jsx[24m[0m
+[0m  [2m5:57[22m  [31merror[39m  'props' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\AccountManagement.jsx[24m[0m
+[0m  [2m28:18[22m  [31merror[39m  'error' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\AmountTypeTab.jsx[24m[0m
+[0m  [2m32:18[22m  [31merror[39m  'err' is defined but never used  [2mno-unused-vars[22m[0m
+[0m  [2m72:18[22m  [31merror[39m  'err' is defined but never used  [2mno-unused-vars[22m[0m
+[0m  [2m96:18[22m  [31merror[39m  'err' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\CreateInvoiceModal.jsx[24m[0m
+[0m  [2m1:27[22m  [31merror[39m  'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u             [2mno-unused-vars[22m[0m
+[0m  [2m7:12[22m  [31merror[39m  'students' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u     [2mno-unused-vars[22m[0m
+[0m  [2m7:22[22m  [31merror[39m  'setStudents' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\DeleteChargeModal.jsx[24m[0m
+[0m  [2m63:22[22m  [31merror[39m  'err' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\EditPayrollModal.jsx[24m[0m
+[0m  [2m29:18[22m  [31merror[39m  'error' is defined but never used  [2mno-unused-vars[22m[0m
+[0m  [2m51:18[22m  [31merror[39m  'error' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\ExpenseManagement.jsx[24m[0m
+[0m   [2m66:18[22m  [31merror[39m    'error' is defined but never used                                                               [2mno-unused-vars[22m[0m
+[0m   [2m79:18[22m  [31merror[39m    'error' is defined but never used                                                               [2mno-unused-vars[22m[0m
+[0m   [2m97:9[22m   [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')[0m
+[0m  [2m162:18[22m  [31merror[39m    'error' is defined but never used                                                               [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\FeeManagement.jsx[24m[0m
+[0m   [2m26:12[22m  [31merror[39m    'showFilters' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                          [2mno-unused-vars[22m[0m
+[0m   [2m26:25[22m  [31merror[39m    'setShowFilters' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                       [2mno-unused-vars[22m[0m
+[0m   [2m78:18[22m  [31merror[39m    'error' is defined but never used                                                                                                    [2mno-unused-vars[22m[0m
+[0m   [2m87:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'fetchInvoices' and 'meta.limit'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m95:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'fetchInvoices' and 'meta.limit'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m97:11[22m  [31merror[39m    'handlePageChange' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                     [2mno-unused-vars[22m[0m
+[0m  [2m101:11[22m  [31merror[39m    'handleLimitChange' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                    [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\FinanceAppointments.jsx[24m[0m
+[0m  [2m261:18[22m  [31merror[39m    'e' is defined but never used                                                                                           [2mno-unused-vars[22m[0m
+[0m  [2m438:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'handleStudentSearch'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\FinanceApportionmentTab.jsx[24m[0m
+[0m  [2m39:18[22m  [31merror[39m  'err' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\FinanceDashboard.jsx[24m[0m
+[0m  [2m10:52[22m  [31merror[39m  'Icon' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\GraduationPaymentModal.jsx[24m[0m
+[0m  [2m11:23[22m  [31merror[39m  'setAccountId' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m  [2m31:18[22m  [31merror[39m  'error' is defined but never used                                                             [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\GraduationReceiptTab.jsx[24m[0m
+[0m  [2m69:18[22m  [31merror[39m  'error' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\PayrollEmployeeInfoModal.jsx[24m[0m
+[0m  [2m13:5[22m  [31merror[39m  'onOpenUpdate' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\RecordPaymentModal.jsx[24m[0m
+[0m  [2m30:22[22m  [31merror[39m  'e' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\ResponsiblePaymentTab.jsx[24m[0m
+[0m  [2m66:18[22m  [31merror[39m  'error' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\RunPayrollModal.jsx[24m[0m
+[0m  [2m29:18[22m  [31merror[39m  'err' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\StudentChargeModal.jsx[24m[0m
+[0m  [2m63:22[22m  [31merror[39m    'err' is defined but never used                                                                             [2mno-unused-vars[22m[0m
+[0m  [2m76:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 'feeType'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\StudentFees.jsx[24m[0m
+[0m   [2m33:12[22m  [31merror[39m  'showPrintMenu' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u     [2mno-unused-vars[22m[0m
+[0m   [2m33:27[22m  [31merror[39m  'setShowPrintMenu' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m  [2m144:18[22m  [31merror[39m  'error' is defined but never used                                                                 [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\StudentFinanceEditTab.jsx[24m[0m
+[0m  [2m65:18[22m  [31merror[39m  'error' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\StudentFinancePrintTab.jsx[24m[0m
+[0m  [2m69:18[22m  [31merror[39m  'error' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\StudentResponsibilityModal.jsx[24m[0m
+[0m   [2m31:22[22m  [31merror[39m  'err' is defined but never used                                                          [2mno-unused-vars[22m[0m
+[0m  [2m201:59[22m  [31merror[39m  'isFixed' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\finance\components\UpdateChargeModal.jsx[24m[0m
+[0m  [2m53:22[22m  [31merror[39m  'err' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\grades\components\GradeForm.jsx[24m[0m
+[0m  [2m70:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'refreshSubjects'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\grades\components\GradeSectionRosterModal.jsx[24m[0m
+[0m  [2m1:58[22m  [31merror[39m  'useState' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\grades\pages\GradePage.jsx[24m[0m
+[0m   [2m52:40[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m53:42[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m54:42[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m55:40[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m58:40[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m59:40[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m60:44[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m62:30[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m63:30[22m  [31merror[39m  React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m65:2[22m   [31merror[39m  React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                   [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m82:29[22m  [31merror[39m  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                 [2mreact-hooks/rules-of-hooks[22m[0m
+[0m   [2m95:15[22m  [31merror[39m  React Hook "useEntityList" is called conditionally. React Hooks must be called in the exact same order in every component render                                                               [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m118:2[22m   [31merror[39m  React Hook "useGradeSectionsRealtimeInvalidation" is called conditionally. React Hooks must be called in the exact same order in every component render                                        [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m125:6[22m   [31merror[39m  React Hook "useClientSort" is called conditionally. React Hooks must be called in the exact same order in every component render                                                               [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m193:29[22m  [31merror[39m  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  [2mreact-hooks/rules-of-hooks[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\lookups\components\AcademicYearSelect.jsx[24m[0m
+[0m  [2m79:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'onChange'. Either include it or remove the dependency array. If 'onChange' changes too often, find the parent component that defines it and wrap that definition in useCallback  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\promotions\components\StudentsRosterTable.jsx[24m[0m
+[0m  [2m18:9[22m  [33mwarning[39m  The 'safeStudents' conditional could make the dependencies of useMemo Hook (at line 22) change on every render. To fix this, wrap the initialization of 'safeStudents' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\promotions\pages\PromotionPage.jsx[24m[0m
+[0m  [2m110:7[22m  [33mwarning[39m  React Hook useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\results\pages\ResultPage.jsx[24m[0m
+[0m   [2m47:11[22m  [31merror[39m    'queryClient' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                  [2mno-unused-vars[22m[0m
+[0m  [2m103:11[22m  [33mwarning[39m  The 'teacherSections' logical expression could make the dependencies of useEffect Hook (at line 133) change on every render. To fix this, wrap the initialization of 'teacherSections' in its own useMemo() Hook                                             [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m105:11[22m  [33mwarning[39m  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 144) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m126:8[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'setGradeId' and 'setShiftId'. Either include them or remove the dependency array                                                                                                                             [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m225:11[22m  [33mwarning[39m  The 'examTypes' logical expression could make the dependencies of useMemo Hook (at line 363) change on every render. To fix this, wrap the initialization of 'examTypes' in its own useMemo() Hook                                                           [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m250:9[22m   [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps')[0m
+[0m  [2m311:11[22m  [33mwarning[39m  The 'summary' logical expression could make the dependencies of useEffect Hook (at line 324) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook                                                             [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m311:11[22m  [33mwarning[39m  The 'summary' logical expression could make the dependencies of useMemo Hook (at line 350) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook                                                               [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m311:11[22m  [33mwarning[39m  The 'summary' logical expression could make the dependencies of useMemo Hook (at line 351) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook                                                               [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m348:8[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                         [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\setup\components\AcademicYearSetupForm.jsx[24m[0m
+[0m  [2m18:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'init.yearName'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\setup\components\GradeSetupForm.jsx[24m[0m
+[0m  [2m20:6[22m  [33mwarning[39m  React Hook useEffect has missing dependencies: 'init.gradeName' and 'init.order'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\setup\components\ShiftSetupForm.jsx[24m[0m
+[0m  [2m18:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'init.shiftName'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\StudentForm.jsx[24m[0m
+[0m  [2m132:8[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\dashboard\AttendanceTab.jsx[24m[0m
+[0m  [2m106:9[22m  [33mwarning[39m  The 'items' logical expression could make the dependencies of useMemo Hook (at line 129) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'items' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\dashboard\StudentSelfDashboardShell.jsx[24m[0m
+[0m  [2m672:9[22m  [33mwarning[39m  The 'historyRows' logical expression could make the dependencies of useMemo Hook (at line 677) change on every render. To fix this, wrap the initialization of 'historyRows' in its own useMemo() Hook        [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m672:9[22m  [33mwarning[39m  The 'historyRows' logical expression could make the dependencies of useMemo Hook (at line 745) change on every render. To fix this, wrap the initialization of 'historyRows' in its own useMemo() Hook        [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m723:9[22m  [33mwarning[39m  The 'timetableSlots' logical expression could make the dependencies of useMemo Hook (at line 732) change on every render. To fix this, wrap the initialization of 'timetableSlots' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m723:9[22m  [33mwarning[39m  The 'timetableSlots' logical expression could make the dependencies of useMemo Hook (at line 806) change on every render. To fix this, wrap the initialization of 'timetableSlots' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m766:9[22m  [33mwarning[39m  The 'levelStats' logical expression could make the dependencies of useMemo Hook (at line 814) change on every render. To fix this, wrap the initialization of 'levelStats' in its own useMemo() Hook          [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m766:9[22m  [33mwarning[39m  The 'levelStats' logical expression could make the dependencies of useMemo Hook (at line 831) change on every render. To fix this, wrap the initialization of 'levelStats' in its own useMemo() Hook          [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\dashboard\TimetableTab.jsx[24m[0m
+[0m  [2m100:9[22m  [33mwarning[39m  The 'slots' logical expression could make the dependencies of useMemo Hook (at line 105) change on every render. To fix this, wrap the initialization of 'slots' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m100:9[22m  [33mwarning[39m  The 'slots' logical expression could make the dependencies of useMemo Hook (at line 106) change on every render. To fix this, wrap the initialization of 'slots' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m100:9[22m  [33mwarning[39m  The 'slots' logical expression could make the dependencies of useMemo Hook (at line 127) change on every render. To fix this, wrap the initialization of 'slots' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\components\dashboard\TranscriptTab.jsx[24m[0m
+[0m  [2m49:9[22m  [33mwarning[39m  The 'enrollments' logical expression could make the dependencies of useEffect Hook (at line 60) change on every render. To fix this, wrap the initialization of 'enrollments' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m49:9[22m  [33mwarning[39m  The 'enrollments' logical expression could make the dependencies of useMemo Hook (at line 65) change on every render. To fix this, wrap the initialization of 'enrollments' in its own useMemo() Hook    [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\pages\StudentDashboardPage.jsx[24m[0m
+[0m    [2m4:8[22m   [31merror[39m    'toast' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                             [2mno-unused-vars[22m[0m
+[0m  [2m139:11[22m  [31merror[39m    'auth' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                     [2mno-unused-vars[22m[0m
+[0m  [2m188:6[22m   [33mwarning[39m  React Hook useMemo has a missing dependency: 'canAny'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\students\pages\StudentPage.jsx[24m[0m
+[0m  [2m119:11[22m  [33mwarning[39m  The 'years' logical expression could make the dependencies of useCallback Hook (at line 447) change on every render. Move it inside the useCallback callback. Alternatively, wrap the initialization of 'years' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m120:11[22m  [33mwarning[39m  The 'grades' logical expression could make the dependencies of useCallback Hook (at line 447) change on every render. To fix this, wrap the initialization of 'grades' in its own useMemo() Hook                                           [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m121:11[22m  [33mwarning[39m  The 'shifts' logical expression could make the dependencies of useCallback Hook (at line 447) change on every render. To fix this, wrap the initialization of 'shifts' in its own useMemo() Hook                                           [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m132:11[22m  [33mwarning[39m  The 'sections' logical expression could make the dependencies of useCallback Hook (at line 447) change on every render. To fix this, wrap the initialization of 'sections' in its own useMemo() Hook                                       [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m174:11[22m  [33mwarning[39m  The 'students' logical expression could make the dependencies of useCallback Hook (at line 447) change on every render. To fix this, wrap the initialization of 'students' in its own useMemo() Hook                                       [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m183:11[22m  [31merror[39m    'silentRefresh' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                              [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\subjects\pages\SubjectPage.jsx[24m[0m
+[0m   [2m1:28[22m  [31merror[39m  'useMemo' is defined but never used. Allowed unused vars must match /^[A-Z_]/u           [2mno-unused-vars[22m[0m
+[0m  [2m79:5[22m   [31merror[39m  'refresh' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherAttendanceChartsCard.jsx[24m[0m
+[0m  [2m178:9[22m  [33mwarning[39m  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 249) change on every render. To fix this, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m178:9[22m  [33mwarning[39m  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 278) change on every render. To fix this, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m362:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherClassesPage.jsx[24m[0m
+[0m    [2m1:17[22m  [31merror[39m    'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                                                                                                             [2mno-unused-vars[22m[0m
+[0m   [2m98:8[22m   [33mwarning[39m  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 111) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m142:5[22m   [33mwarning[39m  React Hook useMemo has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                                                           [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherProfileCard.jsx[24m[0m
+[0m  [2m1:17[22m  [31merror[39m  'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherResultsChartsCard.jsx[24m[0m
+[0m  [2m183:9[22m  [33mwarning[39m  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 200) change on every render. To fix this, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m183:9[22m  [33mwarning[39m  The 'teacherAssignments' logical expression could make the dependencies of useMemo Hook (at line 232) change on every render. To fix this, wrap the initialization of 'teacherAssignments' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m266:9[22m  [33mwarning[39m  The 'examTypes' logical expression could make the dependencies of useEffect Hook (at line 273) change on every render. To fix this, wrap the initialization of 'examTypes' in its own useMemo() Hook                  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m303:9[22m  [33mwarning[39m  The 'summary' logical expression could make the dependencies of useMemo Hook (at line 362) change on every render. To fix this, wrap the initialization of 'summary' in its own useMemo() Hook                        [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m355:6[22m  [33mwarning[39m  React Hook useMemo has a missing dependency: 't'. Either include it or remove the dependency array                                                                                                                    [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\components\dashboard\TeacherTimetablePanel.jsx[24m[0m
+[0m  [2m78:6[22m  [33mwarning[39m  React Hook useMemo has a missing dependency: 'dayKeys'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\teachers\pages\TeachersPage.jsx[24m[0m
+[0m   [2m81:15[22m  [31merror[39m    'res' is defined but never used                                                                                                                                                                                                    [2mno-unused-vars[22m[0m
+[0m   [2m94:15[22m  [31merror[39m    'res' is defined but never used                                                                                                                                                                                                    [2mno-unused-vars[22m[0m
+[0m   [2m94:20[22m  [31merror[39m    'vars' is defined but never used                                                                                                                                                                                                   [2mno-unused-vars[22m[0m
+[0m  [2m110:15[22m  [31merror[39m    '_' is defined but never used                                                                                                                                                                                                      [2mno-unused-vars[22m[0m
+[0m  [2m110:18[22m  [31merror[39m    'vars' is defined but never used                                                                                                                                                                                                   [2mno-unused-vars[22m[0m
+[0m  [2m119:15[22m  [31merror[39m    '_' is defined but never used                                                                                                                                                                                                      [2mno-unused-vars[22m[0m
+[0m  [2m119:18[22m  [31merror[39m    'id' is defined but never used                                                                                                                                                                                                     [2mno-unused-vars[22m[0m
+[0m  [2m127:8[22m   [33mwarning[39m  The 'items' logical expression could make the dependencies of useMemo Hook (at line 136) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'items' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\timetable\pages\TimetablePage.jsx[24m[0m
+[0m   [2m1:17[22m  [31merror[39m  'useCallback' is defined but never used. Allowed unused vars must match /^[A-Z_]/u             [2mno-unused-vars[22m[0m
+[0m  [2m83:9[22m   [31merror[39m  'formatTime12h' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\transcript\pages\TranscriptPage.jsx[24m[0m
+[0m    [2m47:10[22m  [31merror[39m    'years' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                        [2mno-unused-vars[22m[0m
+[0m   [2m215:6[22m   [33mwarning[39m  React Hook useMemo has a missing dependency: 'getTargetEnrollmentsFromIndex'. Either include it or remove the dependency array                                               [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m277:6[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'getLevelNamesForSelected' and 't'. Either include them or remove the dependency array                                        [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m279:9[22m   [31merror[39m    'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                      [2mno-unused-vars[22m[0m
+[0m   [2m309:6[22m   [33mwarning[39m  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array                                                                         [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m340:6[22m   [33mwarning[39m  React Hook useEffect has missing dependencies: 'setAcademicYearId', 'setGradeId', 'setGradeSectionId', and 'setShiftId'. Either include them or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m1160:31[22m  [31merror[39m    'q' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                                                                            [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\features\users\pages\UserManagementPage.jsx[24m[0m
+[0m  [2m406:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 't'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\hooks\useEntityList.js[24m[0m
+[0m   [2m75:9[22m   [33mwarning[39m  The 'effectiveParams' object makes the dependencies of useMemo Hook (at line 107) change on every render. To fix this, wrap the initialization of 'effectiveParams' in its own useMemo() Hook  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m180:20[22m  [31merror[39m    React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?       [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m181:3[22m   [31merror[39m    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m182:28[22m  [31merror[39m    React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?       [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m183:23[22m  [31merror[39m    React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?       [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m184:28[22m  [31merror[39m    React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?       [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m185:24[22m  [31merror[39m    React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?       [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m186:25[22m  [31merror[39m    React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?       [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m187:28[22m  [31merror[39m    React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?       [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m188:25[22m  [31merror[39m    React Hook "useRef" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?       [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m192:16[22m  [31merror[39m    React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  [2mreact-hooks/rules-of-hooks[22m[0m
+[0m  [2m255:6[22m   [33mwarning[39m  React Hook useCallback has a missing dependency: 'effectiveParams'. Either include it or remove the dependency array                                                                           [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m259:3[22m   [31merror[39m    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?    [2mreact-hooks/rules-of-hooks[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\i18n\I18nProvider.jsx[24m[0m
+[0m  [2m49:17[22m  [31merror[39m  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  [2mreact-refresh/only-export-components[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\exports\downloadButtons\CopyTableButton.jsx[24m[0m
+[0m  [2m28:7[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-console')[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\exports\downloadButtons\ExcelDownloadButton.jsx[24m[0m
+[0m  [2m41:7[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-console')[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\exports\downloadButtons\PdfDownloadButton.jsx[24m[0m
+[0m  [2m24:7[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-console')[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\layout\Sidebar.jsx[24m[0m
+[0m  [2m139:6[22m  [33mwarning[39m  React Hook useMemo has a missing dependency: 'isItemVisibleForRole'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\table\DataTable.jsx[24m[0m
+[0m  [2m78:75[22m  [33mwarning[39m  React Hook useMemo has a missing dependency: 'isVisible'. Either include it or remove the dependency array  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\components\ui\Card.jsx[24m[0m
+[0m  [2m4:58[22m  [31merror[39m  'noPadding' is defined but never used  [2mno-unused-vars[22m[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\realtime\realtimeDispatcher.js[24m[0m
+[0m  [2m62:9[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-console')[0m
+[0m[0m
+[0m[4mC:\Users\AAA\Desktop\gruadtion project\project\Nuuru Al-Bayaan\frontend\src\shared\realtime\useRealtimeStream.js[24m[0m
+[0m   [2m54:11[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-console')[0m
+[0m   [2m85:13[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-console')[0m
+[0m  [2m128:15[22m  [33mwarning[39m  Unused eslint-disable directive (no problems were reported from 'no-console')[0m
+[0m[0m
+[0m[31m[1m✖ 195 problems (90 errors, 105 warnings)[22m[39m[0m
+[0m[31m[1m[22m[39m[31m[1m  0 errors and 13 warnings potentially fixable with the `--fix` option.[22m[39m[0m
+[0m[31m[1m[22m[39m[0m

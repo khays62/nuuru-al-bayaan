@@ -428,7 +428,7 @@ export default function AttendanceChartsCard() {
         }
     };
 
-    if (!perms?.allowAttendance && !loading) return null;
+    const shouldHide = !perms?.allowAttendance && !loading;
 
     const yearLabel = lookupYears.find((y) => y?._id === academicYearId)?.yearName;
     const gradeLabel = lookupGrades.find((g) => g?._id === gradeId)?.gradeName;
@@ -456,6 +456,8 @@ export default function AttendanceChartsCard() {
         if (gradeSectionId) parts.push(`${t('common.filters.section')}: ${sectionLabel || t('common.selected')}`);
         return parts.join(' • ');
     }, [t, from, to, academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel]);
+
+    if (shouldHide) return null;
 
     const listScrollClassName = exporting
         ? 'p-4 space-y-2'

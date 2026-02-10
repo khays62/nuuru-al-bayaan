@@ -129,42 +129,6 @@ export function useEntityList({
     }
   }, [rqQueryKey, rqQuery.data?.meta?.totalPages, page]);
 
-  // If using React Query mode, return early with the same public API shape.
-  if (rqQueryKey) {
-    const result = rqQuery.data || { data: [], meta: { page: 1, limit: initialLimit, total: 0, totalPages: 0 } };
-    const nextMeta = result?.meta || { page: 1, limit: initialLimit, total: 0, totalPages: 0 };
-
-    return {
-      items: Array.isArray(result?.data) ? result.data : [],
-      meta: { ...nextMeta, sortBy, sortDir },
-      isLoading: Boolean(rqQuery.isLoading && rqQuery.data == null),
-      error: rqQuery.error ? (rqQuery.error?.message || 'Failed to load data') : null,
-      searchTerm: searchTermRaw,
-      setSearch: (v) => { setSearchTermRaw(v); setPage(1); },
-      setFilter,
-      setPage,
-      setLimit: (v) => { setLimit(v); setPage(1); },
-      toggleSort,
-      refresh: () => rqQuery.refetch({ cancelRefetch: true }),
-      silentRefresh: () => rqQuery.refetch({ cancelRefetch: true }),
-      softRefresh: () => rqQuery.refetch({ cancelRefetch: true }),
-      currentParams: effectiveParams,
-      resetAndReload: async ({ filters: newFilters = {}, search = '' } = {}) => {
-        setFilters(newFilters);
-        setSearchTermRaw(search);
-        setImmediateSearch(search);
-        setPage(1);
-        // Force a refetch for the next key.
-        // (Invalidate base rather than current key to cover list variants.)
-        try {
-          queryClient.invalidateQueries({ queryKey: queryKeyBase, refetchType: 'active' });
-        } catch {
-          // ignore
-        }
-      },
-    };
-  }
-
   // Create a stable signature irrespective of object key insertion order
   function buildSignature(obj) {
     const flat = {};
@@ -190,6 +154,8 @@ export function useEntityList({
   const paramsSignature = buildSignature(effectiveParams);
 
   const load = useCallback(async (force = false, options = {}) => {
+    // When React Query mode is active, never run the legacy local loader.
+    if (rqQueryKey) return;
     const { silent = false } = options || {};
     // Prevent overlapping requests (they can race and overwrite newer results).
     // Instead, coalesce: queue a follow-up load.
@@ -256,10 +222,14 @@ export function useEntityList({
   // Fiiro gaar ah: fetchFn lama gelin dependency sababtoo ah waxaan isticmaalnaa ref.
 
   // --- Load Effect ---
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (rqQueryKey) return;
+    load();
+  }, [load, rqQueryKey]);
 
-  // --- Public API ---
+  // --- Public API (Legacy/local mode) ---
   const resetAndReload = async ({ filters: newFilters = {}, search = '' } = {}) => {
+    if (rqQueryKey) return;
     // Update internal states synchronously
     setFilters(newFilters);
     setSearchTermRaw(search);
@@ -305,24 +275,56 @@ export function useEntityList({
       nextSignatureRef.current = null;
     }
   };
+
+  // --- Return API (React Query mode vs legacy/local mode) ---
+  if (rqQueryKey) {
+    const result = rqQuery.data || { data: [], meta: { page: 1, limit: initialLimit, total: 0, totalPages: 0 } };
+    const nextMeta = result?.meta || { page: 1, limit: initialLimit, total: 0, totalPages: 0 };
+
+    return {
+      items: Array.isArray(result?.data) ? result.data : [],
+      meta: { ...nextMeta, sortBy, sortDir },
+      isLoading: Boolean(rqQuery.isLoading && rqQuery.data == null),
+      error: rqQuery.error ? (rqQuery.error?.message || 'Failed to load data') : null,
+      searchTerm: searchTermRaw,
+      setSearch: (v) => { setSearchTermRaw(v); setPage(1); },
+      setFilter,
+      setPage,
+      setLimit: (v) => { setLimit(v); setPage(1); },
+      toggleSort,
+      refresh: () => rqQuery.refetch({ cancelRefetch: true }),
+      silentRefresh: () => rqQuery.refetch({ cancelRefetch: true }),
+      softRefresh: () => rqQuery.refetch({ cancelRefetch: true }),
+      currentParams: effectiveParams,
+      resetAndReload: async ({ filters: newFilters = {}, search = '' } = {}) => {
+        setFilters(newFilters);
+        setSearchTermRaw(search);
+        setImmediateSearch(search);
+        setPage(1);
+        try {
+          queryClient.invalidateQueries({ queryKey: queryKeyBase, refetchType: 'active' });
+        } catch {
+          // ignore
+        }
+      },
+    };
+  }
+
   return {
     items,
     meta: { ...meta, sortBy, sortDir },
     isLoading,
     error,
-  searchTerm: searchTermRaw,
-  setSearch: (v) => { setSearchTermRaw(v); setPage(1); },
+    searchTerm: searchTermRaw,
+    setSearch: (v) => { setSearchTermRaw(v); setPage(1); },
     setFilter,
     setPage,
     setLimit: (v) => { setLimit(v); setPage(1); },
     toggleSort,
-    // refresh hadda wuxuu ku qasbayaa force=true si CRUD ka dib xogta cusub loo keeno
     refresh: () => load(true),
-    // silentRefresh wuxuu sameeyaa refetch force=true laakiin ma kicinayo isLoading (skeleton)
     silentRefresh: () => load(true, { silent: true }),
-    // Haddii aad rabto in aad isticmaasho behavior kii hore (no force) waxaad heli kartaa softRefresh
     softRefresh: () => load(false),
     currentParams: effectiveParams,
-    resetAndReload
+    resetAndReload,
   };
 }

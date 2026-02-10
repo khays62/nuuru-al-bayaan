@@ -50,6 +50,7 @@ export default function UserTable({
         { key: 'username', label: t('users.table.columns.username'), sortable: true, field: 'username' },
         { key: 'email', label: t('users.table.columns.email'), sortable: true, field: 'email' },
         { key: 'phone', label: t('users.table.columns.phone'), sortable: true, field: 'phone' },
+        { key: 'salary', label: t('users.table.columns.salary'), sortable: false, field: 'salary' },
         { key: 'role', label: t('users.table.columns.role'), sortable: true, field: 'role' },
         {
           key: 'status',
@@ -88,6 +89,8 @@ export default function UserTable({
             return u.email;
           case 'phone':
             return u.phone;
+          case 'salary':
+            return Number(u?.salary || 0);
           case 'role':
             return u.role;
           case 'status':
