@@ -1,9 +1,10 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
 import Button from './Button.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function EmptyState({
-  title = 'No data',
+  title,
   description,
   icon,
   action,
@@ -11,6 +12,9 @@ export default function EmptyState({
   onAction,
   className = '',
 }) {
+  const { t } = useI18n();
+  const resolvedTitle = title ?? t('common.emptyStates.noData', { defaultValue: 'No data' });
+
   const computedAction = action ?? (
     actionLabel && typeof onAction === 'function' ? (
       <Button variant="brand" size="md" onClick={onAction}>
@@ -24,7 +28,7 @@ export default function EmptyState({
       <div className="flex items-start gap-3">
         {icon ? <div className="mt-0.5 text-slate-500">{icon}</div> : null}
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-900">{title}</div>
+          <div className="text-sm font-semibold text-slate-900">{resolvedTitle}</div>
           {description ? <div className="mt-1 text-sm text-slate-600">{description}</div> : null}
           {computedAction ? <div className="mt-3">{computedAction}</div> : null}
         </div>

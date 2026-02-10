@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ColumnVisibilityMenu from './ColumnVisibilityMenu.jsx';
 import DropdownSelect from '../ui/DropdownSelect.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function StickyTableControls({
 	columns = [],
@@ -14,6 +15,7 @@ export default function StickyTableControls({
 	showColumns = true,
 	className = '',
 }) {
+	const { t } = useI18n();
 	const tot = total == null ? null : Math.max(0, Number(total) || 0);
 	const lim = Math.max(1, Number(limit) || 10);
 
@@ -31,7 +33,7 @@ export default function StickyTableControls({
 	const rowLimitOptions = (limits || []).map((v) => {
 		const raw = String(v);
 		const isAll = raw.toLowerCase() === 'all';
-		return { value: isAll ? 'all' : raw, label: isAll ? 'All' : raw };
+		return { value: isAll ? 'all' : raw, label: isAll ? t('common.all', { defaultValue: 'All' }) : raw };
 	});
 
 	return (
@@ -39,7 +41,7 @@ export default function StickyTableControls({
 			<div className="flex items-center justify-between gap-3">
 				{showRows ? (
 					<div className="flex items-center gap-2 text-sm text-slate-700">
-						<span className="text-slate-600">Rows</span>
+							<span className="text-slate-600">{t('common.rows', { defaultValue: 'Rows' })}</span>
 						<div className="min-w-24">
 							<DropdownSelect
 								value={selectValue}
@@ -56,7 +58,7 @@ export default function StickyTableControls({
 									onLimit?.(next);
 								}}
 								options={rowLimitOptions}
-								placeholder="Rows"
+								placeholder={t('common.rows', { defaultValue: 'Rows' })}
 								clearable={false}
 								hideSelectedOption={false}
 								className="w-auto"

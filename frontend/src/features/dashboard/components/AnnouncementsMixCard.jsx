@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Megaphone } from 'lucide-react';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const fmt = (n) => {
     const v = Number(n || 0);
@@ -13,18 +14,18 @@ const fmtOrDash = (n) => {
     return fmt(v);
 };
 
-const roleLabel = (role) => {
+const normalizeRole = (role) => {
     const r = String(role || '').toLowerCase();
-    if (r === 'all') return 'All';
-    if (r === 'student' || r === 'students') return 'Students';
-    if (r === 'teacher' || r === 'teachers') return 'Teachers';
-    if (r === 'staff') return 'Staff';
-    if (r === 'admin') return 'Admin';
-    if (!r || r === 'unknown' || r === 'null') return 'Unknown';
-    return r.charAt(0).toUpperCase() + r.slice(1);
+    if (r === 'student' || r === 'students') return 'students';
+    if (r === 'teacher' || r === 'teachers') return 'teachers';
+    if (r === 'staff') return 'staff';
+    if (r === 'admin') return 'admin';
+    if (r === 'all') return 'all';
+    if (!r || r === 'unknown' || r === 'null') return 'unknown';
+    return r;
 };
 
-const StackedBar = ({ label, created, updated }) => {
+const StackedBar = ({ label, created, updated, titleCreated, titleUpdated }) => {
     const a = Number(created || 0);
     const b = Number(updated || 0);
     const total = Math.max(1, a + b);
@@ -38,12 +39,12 @@ const StackedBar = ({ label, created, updated }) => {
                         <div
                             className="bg-rose-500/85"
                             style={{ width: `${(a / total) * 100}%` }}
-                            title={`Created: ${a}`}
+                            title={titleCreated ? `${titleCreated}: ${a}` : `Created: ${a}`}
                         />
                         <div
                             className="bg-amber-500/85"
                             style={{ width: `${(b / total) * 100}%` }}
-                            title={`Updated: ${b}`}
+                            title={titleUpdated ? `${titleUpdated}: ${b}` : `Updated: ${b}`}
                         />
                     </div>
                 </div>
@@ -53,15 +54,15 @@ const StackedBar = ({ label, created, updated }) => {
     );
 };
 
-const MiniLegend = () => (
+const MiniLegend = ({ createdLabel, updatedLabel }) => (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
         <div className="inline-flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded bg-rose-500/85" />
-            Created
+            {createdLabel || 'Created'}
         </div>
         <div className="inline-flex items-center gap-2">
             <span className="inline-block h-2.5 w-2.5 rounded bg-amber-500/85" />
-            Updated
+            {updatedLabel || 'Updated'}
         </div>
     </div>
 );
@@ -92,16 +93,8 @@ const RangeTabs = ({ value, onChange, items }) => {
     );
 };
 
-const rangeLabel = (r) => {
-    const s = String(r || '').toLowerCase();
-    if (s === 'day') return 'Day';
-    if (s === 'week') return 'Week';
-    if (s === 'month') return 'Month';
-    if (s === 'year') return 'Year';
-    return 'Week';
-};
-
 export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime, totalInRange, totalAllTime }) {
+    const { t } = useI18n();
     const [range, setRange] = useState('week');
 
     const safeBuckets = buckets && typeof buckets === 'object' ? buckets : null;
@@ -158,21 +151,44 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
 
     const allTimeCreatedTotal = Number(totalAllTime ?? safeAllTime.reduce((s, r) => s + Number(r?.created || 0), 0));
 
+    const roleLabel = (role) => {
+        const normalized = normalizeRole(role);
+        if (normalized === 'all') return t('dashboard.cards.announcementsMix.roles.all');
+        if (normalized === 'students') return t('dashboard.cards.announcementsMix.roles.students');
+        if (normalized === 'teachers') return t('dashboard.cards.announcementsMix.roles.teachers');
+        if (normalized === 'staff') return t('dashboard.cards.announcementsMix.roles.staff');
+        if (normalized === 'admin') return t('dashboard.cards.announcementsMix.roles.admin');
+        if (normalized === 'unknown') return t('dashboard.cards.announcementsMix.roles.unknown');
+        return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : t('dashboard.cards.announcementsMix.roles.unknown');
+    };
+
+    const bucketLabel = (r) => {
+        const s = String(r || '').toLowerCase();
+        if (s === 'day') return t('common.range.buckets.day');
+        if (s === 'week') return t('common.range.buckets.week');
+        if (s === 'month') return t('common.range.buckets.month');
+        if (s === 'year') return t('common.range.buckets.year');
+        return t('common.range.buckets.week');
+    };
+
+    const createdLabel = t('dashboard.cards.announcementsMix.legend.created');
+    const updatedLabel = t('dashboard.cards.announcementsMix.legend.updated');
+
     return (
         <div className="rounded-2xl border border-rose-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
             <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <div className="text-lg font-semibold">Announcements Mix</div>
-                    <div className="text-sm text-white/80 mt-1">Created vs updated (tabbed)</div>
+                    <div className="text-lg font-semibold">{t('dashboard.cards.announcementsMix.title')}</div>
+                    <div className="text-sm text-white/80 mt-1">{t('dashboard.cards.announcementsMix.subtitle')}</div>
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap text-sm text-white/90 tabular-nums">
                     <div>
-                        {rangeLabel(range)}: <span className="font-semibold text-white">{fmt(selectedTotal)}</span>
+                        {bucketLabel(range)}: <span className="font-semibold text-white">{fmt(selectedTotal)}</span>
                     </div>
                     <div className="text-white/60">•</div>
                     <div>
-                        All (created): <span className="font-semibold text-white">{fmt(allTimeCreatedTotal)}</span>
+                        {t('dashboard.cards.announcementsMix.labels.allCreated')}: <span className="font-semibold text-white">{fmt(allTimeCreatedTotal)}</span>
                     </div>
                 </div>
             </div>
@@ -180,15 +196,15 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 flex-wrap">
                 <div className="inline-flex items-center gap-2 text-sm text-gray-700">
                     <Megaphone size={16} />
-                    <span className="font-semibold">Range</span>
+                    <span className="font-semibold">{t('common.range.title')}</span>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-2 text-xs text-gray-600 tabular-nums">
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                            Today: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.today)}</span>
+                            {t('common.range.today')}: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.today)}</span>
                         </span>
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                            Last 7: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.last7)}</span>
+                            {t('common.range.last7')}: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.last7)}</span>
                         </span>
                     </div>
 
@@ -196,17 +212,17 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
                         value={range}
                         onChange={setRange}
                         items={[
-                            { value: 'day', label: 'Day' },
-                            { value: 'week', label: 'Week' },
-                            { value: 'month', label: 'Month' },
-                            { value: 'year', label: 'Year' },
+                            { value: 'day', label: t('common.range.buckets.day') },
+                            { value: 'week', label: t('common.range.buckets.week') },
+                            { value: 'month', label: t('common.range.buckets.month') },
+                            { value: 'year', label: t('common.range.buckets.year') },
                         ]}
                     />
                 </div>
             </div>
 
             <div className="p-5">
-                <MiniLegend />
+                <MiniLegend createdLabel={createdLabel} updatedLabel={updatedLabel} />
 
                 <div className="mt-4 space-y-2">
                     {ordered.length ? (
@@ -216,10 +232,12 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
                                 label={roleLabel(r.role)}
                                 created={r.created}
                                 updated={r.updated}
+                                titleCreated={createdLabel}
+                                titleUpdated={updatedLabel}
                             />
                         ))
                     ) : (
-                        <div className="text-sm text-gray-500">No announcements in this range.</div>
+                        <div className="text-sm text-gray-500">{t('dashboard.cards.announcementsMix.empty')}</div>
                     )}
                 </div>
             </div>

@@ -45,9 +45,14 @@ function summarizeKeys(keys) {
   return `${list.slice(0, 3).join(', ')}… +${list.length - 3}`;
 }
 
-export function prettifyAuditAction(action) {
+export function prettifyAuditAction(action, { t } = {}) {
   const s = String(action || '').trim();
   if (!s) return '';
+
+  if (typeof t === 'function') {
+    const translated = t(`audit.actions.${s}`, { defaultValue: '' });
+    if (translated) return translated;
+  }
 
   const parts = s.split('.').filter(Boolean);
   if (parts.length === 0) return '';
@@ -58,7 +63,7 @@ export function prettifyAuditAction(action) {
   return `${modulePart} • ${verbPart}`;
 }
 
-export function formatAuditDescription(row) {
+export function formatAuditDescription(row, { t } = {}) {
   const raw = String(row?.description || '').trim();
   if (!raw) return '';
 
@@ -67,10 +72,13 @@ export function formatAuditDescription(row) {
   if (m?.[1] && m?.[2]) {
     const method = String(m[1]).toUpperCase();
     const path = tryGetPath(m[2]);
-    const prettyAction = prettifyAuditAction(row?.action);
+    const prettyAction = prettifyAuditAction(row?.action, { t });
 
     const keys = extractBodyKeys(raw);
-    const keyPart = keys.length ? ` (fields: ${summarizeKeys(keys)})` : '';
+    const fieldsLabel = typeof t === 'function'
+      ? t('common.audit.fields', { defaultValue: 'fields' })
+      : 'fields';
+    const keyPart = keys.length ? ` (${fieldsLabel}: ${summarizeKeys(keys)})` : '';
 
     return prettyAction
       ? `${prettyAction} — ${method} ${path}${keyPart}`
@@ -82,36 +90,44 @@ export function formatAuditDescription(row) {
   return raw;
 }
 
-export function formatIpDisplay(ip) {
+export function formatIpDisplay(ip, { t } = {}) {
   const s = String(ip || '').trim();
   if (!s) return '';
 
-  if (s === '::1') return '::1 (Localhost)';
-  if (s === '127.0.0.1') return '127.0.0.1 (Localhost)';
+  const localhostLabel = typeof t === 'function'
+    ? t('common.audit.localhost', { defaultValue: 'Localhost' })
+    : 'Localhost';
+
+  if (s === '::1') return `::1 (${localhostLabel})`;
+  if (s === '127.0.0.1') return `127.0.0.1 (${localhostLabel})`;
 
   if (s.startsWith('::ffff:')) {
     const mapped = s.slice('::ffff:'.length);
-    if (mapped === '127.0.0.1') return `${s} (Localhost)`;
+    if (mapped === '127.0.0.1') return `${s} (${localhostLabel})`;
     return mapped;
   }
 
   return s;
 }
 
-export function formatDeviceDisplay(userAgent) {
+export function formatDeviceDisplay(userAgent, { t } = {}) {
   const ua = String(userAgent || '').trim();
   if (!ua) return '';
 
-  const os = detectOs(ua);
-  const browser = detectBrowser(ua);
+  const os = detectOs(ua, { t });
+  const browser = detectBrowser(ua, { t });
   const isMobile = /\bMobile\b|Android|iPhone|iPad|iPod/i.test(ua);
+
+  const mobileLabel = typeof t === 'function'
+    ? t('common.audit.mobile', { defaultValue: 'Mobile' })
+    : 'Mobile';
 
   const parts = [os, browser].filter(Boolean);
   const out = parts.join(' • ');
-  return isMobile && out ? `${out} (Mobile)` : out;
+  return isMobile && out ? `${out} (${mobileLabel})` : out;
 }
 
-function detectOs(ua) {
+function detectOs(ua, { t } = {}) {
   if (/Windows NT 10\.0/i.test(ua)) return 'Windows 10';
   if (/Windows NT 6\.3/i.test(ua)) return 'Windows 8.1';
   if (/Windows NT 6\.2/i.test(ua)) return 'Windows 8';
@@ -120,10 +136,12 @@ function detectOs(ua) {
   if (/Mac OS X/i.test(ua)) return 'macOS';
   if (/Android/i.test(ua)) return 'Android';
   if (/Linux/i.test(ua)) return 'Linux';
-  return 'Unknown OS';
+  return typeof t === 'function'
+    ? t('common.audit.unknownOs', { defaultValue: 'Unknown OS' })
+    : 'Unknown OS';
 }
 
-function detectBrowser(ua) {
+function detectBrowser(ua, { t } = {}) {
   // Order matters: Edge UA contains Chrome tokens
   const edge = ua.match(/\bEdg\/(\d+)/i);
   if (edge?.[1]) return `Edge ${edge[1]}`;
@@ -140,5 +158,7 @@ function detectBrowser(ua) {
   const safariVersion = ua.match(/\bVersion\/(\d+)/i);
   if (safariVersion?.[1] && /Safari\//i.test(ua)) return `Safari ${safariVersion[1]}`;
 
-  return 'Unknown browser';
+  return typeof t === 'function'
+    ? t('common.audit.unknownBrowser', { defaultValue: 'Unknown browser' })
+    : 'Unknown browser';
 }

@@ -20,6 +20,7 @@ import { listGradeSections } from '../../grades/api/gradeSections';
 import { getDashboardSummary } from '../services/dashboardApi';
 import { dashboardKeys } from '../services/queryKeys';
 import { getSessionSignal } from '../../../api/sessionAbort';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
     return (
@@ -155,6 +156,7 @@ const normalizeRange = (fromStr, toStr) => {
 };
 
 export default function AttendanceChartsCard() {
+    const { t } = useI18n();
     const sessionSignal = useMemo(() => getSessionSignal(), []);
 
     const [academicYearId, setAcademicYearId] = useState('');
@@ -266,16 +268,16 @@ export default function AttendanceChartsCard() {
 
     const STATUSES = useMemo(
         () => [
-            { key: 'present', label: 'Present', dot: 'bg-emerald-600', bar: 'bg-emerald-600' },
-            { key: 'absent', label: 'Absent', dot: 'bg-red-500', bar: 'bg-red-500' },
-            { key: 'late', label: 'Late', dot: 'bg-amber-500', bar: 'bg-amber-500' },
-            { key: 'excused', label: 'Excused', dot: 'bg-violet-600', bar: 'bg-violet-600' },
-            { key: 'sick', label: 'Sick', dot: 'bg-sky-600', bar: 'bg-sky-600' },
-            { key: 'medical', label: 'Medical', dot: 'bg-teal-600', bar: 'bg-teal-600' },
-            { key: 'family', label: 'Family', dot: 'bg-pink-600', bar: 'bg-pink-600' },
-            { key: 'other', label: 'Other', dot: 'bg-gray-600', bar: 'bg-gray-600' },
+            { key: 'present', label: t('attendance.status.present', { defaultValue: 'Present' }), dot: 'bg-emerald-600', bar: 'bg-emerald-600' },
+            { key: 'absent', label: t('attendance.status.absent', { defaultValue: 'Absent' }), dot: 'bg-red-500', bar: 'bg-red-500' },
+            { key: 'late', label: t('attendance.status.late', { defaultValue: 'Late' }), dot: 'bg-amber-500', bar: 'bg-amber-500' },
+            { key: 'excused', label: t('attendance.status.excused', { defaultValue: 'Excused' }), dot: 'bg-violet-600', bar: 'bg-violet-600' },
+            { key: 'sick', label: t('attendance.status.sick', { defaultValue: 'Sick' }), dot: 'bg-sky-600', bar: 'bg-sky-600' },
+            { key: 'medical', label: t('attendance.status.medical', { defaultValue: 'Medical' }), dot: 'bg-teal-600', bar: 'bg-teal-600' },
+            { key: 'family', label: t('attendance.status.family', { defaultValue: 'Family' }), dot: 'bg-pink-600', bar: 'bg-pink-600' },
+            { key: 'other', label: t('attendance.status.other', { defaultValue: 'Other' }), dot: 'bg-gray-600', bar: 'bg-gray-600' },
         ],
-        []
+        [t]
     );
 
     const attendanceByDay = Array.isArray(data?.charts?.attendanceByDay) ? data.charts.attendanceByDay : [];
@@ -440,20 +442,20 @@ export default function AttendanceChartsCard() {
         const tail = [sName].filter(Boolean).join(' - ');
         return [
             gName ? `${gName}` : null,
-            sec ? `Sec ${sec}` : null,
+            sec ? `${t('common.sectionPrefix')} ${sec}` : null,
             tail ? `(${tail})` : null,
         ].filter(Boolean).join(' - ');
     })();
 
     const exportFilterSummary = useMemo(() => {
         const parts = [];
-        parts.push(`Range: ${from} → ${to}`);
-        if (academicYearId) parts.push(`AY: ${yearLabel || 'Selected'}`);
-        if (gradeId) parts.push(`Level: ${gradeLabel || 'Selected'}`);
-        if (shiftId) parts.push(`Shift: ${shiftLabel || 'Selected'}`);
-        if (gradeSectionId) parts.push(`Class: ${sectionLabel || 'Selected'}`);
+        parts.push(`${t('common.range.title')}: ${from} → ${to}`);
+        if (academicYearId) parts.push(`${t('common.filters.academicYearShort')}: ${yearLabel || t('common.selected')}`);
+        if (gradeId) parts.push(`${t('common.filters.level')}: ${gradeLabel || t('common.selected')}`);
+        if (shiftId) parts.push(`${t('common.filters.shift')}: ${shiftLabel || t('common.selected')}`);
+        if (gradeSectionId) parts.push(`${t('common.filters.section')}: ${sectionLabel || t('common.selected')}`);
         return parts.join(' • ');
-    }, [from, to, academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel]);
+    }, [t, from, to, academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel]);
 
     const listScrollClassName = exporting
         ? 'p-4 space-y-2'
@@ -463,16 +465,16 @@ export default function AttendanceChartsCard() {
         <div className="rounded-2xl border border-emerald-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
             <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <div className="text-lg font-semibold">Attendance</div>
-                    <div className="text-sm text-white/80 mt-1">Admin/Staff overview (all classes)</div>
+                    <div className="text-lg font-semibold">{t('teachers.dashboard.attendance.title')}</div>
+                    <div className="text-sm text-white/80 mt-1">{t('dashboard.cards.attendance.subtitle')}</div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
                     <ActionButton disabled={exporting || loading || trend.length === 0} onClick={downloadPng} icon={Download} label="PNG" />
                     <ActionButton disabled={exporting || loading || trend.length === 0} onClick={downloadPdf} icon={FileDown} label="PDF" />
-                    <ToggleButton active={view === 'status'} onClick={() => setView('status')} icon={BarChart3} label="Status trend" />
-                    <ToggleButton active={view === 'periods'} onClick={() => setView('periods')} icon={Layers} label="By periods" />
-                    <ToggleButton active={view === 'performance'} onClick={() => setView('performance')} icon={SlidersHorizontal} label="Performance" />
+                    <ToggleButton active={view === 'status'} onClick={() => setView('status')} icon={BarChart3} label={t('teachers.dashboard.attendance.views.statusTrend')} />
+                    <ToggleButton active={view === 'periods'} onClick={() => setView('periods')} icon={Layers} label={t('teachers.dashboard.attendance.views.byPeriods')} />
+                    <ToggleButton active={view === 'performance'} onClick={() => setView('performance')} icon={SlidersHorizontal} label={t('teachers.dashboard.attendance.views.performance')} />
                 </div>
             </div>
 
@@ -481,7 +483,7 @@ export default function AttendanceChartsCard() {
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
                             <SlidersHorizontal size={16} />
-                            <span>Filters</span>
+                            <span>{t('common.filters.title')}</span>
                         </div>
                         <button
                             type="button"
@@ -495,10 +497,10 @@ export default function AttendanceChartsCard() {
                                 setTo(todayUTC);
                             }}
                             className="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                            title="Reset filters"
+                            title={t('common.filters.resetTitle')}
                         >
                             <RotateCcw size={14} />
-                            Reset
+                            {t('common.actions.reset')}
                         </button>
                     </div>
 
@@ -508,13 +510,13 @@ export default function AttendanceChartsCard() {
                                 <AcademicYearSelect
                                     id="dash-att-ay"
                                     name="dash-att-ay"
-                                    aria-label="Academic Year"
+                                    aria-label={t('common.filters.academicYear')}
                                     value={academicYearId}
                                     onChange={(v) => setAcademicYearId(v)}
-                                    placeholder="Academic Year"
+                                    placeholder={t('common.filters.academicYear')}
                                     searchable
                                     maxVisible={5}
-                                    searchPlaceholder="Search academic years…"
+                                    searchPlaceholder={t('common.searchPlaceholders.academicYears')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -523,14 +525,14 @@ export default function AttendanceChartsCard() {
                                 <GradeSelect
                                     id="dash-att-grade"
                                     name="dash-att-grade"
-                                    aria-label="Level"
+                                    aria-label={t('common.filters.level')}
                                     value={gradeId}
                                     onChange={(v) => {
                                         setGradeId(v);
                                         setShiftId('');
                                         setGradeSectionId('');
                                     }}
-                                    placeholder="Level"
+                                    placeholder={t('common.filters.level')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -539,13 +541,13 @@ export default function AttendanceChartsCard() {
                                 <ShiftSelect
                                     id="dash-att-shift"
                                     name="dash-att-shift"
-                                    aria-label="Shift"
+                                    aria-label={t('common.filters.shift')}
                                     value={shiftId}
                                     onChange={(v) => {
                                         setShiftId(v);
                                         setGradeSectionId('');
                                     }}
-                                    placeholder="Shift"
+                                    placeholder={t('common.filters.shift')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -554,19 +556,19 @@ export default function AttendanceChartsCard() {
                                 <GradeSectionSelect
                                     id="dash-att-section"
                                     name="dash-att-section"
-                                    aria-label="Section"
+                                    aria-label={t('common.filters.section')}
                                     academicYearId={academicYearId}
                                     gradeId={gradeId}
                                     shiftId={shiftId}
                                     value={gradeSectionId}
                                     onChange={(v) => setGradeSectionId(v)}
-                                    placeholder="Section"
+                                    placeholder={t('common.filters.section')}
                                     toastOnEmpty
-                                    toastOnEmptyMessage="No classes (sections) exist for the selected level and shift."
+                                    toastOnEmptyMessage={t('attendance.marking.errors.noSectionsForSelectedLevelShift')}
                                     toastKeyPrefix="DashboardAttendance"
                                     searchable
                                     maxVisible={6}
-                                    searchPlaceholder="Search sections…"
+                                    searchPlaceholder={t('common.searchPlaceholders.sections')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -579,34 +581,34 @@ export default function AttendanceChartsCard() {
                                 value={rangeTab}
                                 onChange={(v) => setRangeTab(v)}
                                 options={[
-                                    { value: 'today', label: 'Today' },
-                                    { value: 'last7', label: 'Last 7 days' },
-                                    { value: 'custom', label: 'Custom' },
+                                    { value: 'today', label: t('teachers.dashboard.attendance.range.today') },
+                                    { value: 'last7', label: t('teachers.dashboard.attendance.range.last7') },
+                                    { value: 'custom', label: t('teachers.dashboard.attendance.range.custom') },
                                 ]}
                             />
                         </div>
                         <div className="text-xs text-gray-700">
-                            <span className="font-medium">Present%</span>: {Number(performanceAgg.presentPct || 0).toFixed(1)}% •{' '}
-                            <span className="font-medium">Days</span>: {trend.length}
+                            <span className="font-medium">{t('dashboard.cards.attendance.kpis.presentPct')}</span>: {Number(performanceAgg.presentPct || 0).toFixed(1)}% •{' '}
+                            <span className="font-medium">{t('dashboard.cards.attendance.kpis.days')}</span>: {trend.length}
                         </div>
                     </div>
 
                     {(sourceAgg.dayPct != null || sourceAgg.lessonPct != null) ? (
                         <div className="mt-2 text-[11px] text-gray-600 flex flex-wrap gap-x-3 gap-y-1">
                             {sourceAgg.dayPct != null ? (
-                                <span><span className="font-semibold">All-day</span>: {sourceAgg.dayPct.toFixed(1)}%</span>
+                                <span><span className="font-semibold">{t('dashboard.cards.attendance.labels.allDay')}</span>: {sourceAgg.dayPct.toFixed(1)}%</span>
                             ) : null}
                             {sourceAgg.lessonPct != null ? (
-                                <span><span className="font-semibold">Per-period</span>: {sourceAgg.lessonPct.toFixed(1)}%</span>
+                                <span><span className="font-semibold">{t('dashboard.cards.attendance.labels.perPeriod')}</span>: {sourceAgg.lessonPct.toFixed(1)}%</span>
                             ) : null}
-                            <span className="text-gray-500">One row per date (prefers ALL DAY when available)</span>
+                            <span className="text-gray-500">{t('dashboard.cards.attendance.notes.oneRowPerDate')}</span>
                         </div>
                     ) : null}
 
                     {rangeTab === 'custom' ? (
                         <div className="mt-3 flex flex-wrap items-end gap-3">
                             <div className="flex items-center gap-2">
-                                <label className="text-xs font-medium text-gray-600">From</label>
+                                <label className="text-xs font-medium text-gray-600">{t('common.from')}</label>
                                 <input
                                     type="date"
                                     className="border rounded px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
@@ -615,7 +617,7 @@ export default function AttendanceChartsCard() {
                                 />
                             </div>
                             <div className="flex items-center gap-2">
-                                <label className="text-xs font-medium text-gray-600">To</label>
+                                <label className="text-xs font-medium text-gray-600">{t('common.to')}</label>
                                 <input
                                     type="date"
                                     className="border rounded px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
@@ -623,61 +625,61 @@ export default function AttendanceChartsCard() {
                                     onChange={(e) => setTo(e.target.value)}
                                 />
                             </div>
-                            <div className="text-xs text-gray-500">Pick any date range.</div>
+                            <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.notes.pickAnyRange')}</div>
                         </div>
                     ) : (
-                        <div className="mt-2 text-xs text-gray-600">Shows attendance records in the selected range.</div>
+                        <div className="mt-2 text-xs text-gray-600">{t('dashboard.cards.attendance.notes.showsRecords')}</div>
                     )}
                 </div>
 
                 <div ref={exportCaptureRef} className="flex flex-col gap-4">
                     {exporting ? (
                         <div className="rounded-xl border border-gray-200 bg-white p-3">
-                            <div className="text-sm font-semibold text-gray-900">Attendance dashboard export</div>
+                            <div className="text-sm font-semibold text-gray-900">{t('dashboard.cards.attendance.export.title')}</div>
                             <div className="mt-1 text-xs text-gray-600">{exportFilterSummary}</div>
                         </div>
                     ) : null}
 
                 {isError ? (
-                    <Alert variant="danger">Failed to load attendance summary.</Alert>
+                    <Alert variant="danger">{t('dashboard.cards.attendance.errors.loadFailed')}</Alert>
                 ) : loading ? (
                     <div className="space-y-2">
-                        <UiLoadingState label="Loading attendance…" className="border-0 bg-transparent p-0 justify-start" />
+                        <UiLoadingState label={t('teachers.dashboard.attendance.loading')} className="border-0 bg-transparent p-0 justify-start" />
                         {Array.from({ length: 6 }).map((_, i) => (
                             <SkeletonRow key={i} />
                         ))}
                     </div>
                 ) : trend.length === 0 ? (
-                    <div className="text-sm text-gray-600">No attendance data found for the selected filters.</div>
+                    <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.noData')}</div>
                 ) : view === 'performance' ? (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="text-sm font-medium text-gray-800">Attendance performance</div>
-                            <div className="text-xs text-gray-500">Percent breakdown</div>
+                            <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.performance.title')}</div>
+                            <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.performance.subtitle')}</div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-                                <div className="text-xs font-semibold text-emerald-900">Present</div>
+                                <div className="text-xs font-semibold text-emerald-900">{t('attendance.status.present')}</div>
                                 <div className="text-xl font-bold text-emerald-900 tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
                                 <div className="text-[11px] text-emerald-900/70">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
                             </div>
                             <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                                <div className="text-xs font-semibold text-gray-900">Marked days</div>
+                                <div className="text-xs font-semibold text-gray-900">{t('teachers.dashboard.attendance.performance.markedDays')}</div>
                                 <div className="text-xl font-bold text-gray-900 tabular-nums">{trend.length}</div>
-                                <div className="text-[11px] text-gray-600">One row per date</div>
+                                <div className="text-[11px] text-gray-600">{t('teachers.dashboard.attendance.performance.markedDaysNote')}</div>
                             </div>
                             <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                                <div className="text-xs font-semibold text-gray-900">Total records</div>
+                                <div className="text-xs font-semibold text-gray-900">{t('dashboard.cards.attendance.performance.totalRecordsTitle')}</div>
                                 <div className="text-xl font-bold text-gray-900 tabular-nums">{Number(performanceAgg.total || 0)}</div>
-                                <div className="text-[11px] text-gray-600">Sum of all statuses</div>
+                                <div className="text-[11px] text-gray-600">{t('dashboard.cards.attendance.performance.totalRecordsNote')}</div>
                             </div>
                         </div>
 
                         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
                             <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
-                                <div className="text-sm font-semibold">Status percentages</div>
-                                <div className="text-xs text-white/80">Total records: {Number(performanceAgg.total || 0)}</div>
+                                <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.performance.statusPercentages')}</div>
+                                <div className="text-xs text-white/80">{t('teachers.dashboard.attendance.performance.totalRecords', { count: Number(performanceAgg.total || 0) })}</div>
                             </div>
                             <div className="p-4 space-y-2">
                                 {STATUSES
@@ -692,8 +694,8 @@ export default function AttendanceChartsCard() {
                 ) : view === 'periods' ? (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="text-sm font-medium text-gray-800">Attendance by periods</div>
-                            <div className="text-xs text-gray-500">Aggregated over selected range</div>
+                            <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.byPeriod.title')}</div>
+                            <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.byPeriod.subtitle')}</div>
                         </div>
 
                         <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
@@ -714,14 +716,14 @@ export default function AttendanceChartsCard() {
                                 .filter((r) => r.periodCode);
 
                             if (rows.length === 0) {
-                                return <div className="text-sm text-gray-600">No per-period (lesson) data found in this range.</div>;
+                                return <div className="text-sm text-gray-600">{t('dashboard.cards.attendance.byPeriod.noLessonData')}</div>;
                             }
 
                             return (
                                 <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
                                     <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
-                                        <div className="text-sm font-semibold">Periods</div>
-                                        <div className="text-xs text-white/80">Excludes ALL DAY</div>
+                                        <div className="text-sm font-semibold">{t('dashboard.cards.attendance.byPeriod.periodsTitle')}</div>
+                                        <div className="text-xs text-white/80">{t('dashboard.cards.attendance.byPeriod.excludesAllDay')}</div>
                                     </div>
                                     <div className={listScrollClassName}>
                                         {rows.map((r) => (
@@ -735,16 +737,16 @@ export default function AttendanceChartsCard() {
                 ) : (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <div className="text-sm font-medium text-gray-800">Attendance status trend</div>
-                            <div className="text-xs text-gray-500">Per day (all classes)</div>
+                            <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.statusTrend.title')}</div>
+                            <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.statusTrend.subtitle')}</div>
                         </div>
 
                         <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
 
                         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
                             <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
-                                <div className="text-sm font-semibold">Daily trend</div>
-                                <div className="text-xs text-white/80">Hover segments for counts</div>
+                                <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.statusTrend.dailyTrend')}</div>
+                                <div className="text-xs text-white/80">{t('dashboard.cards.attendance.statusTrend.hoverNote')}</div>
                             </div>
 
                             <div className={listScrollClassName}>
@@ -754,8 +756,8 @@ export default function AttendanceChartsCard() {
                                         label={
                                             <span className="inline-flex items-center gap-2">
                                                 <span className="tabular-nums">{String(r.date).slice(5)}</span>
-                                                {r.hasAllDay ? <TinyBadge tone={String(r.preferSource).toUpperCase() === 'DAY' ? 'emerald' : 'gray'}>ALL DAY</TinyBadge> : null}
-                                                {r.hasPerPeriod ? <TinyBadge tone={String(r.preferSource).toUpperCase() === 'LESSON' ? 'indigo' : 'gray'}>PERIOD</TinyBadge> : null}
+                                                {r.hasAllDay ? <TinyBadge tone={String(r.preferSource).toUpperCase() === 'DAY' ? 'emerald' : 'gray'}>{t('teachers.dashboard.attendance.badges.allDay')}</TinyBadge> : null}
+                                                {r.hasPerPeriod ? <TinyBadge tone={String(r.preferSource).toUpperCase() === 'LESSON' ? 'indigo' : 'gray'}>{t('teachers.dashboard.attendance.badges.period')}</TinyBadge> : null}
                                             </span>
                                         }
                                         segments={STATUSES.map((s) => ({
@@ -772,8 +774,8 @@ export default function AttendanceChartsCard() {
                 )}
 
                     <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-                        <div className="text-xs text-gray-500">Source: Dashboard summary (admin/staff)</div>
-                        <div className="text-xs text-gray-600">KPIs: <span className="font-medium">Present%</span> • <span className="font-medium">Days</span></div>
+                        <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.footer.source')}</div>
+                        <div className="text-xs text-gray-600">{t('dashboard.cards.attendance.footer.kpisLine')}</div>
                     </div>
                 </div>
             </div>

@@ -15,11 +15,13 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 import { getAssignments as getTeacherAssignments } from '../../teachers/api/teachersApi';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { useExamsRealtimeInvalidation } from '../useExamsRealtimeInvalidation';
 
 export default function ExamManagementPage() {
+    const { t } = useI18n();
     const { auth, hasPermission } = useAuth();
     const role = String(auth?.user?.role || '').toLowerCase();
     const isTeacher = role === 'teacher';
@@ -113,15 +115,15 @@ export default function ExamManagementPage() {
 
     const enrollmentStatusOptions = useMemo(
         () => ([
-            { value: 'active', label: 'Active' },
-            { value: 'inactive', label: 'Inactive' },
-            { value: 'promoted', label: 'Promoted' },
-            { value: 'graduated', label: 'Graduated' },
-            { value: 'transferred', label: 'Transferred' },
-            { value: 'withdrawn', label: 'Withdrawn' },
-            { value: 'all', label: 'All' },
+            { value: 'active', label: t('students.enrollmentStatus.active') },
+            { value: 'inactive', label: t('students.enrollmentStatus.inactive') },
+            { value: 'promoted', label: t('students.enrollmentStatus.promoted') },
+            { value: 'graduated', label: t('students.enrollmentStatus.graduated') },
+            { value: 'transferred', label: t('students.enrollmentStatus.transferred') },
+            { value: 'withdrawn', label: t('students.enrollmentStatus.withdrawn') },
+            { value: 'all', label: t('students.enrollmentStatus.all') },
         ]),
-        []
+        [t]
     );
 
     const applyingTimelineRef = useRef(false);
@@ -224,7 +226,7 @@ export default function ExamManagementPage() {
         enabled: Boolean(gradeSectionId),
         queryFn: async () => {
             const { ok, data, error } = await getGradeSectionById(gradeSectionId);
-            if (!ok) throw new Error(error || 'Failed to load section subjects');
+            if (!ok) throw new Error(error || t('exams.management.errors.loadSectionSubjectsFailed'));
             return data;
         },
         placeholderData: (prev) => prev,
@@ -242,7 +244,7 @@ export default function ExamManagementPage() {
     useEffect(() => {
         if (!gradeSectionId) return;
         if (!gradeSectionQuery.isError) return;
-        toast.error(gradeSectionQuery.error?.message || 'Failed to load section subjects');
+        toast.error(gradeSectionQuery.error?.message || t('exams.management.errors.loadSectionSubjectsFailed'));
     }, [gradeSectionId, gradeSectionQuery.isError, gradeSectionQuery.error]);
 
     const teacherAllowedSubjectIds = useMemo(() => {
@@ -318,7 +320,7 @@ export default function ExamManagementPage() {
         if (!canInput) {
             if (!noInputToastShownRef.current) {
                 noInputToastShownRef.current = true;
-                toast.error('You do not have permission to input exam scores');
+                toast.error(t('exams.management.errors.noPermissionInputScores'));
             }
             return;
         }
@@ -327,7 +329,8 @@ export default function ExamManagementPage() {
             if (!lockedToastShownRef.current.has(k)) {
                 lockedToastShownRef.current.add(k);
                 const vs = formatLockedVersions(studentId);
-                toast.error(`This student already has scores saved under ${vs || 'another template'}. Switch to that template to edit.`);
+                const versionLabel = vs || t('exams.management.errors.anotherTemplate');
+                toast.error(t('exams.management.errors.lockedStudent', { version: versionLabel }));
             }
             return;
         }
@@ -342,7 +345,7 @@ export default function ExamManagementPage() {
         setSavingCells(prev => { const next = new Set(prev); next.delete(key); return next; });
         if (!ok) {
             setErrorCells(prev => new Set(prev).add(key));
-            toast.error(data?.message || 'Save failed');
+            toast.error(data?.message || t('exams.management.errors.saveFailed'));
         } else {
             setLocalInputs(prev => ({ ...prev, [key]: String(n) }));
             setRecentlySaved(prev => {
@@ -364,7 +367,7 @@ export default function ExamManagementPage() {
         if (!canInput) {
             if (!noInputToastShownRef.current) {
                 noInputToastShownRef.current = true;
-                toast.error('You do not have permission to input exam scores');
+                toast.error(t('exams.management.errors.noPermissionInputScores'));
             }
             return;
         }
@@ -373,7 +376,8 @@ export default function ExamManagementPage() {
             if (!lockedToastShownRef.current.has(k)) {
                 lockedToastShownRef.current.add(k);
                 const vs = formatLockedVersions(studentId);
-                toast.error(`This student already has scores saved under ${vs || 'another template'}. Switch to that template to edit.`);
+                const versionLabel = vs || t('exams.management.errors.anotherTemplate');
+                toast.error(t('exams.management.errors.lockedStudent', { version: versionLabel }));
             }
             return;
         }
@@ -401,16 +405,16 @@ export default function ExamManagementPage() {
         }
         return count;
     }, [changedKeys, scoreMap]);
-    const saveButtonLabel = changedExistingCount > 0 ? 'Update' : 'Save';
+    const saveButtonLabel = changedExistingCount > 0 ? t('common.actions.update') : t('common.actions.save');
 
     const handleSaveAll = async () => {
         if (!canInput) {
-            toast.error('You do not have permission to input exam scores');
+            toast.error(t('exams.management.errors.noPermissionInputScores'));
             return;
         }
         if (!hasUnsavedChanges) return;
         if (invalidKeys && invalidKeys.size > 0) {
-            toast.error(`Fix ${invalidKeys.size} invalid entr${invalidKeys.size === 1 ? 'y' : 'ies'} before saving.`);
+            toast.error(t('exams.management.errors.fixInvalidEntries', { count: invalidKeys.size }));
             return;
         }
         setSavingAll(true);
@@ -424,7 +428,11 @@ export default function ExamManagementPage() {
                 return saveCell(studentId, examId, value, weight);
             });
             await Promise.all(tasks);
-            toast.success(changedExistingCount > 0 ? 'Updated scores successfully' : 'Saved scores successfully');
+            toast.success(
+                changedExistingCount > 0
+                    ? t('exams.management.toasts.updatedScoresSuccessfully')
+                    : t('exams.management.toasts.savedScoresSuccessfully')
+            );
         } finally {
             setSavingAll(false);
         }
@@ -457,7 +465,7 @@ export default function ExamManagementPage() {
         enabled: examGridEnabled,
         queryFn: async ({ signal }) => {
             const { ok, data, error } = await getExamGrid(examGridParams, { signal });
-            if (!ok) throw new Error(error || 'Failed to load grid');
+            if (!ok) throw new Error(error || t('exams.management.errors.loadGridFailed'));
             return data || { students: [], columns: [], scores: [], lockedStudents: [], lockedStudentVersions: {}, templateVersion: '' };
         },
         placeholderData: (prev) => prev,
@@ -475,7 +483,7 @@ export default function ExamManagementPage() {
         }
 
         if (examGridQuery.isError) {
-            toast.error(examGridQuery.error?.message || 'Failed to load grid');
+            toast.error(examGridQuery.error?.message || t('exams.management.errors.loadGridFailed'));
             setGrid({ students: [], columns: [], scores: [], lockedStudents: [], lockedStudentVersions: {}, templateVersion: '' });
             setLocalInputs({});
             setSavingCells(new Set());
@@ -492,7 +500,7 @@ export default function ExamManagementPage() {
         lockedToastShownRef.current = new Set();
         const lockedCount = Array.isArray(next?.lockedStudents) ? next.lockedStudents.length : 0;
         if (lockedCount > 0) {
-            toast.error(`${lockedCount} student(s) already have scores saved under another template (locked).`);
+            toast.error(t('exams.management.errors.lockedCount', { count: lockedCount }));
         }
         setLocalInputs({});
         setSavingCells(new Set());
@@ -537,6 +545,14 @@ export default function ExamManagementPage() {
         setTimeout(() => { applyingTimelineRef.current = false; }, 0);
     };
 
+    const formatStatusHint = (raw) => {
+        const v = String(raw || '').toLowerCase();
+        if (!v) return '';
+        const allowed = ['open', 'active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn', 'all'];
+        if (allowed.includes(v)) return t(`students.enrollmentStatus.${v}`);
+        return String(raw);
+    };
+
     return (
         <div className="space-y-6">
             {!isTeacher ? (
@@ -555,33 +571,34 @@ export default function ExamManagementPage() {
             {!isTeacher && cohortId ? (
                 <Card className="p-3">
                     <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold text-gray-800">Cohort timeline</div>
-                        {timelineLoading ? <div className="text-xs text-gray-500">Loading…</div> : null}
+                        <div className="text-sm font-semibold text-gray-800">{t('exams.management.timeline.title')}</div>
+                        {timelineLoading ? <div className="text-xs text-gray-500">{t('common.loading')}</div> : null}
                     </div>
                     {!timelineLoading && (!timeline || timeline.length === 0) ? (
-                        <div className="text-sm text-gray-500 mt-2">No timeline data found for this cohort.</div>
+                        <div className="text-sm text-gray-500 mt-2">{t('exams.management.timeline.noData')}</div>
                     ) : null}
                     {Array.isArray(timeline) && timeline.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {timeline.map((t) => {
-                                const key = `${t?.academicYear?._id}-${t?.gradeSection?._id}`;
+                            {timeline.map((item) => {
+                                const key = `${item?.academicYear?._id}-${item?.gradeSection?._id}`;
+                                const statusLabel = formatStatusHint(item?.statusHint);
                                 const label = [
-                                    t?.academicYear?.yearName,
-                                    t?.grade?.gradeName,
-                                    t?.shift?.shiftName,
-                                    t?.gradeSection?.section ? `Sec ${t.gradeSection.section}` : null,
-                                    t?.statusHint ? `(${t.statusHint})` : null,
+                                    item?.academicYear?.yearName,
+                                    item?.grade?.gradeName,
+                                    item?.shift?.shiftName,
+                                    item?.gradeSection?.section ? `${t('common.sectionPrefix')} ${item.gradeSection.section}` : null,
+                                    statusLabel ? `(${statusLabel})` : null,
                                 ].filter(Boolean).join(' - ');
-                                const isActive = String(academicYearId) === String(t?.academicYear?._id)
-                                    && String(gradeSectionId) === String(t?.gradeSection?._id);
+                                const isActive = String(academicYearId) === String(item?.academicYear?._id)
+                                    && String(gradeSectionId) === String(item?.gradeSection?._id);
                                 return (
                                     <button
                                         key={key}
                                         type="button"
-                                        onClick={() => handleApplyTimelineItem(t)}
+                                        onClick={() => handleApplyTimelineItem(item)}
                                         className={`px-3 py-1.5 rounded-md text-sm border ${isActive ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
                                     >
-                                        {label || 'Timeline item'}
+                                            {label || t('exams.management.timeline.itemFallback')}
                                     </button>
                                 );
                             })}
@@ -597,7 +614,7 @@ export default function ExamManagementPage() {
                         <AcademicYearSelect
                             id="exam-ay"
                             name="exam-ay"
-                            aria-label="Academic Year"
+                            aria-label={t('common.filters.academicYear')}
                             value={academicYearId}
                             onChange={(v) => {
                                 setAcademicYearId(v);
@@ -606,8 +623,8 @@ export default function ExamManagementPage() {
                             }}
                             searchable
                             maxVisible={5}
-                            searchPlaceholder="Search academic years…"
-                            placeholder="Academic Year"
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears')}
+                            placeholder={t('common.filters.academicYear')}
                         />
                     </FilterItem>
 
@@ -622,7 +639,7 @@ export default function ExamManagementPage() {
                                     setGradeSectionId('');
                                     setSubjectId('');
                                 }}
-                                placeholder="Grade"
+                                placeholder={t('common.filters.grade')}
                                 options={[...(grades || [])]
                                     .sort((a, b) => {
                                         const at = a?.createdAt ? new Date(a.createdAt).getTime() : Number.POSITIVE_INFINITY;
@@ -645,9 +662,9 @@ export default function ExamManagementPage() {
                                     setGradeSectionId('');
                                     setSubjectId('');
                                 }}
-                                placeholder="Shift"
+                                placeholder={t('common.filters.shift')}
                                 options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
-                                searchPlaceholder="Search shifts…"
+                                searchPlaceholder={t('common.searchPlaceholders.shifts')}
                             />
                         </FilterItem>
                     )}
@@ -661,7 +678,7 @@ export default function ExamManagementPage() {
                                 setGradeSectionId(v);
                                 setSubjectId('');
                             }}
-                            placeholder="Section"
+                            placeholder={t('common.filters.section')}
                             disabled={isTeacher ? teacherSectionsLoading : (!gradeId || !shiftId)}
                             options={((isTeacher ? teacherSections : sections) || []).map((gs) => {
                                 const gradeName = gs?.grade?.gradeName;
@@ -670,12 +687,12 @@ export default function ExamManagementPage() {
                                 const tail = [shiftName].filter(Boolean).join(' - ');
                                 const label = [
                                     gradeName ? `${gradeName}` : null,
-                                    sectionNum ? `Sec ${sectionNum}` : null,
+                                    sectionNum ? `${t('common.sectionPrefix')} ${sectionNum}` : null,
                                     tail ? `(${tail})` : null,
                                 ].filter(Boolean).join(' - ');
-                                return { value: gs._id, label: label || gs.sectionName || 'Section' };
+                                return { value: gs._id, label: label || gs.sectionName || t('common.filters.section') };
                             })}
-                            searchPlaceholder="Search sections…"
+                            searchPlaceholder={t('common.searchPlaceholders.sections')}
                         />
                     </FilterItem>
 
@@ -686,7 +703,7 @@ export default function ExamManagementPage() {
                             value={subjectId}
                             onChange={setSubjectId}
                             disabled={!gradeSectionId || (isTeacher && (teacherAssignmentsLoading || teacherAllowedSubjectIds?.size === 0))}
-                            placeholder={isTeacher && teacherAssignmentsLoading ? 'Loading…' : 'Subject'}
+                            placeholder={isTeacher && teacherAssignmentsLoading ? t('common.loading') : t('common.filters.subject')}
                             options={(() => {
                                 const list = subjects || [];
                                 if (!isTeacher || !teacherAllowedSubjectIds) return list.map((su) => ({ value: su._id, label: su.subjectName }));
@@ -695,7 +712,7 @@ export default function ExamManagementPage() {
                                     .filter((su) => teacherAllowedSubjectIds.has(String(su?._id)))
                                     .map((su) => ({ value: su._id, label: su.subjectName }));
                             })()}
-                            searchPlaceholder="Search subjects…"
+                            searchPlaceholder={t('common.searchPlaceholders.subjects')}
                         />
                     </FilterItem>
 
@@ -712,12 +729,12 @@ export default function ExamManagementPage() {
                                     setSavingCells(new Set());
                                     setErrorCells(new Set());
                                 }}
-                                placeholder="Template"
+                                placeholder={t('exams.settings.placeholders.template')}
                                 options={(templateVersions || []).map((v) => ({
                                     value: String(v.templateVersion),
-                                    label: `v${v.templateVersion}${v.isActive ? ' (default)' : ''}`
+                                    label: `v${v.templateVersion}${v.isActive ? t('exams.settings.labels.defaultSuffix') : ''}`
                                 }))}
-                                searchPlaceholder="Search templates…"
+                                searchPlaceholder={t('exams.management.searchPlaceholders.templates')}
                             />
                         </FilterItem>
                     )}
@@ -727,10 +744,10 @@ export default function ExamManagementPage() {
                             <ActionButton
                                 variant="primary"
                                 onClick={handleReset}
-                                title="Reset filters"
+                                title={t('common.filters.resetTitle')}
                                 icon={<RotateCcw size={16} />}
                             >
-                                Reset
+                                {t('common.actions.reset')}
                             </ActionButton>
                         </div>
                     </FilterItem>
@@ -739,19 +756,19 @@ export default function ExamManagementPage() {
 
             <Card className="p-4 overflow-auto">
                 {!academicYearId || !gradeSectionId ? (
-                    <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift and Section.</p>
+                    <p className="text-sm text-gray-500">{t('exams.management.emptyStates.selectFilters')}</p>
                 ) : !subjectId ? (
-                    <p className="text-sm text-gray-500">Choose a Subject to load the grid.</p>
+                    <p className="text-sm text-gray-500">{t('exams.management.emptyStates.chooseSubject')}</p>
                 ) : loadingGrid ? (
-                    <p className="text-sm text-gray-500">Loading grid…</p>
+                    <p className="text-sm text-gray-500">{t('exams.management.emptyStates.loadingGrid')}</p>
                 ) : grid.students.length === 0 ? (
-                    <p className="text-sm text-gray-500">No students or data for this selection.</p>
+                    <p className="text-sm text-gray-500">{t('exams.management.emptyStates.noStudents')}</p>
                 ) : (Array.isArray(grid?.lockedStudents) && grid.lockedStudents.length > 0) ? (
                     <div className="space-y-3">
                         <div className="text-sm text-gray-700">
                             {isTeacher
-                                ? 'Some students are locked because they already have scores saved under another template.'
-                                : 'Some students are locked because they already have scores under another template. Use the Template dropdown above to switch to the version shown in the error.'}
+                                ? t('exams.management.locked.teacherHelp')
+                                : t('exams.management.locked.adminHelp')}
                         </div>
                         <StandardTable
                             isLoading={false}
@@ -766,7 +783,7 @@ export default function ExamManagementPage() {
                                 useDefaultHeaderStyles: false,
                                 renderHeader: () => (
                                     <tr>
-                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
+                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{t('exams.management.table.student')}</th>
                                         {[...grid.columns]
                                             .sort((a, b) => {
                                                 const ao = Number(a?.order || 0);
@@ -782,7 +799,7 @@ export default function ExamManagementPage() {
                                                     </div>
                                                 </th>
                                             ))}
-                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total ({totalMax})</th>
+                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{t('exams.management.table.totalWithMax', { totalMax })}</th>
                                     </tr>
                                 ),
                                 renderBody: () => (
@@ -801,7 +818,15 @@ export default function ExamManagementPage() {
                                                     <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">
                                                         <span>{st.fullName}</span>
                                                         {locked ? (
-                                                            <span className="inline-flex items-center gap-1 ml-2 text-amber-600" title={`Locked${formatLockedVersions(st.studentId) ? ` (${formatLockedVersions(st.studentId)})` : ''}`}>
+                                                            <span
+                                                                className="inline-flex items-center gap-1 ml-2 text-amber-600"
+                                                                title={(() => {
+                                                                    const vs = formatLockedVersions(st.studentId);
+                                                                    return vs
+                                                                        ? t('exams.management.locked.titleWithVersions', { versions: vs })
+                                                                        : t('exams.management.locked.title');
+                                                                })()}
+                                                            >
                                                                 <Lock size={14} />
                                                             </span>
                                                         ) : null}
@@ -833,20 +858,20 @@ export default function ExamManagementPage() {
                                                                             value={val}
                                                                             onChange={(e) => handleChange(st.studentId, col.examId, e.target.value, weight)}
                                                                             disabled={locked || !canInput}
-                                                                            title={`Max: ${weight}`}
+                                                                            title={t('exams.management.cell.maxTitle', { max: weight })}
                                                                         />
                                                                         {/* Status overlay inside input (no layout shift) */}
                                                                         <span className="pointer-events-none absolute right-2 text-gray-400">
                                                                             {hasError ? (
-                                                                                <AlertCircle size={16} className="text-red-500" title="Save failed" />
+                                                                                <AlertCircle size={16} className="text-red-500" title={t('exams.management.cell.saveFailed')} />
                                                                             ) : isSaving ? (
                                                                                 (() => {
                                                                                     const started = savingStartTimesRef.current.get(key) || 0;
                                                                                     const show = Date.now() - started >= 250;
-                                                                                    return show ? <Loader2 size={16} className="animate-spin" title="Saving…" /> : null;
+                                                                                    return show ? <Loader2 size={16} className="animate-spin" title={t('common.saving')} /> : null;
                                                                                 })()
                                                                             ) : (recentlySaved.has(key) ? (
-                                                                                <Check size={16} className="text-emerald-600" title="Saved" />
+                                                                                <Check size={16} className="text-emerald-600" title={t('exams.management.cell.saved')} />
                                                                             ) : null)}
                                                                         </span>
                                                                     </div>
@@ -865,10 +890,10 @@ export default function ExamManagementPage() {
                             <ActionButton
                                 variant="primary"
                                 onClick={handleSaveAll}
-                                title="Save all pending entries"
+                                title={t('exams.management.actions.saveAllTitle')}
                                 disabled={!canInput || !hasUnsavedChanges || savingAll}
                             >
-                                {savingAll ? 'Saving…' : saveButtonLabel}
+                                {savingAll ? t('common.saving') : saveButtonLabel}
                             </ActionButton>
                         </div>
                     </div>
@@ -887,7 +912,7 @@ export default function ExamManagementPage() {
                             useDefaultHeaderStyles: false,
                             renderHeader: () => (
                                 <tr>
-                                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Student</th>
+                                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{t('exams.management.table.student')}</th>
                                     {[...grid.columns]
                                         .sort((a, b) => {
                                             const ao = Number(a?.order || 0);
@@ -903,7 +928,7 @@ export default function ExamManagementPage() {
                                                 </div>
                                             </th>
                                         ))}
-                                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">Total ({totalMax})</th>
+                                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{t('exams.management.table.totalWithMax', { totalMax })}</th>
                                 </tr>
                             ),
                             renderBody: () => (
@@ -946,7 +971,7 @@ export default function ExamManagementPage() {
                                                                         value={val}
                                                                         onChange={(e) => handleChange(st.studentId, col.examId, e.target.value)}
                                                                         disabled={locked || !canInput}
-                                                                        title={`Max: ${weight}`}
+                                                                        title={t('exams.management.cell.maxTitle', { max: weight })}
                                                                     />
                                                                     {/* Per-cell saving text removed; saving is manual via button */}
                                                                 </div>
@@ -965,10 +990,10 @@ export default function ExamManagementPage() {
                         <ActionButton
                             variant="primary"
                             onClick={handleSaveAll}
-                            title="Save all pending entries"
+                            title={t('exams.management.actions.saveAllTitle')}
                             disabled={!canInput || !hasUnsavedChanges || savingAll}
                         >
-                            {savingAll ? 'Saving…' : saveButtonLabel}
+                            {savingAll ? t('common.saving') : saveButtonLabel}
                         </ActionButton>
                     </div>
                     </>

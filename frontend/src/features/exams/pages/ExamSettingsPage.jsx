@@ -7,6 +7,7 @@ import Card from '../../../shared/components/ui/Card.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 import {
   getExamTemplateVersions,
   getExamTemplateDetail,
@@ -22,6 +23,7 @@ import { examKeys } from '../queryKeys';
 import { useExamsRealtimeInvalidation } from '../useExamsRealtimeInvalidation';
 
 export default function ExamSettingsPage() {
+  const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const role = String(auth?.user?.role || '').toLowerCase();
@@ -51,7 +53,7 @@ export default function ExamSettingsPage() {
     queryKey: examKeys.templateVersions(),
     queryFn: async ({ signal }) => {
       const res = await getExamTemplateVersions({ signal });
-      if (!res?.ok) throw new Error(res?.error || 'Failed to load template versions');
+      if (!res?.ok) throw new Error(res?.error || t('exams.settings.errors.loadTemplateVersionsFailed'));
       return res.data;
     },
     placeholderData: (prev) => prev,
@@ -91,7 +93,7 @@ export default function ExamSettingsPage() {
         queryKey: examKeys.templateDetail(v),
         queryFn: async ({ signal }) => {
           const res = await getExamTemplateDetail(v, { signal });
-          if (!res?.ok) throw new Error(res?.error || 'Failed to load template');
+          if (!res?.ok) throw new Error(res?.error || t('exams.settings.errors.loadTemplateFailed'));
           return res.data;
         },
         staleTime: 0,
@@ -108,7 +110,7 @@ export default function ExamSettingsPage() {
     } catch (e) {
       if (String(e?.message || '') !== 'Aborted') {
         if (!templateDetail) setTemplateDetail(null);
-        toast.error(e?.message || 'Failed to load template');
+        toast.error(e?.message || t('exams.settings.errors.loadTemplateFailed'));
       }
     } finally {
       if (showSpinner) setTemplateDetailLoading(false);
@@ -176,25 +178,25 @@ export default function ExamSettingsPage() {
 
   const handleSaveTemplateTotal = async () => {
     if (!canEditTemplate) {
-      toast.error('You do not have permission to edit exam templates');
+      toast.error(t('exams.settings.errors.noPermissionEditTemplates'));
       return;
     }
     if (!templateVersion) return;
     if (templateLocked) {
-      toast.error('This template already has scores and is locked. Total cannot be edited.');
+      toast.error(t('exams.settings.errors.templateLockedTotal'));
       return;
     }
     if (!isTotalDirty) return;
     const total = Number(templateTotalInput);
     if (!Number.isFinite(total) || total <= 0) {
-      toast.error('Total must be > 0');
+      toast.error(t('exams.settings.errors.totalMustBeGt0'));
       return;
     }
     setSavingTemplate(true);
     const res = await setExamTemplateTotal({ templateVersion, templateTotal: total });
     setSavingTemplate(false);
     if (!res?.ok) {
-      toast.error(res?.data?.message || 'Failed to save total');
+      toast.error(res?.data?.message || t('exams.settings.errors.saveTotalFailed'));
       return;
     }
     setTemplateDetail((prev) =>
@@ -208,12 +210,12 @@ export default function ExamSettingsPage() {
         : prev
     );
     setSavedTemplateTotal(String(Number(res?.data?.templateTotal ?? total)));
-    toast.success('Saved');
+    toast.success(t('common.actions.save'));
   };
 
   const handleClone = async () => {
     if (!canEditTemplate) {
-      toast.error('You do not have permission to edit exam templates');
+      toast.error(t('exams.settings.errors.noPermissionEditTemplates'));
       return;
     }
     if (!templateVersion) return;
@@ -221,18 +223,18 @@ export default function ExamSettingsPage() {
     const res = await cloneExamTemplateVersion(Number(templateVersion));
     setSavingTemplate(false);
     if (!res?.ok) {
-      toast.error(res?.data?.message || 'Clone failed');
+      toast.error(res?.data?.message || t('exams.settings.errors.cloneFailed'));
       return;
     }
     await refreshTemplateVersions();
     const next = String(res?.data?.templateVersion || '');
     if (next) setTemplateVersion(next);
-    toast.success(`Cloned to v${next}`);
+    toast.success(t('exams.settings.toasts.clonedToVersion', { version: next }));
   };
 
   const handleActivate = async () => {
     if (!canEditTemplate) {
-      toast.error('You do not have permission to edit exam templates');
+      toast.error(t('exams.settings.errors.noPermissionEditTemplates'));
       return;
     }
     if (!templateVersion) return;
@@ -240,21 +242,21 @@ export default function ExamSettingsPage() {
     const res = await setActiveExamTemplateVersion(Number(templateVersion));
     setSavingTemplate(false);
     if (!res?.ok) {
-      toast.error(res?.data?.message || 'Activate failed');
+      toast.error(res?.data?.message || t('exams.settings.errors.activateFailed'));
       return;
     }
     await refreshTemplateVersions();
     setTemplateDetail((prev) => (prev ? { ...prev, isActive: true } : prev));
-    toast.success('Default template updated');
+    toast.success(t('exams.settings.toasts.defaultTemplateUpdated'));
   };
 
   const applyDraft = async (id) => {
     if (!canEditTemplate) {
-      toast.error('You do not have permission to edit exam templates');
+      toast.error(t('exams.settings.errors.noPermissionEditTemplates'));
       return;
     }
     if (templateLocked) {
-      toast.error('This template already has scores and is locked. Columns cannot be edited.');
+      toast.error(t('exams.settings.errors.templateLockedColumns'));
       return;
     }
     const draft = draftEdits?.[id];
@@ -262,11 +264,11 @@ export default function ExamSettingsPage() {
     const typeName = String(draft.typeName ?? '').trim();
     const maxScore = Number(draft.maxScore);
     const order = Number(draft.order);
-    if (!typeName) return toast.error('Name is required');
-    if (!Number.isFinite(maxScore) || maxScore <= 0) return toast.error('Max score must be > 0');
-    if (!Number.isFinite(order) || order <= 0) return toast.error('Order must be > 0');
-    if (draftValidation.sumExceedsTotal) return toast.error('Sum of max scores cannot exceed the declared total');
-    if (draftValidation.duplicateOrderIds.has(String(id))) return toast.error('Order must be unique');
+    if (!typeName) return toast.error(t('exams.settings.errors.nameRequired'));
+    if (!Number.isFinite(maxScore) || maxScore <= 0) return toast.error(t('exams.settings.errors.maxScoreMustBeGt0'));
+    if (!Number.isFinite(order) || order <= 0) return toast.error(t('exams.settings.errors.orderMustBeGt0'));
+    if (draftValidation.sumExceedsTotal) return toast.error(t('exams.settings.errors.sumMaxCannotExceedTotal'));
+    if (draftValidation.duplicateOrderIds.has(String(id))) return toast.error(t('exams.settings.errors.orderMustBeUnique'));
 
     setSavingComponentIds((prev) => {
       const next = new Set(prev);
@@ -280,7 +282,7 @@ export default function ExamSettingsPage() {
       return next;
     });
     if (!res?.ok) {
-      toast.error(res?.data?.message || 'Save failed');
+      toast.error(res?.data?.message || t('exams.settings.errors.saveFailed'));
       return;
     }
 
@@ -303,26 +305,26 @@ export default function ExamSettingsPage() {
       delete next[String(id)];
       return next;
     });
-    toast.success('Saved');
+    toast.success(t('common.actions.save'));
   };
 
   const addComponent = async () => {
     if (!canEditTemplate) {
-      toast.error('You do not have permission to edit exam templates');
+      toast.error(t('exams.settings.errors.noPermissionEditTemplates'));
       return;
     }
     if (templateDetail?.hasScores) {
-      toast.error('This template already has scores. Clone a new template to add columns.');
+      toast.error(t('exams.settings.errors.templateHasScoresCloneToAdd'));
       return;
     }
     const typeName = String(newComponent.typeName || '').trim();
     const maxScore = Number(newComponent.maxScore);
     const order = Number(newComponent.order);
-    if (!typeName) return toast.error('Name is required');
-    if (!Number.isFinite(maxScore) || maxScore <= 0) return toast.error('Max score must be > 0');
-    if (!Number.isFinite(order) || order <= 0) return toast.error('Order must be > 0');
-    if (draftValidation.newWouldExceed) return toast.error('Max score exceeds declared total');
-    if (draftValidation.newOrderDuplicate) return toast.error('Order must be unique');
+    if (!typeName) return toast.error(t('exams.settings.errors.nameRequired'));
+    if (!Number.isFinite(maxScore) || maxScore <= 0) return toast.error(t('exams.settings.errors.maxScoreMustBeGt0'));
+    if (!Number.isFinite(order) || order <= 0) return toast.error(t('exams.settings.errors.orderMustBeGt0'));
+    if (draftValidation.newWouldExceed) return toast.error(t('exams.settings.errors.maxScoreExceedsTotal'));
+    if (draftValidation.newOrderDuplicate) return toast.error(t('exams.settings.errors.orderMustBeUnique'));
 
     setSavingTemplate(true);
     const res = await createExamTemplateComponent({
@@ -333,7 +335,7 @@ export default function ExamSettingsPage() {
     });
     setSavingTemplate(false);
     if (!res?.ok) {
-      toast.error(res?.data?.message || 'Add failed');
+      toast.error(res?.data?.message || t('exams.settings.errors.addFailed'));
       return;
     }
 
@@ -350,21 +352,21 @@ export default function ExamSettingsPage() {
     });
 
     setNewComponent({ typeName: '', maxScore: '', order: '' });
-    toast.success('Added');
+    toast.success(t('common.actions.add'));
   };
 
   const handleDeleteComponent = async (id) => {
     if (!canEditTemplate) {
-      toast.error('You do not have permission to edit exam templates');
+      toast.error(t('exams.settings.errors.noPermissionEditTemplates'));
       return;
     }
     if (!id) return;
     const comp = templateDetail?.components?.find((c) => String(c._id) === String(id));
     if (comp?.hasScores) {
-      toast.error('Cannot delete: this column has saved scores');
+      toast.error(t('exams.settings.errors.cannotDeleteColumnHasScores'));
       return;
     }
-    if (!window.confirm('Delete this column? This cannot be undone.')) return;
+    if (!window.confirm(t('exams.settings.confirms.deleteColumn'))) return;
 
     setDeletingComponentIds((prev) => {
       const next = new Set(prev);
@@ -379,7 +381,7 @@ export default function ExamSettingsPage() {
     });
 
     if (!res?.ok) {
-      toast.error(res?.data?.message || 'Delete failed');
+      toast.error(res?.data?.message || t('exams.settings.errors.deleteFailed'));
       return;
     }
 
@@ -399,36 +401,36 @@ export default function ExamSettingsPage() {
       delete next[String(id)];
       return next;
     });
-    toast.success('Deleted');
+    toast.success(t('exams.settings.toasts.deleted'));
   };
 
   const handleDeleteVersion = async () => {
     if (!canEditTemplate) {
-      toast.error('You do not have permission to edit exam templates');
+      toast.error(t('exams.settings.errors.noPermissionEditTemplates'));
       return;
     }
     if (!templateVersion) return;
     if (templateDetail?.isActive) {
-      toast.error('Cannot delete the default (active) template');
+      toast.error(t('exams.settings.errors.cannotDeleteDefaultTemplate'));
       return;
     }
     if (templateDetail?.hasScores) {
-      toast.error('Cannot delete: this template has saved scores');
+      toast.error(t('exams.settings.errors.cannotDeleteTemplateHasScores'));
       return;
     }
-    if (!window.confirm(`Delete template v${templateVersion}? This cannot be undone.`)) return;
+    if (!window.confirm(t('exams.settings.confirms.deleteTemplateVersion', { version: templateVersion }))) return;
 
     setDeletingVersion(true);
     const res = await deleteExamTemplateVersion(Number(templateVersion));
     setDeletingVersion(false);
     if (!res?.ok) {
-      toast.error(res?.data?.message || 'Delete template failed');
+      toast.error(res?.data?.message || t('exams.settings.errors.deleteTemplateFailed'));
       return;
     }
     await refreshTemplateVersions();
     setTemplateDetail(null);
     setDraftEdits({});
-    toast.success(`Deleted template v${templateVersion}`);
+    toast.success(t('exams.settings.toasts.deletedTemplateVersion', { version: templateVersion }));
   };
 
   return (
@@ -441,16 +443,16 @@ export default function ExamSettingsPage() {
               name="exam-settings-version"
               value={templateVersion}
               onChange={setTemplateVersion}
-              placeholder="Template"
+              placeholder={t('exams.settings.placeholders.template')}
               options={(templateVersions || []).map((v) => ({
                 value: String(v.templateVersion),
-                label: `v${v.templateVersion}${v.isActive ? ' (default)' : ''}`,
+                label: `v${v.templateVersion}${v.isActive ? t('exams.settings.labels.defaultSuffix') : ''}`,
               }))}
             />
           </div>
 
           <div className="min-w-40">
-            <label className="block text-xs text-gray-600 mb-1">Declared Total</label>
+            <label className="block text-xs text-gray-600 mb-1">{t('exams.settings.labels.declaredTotal')}</label>
             <Input
               type="number"
               min={1}
@@ -467,54 +469,53 @@ export default function ExamSettingsPage() {
               onClick={handleSaveTemplateTotal}
               disabled={savingTemplate || !templateVersion || templateLocked || !isTotalDirty || !canEditTemplate}
             >
-              Save Total
+              {t('exams.settings.actions.saveTotal')}
             </ActionButton>
             <ActionButton variant="secondary" onClick={handleClone} disabled={savingTemplate || !templateVersion || !canEditTemplate}>
-              Clone to New Template
+              {t('exams.settings.actions.cloneToNewTemplate')}
             </ActionButton>
             <ActionButton
               variant="primary"
               onClick={handleActivate}
               disabled={savingTemplate || !templateVersion || !canActivate || Boolean(templateDetail?.isActive) || !canEditTemplate}
             >
-              Set as Default
+              {t('exams.settings.actions.setAsDefault')}
             </ActionButton>
             <ActionButton
               variant="danger"
               onClick={handleDeleteVersion}
               disabled={savingTemplate || deletingVersion || !templateVersion || templateDetail?.isActive || templateDetail?.hasScores || !canEditTemplate}
             >
-              Delete Template
+              {t('exams.settings.actions.deleteTemplate')}
             </ActionButton>
           </div>
         </div>
 
         {!templateDetail ? (
           templateDetailLoading ? (
-            <div className="text-sm text-gray-500">Loading template…</div>
+            <div className="text-sm text-gray-500">{t('exams.settings.states.loadingTemplate')}</div>
           ) : (
-            <div className="text-sm text-gray-500">Select a template to edit.</div>
+            <div className="text-sm text-gray-500">{t('exams.settings.hints.selectTemplateToEdit')}</div>
           )
         ) : (
           <>
-            {templateDetailLoading ? <div className="text-xs text-gray-500">Refreshing…</div> : null}
+            {templateDetailLoading ? <div className="text-xs text-gray-500">{t('exams.settings.states.refreshing')}</div> : null}
             <div className="text-sm text-gray-700">
-              Template <span className="font-semibold">v{templateDetail.templateVersion}</span>
+              {t('exams.settings.labels.templateWithVersion')} <span className="font-semibold">v{templateDetail.templateVersion}</span>
               {templateDetail.isActive ? (
-                <span className="ml-2 text-xs px-2 py-1 rounded border bg-gray-900 text-white border-gray-900">Default</span>
+                <span className="ml-2 text-xs px-2 py-1 rounded border bg-gray-900 text-white border-gray-900">{t('exams.settings.labels.defaultBadge')}</span>
               ) : null}
               <span className="ml-3">
-                Sum Max:{' '}
+                {t('exams.settings.labels.sumMax')}:{' '}
                 <span className={`font-semibold ${canActivate ? 'text-green-700' : 'text-red-700'}`}>{templateDetail.sumMaxScore}</span>
-                {' '} / Total: <span className="font-semibold">{templateDetail.templateTotal}</span>
+                {' '} / {t('exams.settings.labels.total')}: <span className="font-semibold">{templateDetail.templateTotal}</span>
               </span>
-              {!canActivate ? <span className="ml-2 text-xs text-red-700">(Must match to activate)</span> : null}
+              {!canActivate ? <span className="ml-2 text-xs text-red-700">{t('exams.settings.hints.mustMatchToActivate')}</span> : null}
             </div>
 
             {templateDetail.hasScores ? (
               <div className="text-xs text-gray-600">
-                This template already has saved scores and is locked. You cannot edit total or columns. You may delete columns that have no scores,
-                or use “Clone to New Template”.
+                {t('exams.settings.hints.templateLockedHelp')}
               </div>
             ) : null}
 
@@ -522,31 +523,31 @@ export default function ExamSettingsPage() {
               <StandardTable
                 isLoading={false}
                 items={templateDetail.components || []}
-                emptyTitle="No components."
-                emptyDescription="Add a component to this template."
+                emptyTitle={t('exams.settings.table.emptyTitle')}
+                emptyDescription={t('exams.settings.table.emptyDescription')}
                 rows={[...(templateDetail.components || []), { __type: 'new', _id: '__new' }]}
                 columns={[
                   {
                     key: 'typeName',
-                    label: 'Name',
+                    label: t('exams.settings.table.columns.name'),
                     thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                     tdClassName: 'px-4 py-2 border-x border-gray-200',
                   },
                   {
                     key: 'maxScore',
-                    label: 'Max Score',
+                    label: t('exams.settings.table.columns.maxScore'),
                     thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                     tdClassName: 'px-4 py-2 border-x border-gray-200',
                   },
                   {
                     key: 'order',
-                    label: 'Order',
+                    label: t('common.table.order'),
                     thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                     tdClassName: 'px-4 py-2 border-x border-gray-200',
                   },
                   {
                     key: 'actions',
-                    label: 'Actions',
+                    label: t('common.table.actions'),
                     thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                     tdClassName: 'px-4 py-2 border-x border-gray-200',
                   },
@@ -561,7 +562,7 @@ export default function ExamSettingsPage() {
                         return (
                           <input
                             type="text"
-                            placeholder="New column name"
+                            placeholder={t('exams.settings.placeholders.newColumnName')}
                             value={newComponent.typeName}
                             onChange={(e) => setNewComponent((p) => ({ ...p, typeName: e.target.value }))}
                             disabled={savingTemplate || templateLocked || !canEditTemplate}
@@ -573,7 +574,7 @@ export default function ExamSettingsPage() {
                           <input
                             type="number"
                             min={1}
-                            placeholder="Max"
+                            placeholder={t('exams.settings.placeholders.max')}
                             value={newComponent.maxScore}
                             onChange={(e) => setNewComponent((p) => ({ ...p, maxScore: e.target.value }))}
                             disabled={savingTemplate || templateLocked || !canEditTemplate}
@@ -587,7 +588,7 @@ export default function ExamSettingsPage() {
                           <input
                             type="number"
                             min={1}
-                            placeholder="Order"
+                            placeholder={t('common.table.order')}
                             value={newComponent.order}
                             onChange={(e) => setNewComponent((p) => ({ ...p, order: e.target.value }))}
                             disabled={savingTemplate || templateLocked || !canEditTemplate}
@@ -603,7 +604,7 @@ export default function ExamSettingsPage() {
                             onClick={addComponent}
                             disabled={savingTemplate || templateLocked || draftValidation.newWouldExceed || draftValidation.newOrderDuplicate || !canEditTemplate}
                           >
-                            Add
+                            {t('common.actions.add')}
                           </ActionButton>
                         );
                       default:
@@ -690,16 +691,16 @@ export default function ExamSettingsPage() {
                               !canEditTemplate
                             }
                           >
-                            Save
+                            {t('common.actions.save')}
                           </ActionButton>
                           <ActionButton
                             variant="danger"
                             onClick={() => handleDeleteComponent(id)}
                             disabled={savingTemplate || isSavingRow || isDeletingRow || (c?.hasScores ?? false) || !canEditTemplate}
                           >
-                            Delete
+                            {t('common.actions.delete')}
                           </ActionButton>
-                          {c?.hasScores ? <span className="text-xs text-gray-500">Has scores</span> : null}
+                          {c?.hasScores ? <span className="text-xs text-gray-500">{t('exams.settings.labels.hasScores')}</span> : null}
                         </div>
                       );
                     default:

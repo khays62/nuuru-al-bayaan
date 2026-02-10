@@ -24,8 +24,10 @@ import TransfersCandidatesTable from '../components/TransfersCandidatesTable.jsx
 import TransfersLogsTable from '../components/TransfersLogsTable.jsx';
 import { transferKeys } from '../queryKeys';
 import { useTransfersRealtimeInvalidation } from '../useTransfersRealtimeInvalidation';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function TransfersPage() {
+	const { t } = useI18n();
 	const { auth, hasPermission } = useAuth();
 	const queryClient = useQueryClient();
 	const role = String(auth?.user?.role || '').toLowerCase();
@@ -193,7 +195,7 @@ export default function TransfersPage() {
 
 	const openModal = async (st) => {
 		if (!canTransfer) {
-			toast.error('You do not have permission to transfer students');
+			toast.error(t('transfers.permissions.noTransfer', { defaultValue: 'You do not have permission to transfer students' }));
 			return;
 		}
 		setOpeningId(st._id);
@@ -232,7 +234,7 @@ export default function TransfersPage() {
 			};
 		} catch (e) {
 			console.error('Open transfer failed', e);
-			toast.error('Failed to open transfer');
+			toast.error(t('transfers.errors.failedToOpen', { defaultValue: 'Failed to open transfer' }));
 			setIsOpen(false);
 		} finally {
 			setModalLoading(false);
@@ -248,23 +250,23 @@ export default function TransfersPage() {
 
 	const submit = async () => {
 		if (!canTransfer) {
-			toast.error('You do not have permission to transfer students');
+			toast.error(t('transfers.permissions.noTransfer', { defaultValue: 'You do not have permission to transfer students' }));
 			return;
 		}
 		if (!selected || !selAy || !selGrade || !selShift || !selSection) {
-			toast.error('Please select Year, Grade, Shift and Section');
+			toast.error(t('transfers.errors.selectAllFields', { defaultValue: 'Please select Year, Grade, Shift and Section' }));
 			return;
 		}
 		try {
 			setBusy(true);
 			const { ok, data, status } = await performTransfer(selected._id, { academicYearId: selAy, gradeSectionId: selSection });
 			if (!ok) {
-				toast.error(data?.message || `Failed to transfer (status ${status})`);
+				toast.error(data?.message || t('transfers.errors.failedToTransferWithStatus', { defaultValue: 'Failed to transfer (status {{status}})', status }));
 				return;
 			}
 			const msg = (data?.message || '').toString();
-			if (/no\s+changes/i.test(msg)) toast.success('No changes: already in this section');
-			else toast.success('Enrollment transferred');
+			if (/no\s+changes/i.test(msg)) toast.success(t('transfers.toasts.noChanges', { defaultValue: 'No changes: already in this section' }));
+			else toast.success(t('transfers.toasts.transferred', { defaultValue: 'Enrollment transferred' }));
 
 			// Record recent transfer for quick Return
 			const prev = prevInfoRef.current || {};
@@ -273,7 +275,7 @@ export default function TransfersPage() {
 					ts: Date.now(),
 					studentId: selected._id,
 					fullName: selected.fullName,
-					from: { academicYearId: prev.academicYearId, gradeSectionId: prev.gradeSectionId, label: prev.label || 'Previous section' },
+					from: { academicYearId: prev.academicYearId, gradeSectionId: prev.gradeSectionId, label: prev.label || t('transfers.labels.previousSection', { defaultValue: 'Previous section' }) },
 					to: { academicYearId: selAy, gradeSectionId: selSection },
 				},
 				...list,
@@ -295,7 +297,7 @@ export default function TransfersPage() {
 			}
 		} catch (e) {
 			console.error(e);
-			toast.error('Network or server error');
+			toast.error(t('common.errors.networkOrServerError', { defaultValue: 'Network or server error' }));
 		} finally {
 			setBusy(false);
 		}
@@ -303,7 +305,7 @@ export default function TransfersPage() {
 
 	const handleReturn = async (item) => {
 		if (!canTransfer) {
-			toast.error('You do not have permission to return transfers');
+			toast.error(t('transfers.permissions.noReturn', { defaultValue: 'You do not have permission to return transfers' }));
 			return;
 		}
 		try {
@@ -312,10 +314,10 @@ export default function TransfersPage() {
 				gradeSectionId: item.from.gradeSectionId,
 			});
 			if (!ok) {
-				toast.error(data?.message || `Failed to return (status ${status})`);
+				toast.error(data?.message || t('transfers.errors.failedToReturnWithStatus', { defaultValue: 'Failed to return (status {{status}})', status }));
 				return;
 			}
-			toast.success('Returned to previous');
+			toast.success(t('transfers.toasts.returned', { defaultValue: 'Returned to previous' }));
 			setRecent((list) => list.filter((x) => !(x.studentId === item.studentId && x.ts === item.ts)));
 			try {
 				await queryClient.invalidateQueries({ queryKey: transferKeys.logsBase, refetchType: 'active' });
@@ -327,39 +329,39 @@ export default function TransfersPage() {
 			}
 		} catch (e) {
 			console.error(e);
-			toast.error('Network or server error');
+			toast.error(t('common.errors.networkOrServerError', { defaultValue: 'Network or server error' }));
 		}
 	};
 
 	return (
 		<div className="space-y-6">
 			<DataToolbar
-				searchSlot={<SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search by name or ID" />}
+				searchSlot={<SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder={t('transfers.searchPlaceholder', { defaultValue: 'Search by name or ID' })} />}
 				filtersSlot={(
 					<FilterRow>
 						<FilterItem grow minWidthClass="min-w-[140px]">
 							<AcademicYearSelect
-								placeholder="Academic Year"
+								placeholder={t('common.filters.academicYear', { defaultValue: 'Academic Year' })}
 								value={ay}
 								onChange={(v) => { setAy(v); setPage(1); }}
 								searchable
 								maxVisible={5}
-								searchPlaceholder="Search academic years…"
+								searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
 							/>
 						</FilterItem>
 
 						<FilterItem grow minWidthClass="min-w-[120px]">
-							<GradeSelect placeholder="Grade" value={grade} onChange={(v) => { setGrade(v); setPage(1); }} />
+							<GradeSelect placeholder={t('common.filters.grade', { defaultValue: 'Grade' })} value={grade} onChange={(v) => { setGrade(v); setPage(1); }} />
 						</FilterItem>
 
 						<FilterItem grow minWidthClass="min-w-[120px]">
 							<ShiftSelect
-								placeholder="Shift"
+								placeholder={t('common.filters.shift', { defaultValue: 'Shift' })}
 								value={shift}
 								onChange={(v) => { setShift(v); setPage(1); }}
 								searchable
 								maxVisible={5}
-								searchPlaceholder="Search shifts…"
+								searchPlaceholder={t('common.searchPlaceholders.shifts', { defaultValue: 'Search shifts…' })}
 							/>
 						</FilterItem>
 
@@ -369,10 +371,10 @@ export default function TransfersPage() {
 								shiftId={shift}
 								value={section}
 								onChange={(v) => { setSection(v); setPage(1); }}
-								placeholder="Section"
+								placeholder={t('common.filters.section', { defaultValue: 'Section' })}
 								searchable
 								maxVisible={5}
-								searchPlaceholder="Search sections…"
+								searchPlaceholder={t('common.searchPlaceholders.sections', { defaultValue: 'Search sections…' })}
 							/>
 						</FilterItem>
 					</FilterRow>
@@ -401,35 +403,37 @@ export default function TransfersPage() {
 			{recent.length > 0 ? (
 				<Card className="p-4">
 					<div className="flex items-center justify-between mb-3">
-						<h2 className="text-lg font-semibold text-gray-800">Recent transfers (session)</h2>
+						<h2 className="text-lg font-semibold text-gray-800">{t('transfers.recent.title', { defaultValue: 'Recent transfers (session)' })}</h2>
 						<button type="button" className="text-xs text-gray-600 underline" onClick={() => setRecent([])}>
-							Clear
+							{t('common.actions.clear', { defaultValue: 'Clear' })}
 						</button>
 					</div>
 					<div className="space-y-2">
 						{recent.map((r) => (
 							<div key={r.ts} className="flex items-center justify-between gap-3 border rounded p-3">
 								<div className="min-w-0">
-									<div className="text-sm font-medium text-gray-800 truncate">{r.fullName || 'Student'}</div>
-									<div className="text-xs text-gray-600 truncate">From: {r.from?.label || 'Previous section'}</div>
+									<div className="text-sm font-medium text-gray-800 truncate">{r.fullName || t('transfers.labels.studentFallback', { defaultValue: 'Student' })}</div>
+									<div className="text-xs text-gray-600 truncate">
+										{t('transfers.labels.from', { defaultValue: 'From' })}: {r.from?.label || t('transfers.labels.previousSection', { defaultValue: 'Previous section' })}
+									</div>
 								</div>
 								{canTransfer ? (
-									<ActionButton variant="warning" title="Return" onClick={() => handleReturn(r)}>
-										Return
+									<ActionButton variant="warning" title={t('transfers.actions.returnTitle', { defaultValue: 'Return' })} onClick={() => handleReturn(r)}>
+										{t('transfers.actions.return', { defaultValue: 'Return' })}
 									</ActionButton>
 								) : null}
 							</div>
 						))}
 					</div>
-					<div className="mt-2 text-[11px] text-gray-500">Recent transfers are kept only during this page session.</div>
+					<div className="mt-2 text-[11px] text-gray-500">{t('transfers.recent.note', { defaultValue: 'Recent transfers are kept only during this page session.' })}</div>
 				</Card>
 			) : null}
 
 			<Card className="p-4">
 				<div className="flex items-center justify-between mb-3">
-					<h2 className="text-lg font-semibold text-gray-800">All Transfers</h2>
+					<h2 className="text-lg font-semibold text-gray-800">{t('transfers.logs.title', { defaultValue: 'All Transfers' })}</h2>
 					<div className="w-full max-w-xs">
-						<SearchInput value={logsSearch} onChange={(v) => { setLogsSearch(v); setLogsPage(1); }} placeholder="Search by name or ID..." />
+						<SearchInput value={logsSearch} onChange={(v) => { setLogsSearch(v); setLogsPage(1); }} placeholder={t('transfers.logs.searchPlaceholder', { defaultValue: 'Search by name or ID...' })} />
 					</div>
 				</div>
 
@@ -446,53 +450,62 @@ export default function TransfersPage() {
 				/>
 			</Card>
 
-			<Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title={`Transfer Section${selected ? `: ${selected.fullName}` : ''}`}>
+			<Modal
+				isOpen={isOpen}
+				onClose={() => setIsOpen(false)}
+				title={selected
+					? t('transfers.modal.titleWithName', { defaultValue: 'Transfer Section: {{name}}', name: selected.fullName })
+					: t('transfers.modal.title', { defaultValue: 'Transfer Section' })
+				}
+			>
 				<div className="space-y-4">
 					{modalLoading ? (
 						<div className="py-6 text-sm text-gray-600 flex items-center gap-2">
 							<Spinner size={18} />
-							<span>Loading current enrollment…</span>
+							<span>{t('transfers.modal.loadingEnrollment', { defaultValue: 'Loading current enrollment…' })}</span>
 						</div>
 					) : (
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 							<div>
-								<label className="block text-xs font-medium text-gray-600 mb-1">Academic Year</label>
-								<AcademicYearSelect placeholder="-- Select Academic Year --" value={selAy} onChange={(v) => { setSelAy(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
+								<label className="block text-xs font-medium text-gray-600 mb-1">{t('common.filters.academicYear', { defaultValue: 'Academic Year' })}</label>
+								<AcademicYearSelect placeholder={t('transfers.modal.placeholders.selectAcademicYear', { defaultValue: '-- Select Academic Year --' })} value={selAy} onChange={(v) => { setSelAy(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
 							</div>
 							<div>
-								<label className="block text-xs font-medium text-gray-600 mb-1">Grade</label>
-								<GradeSelect placeholder="-- Select Grade --" value={selGrade} onChange={(v) => { setSelGrade(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
+								<label className="block text-xs font-medium text-gray-600 mb-1">{t('common.filters.grade', { defaultValue: 'Grade' })}</label>
+								<GradeSelect placeholder={t('transfers.modal.placeholders.selectGrade', { defaultValue: '-- Select Grade --' })} value={selGrade} onChange={(v) => { setSelGrade(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
 							</div>
 							<div>
-								<label className="block text-xs font-medium text-gray-600 mb-1">Shift</label>
-								<ShiftSelect placeholder="-- Select Shift --" value={selShift} onChange={(v) => { setSelShift(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
+								<label className="block text-xs font-medium text-gray-600 mb-1">{t('common.filters.shift', { defaultValue: 'Shift' })}</label>
+								<ShiftSelect placeholder={t('transfers.modal.placeholders.selectShift', { defaultValue: '-- Select Shift --' })} value={selShift} onChange={(v) => { setSelShift(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
 							</div>
 							<div>
-								<label className="block text-xs font-medium text-gray-600 mb-1">Section</label>
+								<label className="block text-xs font-medium text-gray-600 mb-1">{t('common.filters.section', { defaultValue: 'Section' })}</label>
 								<GradeSectionSelect academicYearId={selAy} gradeId={selGrade} shiftId={selShift} value={selSection} onChange={(v) => setSelSection(v)} className="w-full" disabled={modalLoading || busy} />
 							</div>
 						</div>
 					)}
 					<div className="flex justify-between text-[11px] text-gray-500">
-						<div>Forward allowed to any future AY. Returns must match previous section.</div>
-						<div>No scores migrate across AY.</div>
+						<div>{t('transfers.modal.notes.forwardRules', { defaultValue: 'Forward allowed to any future AY. Returns must match previous section.' })}</div>
+						<div>{t('transfers.modal.notes.noScoresMigrate', { defaultValue: 'No scores migrate across AY.' })}</div>
 					</div>
 					<div className="flex justify-end gap-2">
-						<ActionButton variant="neutral" onClick={() => setIsOpen(false)} disabled={busy || modalLoading}>Cancel</ActionButton>
+						<ActionButton variant="neutral" onClick={() => setIsOpen(false)} disabled={busy || modalLoading}>
+							{t('common.actions.cancel', { defaultValue: 'Cancel' })}
+						</ActionButton>
 						<ActionButton variant="brand" disabled={!canTransfer || busy || modalLoading || !selSection} onClick={submit} className="inline-flex items-center gap-2">
 							{busy ? (
 								<>
 									<Spinner size={16} color="#fff" />
-									<span>Transferring…</span>
+									<span>{t('transfers.actions.transferring', { defaultValue: 'Transferring…' })}</span>
 								</>
 							) : (
 								modalLoading ? (
 									<>
 										<Spinner size={16} color="#fff" />
-										<span>Loading…</span>
+										<span>{t('common.loading', { defaultValue: 'Loading…' })}</span>
 									</>
 								) : (
-									'Confirm Transfer'
+									t('transfers.actions.confirmTransfer', { defaultValue: 'Confirm Transfer' })
 								)
 							)}
 						</ActionButton>

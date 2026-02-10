@@ -5,6 +5,7 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
 import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
 import EmptyState from '../../../shared/components/ui/EmptyState.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function SetupTable({
   title,
@@ -16,17 +17,19 @@ export default function SetupTable({
   onEdit,
   onDelete,
 }) {
+  const { t } = useI18n();
+
   if (isLoading) return <LoadingState variant="table" columns={(columns?.length || 3) + 1} rows={6} />;
 
   if (error) {
     return (
       <Alert
         variant="error"
-        title="Failed to load"
+        title={t('common.errors.failedToLoad', { defaultValue: 'Failed to load' })}
         description={String(error?.message || error)}
         action={
           <Button type="button" variant="neutral" onClick={onAdd}>
-            Try again
+            {t('common.retry', { defaultValue: 'Try again' })}
           </Button>
         }
       />
@@ -38,9 +41,9 @@ export default function SetupTable({
   if (data.length === 0) {
     return (
       <EmptyState
-        title={`No ${title}`}
-        description={`Create your first ${String(title || '').toLowerCase()} to get started.`}
-        actionLabel={`Add ${title}`}
+        title={t('setup.table.emptyTitle', { defaultValue: 'No {{title}}', title: String(title || '') })}
+        description={t('setup.table.emptyDescription', { defaultValue: 'Create your first {{title}} to get started.', title: String(title || '') })}
+        actionLabel={t('setup.table.emptyAction', { defaultValue: 'Add {{title}}', title: String(title || '') })}
         onAction={onAdd}
       />
     );
@@ -61,7 +64,9 @@ export default function SetupTable({
                   {c.label}
                 </th>
               ))}
-              <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-600">Actions</th>
+              <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-600">
+                {t('common.table.actions', { defaultValue: 'Actions' })}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
@@ -75,10 +80,10 @@ export default function SetupTable({
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2">
                     <Button type="button" size="sm" variant="neutral" onClick={() => onEdit(row)}>
-                      Edit
+                      {t('common.actions.edit', { defaultValue: 'Edit' })}
                     </Button>
                     <Button type="button" size="sm" variant="danger" onClick={() => onDelete(row)}>
-                      Delete
+                      {t('common.actions.delete', { defaultValue: 'Delete' })}
                     </Button>
                   </div>
                 </td>

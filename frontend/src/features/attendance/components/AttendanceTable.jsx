@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import AttendanceStatusPills from './AttendanceStatusPills';
@@ -13,6 +14,7 @@ export default function AttendanceTable({
   onChangeRemarks,
   onPickExtraStatus,
 }) {
+  const { t } = useI18n();
   const effectiveCanEdit = canEdit ?? canAct;
 
   const colCount = showAuditColumns ? 5 : 3;
@@ -21,13 +23,13 @@ export default function AttendanceTable({
     const base = [
       {
         key: 'studentId',
-        label: 'Student ID',
+        label: t('attendance.marking.table.columns.studentId'),
         thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
         tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200',
       },
       {
         key: 'fullName',
-        label: 'Full Name',
+        label: t('attendance.marking.table.columns.fullName'),
         thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
         tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200',
       },
@@ -37,13 +39,13 @@ export default function AttendanceTable({
       ? [
           {
             key: 'marked',
-            label: 'Marked',
+            label: t('attendance.marking.table.columns.marked'),
             thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
             tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200',
           },
           {
             key: 'updated',
-            label: 'Updated',
+            label: t('attendance.marking.table.columns.updated'),
             thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
             tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200',
           },
@@ -53,14 +55,14 @@ export default function AttendanceTable({
     const status = [
       {
         key: 'status',
-        label: 'Status',
+        label: t('attendance.marking.table.columns.status'),
         thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
         tdClassName: 'px-6 py-4 whitespace-normal border-x border-gray-200',
       },
     ];
 
     return [...base, ...audit, ...status];
-  }, [showAuditColumns]);
+  }, [showAuditColumns, t]);
 
   if (!canAct) return null;
 
@@ -68,11 +70,11 @@ export default function AttendanceTable({
     <StandardTable
       isLoading={loading}
       items={rows}
-      loadingMessage="Loading students..."
+      loadingMessage={t('attendance.marking.table.loading')}
       loadingVariant="table"
       loadingRows={7}
       loadingColumns={colCount}
-      emptyTitle="No students found for this selection."
+      emptyTitle={t('attendance.marking.table.empty')}
 
       rows={rows}
       columns={columns}

@@ -1,4 +1,7 @@
+import { useI18n } from '../../../../i18n/I18nProvider';
+
 export default function AttendanceStatusBadge({ status }) {
+  const { t } = useI18n();
   const norm = String(status || '').toLowerCase();
   const cls =
     norm === 'not_marked' ? 'bg-gray-100 text-gray-700' :
@@ -9,9 +12,12 @@ export default function AttendanceStatusBadge({ status }) {
     ['excused', 'sick', 'medical', 'family', 'other'].includes(norm) ? 'bg-slate-100 text-slate-700' :
     'bg-slate-100 text-slate-700';
 
+  const translatedKey = `attendance.status.${norm}`;
+  const translated = t(translatedKey);
   const label =
-    norm === 'not_marked' ? 'Not marked' :
-    (status || '—');
+    norm === 'not_marked'
+      ? t('attendance.status.notMarked')
+      : (translated && translated !== translatedKey ? translated : (status || '—'));
 
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${cls}`}>

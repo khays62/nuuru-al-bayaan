@@ -3,6 +3,7 @@ import { FileDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToPDF } from '../../../../utils/exportTable';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 export default function PdfDownloadButton({
   getPayload,
@@ -10,6 +11,7 @@ export default function PdfDownloadButton({
   className = '',
   orientation = 'landscape',
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const run = async () => {
     if (busy || disabled) return;
@@ -21,7 +23,7 @@ export default function PdfDownloadButton({
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('PDF export failed:', e);
-      toast.error(e?.message || 'PDF export failed');
+      toast.error(e?.message || t('common.export.pdfFailed', { defaultValue: 'PDF export failed' }));
     } finally {
       setBusy(false);
     }
@@ -34,9 +36,9 @@ export default function PdfDownloadButton({
       icon={<FileDown size={16} />}
       disabled={disabled || busy}
       onClick={run}
-      title="PDF"
+      title={t('common.export.pdf', { defaultValue: 'PDF' })}
     >
-      PDF
+      {t('common.export.pdf', { defaultValue: 'PDF' })}
     </ActionButton>
   );
 }

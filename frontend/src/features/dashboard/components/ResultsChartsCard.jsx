@@ -19,6 +19,7 @@ import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookup
 import { listGradeSections, getGradeSectionById } from '../../grades/api/gradeSections';
 import { getExamSummaryAbort, getExamTypes } from '../../exams/api/exams';
 import { getSessionSignal } from '../../../api/sessionAbort';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
     return (
@@ -143,6 +144,7 @@ const fmtNum = (n, digits = 1) => {
 };
 
 export default function ResultsChartsCard() {
+    const { t } = useI18n();
     const { auth } = useAuth();
     const role = String(auth?.user?.role || '').toLowerCase();
     const isAdminOrStaff = role === 'admin' || role === 'staff';
@@ -439,7 +441,7 @@ export default function ResultsChartsCard() {
         const tail = [sName].filter(Boolean).join(' - ');
         return [
             gName ? `${gName}` : null,
-            sec ? `Sec ${sec}` : null,
+            sec ? `${t('common.sectionPrefix')} ${sec}` : null,
             tail ? `(${tail})` : null,
         ].filter(Boolean).join(' - ');
     })();
@@ -453,20 +455,26 @@ export default function ResultsChartsCard() {
         const head = names.slice(0, 6);
         const more = names.length - head.length;
         const base = head.join(', ');
-        return more > 0 ? `${base} (+${more} more)` : base;
-    }, [subjectOptions]);
+        return more > 0 ? `${base} ${t('common.moreCount', { count: more })}` : base;
+    }, [t, subjectOptions]);
 
     const exportFilterSummary = useMemo(() => {
         const parts = [];
-        if (academicYearId) parts.push(`AY: ${yearLabel || 'Selected'}`);
-        if (gradeId) parts.push(`Level: ${gradeLabel || 'Selected'}`);
-        if (shiftId) parts.push(`Shift: ${shiftLabel || 'Selected'}`);
-        if (gradeSectionId) parts.push(`Class: ${sectionLabel || 'Selected'}`);
-        parts.push(`Mode: ${effectiveMode === 'examType' ? 'Exam Type' : (effectiveMode === 'subject' ? 'Subject' : 'All Subjects')}`);
-        if (effectiveMode === 'subject' && subjectId) parts.push(`Subject: ${subjectLabel || 'Selected'}`);
-        if (effectiveMode === 'examType' && examTypeId) parts.push(`Exam Type: ${examTypeLabel || 'Selected'}`);
+        if (academicYearId) parts.push(`${t('common.filters.academicYearShort')}: ${yearLabel || t('common.selected')}`);
+        if (gradeId) parts.push(`${t('common.filters.level')}: ${gradeLabel || t('common.selected')}`);
+        if (shiftId) parts.push(`${t('common.filters.shift')}: ${shiftLabel || t('common.selected')}`);
+        if (gradeSectionId) parts.push(`${t('common.filters.section')}: ${sectionLabel || t('common.selected')}`);
+        parts.push(`${t('teachers.dashboard.results.filters.mode')}: ${
+            effectiveMode === 'examType'
+                ? t('dashboard.cards.results.modes.examType')
+                : (effectiveMode === 'subject'
+                    ? t('dashboard.cards.results.modes.subject')
+                    : t('dashboard.cards.results.modes.allSubjects'))
+        }`);
+        if (effectiveMode === 'subject' && subjectId) parts.push(`${t('dashboard.cards.results.labels.subject')}: ${subjectLabel || t('common.selected')}`);
+        if (effectiveMode === 'examType' && examTypeId) parts.push(`${t('teachers.dashboard.results.examType')}: ${examTypeLabel || t('common.selected')}`);
         return parts.join(' • ');
-    }, [academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel, effectiveMode, subjectId, examTypeId, subjectLabel, examTypeLabel]);
+    }, [t, academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel, effectiveMode, subjectId, examTypeId, subjectLabel, examTypeLabel]);
 
     const downloadPng = async () => {
         const el = exportCaptureRef.current;
@@ -534,16 +542,16 @@ export default function ResultsChartsCard() {
         <div className="rounded-2xl border border-indigo-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
             <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <div className="text-lg font-semibold">Results</div>
-                    <div className="text-sm text-white/80 mt-1">Admin/Staff overview (selected class)</div>
+                    <div className="text-lg font-semibold">{t('teachers.dashboard.results.title')}</div>
+                    <div className="text-sm text-white/80 mt-1">{t('dashboard.cards.results.subtitle')}</div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
                     <ActionButton disabled={!canDownload} onClick={downloadPng} icon={Download} label="PNG" />
                     <ActionButton disabled={!canDownload} onClick={downloadPdf} icon={FileDown} label="PDF" />
-                    <ToggleButton active={view === 'distribution'} onClick={() => setView('distribution')} icon={BarChart3} label="Distribution" />
-                    <ToggleButton active={view === 'top'} onClick={() => setView('top')} icon={LineChart} label="Top students" />
-                    <ToggleButton active={view === 'performance'} onClick={() => setView('performance')} icon={SlidersHorizontal} label="Performance" />
+                    <ToggleButton active={view === 'distribution'} onClick={() => setView('distribution')} icon={BarChart3} label={t('teachers.dashboard.results.views.distribution')} />
+                    <ToggleButton active={view === 'top'} onClick={() => setView('top')} icon={LineChart} label={t('teachers.dashboard.results.views.topStudents')} />
+                    <ToggleButton active={view === 'performance'} onClick={() => setView('performance')} icon={SlidersHorizontal} label={t('teachers.dashboard.results.views.performance')} />
                 </div>
             </div>
 
@@ -552,7 +560,7 @@ export default function ResultsChartsCard() {
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
                             <SlidersHorizontal size={16} />
-                            <span>Filters</span>
+                            <span>{t('common.filters.title')}</span>
                         </div>
                         <button
                             type="button"
@@ -566,10 +574,10 @@ export default function ResultsChartsCard() {
                                 setExamTypeId('');
                             }}
                             className="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                            title="Reset filters"
+                            title={t('common.filters.resetTitle')}
                         >
                             <RotateCcw size={14} />
-                            Reset
+                            {t('common.actions.reset')}
                         </button>
                     </div>
 
@@ -579,16 +587,16 @@ export default function ResultsChartsCard() {
                                 <AcademicYearSelect
                                     id="dash-res-ay"
                                     name="dash-res-ay"
-                                    aria-label="Academic Year"
+                                    aria-label={t('common.filters.academicYear')}
                                     value={academicYearId}
                                     onChange={(v) => {
                                         setAcademicYearId(v);
                                         setExamTypeId('');
                                     }}
-                                    placeholder="Academic Year"
+                                    placeholder={t('common.filters.academicYear')}
                                     searchable
                                     maxVisible={5}
-                                    searchPlaceholder="Search academic years…"
+                                    searchPlaceholder={t('common.searchPlaceholders.academicYears')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -597,14 +605,14 @@ export default function ResultsChartsCard() {
                                 <GradeSelect
                                     id="dash-res-grade"
                                     name="dash-res-grade"
-                                    aria-label="Level"
+                                    aria-label={t('common.filters.level')}
                                     value={gradeId}
                                     onChange={(v) => {
                                         setGradeId(v);
                                         setShiftId('');
                                         setGradeSectionId('');
                                     }}
-                                    placeholder="Level"
+                                    placeholder={t('common.filters.level')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -613,13 +621,13 @@ export default function ResultsChartsCard() {
                                 <ShiftSelect
                                     id="dash-res-shift"
                                     name="dash-res-shift"
-                                    aria-label="Shift"
+                                    aria-label={t('common.filters.shift')}
                                     value={shiftId}
                                     onChange={(v) => {
                                         setShiftId(v);
                                         setGradeSectionId('');
                                     }}
-                                    placeholder="Shift"
+                                    placeholder={t('common.filters.shift')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -628,19 +636,19 @@ export default function ResultsChartsCard() {
                                 <GradeSectionSelect
                                     id="dash-res-section"
                                     name="dash-res-section"
-                                    aria-label="Section"
+                                    aria-label={t('common.filters.section')}
                                     academicYearId={academicYearId}
                                     gradeId={gradeId}
                                     shiftId={shiftId}
                                     value={gradeSectionId}
                                     onChange={(v) => setGradeSectionId(v)}
-                                    placeholder="Section"
+                                    placeholder={t('common.filters.section')}
                                     toastOnEmpty
-                                    toastOnEmptyMessage="No classes (sections) exist for the selected level and shift."
+                                    toastOnEmptyMessage={t('attendance.marking.errors.noSectionsForSelectedLevelShift')}
                                     toastKeyPrefix="DashboardResults"
                                     searchable
                                     maxVisible={6}
-                                    searchPlaceholder="Search sections…"
+                                    searchPlaceholder={t('common.searchPlaceholders.sections')}
                                     className="w-full"
                                 />
                             </FilterItem>
@@ -649,11 +657,11 @@ export default function ResultsChartsCard() {
                                 <DropdownSelect
                                     value={mode}
                                     onChange={(v) => setMode(v || 'overall')}
-                                    placeholder="Mode"
+                                    placeholder={t('teachers.dashboard.results.filters.mode')}
                                     options={[
-                                        { value: 'overall', label: 'All Subjects' },
-                                        { value: 'subject', label: 'Subject' },
-                                        { value: 'examType', label: 'Exam Type' },
+                                        { value: 'overall', label: t('dashboard.cards.results.modes.allSubjects') },
+                                        { value: 'subject', label: t('dashboard.cards.results.modes.subject') },
+                                        { value: 'examType', label: t('dashboard.cards.results.modes.examType') },
                                     ]}
                                     clearable={false}
                                 />
@@ -670,7 +678,7 @@ export default function ResultsChartsCard() {
                                             }
                                         }}
                                         disabled={!gradeSectionId || subjectOptions.length === 0}
-                                        placeholder={gradeSectionId ? 'Subject (optional)' : 'Select section first'}
+                                        placeholder={gradeSectionId ? t('dashboard.cards.results.placeholders.subjectOptional') : t('dashboard.cards.results.placeholders.selectSectionFirst')}
                                         options={subjectOptions}
                                     />
                                 </FilterItem>
@@ -680,10 +688,10 @@ export default function ResultsChartsCard() {
                                         value={examTypeId}
                                         onChange={setExamTypeId}
                                         disabled={!gradeSectionId || !academicYearId}
-                                        placeholder={!academicYearId ? 'Select year first' : 'Exam Type'}
+                                        placeholder={!academicYearId ? t('dashboard.cards.results.placeholders.selectYearFirst') : t('teachers.dashboard.results.examType')}
                                         options={(examTypes || []).map((et) => ({
                                             value: String(et?._id || ''),
-                                            label: String(et?.typeName || 'Exam Type'),
+                                            label: String(et?.typeName || t('teachers.dashboard.results.examType')),
                                         }))}
                                     />
                                 </FilterItem>
@@ -693,30 +701,37 @@ export default function ResultsChartsCard() {
 
                     {mode === 'overall' && gradeSectionId && subjectOptions.length > 0 ? (
                         <div className="mt-2 text-[11px] text-gray-600">
-                            Tip: switch <span className="font-semibold">Mode = Subject</span> to filter by one subject, or keep <span className="font-semibold">All Subjects</span>.
+                            {t('dashboard.cards.results.notes.modeTip')}{' '}
+                            <span className="font-semibold">{t('teachers.dashboard.results.filters.mode')} = {t('dashboard.cards.results.modes.subject')}</span>{' '}
+                            {t('dashboard.cards.results.notes.modeTipTail')}{' '}
+                            <span className="font-semibold">{t('dashboard.cards.results.modes.allSubjects')}</span>.
                         </div>
                     ) : null}
 
                     {gradeSectionId && subjectsPreview ? (
                         <div className="mt-1 text-[11px] text-gray-600">
-                            <span className="font-semibold">Subjects in this class</span>: {subjectsPreview}
+                            <span className="font-semibold">{t('dashboard.cards.results.labels.subjectsInClass')}</span>: {subjectsPreview}
                         </div>
                     ) : null}
 
                     <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
                         <div className="text-xs text-gray-600">
-                            {gradeSectionDetailQuery.isError ? 'Failed to load class subjects.' : null}
+                            {gradeSectionDetailQuery.isError ? t('dashboard.cards.results.errors.loadClassSubjectsFailed') : null}
                             {!gradeSectionDetailQuery.isError && gradeSectionId ? (
                                 <span>
                                     {effectiveMode === 'overall' ? (
-                                        <span>Showing <span className="font-medium">All Subjects</span>{subjectOptions.length ? ` (${subjectOptions.length})` : ''}.</span>
+                                        <span>
+                                            {t('dashboard.cards.results.labels.showing')}{' '}
+                                            <span className="font-medium">{t('dashboard.cards.results.modes.allSubjects')}</span>
+                                            {subjectOptions.length ? ` (${subjectOptions.length})` : ''}.
+                                        </span>
                                     ) : null}
                                 </span>
                             ) : null}
                         </div>
                         <div className="text-xs text-gray-700">
-                            <span className="font-medium">Class Avg</span>: {fmtNum(classAvg, 2)} •{' '}
-                            <span className="font-medium">Pass%</span> (≥{passThreshold}): {fmtNum(passPct, 1)}%
+                            <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg')}</span>: {fmtNum(classAvg, 2)} •{' '}
+                            <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct')}</span> (≥{passThreshold}): {fmtNum(passPct, 1)}%
                         </div>
                     </div>
                 </div>
@@ -724,77 +739,77 @@ export default function ResultsChartsCard() {
                 <div ref={exportCaptureRef} className="flex flex-col gap-4">
                     {exporting ? (
                         <div className="rounded-xl border border-gray-200 bg-white p-3">
-                            <div className="text-sm font-semibold text-gray-900">Results dashboard export</div>
+                            <div className="text-sm font-semibold text-gray-900">{t('dashboard.cards.results.export.title')}</div>
                             <div className="mt-1 text-xs text-gray-600">{exportFilterSummary}</div>
                         </div>
                     ) : null}
 
                     {!isAdminOrStaff ? (
-                        <div className="text-sm text-gray-600">This card is available for admin/staff only.</div>
+                        <div className="text-sm text-gray-600">{t('dashboard.cards.results.onlyAdminStaff')}</div>
                     ) : (view === 'performance' && perfError) ? (
                         <Alert variant="danger">{perfError}</Alert>
                     ) : error ? (
                         <Alert variant="danger">{error}</Alert>
                     ) : (view === 'performance' && perfLoading) ? (
-                        <UiLoadingState label="Loading performance…" className="border-0 bg-transparent p-0 justify-start" />
+                        <UiLoadingState label={t('teachers.dashboard.results.loadingPerformance')} className="border-0 bg-transparent p-0 justify-start" />
                     ) : loading ? (
-                        <UiLoadingState label="Loading results…" className="border-0 bg-transparent p-0 justify-start" />
+                        <UiLoadingState label={t('teachers.dashboard.results.loading')} className="border-0 bg-transparent p-0 justify-start" />
                     ) : !canRun ? (
-                        <div className="text-sm text-gray-600">Select Academic Year + Section to view charts. (Subject/Exam Type filters are optional.)</div>
+                        <div className="text-sm text-gray-600">{t('dashboard.cards.results.selectFilters')}</div>
                     ) : (view === 'performance' && (perf?.rows || []).length === 0) ? (
-                        <div className="text-sm text-gray-600">No performance data found for the selected filters.</div>
+                        <div className="text-sm text-gray-600">{t('teachers.dashboard.results.noPerformanceData')}</div>
                     ) : results.length === 0 ? (
-                        <div className="text-sm text-gray-600">No exam marks found for the selected filters.</div>
+                        <div className="text-sm text-gray-600">{t('teachers.dashboard.results.noMarks')}</div>
                     ) : view === 'performance' ? (
                         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
                             <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
-                                <div className="text-sm font-semibold">Exam type performance</div>
+                                <div className="text-sm font-semibold">{t('teachers.dashboard.results.performance.title')}</div>
                                 <div className="text-xs text-white/80">
-                                    {String(perfMode === 'subject' ? 'Subject' : 'Overall')} • Template {perf?.templateVersion ? `v${String(perf.templateVersion)}` : '—'}
+                                    {String(perfMode === 'subject' ? t('teachers.dashboard.results.performance.subjectMode') : t('teachers.dashboard.results.performance.overallMode'))} • {t('teachers.dashboard.results.performance.template')} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : '—'}
                                 </div>
                             </div>
                             <div className="p-4 space-y-3">
-                                <div className="text-xs text-gray-600">Vertical bars = exam types • Left axis = percentage (avg / maxScore)</div>
+                                <div className="text-xs text-gray-600">{t('teachers.dashboard.results.performance.help')}</div>
                                 <ExamTypeBarChart rows={perf.rows} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                     {perf.rows.map((r) => (
                                         <div key={r.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
                                             <div className="text-xs font-semibold text-gray-900 truncate">{r.label}</div>
                                             <div className="text-[11px] text-gray-600">
-                                                Avg: {fmtNum(r.avg, 1)} / {fmtNum(r.maxScore, 0)} ({fmtNum(r.pct, 1)}%)
+                                                {t('teachers.dashboard.results.performance.avg')}: {fmtNum(r.avg, 1)} / {fmtNum(r.maxScore, 0)} ({fmtNum(r.pct, 1)}%)
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="text-[11px] text-gray-500">Tip: Mode=Subject shows performance for a single subject; otherwise it uses Overall.</div>
+                                <div className="text-[11px] text-gray-500">{t('teachers.dashboard.results.performance.tip')}</div>
                             </div>
                         </div>
                     ) : view === 'distribution' ? (
                         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
                             <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between">
-                                <div className="text-sm font-semibold">Score distribution</div>
-                                <div className="text-xs text-white/80">Students per range</div>
+                                <div className="text-sm font-semibold">{t('teachers.dashboard.results.distribution.title')}</div>
+                                <div className="text-xs text-white/80">{t('teachers.dashboard.results.distribution.subtitle')}</div>
                             </div>
                             <div className="p-4 space-y-2">
                                 {histogram.map((b) => (
                                     <HistogramBar key={b.label} label={b.label} value={b.value} max={maxBin} />
                                 ))}
                                 <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800 mt-2">
-                                    KPI: <span className="font-medium">Class Avg</span> • <span className="font-medium">Pass %</span> • <span className="font-medium">Top 10</span>
+                                    {t('dashboard.cards.results.distribution.kpiLine')}
                                 </div>
                             </div>
                         </div>
                     ) : (
                         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
                             <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between">
-                                <div className="text-sm font-semibold">Top students</div>
-                                <div className="text-xs text-white/80">By average</div>
+                                <div className="text-sm font-semibold">{t('teachers.dashboard.results.top.title')}</div>
+                                <div className="text-xs text-white/80">{t('teachers.dashboard.results.top.subtitle')}</div>
                             </div>
                             <div className={listScrollClassName}>
                                 {topStudents.map((s) => (
                                     <HistogramBar
                                         key={String(s?.studentId || s?._id || s?.fullName || Math.random())}
-                                        label={String(s?.fullName || '').slice(0, 12) || 'Student'}
+                                            label={String(s?.fullName || '').slice(0, 12) || t('teachers.dashboard.results.top.studentFallback')}
                                         value={Number(s?.average || 0)}
                                         valueLabel={fmtNum(Number(s?.average || 0), 1)}
                                         max={topMax}
@@ -806,8 +821,13 @@ export default function ResultsChartsCard() {
                 </div>
 
                 <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-                    <div className="text-xs text-gray-500">Source: Exams summary (admin/staff scope)</div>
-                    <div className="text-xs text-gray-600">Modes: <span className="font-medium">All Subjects</span> / <span className="font-medium">Subject</span> / <span className="font-medium">Exam Type</span></div>
+                    <div className="text-xs text-gray-500">{t('dashboard.cards.results.footer.source')}</div>
+                    <div className="text-xs text-gray-600">
+                        {t('teachers.dashboard.results.modesFooter')}{' '}
+                        <span className="font-medium">{t('dashboard.cards.results.modes.allSubjects')}</span> /{' '}
+                        <span className="font-medium">{t('dashboard.cards.results.modes.subject')}</span> /{' '}
+                        <span className="font-medium">{t('dashboard.cards.results.modes.examType')}</span>
+                    </div>
                 </div>
             </div>
         </div>

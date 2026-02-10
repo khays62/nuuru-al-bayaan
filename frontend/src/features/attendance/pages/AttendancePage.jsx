@@ -19,8 +19,10 @@ import AttendanceFooter from '../components/AttendanceFooter';
 import { useAuth } from '../../../auth/AuthContext';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { useAttendanceRealtimeInvalidation } from '../useAttendanceRealtimeInvalidation';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function AttendancePage() {
+  const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
   const role = String(auth?.user?.role || '').toLowerCase();
   const isTeacher = role === 'teacher';
@@ -460,7 +462,7 @@ export default function AttendancePage() {
     const meta = {};
     for (const s of daySlots) {
       const code = `${s.startTime}-${s.endTime}`;
-      const subjName = s.subject?.subjectName || 'No subject';
+      const subjName = s.subject?.subjectName || t('attendance.marking.periodOptions.noSubject');
       const teacherName = s.teacher?.fullName || '';
       const baseLabel = `${fmt12(s.startTime)}-${fmt12(s.endTime)} • ${subjName}`;
       const label = isTeacher ? baseLabel : (teacherName ? `${baseLabel} • ${teacherName}` : baseLabel);
@@ -487,7 +489,7 @@ export default function AttendancePage() {
       if (subjectId && filtered.length === 0) {
         const k = `no-periods|${querySectionId}|${subjectId}|${selectedDayLabel}`;
         const isStableSection = String(sectionId || '') === String(querySectionId || '');
-        if (isStableSection && allowToast(k)) toast.error('You have no periods for this subject today.');
+        if (isStableSection && allowToast(k)) toast.error(t('attendance.marking.errors.noPeriodsForSubjectToday'));
       }
     }
 
@@ -513,7 +515,7 @@ export default function AttendancePage() {
         .filter(code => !existingValues.has(code))
         .map(code => ({
           value: code,
-          label: `${selectedDayLabel ? `${selectedDayLabel} • ` : ''}Saved period • ${code}`,
+          label: `${selectedDayLabel ? `${selectedDayLabel} • ` : ''}${t('attendance.marking.periodOptions.savedPeriodLabel')} • ${code}`,
         }));
       if (injected.length) {
         filtered = [...filtered, ...injected];
@@ -541,11 +543,11 @@ export default function AttendancePage() {
     if (!detectingMode && metaMatches) {
       if (!hasAnyLesson) {
         const k = `${toastKeyBase}|no-any`;
-        if (isStableSection && allowToast(k)) toast.error('No lessons exist in the timetable for this class.');
+        if (isStableSection && allowToast(k)) toast.error(t('attendance.marking.errors.noLessonsInTimetable'));
       } else if (!hasSelectedDayInTimetable || daySlots.length === 0) {
         const k = `${toastKeyBase}|no-day`;
         if (isStableSection && !selectionHasRecords && allowToast(k)) {
-          toast.error(`No periods scheduled for this class on ${selectedDayLabel || 'this day'}.`);
+          toast.error(t('attendance.marking.errors.noPeriodsScheduledForDay', { day: selectedDayLabel || t('attendance.marking.labels.thisDay') }));
         }
       }
     }
@@ -556,7 +558,7 @@ export default function AttendancePage() {
         setPeriodCode('');
       }
     }
-  }, [querySectionId, allSlots, dayOfWeek, mode, jsDayUTC, queryDate, subjectId, attMeta, isTeacher, detectingMode, selectionHasRecords]);
+  }, [querySectionId, allSlots, dayOfWeek, mode, jsDayUTC, queryDate, subjectId, attMeta, isTeacher, detectingMode, selectionHasRecords, t]);
 
   const canAct = useMemo(() => {
     if (!sectionId) return false;
@@ -729,7 +731,7 @@ export default function AttendancePage() {
         setLoaded(true);
         if (isTeacher && (Array.isArray(normalized) && normalized.length === 0)) {
           const k = `no-students|${querySectionId}|${queryDate}|${queryMode}|${queryPeriodCode}`;
-          if (allowToast(k)) toast.error('No active students in this class.');
+          if (allowToast(k)) toast.error(t('attendance.marking.toasts.noActiveStudentsInClass', { defaultValue: 'No active students in this class.' }));
         }
       } catch (e) {
         if (e?.name === 'AbortError') return;
@@ -782,31 +784,31 @@ export default function AttendancePage() {
   async function saveBulk() {
     if (!canAct) {
       const msg = mode === 'lesson'
-        ? 'Please select Level, Shift, Section, and Period.'
-        : 'Please select Level, Shift and Section.';
+        ? t('attendance.marking.errors.selectLessonFilters')
+        : t('attendance.marking.errors.selectDailyFilters');
       toast.error(msg);
       return;
     }
 
     if (!canEdit) {
-      toast.error('You do not have permission to edit attendance');
+      toast.error(t('attendance.marking.errors.noPermissionEdit'));
       return;
     }
     if (blockNewAttendanceForInactive) {
-      toast.error('Some students are inactive. You cannot create new attendance for inactive students. You can still update historical attendance records.');
+      toast.error(t('attendance.marking.errors.inactiveStudentsNewNotAllowed'));
       return;
     }
     if (isTeacher && teacherBlockedByExistingDaily) {
-      toast.error('Daily attendance already exists for this class and date. You cannot also take Per-lesson attendance.');
+      toast.error(t('attendance.marking.errors.dailyAlreadyExistsNoLesson'));
       return;
     }
     if (rows.length === 0) {
-      toast.error('No active students in this class.');
+      toast.error(t('attendance.marking.errors.noActiveStudents'));
       return;
     }
     // Prevent double-save when nothing changed and this selection already has records.
     if (!dirty && selectionHasRecords) {
-      toast.error('Attendance is already saved. Make a change if you want to save again.');
+      toast.error(t('attendance.marking.errors.alreadySavedNoChanges'));
       return;
     }
     setSaving(true);
@@ -824,7 +826,7 @@ export default function AttendancePage() {
           return { ...p, remarks: needsReason ? (found?.remarks || '') : '' };
         }),
       });
-      toast.success('Attendance saved.');
+      toast.success(t('attendance.marking.toasts.saved'));
 
       // Optimistically update audit columns so admin/staff sees Marked/Updated immediately.
       const actorName = String(
@@ -832,7 +834,7 @@ export default function AttendancePage() {
         || auth?.user?.name
         || auth?.user?.username
         || auth?.user?.email
-        || 'User'
+        || t('common.user', { defaultValue: 'User' })
       );
       const actorRole = String(auth?.user?.role || '');
       const nowIso = new Date().toISOString();
@@ -877,14 +879,14 @@ export default function AttendancePage() {
     } catch (e) {
       if (e?.status === 409) {
         if (isTeacher) {
-          toast.error('Attendance already exists for this class and date in a different mode. Please contact admin/staff to edit it.');
+          toast.error(t('attendance.marking.errors.conflictTeacher'));
         } else if (mode === 'daily') {
-          toast.error('Lesson attendance already exists for this date. Switch Mode to Per lesson to edit.');
+          toast.error(t('attendance.marking.errors.conflictHasLessonSwitchToPerLesson'));
         } else {
-          toast.error('Daily attendance already exists for this date. Switch Mode to All day to edit.');
+          toast.error(t('attendance.marking.errors.conflictHasDailySwitchToAllDay'));
         }
       } else {
-        toast.error(e?.data?.message || e?.message || 'Failed to save attendance.');
+        toast.error(e?.data?.message || e?.message || t('attendance.marking.errors.saveFailed'));
       }
     } finally {
       setSaving(false);
@@ -916,13 +918,13 @@ export default function AttendancePage() {
 
   const blockedSaveReason = useMemo(() => {
     if (blockNewAttendanceForInactive) {
-      return 'Some students are inactive. You cannot create new attendance for inactive students. You can still update historical attendance records.';
+      return t('attendance.marking.errors.inactiveStudentsNewNotAllowed');
     }
     if (isTeacher && teacherBlockedByExistingDaily) {
-      return 'Daily attendance is already saved for this class and date. You can view it, but you cannot edit it.';
+      return t('attendance.marking.errors.dailySavedReadOnlyTeacher');
     }
     return '';
-  }, [blockNewAttendanceForInactive, isTeacher, teacherBlockedByExistingDaily]);
+  }, [blockNewAttendanceForInactive, isTeacher, teacherBlockedByExistingDaily, t]);
 
   // Inform teacher once when switching into read-only daily view.
   useEffect(() => {
@@ -942,7 +944,7 @@ export default function AttendancePage() {
     const keyMatches = String(attMetaKey || '') === `${String(querySectionId)}|${String(queryDate || '')}|${String(queryRosterScope || '')}`;
     if (!keyMatches) return;
 
-    if (allowToast(k)) toast.error('Daily attendance is already saved for this class and date. You can view it, but you cannot edit it.');
+    if (allowToast(k)) toast.error(t('attendance.marking.errors.dailySavedReadOnlyTeacher'));
   }, [isTeacher, teacherBlockedByExistingDaily, querySectionId, queryDate, queryRosterScope, sectionId, attMeta, attMetaKey]);
 
   const isTableLoading = Boolean(loadingAttendance || detectingMode);
@@ -956,7 +958,7 @@ export default function AttendancePage() {
     if (rosterScope !== 'current') return;
     if (!hasInactiveStudents) return;
     const k = `rosterScope|current|has-inactive|${sectionId}|${selectedDate}|${mode}|${periodCode}`;
-    if (allowToast(k)) toast.error('Inactive students detected. Switched to "Students: On selected date".');
+    if (allowToast(k)) toast.error(t('attendance.marking.toasts.inactiveStudentsSwitchedToAsOf'));
     setRosterScope('asOf');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTeacher, loaded, rosterScope, hasInactiveStudents, sectionId, selectedDate, mode, periodCode]);
@@ -972,7 +974,7 @@ export default function AttendancePage() {
 
     const k = `rosterScope|asOf|all-active|${sectionId}|${selectedDate}|${mode}|${periodCode}`;
     if (allowToast(k)) {
-      toast.error('All students are active. Use "Students: Active now" instead.');
+      toast.error(t('attendance.marking.toasts.allStudentsActiveUseCurrent'));
     }
     setRosterScope('current');
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -989,8 +991,8 @@ export default function AttendancePage() {
               value={rosterScope}
               onChange={setRosterScope}
               options={[
-                { value: 'current', label: 'Students: Active now' },
-                { value: 'asOf', label: 'Students: On selected date' },
+                    { value: 'current', label: t('attendance.marking.tabs.students.activeNow') },
+                    { value: 'asOf', label: t('attendance.marking.tabs.students.onSelectedDate') },
               ]}
             />
           )}
@@ -1002,11 +1004,11 @@ export default function AttendancePage() {
               const hasDaily = Boolean(attMeta?.hasDaily);
               const hasLesson = Boolean(attMeta?.hasLesson);
               if (next === 'lesson' && hasDaily) {
-                toast.error('Daily attendance already exists for this date. Switch Mode to All day to edit.');
+                toast.error(t('attendance.marking.errors.conflictHasDailySwitchToAllDay'));
                 return;
               }
               if (next === 'daily' && hasLesson) {
-                toast.error('Lesson attendance already exists for this date. Switch Mode to Per lesson to edit.');
+                toast.error(t('attendance.marking.errors.conflictHasLessonSwitchToPerLesson'));
                 return;
               }
               setMode(next);
@@ -1014,15 +1016,15 @@ export default function AttendancePage() {
               options={[
                 {
                   value: 'lesson',
-                  label: 'Mode: Per lesson',
+                  label: t('attendance.marking.tabs.mode.perLesson'),
                   disabled: Boolean(attMeta?.hasDaily),
-                  onDisabledClick: () => toast.error('Daily attendance already exists for this date. Switch Mode to All day to edit.'),
+                  onDisabledClick: () => toast.error(t('attendance.marking.errors.conflictHasDailySwitchToAllDay')),
                 },
                 {
                   value: 'daily',
-                  label: 'Mode: All day',
+                  label: t('attendance.marking.tabs.mode.allDay'),
                   disabled: Boolean(attMeta?.hasLesson),
-                  onDisabledClick: () => toast.error('Lesson attendance already exists for this date. Switch Mode to Per lesson to edit.'),
+                  onDisabledClick: () => toast.error(t('attendance.marking.errors.conflictHasLessonSwitchToPerLesson')),
                 },
               ]}
             />
@@ -1039,16 +1041,16 @@ export default function AttendancePage() {
                 }
               }}
               options={[
-                { value: 'today', label: 'Today' },
-                { value: 'yesterday', label: 'Yesterday' },
-                { value: 'custom', label: 'Custom' },
+                { value: 'today', label: t('attendance.marking.tabs.date.today') },
+                { value: 'yesterday', label: t('attendance.marking.tabs.date.yesterday') },
+                { value: 'custom', label: t('attendance.marking.tabs.date.custom') },
               ]}
             />
           )}
 
           {!isTeacher && dateTab === 'custom' && (
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Date</label>
+              <label className="text-sm text-gray-700">{t('attendance.marking.labels.date')}</label>
               <input
                 type="date"
                 className="border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1066,7 +1068,7 @@ export default function AttendancePage() {
 
       {!isTeacher && sectionId && selectedDayLabel && (
         <div className="text-center text-sm text-gray-700">
-          Day: {selectedDayLabel}
+          {t('attendance.marking.labels.day')}: {selectedDayLabel}
         </div>
       )}
 
@@ -1083,7 +1085,7 @@ export default function AttendancePage() {
                       value={gradeId}
                       onChange={(v) => { setGradeId(v); setShiftId(''); setSectionId(''); setSubjectId(''); clearForwardFromSection(); }}
                       options={teacherAssignedGrades}
-                      placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Level'}
+                      placeholder={teacherAssignmentsLoading ? t('common.loading') : t('common.filters.level')}
                       disabled={teacherAssignmentsLoading}
                     />
                   </FilterItem>
@@ -1094,9 +1096,9 @@ export default function AttendancePage() {
                       value={shiftId}
                       onChange={(v) => { setShiftId(v); setSectionId(''); setSubjectId(''); clearForwardFromSection(); }}
                       options={teacherShiftOptions}
-                      placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Shift'}
+                      placeholder={teacherAssignmentsLoading ? t('common.loading') : t('common.filters.shift')}
                       disabled={teacherAssignmentsLoading || (teacherMustPickGrade && !gradeId)}
-                      searchPlaceholder="Search shifts…"
+                      searchPlaceholder={t('common.searchPlaceholders.shifts')}
                     />
                   </FilterItem>
                 )}
@@ -1107,17 +1109,17 @@ export default function AttendancePage() {
                     options={(teacherFilteredSections || []).map((gs) => {
                       const sectionNum = gs?.section;
                       const shiftName = gs?.shift?.shiftName;
-                      const base = sectionNum ? `Sec ${sectionNum}` : (gs?.sectionName || 'Section');
+                      const base = sectionNum ? `${t('common.sectionPrefix')} ${sectionNum}` : (gs?.sectionName || t('common.filters.section'));
                       const label = shiftName ? `${base} - (${shiftName})` : base;
                       return { value: gs?._id, label };
                     })}
-                    placeholder={teacherSectionsLoading ? 'Loading…' : 'Section'}
+                    placeholder={teacherSectionsLoading ? t('common.loading') : t('common.filters.section')}
                     disabled={
                       teacherSectionsLoading
                       || (teacherMustPickGrade && !gradeId)
                       || (teacherShiftOptions.length > 1 && !shiftId)
                     }
-                    searchPlaceholder="Search sections…"
+                    searchPlaceholder={t('common.searchPlaceholders.sections')}
                   />
                 </FilterItem>
                 {mode === 'lesson' && (
@@ -1126,9 +1128,9 @@ export default function AttendancePage() {
                       value={subjectId}
                       onChange={(v) => { setSubjectId(v); setPeriodCode(''); }}
                       options={teacherSubjectsForSection}
-                      placeholder={teacherAssignmentsLoading ? 'Loading…' : 'Subject'}
+                      placeholder={teacherAssignmentsLoading ? t('common.loading') : t('common.filters.subject')}
                       disabled={teacherAssignmentsLoading || teacherSubjectsForSection.length === 0}
-                      searchPlaceholder="Search subjects…"
+                      searchPlaceholder={t('common.searchPlaceholders.subjects')}
                     />
                   </FilterItem>
                 )}
@@ -1136,10 +1138,10 @@ export default function AttendancePage() {
             ) : (
               <>
                 <FilterItem minWidthClass="sm:min-w-44">
-                  <GradeSelect value={gradeId} onChange={handleAdminGradeChange} placeholder="Level" />
+                  <GradeSelect value={gradeId} onChange={handleAdminGradeChange} placeholder={t('common.filters.level')} />
                 </FilterItem>
                 <FilterItem minWidthClass="sm:min-w-40">
-                  <ShiftSelect value={shiftId} onChange={handleAdminShiftChange} placeholder="Shift" />
+                  <ShiftSelect value={shiftId} onChange={handleAdminShiftChange} placeholder={t('common.filters.shift')} />
                 </FilterItem>
                 <FilterItem minWidthClass="sm:min-w-60">
                   <GradeSectionSelect
@@ -1147,9 +1149,9 @@ export default function AttendancePage() {
                     onChange={handleAdminSectionChange}
                     gradeId={gradeId}
                     shiftId={shiftId}
-                    placeholder="Section"
+                    placeholder={t('common.filters.section')}
                     toastOnEmpty
-                    toastOnEmptyMessage="No classes (sections) exist for the selected level and shift."
+                    toastOnEmptyMessage={t('attendance.marking.errors.noSectionsForSelectedLevelShift')}
                     toastKeyPrefix="AttendancePage"
                   />
                 </FilterItem>
@@ -1162,13 +1164,13 @@ export default function AttendancePage() {
                   value={periodCode}
                   onChange={setPeriodCode}
                   options={periodOptions}
-                  placeholder="Period"
+                  placeholder={t('attendance.marking.filters.period')}
                   disabled={
                     dayOfWeek == null
                     || (isTeacher && !subjectId)
                     || periodOptions.length === 0
                   }
-                  searchPlaceholder="Search periods…"
+                  searchPlaceholder={t('attendance.marking.searchPlaceholders.periods')}
                 />
               </FilterItem>
             )}
@@ -1194,9 +1196,9 @@ export default function AttendancePage() {
         <div className="text-sm text-gray-600">
           {mode === 'lesson'
             ? (isTeacher
-              ? 'Select Level, Section, Subject, and Period to load students.'
-              : 'Select Level, Shift, Section, and Period to load students.')
-            : 'Select Level, Shift, and Section to load students.'}
+              ? t('attendance.marking.hints.teacherLesson')
+              : t('attendance.marking.hints.adminLesson'))
+            : t('attendance.marking.hints.daily')}
         </div>
       )}
 
@@ -1221,7 +1223,7 @@ export default function AttendancePage() {
         saving={saving}
         onSave={saveBulk}
         saveDisabled={Boolean(blockedSaveReason)}
-        onBlockedSave={() => toast.error(blockedSaveReason || 'You cannot save right now.')}
+        onBlockedSave={() => toast.error(blockedSaveReason || t('attendance.marking.errors.cannotSaveNow'))}
         loaded={loaded}
         dirty={dirty}
         selectionHasRecords={selectionHasRecords}

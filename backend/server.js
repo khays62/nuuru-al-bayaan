@@ -11,6 +11,7 @@ import { getDefaultInitialPassword } from './utils/defaultPasswords.js';
 import { csrfProtection } from './middleware/csrf.js';
 import { responseNormalize } from './middleware/responseNormalize.js';
 import { auditTrail } from './middleware/auditTrail.js';
+import { i18nMiddleware } from './middleware/i18n.js';
 // import seedDatabase from './utils/seeder.js'; // Import the seeder function
 
 // Import routes
@@ -97,6 +98,9 @@ const startServer = async () => {
   app.use(express.json({ limit: '50kb' }));
   app.use(cookieParser());
 
+  // Attach req.t() based on Accept-Language (ar/so/en). Default: en.
+  app.use(i18nMiddleware());
+
   // Normalize JSON responses so frontend can rely on { success: true|false, ... }
   // for common object responses, without breaking endpoints that return arrays or Mongoose documents.
   app.use(responseNormalize());
@@ -115,7 +119,12 @@ const startServer = async () => {
     max: 600,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { success: false, message: 'Too many requests. Please slow down.' },
+    handler(req, res) {
+      return res.status(429).json({
+        success: false,
+        message: req.t('rateLimit.slowDown', null, 'Too many requests. Please slow down.'),
+      });
+    },
   });
   app.use('/api', apiLimiter);
 
@@ -136,8 +145,8 @@ const startServer = async () => {
         success: false,
         code: 'RATE_LIMITED',
         message: retryAfterSeconds
-          ? `Too many requests. Try again in ${retryAfterSeconds}s.`
-          : 'Too many requests. Try again later.',
+          ? req.t('rateLimit.tryAgainIn', { seconds: retryAfterSeconds }, `Too many requests. Try again in ${retryAfterSeconds}s.`)
+          : req.t('rateLimit.tryAgainLater', null, 'Too many requests. Try again later.'),
         remainingAttempts: 0,
         retryAfterSeconds,
       });
@@ -149,13 +158,21 @@ const startServer = async () => {
   // Handle invalid JSON bodies gracefully (avoids server crashes on bad requests)
   app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && 'body' in err) {
-      return res.status(400).json({ success: false, message: 'Invalid JSON body' });
+      return res.status(400).json({
+        success: false,
+        message: req.t('common.invalidJsonBody', null, 'Invalid JSON body'),
+      });
     }
     return next(err);
   });
 
   // Routes
-  app.get('/', (req, res) => res.send('API is running...'));
+  app.get('/', (req, res) => {
+    const loc = req?.locale;
+    if (loc === 'ar') return res.send('واجهة API تعمل...');
+    if (loc === 'so') return res.send('API-ga wuu shaqaynayaa...');
+    return res.send('API is running...');
+  });
   app.use('/api/auth', authRoutes);
   app.use('/api/security', securityRoutes);
   app.use('/api/lookups', lookupRoutes);
@@ -181,17 +198,28 @@ const startServer = async () => {
   app.use('/api/users', userRoutes);
 
   // 404 handler (JSON)
-  app.use((req, res) => res.status(404).json({ success: false, message: 'Not found' }));
+  app.use((req, res) =>
+    res.status(404).json({
+      success: false,
+      message: req.t('common.notFound', null, 'Not found'),
+    })
+  );
 
   // Central error handler (JSON)
   app.use((err, req, res, next) => {
     if (err?.message?.startsWith('CORS:')) {
-      return res.status(403).json({ success: false, message: 'CORS: Origin not allowed' });
+      return res.status(403).json({
+        success: false,
+        message: req.t('common.corsOriginNotAllowed', null, 'CORS: Origin not allowed'),
+      });
     }
 
     const status = Number(err?.status) || 500;
     const isProd = process.env.NODE_ENV === 'production';
-    const message = status === 500 && isProd ? 'Server error' : (err?.message || 'Server error');
+    const messageEn = status === 500 && isProd ? 'Server error' : (err?.message || 'Server error');
+    const message = status === 500
+      ? req.t('common.serverError', null, messageEn)
+      : messageEn;
 
     if (!isProd) {
       console.error(err);

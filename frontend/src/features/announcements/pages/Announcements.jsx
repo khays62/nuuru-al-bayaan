@@ -12,8 +12,10 @@ import { useAuth } from "../../../auth/AuthContext";
 import { getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, markAnnouncementsRead } from "../../../api";
 import { announcementKeys } from '../queryKeys';
 import { useAnnouncementsRealtimeInvalidation } from '../useAnnouncementsRealtimeInvalidation';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function AnnouncementsPage() {
+  const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [newTitle, setNewTitle] = useState("");
@@ -101,7 +103,7 @@ export default function AnnouncementsPage() {
 const handlePost = async () => {
   if (posting) return;
   if (!newTitle.trim() || !newBody.trim()) {
-    toast.error("Please fill out both title and body");
+    toast.error(t('announcements.page.toasts.fillTitleAndBody', { defaultValue: 'Please fill out both title and body' }));
     return;
   }
 
@@ -116,9 +118,9 @@ const handlePost = async () => {
     });
     setNewTitle("");
     setNewBody("");
-    toast.success("Announcement posted successfully!");
+    toast.success(t('announcements.page.toasts.posted', { defaultValue: 'Announcement posted successfully!' }));
   } catch {
-    toast.error("Network error — please try again");
+    toast.error(t('common.errors.networkOrServerError', { defaultValue: 'Network or server error' }));
   } finally {
     setPosting(false);
   }
@@ -137,9 +139,9 @@ const handleEdit = async (id) => {
     setEditingId(null);
     setEditTitle("");
     setEditBody("");
-    toast.success("Announcement updated!");
+    toast.success(t('announcements.page.toasts.updated', { defaultValue: 'Announcement updated!' }));
   } catch {
-    toast.error("Something went wrong. Try again later.");
+    toast.error(t('common.errors.somethingWentWrong', { defaultValue: 'Something went wrong.' }));
   } finally {
     setUpdatingId(null);
   }
@@ -148,7 +150,7 @@ const handleEdit = async (id) => {
 // ❌ Delete
 const handleDelete = async (id) => {
   if (deletingId) return;
-  if (!window.confirm("Are you sure you want to delete this announcement?"))
+  if (!window.confirm(t('announcements.page.confirmDelete', { defaultValue: 'Are you sure you want to delete this announcement?' })))
     return;
   try {
     setDeletingId(id);
@@ -157,9 +159,9 @@ const handleDelete = async (id) => {
       const list = Array.isArray(prev) ? prev : [];
       return list.filter((a) => String(a?._id) !== String(id));
     });
-    toast.success("Announcement deleted!");
+    toast.success(t('announcements.page.toasts.deleted', { defaultValue: 'Announcement deleted!' }));
   } catch {
-    toast.error("Network error — unable to delete");
+    toast.error(t('common.errors.networkOrServerError', { defaultValue: 'Network or server error' }));
   } finally {
     setDeletingId(null);
   }
@@ -172,7 +174,7 @@ const handleDelete = async (id) => {
     <div className="space-y-6 p-6">
       <div className="flex items-center gap-2">
         <Megaphone className="text-(--nb-color-brand)" size={28} />
-        <h1 className="text-3xl font-bold text-gray-800">Announcements</h1>
+        <h1 className="text-3xl font-bold text-gray-800">{t('announcements.page.title', { defaultValue: 'Announcements' })}</h1>
       </div>
 
       {canPost && (
@@ -181,13 +183,13 @@ const handleDelete = async (id) => {
             type="text"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Announcement title..."
+            placeholder={t('announcements.page.form.titlePlaceholder', { defaultValue: 'Announcement title…' })}
             className="mb-3"
           />
           <Textarea
             value={newBody}
             onChange={(e) => setNewBody(e.target.value)}
-            placeholder="Write your announcement details..."
+            placeholder={t('announcements.page.form.bodyPlaceholder', { defaultValue: 'Write your announcement details…' })}
             className="mb-3 resize-none"
             rows={4}
           />
@@ -197,16 +199,16 @@ const handleDelete = async (id) => {
             disabled={posting}
             icon={posting ? <LoadingState variant="inline" className="border-t-white" /> : <Send size={18} />}
           >
-            {posting ? 'Posting…' : 'Post'}
+            {posting ? t('announcements.page.status.posting', { defaultValue: 'Posting…' }) : t('announcements.page.actions.post', { defaultValue: 'Post' })}
           </Button>
         </Card>
       )}
 
       <div className="space-y-4">
         {isLoading ? (
-          <p className="text-gray-500 italic">Loading announcements…</p>
+          <p className="text-gray-500 italic">{t('announcements.page.loading', { defaultValue: 'Loading announcements…' })}</p>
         ) : isError || announcements.length === 0 ? (
-          <p className="text-gray-500 italic">No announcements yet.</p>
+          <p className="text-gray-500 italic">{t('announcements.page.empty', { defaultValue: 'No announcements yet.' })}</p>
         ) : (
           announcements.map((a) => (
             <Card
@@ -219,7 +221,7 @@ const handleDelete = async (id) => {
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    placeholder="Edit title"
+                    placeholder={t('announcements.page.form.editTitlePlaceholder', { defaultValue: 'Edit title' })}
                     className="mb-2"
                   />
                   <Textarea
@@ -234,14 +236,14 @@ const handleDelete = async (id) => {
                       disabled={updatingId === a._id}
                       icon={updatingId === a._id ? <LoadingState variant="inline" className="border-t-white" /> : null}
                     >
-                      {updatingId === a._id ? 'Updating…' : 'Update'}
+                      {updatingId === a._id ? t('announcements.page.status.updating', { defaultValue: 'Updating…' }) : t('common.actions.update', { defaultValue: 'Update' })}
                     </Button>
                     <Button
                       onClick={() => setEditingId(null)}
                       variant="neutral"
                       disabled={updatingId === a._id}
                     >
-                      Cancel
+                      {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                     </Button>
                   </div>
                 </div>
@@ -253,15 +255,22 @@ const handleDelete = async (id) => {
                   <div className="flex justify-between items-start gap-4 mt-10">
                     <div className="min-w-0">
                       <p className="text-sm text-gray-500">
-                        Posted by <strong>{a.author}</strong> ({a.role}) on{' '}
-                        {new Date(a.date).toLocaleString()}
+                        {t('announcements.page.meta.postedBy', {
+                          author: a.author,
+                          role: a.role,
+                          date: new Date(a.date).toLocaleString(),
+                          defaultValue: 'Posted by {{author}} ({{role}}) on {{date}}',
+                        })}
                       </p>
 
                       {a.updatedBy ? (
                         <p className="text-xs text-gray-500 mt-1">
-                          Updated by <strong>{a.updatedBy}</strong>
-                          {a.updatedByRole ? ` (${a.updatedByRole})` : ''}
-                          {a.updatedAt ? ` on ${new Date(a.updatedAt).toLocaleString()}` : ''}
+                          {t('announcements.page.meta.updatedBy', {
+                            updatedBy: a.updatedBy,
+                            roleSuffix: a.updatedByRole ? ` (${a.updatedByRole})` : '',
+                            dateSuffix: a.updatedAt ? ` ${t('announcements.page.meta.onPrefix', { defaultValue: 'on' })} ${new Date(a.updatedAt).toLocaleString()}` : '',
+                            defaultValue: 'Updated by {{updatedBy}}{{roleSuffix}}{{dateSuffix}}',
+                          })}
                         </p>
                       ) : null}
                     </div>
@@ -280,8 +289,8 @@ const handleDelete = async (id) => {
                             canEditThis
                               ? {
                                   key: 'edit',
-                                  label: 'Edit',
-                                  title: 'Edit',
+                                  label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                  title: t('common.actions.edit', { defaultValue: 'Edit' }),
                                   tone: 'edit',
                                   icon: <Pencil size={16} />,
                                   disabled: deletingId === a._id || updatingId === a._id,
@@ -295,8 +304,8 @@ const handleDelete = async (id) => {
                             canDeleteThis
                               ? {
                                   key: 'delete',
-                                  label: 'Delete',
-                                  title: deletingId === a._id ? 'Deleting…' : 'Delete',
+                                  label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                                  title: deletingId === a._id ? t('announcements.page.status.deleting', { defaultValue: 'Deleting…' }) : t('common.actions.delete', { defaultValue: 'Delete' }),
                                   tone: 'delete',
                                   icon: deletingId === a._id ? <LoadingState variant="inline" /> : <Trash2 size={16} />,
                                   disabled: deletingId === a._id || updatingId === a._id,

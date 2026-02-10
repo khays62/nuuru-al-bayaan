@@ -7,6 +7,17 @@ const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && i
 	? import.meta.env.VITE_API_BASE_URL
 	: '/api';
 
+function getStoredLanguage() {
+	try {
+		const v = localStorage.getItem('app:lang');
+		const base = String(v || '').trim().toLowerCase();
+		if (base === 'ar' || base === 'so' || base === 'en') return base;
+	} catch {
+		// ignore
+	}
+	return '';
+}
+
 function getCookie(name) {
 	if (typeof document === 'undefined') return '';
 	const n = `${name}=`;
@@ -30,6 +41,14 @@ export async function fetchJson(urlOrPath, options = {}) {
 	// Avoid setting Content-Type for GET/HEAD to prevent unnecessary CORS preflights
 	const baseHeaders = (options.headers || {});
 	const headers = (method === 'GET' || method === 'HEAD') ? { ...baseHeaders } : { 'Content-Type': 'application/json', ...baseHeaders };
+
+	// Locale: allow backend to localize messages to the UI language.
+	// Do not override if the caller already set it.
+	const hasAcceptLanguage = Boolean(headers['Accept-Language'] || headers['accept-language']);
+	if (!hasAcceptLanguage) {
+		const lang = getStoredLanguage();
+		if (lang) headers['Accept-Language'] = lang;
+	}
 
 	// CSRF: for unsafe methods, echo csrf_token cookie into header.
 	// Backend enforces this only for browser requests (Origin present).

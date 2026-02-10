@@ -4,6 +4,7 @@ import React from 'react';
 import ActionButton from '../ui/ActionButton';
 import { RotateCcw } from 'lucide-react';
 import Card from '../ui/Card.jsx';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 
 export default function DataToolbar({
   searchSlot,
@@ -14,6 +15,8 @@ export default function DataToolbar({
   onReset,
   showReset = true
 }) {
+  const { t } = useI18n();
+
   const handleReset = () => {
     if (typeof onReset === 'function') {
       onReset();
@@ -45,10 +48,10 @@ export default function DataToolbar({
               <ActionButton
                 variant="neutral"
                 onClick={handleReset}
-                title="Reset filters"
+                title={t('common.filters.resetTitle', { defaultValue: 'Reset filters' })}
                 icon={<RotateCcw size={16} />}
               >
-                Reset
+                {t('common.actions.reset', { defaultValue: 'Reset' })}
               </ActionButton>
             )}
           </div>

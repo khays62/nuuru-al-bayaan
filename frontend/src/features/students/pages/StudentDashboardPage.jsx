@@ -52,7 +52,7 @@ function TabNav({ tabs = [] }) {
   return (
     <div className="border-b border-gray-200 mb-4">
       {/* Desktop: show all */}
-      <nav className="hidden md:flex -mb-px gap-4" aria-label="Tabs">
+      <nav className="hidden md:flex -mb-px gap-4" aria-label={t('common.aria.tabs', { defaultValue: 'Tabs' })}>
         {tabsOrder.map(t => (
           <NavLink
             key={t.to}
@@ -72,7 +72,7 @@ function TabNav({ tabs = [] }) {
       </nav>
       {/* Mobile: limited + dynamic overflow */}
       <div className="flex md:hidden items-center justify-between">
-        <nav className="-mb-px flex gap-3 overflow-x-auto" aria-label="Tabs">
+        <nav className="-mb-px flex gap-3 overflow-x-auto" aria-label={t('common.aria.tabs', { defaultValue: 'Tabs' })}>
           {primary.map(t => (
             <NavLink
               key={t.to}

@@ -23,9 +23,11 @@ import TeacherTimetablePanel from '../../teachers/components/dashboard/TeacherTi
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { timetableKeys } from '../queryKeys.js';
 import { useTimetableRealtimeInvalidation } from '../useTimetableRealtimeInvalidation.js';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function TimetablePage() {
   const { auth, hasPermission } = useAuth();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const role = String(auth?.user?.role || '').toLowerCase();
   const isTeacher = role === 'teacher';
@@ -57,7 +59,18 @@ export default function TimetablePage() {
   const [dndBusy, setDndBusy] = useState(false);
   const [swapUi, setSwapUi] = useState({ isOpen: false, aId: null, bId: null });
 
-  const dayNames = ['Saturday','Sunday','Monday','Tuesday','Wednesday','Thursday','Friday'];
+  const dayNames = useMemo(
+    () => [
+      t('common.days.long.saturday'),
+      t('common.days.long.sunday'),
+      t('common.days.long.monday'),
+      t('common.days.long.tuesday'),
+      t('common.days.long.wednesday'),
+      t('common.days.long.thursday'),
+      t('common.days.long.friday'),
+    ],
+    [t]
+  );
 
   const getTimetableDayIndexFromLocalDate = (d = new Date()) => {
     // 0=Saturday,1=Sunday,2=Monday,3=Tuesday,4=Wednesday,5=Thursday,6=Friday
@@ -73,7 +86,7 @@ export default function TimetablePage() {
     let hh = Number(m[1]);
     const mm = m[2];
     if (!Number.isFinite(hh)) return String(t || '');
-    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const ampm = hh >= 12 ? t('common.time.pm') : t('common.time.am');
     hh = hh % 12;
     if (hh === 0) hh = 12;
     return `${hh}:${mm} ${ampm}`;
@@ -85,10 +98,10 @@ export default function TimetablePage() {
     const sOk = isValidTime24h(start);
     const eOk = isValidTime24h(end);
     if (!sOk || !eOk) return `${start || ''} - ${end || ''}`.trim();
-    const s12 = formatTime12h(start);
-    const e12 = formatTime12h(end);
-    const sAmPm = String(s12).endsWith('PM') ? 'PM' : 'AM';
-    const eAmPm = String(e12).endsWith('PM') ? 'PM' : 'AM';
+    const sH = Number(String(start).split(':')[0]);
+    const eH = Number(String(end).split(':')[0]);
+    const sAmPm = sH >= 12 ? t('common.time.pm') : t('common.time.am');
+    const eAmPm = eH >= 12 ? t('common.time.pm') : t('common.time.am');
     if (sAmPm === eAmPm) {
       // keep original 24h range but suffix with AM/PM once
       return `${start} - ${end} ${sAmPm}`;
@@ -98,11 +111,11 @@ export default function TimetablePage() {
 
   const formatConflictReason = (reason) => {
     const r = String(reason || '').toLowerCase();
-    if (r.includes('gs')) return 'Class conflict';
-    if (r.includes('teacher')) return 'Teacher conflict';
-    if (r.includes('room')) return 'Room conflict';
-    if (r.includes('invalid')) return 'Invalid day';
-    return reason || 'Conflict';
+    if (r.includes('gs')) return t('timetable.page.conflicts.classConflict');
+    if (r.includes('teacher')) return t('timetable.page.conflicts.teacherConflict');
+    if (r.includes('room')) return t('timetable.page.conflicts.roomConflict');
+    if (r.includes('invalid')) return t('timetable.page.conflicts.invalidDay');
+    return reason || t('timetable.page.conflicts.conflict');
   };
 
   useEffect(() => {
@@ -181,7 +194,8 @@ export default function TimetablePage() {
   }, [adminSlotsQuery.data, isTeacher]);
 
   const loading = Boolean(!isTeacher && sectionId && adminSlotsQuery.isLoading && !Array.isArray(adminSlotsQuery.data));
-  const error = !isTeacher && sectionId && adminSlotsQuery.isError ? 'Failed to load timetable' : '';
+  const error =
+    !isTeacher && sectionId && adminSlotsQuery.isError ? t('timetable.page.errors.loadFailed') : '';
 
   const teacherSlotsQuery = useQuery({
     queryKey: teacherKeys.timetableSlots({ gradeSectionId: sectionId }),
@@ -209,11 +223,11 @@ export default function TimetablePage() {
 
   const onMove = async (slotId, target, targetSlotId) => {
     if (isTeacher) {
-      toast.error('Teachers can only view timetable');
+      toast.error(t('timetable.page.errors.teacherViewOnly'));
       return;
     }
     if (!canTimetableEdit) {
-      toast.error('You do not have permission to edit timetable');
+      toast.error(t('timetable.page.errors.noEditPermission'));
       return;
     }
     if (!sectionId) return;
@@ -223,14 +237,14 @@ export default function TimetablePage() {
 
     // Break slots are static (no drag/drop moves or swaps)
     if (src?.isBreak) {
-      toast.error('Break cannot be moved');
+      toast.error(t('timetable.page.errors.breakCannotBeMoved'));
       return;
     }
 
     if (targetSlotId) {
       const dst = slots.find((s) => String(s._id) === String(targetSlotId));
       if (dst?.isBreak) {
-        toast.error('Cannot drop onto a Break');
+        toast.error(t('timetable.page.errors.cannotDropOnBreak'));
         return;
       }
     }
@@ -259,9 +273,9 @@ export default function TimetablePage() {
         timetableKeys.slots({ gradeSectionId: sectionId }),
         Array.isArray(list?.data) ? list.data : []
       );
-      toast.success('Slot moved');
+      toast.success(t('timetable.page.toasts.slotMoved'));
     } catch (err) {
-      toast.error(err?.message || 'Move failed');
+      toast.error(err?.message || t('timetable.page.errors.moveFailed'));
     } finally {
       setDndBusy(false);
     }
@@ -270,12 +284,12 @@ export default function TimetablePage() {
   const closeSwap = () => setSwapUi({ isOpen: false, aId: null, bId: null });
   const handleSwap = async () => {
     if (isTeacher) {
-      toast.error('Teachers can only view timetable');
+      toast.error(t('timetable.page.errors.teacherViewOnly'));
       closeSwap();
       return;
     }
     if (!canTimetableEdit) {
-      toast.error('You do not have permission to edit timetable');
+      toast.error(t('timetable.page.errors.noEditPermission'));
       closeSwap();
       return;
     }
@@ -284,7 +298,7 @@ export default function TimetablePage() {
       const a = slots.find((s) => String(s._id) === String(swapUi.aId));
       const b = slots.find((s) => String(s._id) === String(swapUi.bId));
       if (a?.isBreak || b?.isBreak) {
-        toast.error('Break cannot be swapped');
+        toast.error(t('timetable.page.errors.breakCannotBeSwapped'));
         closeSwap();
         return;
       }
@@ -295,10 +309,10 @@ export default function TimetablePage() {
         timetableKeys.slots({ gradeSectionId: sectionId }),
         Array.isArray(list?.data) ? list.data : []
       );
-      toast.success('Slots swapped');
+      toast.success(t('timetable.page.toasts.slotsSwapped'));
       closeSwap();
     } catch (err) {
-      toast.error(err?.message || 'Swap failed');
+      toast.error(err?.message || t('timetable.page.errors.swapFailed'));
     } finally {
       setDndBusy(false);
     }
@@ -306,15 +320,21 @@ export default function TimetablePage() {
 
   const onAddSingle = async () => {
     if (isTeacher) {
-      toast.error('Teachers can only view timetable');
+      toast.error(t('timetable.page.errors.teacherViewOnly'));
       return;
     }
     if (!canTimetableAdd) {
-      toast.error('You do not have permission to add timetable slots');
+      toast.error(t('timetable.page.errors.noAddPermission'));
       return;
     }
-    if (!sectionId || (!isBreak && !subjectId) || !startTime || !endTime) { toast.error('Fill required fields'); return; }
-    if (!Array.isArray(days) || days.length !== 1) { toast.error('Select exactly one day for Add Slot'); return; }
+    if (!sectionId || (!isBreak && !subjectId) || !startTime || !endTime) {
+      toast.error(t('timetable.page.errors.fillRequiredFields'));
+      return;
+    }
+    if (!Array.isArray(days) || days.length !== 1) {
+      toast.error(t('timetable.page.errors.selectExactlyOneDayForAddSlot'));
+      return;
+    }
     try {
       setAddingSingle(true);
       const payload = { gsId: sectionId, dayOfWeek: days[0], startTime, endTime, room };
@@ -326,24 +346,27 @@ export default function TimetablePage() {
           timetableKeys.slots({ gradeSectionId: sectionId }),
           Array.isArray(list?.data) ? list.data : []
         );
-        toast.success('Slot created');
+        toast.success(t('timetable.page.toasts.slotCreated'));
         setRoom('');
       }
     } catch (e) {
-      toast.error(e?.message || 'Failed to create');
+      toast.error(e?.message || t('timetable.page.errors.createFailed'));
     } finally { setAddingSingle(false); }
   };
 
   const onAddBulk = async () => {
     if (isTeacher) {
-      toast.error('Teachers can only view timetable');
+      toast.error(t('timetable.page.errors.teacherViewOnly'));
       return;
     }
     if (!canTimetableAdd) {
-      toast.error('You do not have permission to add timetable slots');
+      toast.error(t('timetable.page.errors.noAddPermission'));
       return;
     }
-    if (!sectionId || (!isBreak && !subjectId) || !startTime || !endTime || !days?.length) { toast.error('Fill required fields'); return; }
+    if (!sectionId || (!isBreak && !subjectId) || !startTime || !endTime || !days?.length) {
+      toast.error(t('timetable.page.errors.fillRequiredFields'));
+      return;
+    }
     try {
       setAddingBulk(true);
       const payload = { gsId: sectionId, days, startTime, endTime, room };
@@ -364,37 +387,48 @@ export default function TimetablePage() {
           });
         const shown = parts.slice(0, 4);
         const more = parts.length - shown.length;
-        toast.error(`Some days failed: ${shown.join(', ')}${more > 0 ? ` (+${more} more)` : ''}`);
+        const moreSuffix = more > 0 ? t('timetable.page.errors.moreSuffix', { count: more }) : '';
+        toast.error(
+          t('timetable.page.errors.someDaysFailed', {
+            details: shown.join(', '),
+            moreSuffix,
+          })
+        );
       } else {
-        toast.success('Slots created');
+        toast.success(t('timetable.page.toasts.slotsCreated'));
       }
       setRoom('');
     } catch (e) {
-      toast.error(e?.message || 'Failed to create bulk');
+      toast.error(e?.message || t('timetable.page.errors.createBulkFailed'));
     } finally { setAddingBulk(false); }
   };
 
   const onDelete = async (slot) => {
     if (isTeacher) {
-      toast.error('Teachers can only view timetable');
+      toast.error(t('timetable.page.errors.teacherViewOnly'));
       return;
     }
     if (!canTimetableDelete) {
-      toast.error('You do not have permission to delete timetable slots');
+      toast.error(t('timetable.page.errors.noDeletePermission'));
       return;
     }
-    if (!confirm('Delete this slot?')) return;
+    if (!window.confirm(t('timetable.page.confirms.deleteSlot'))) return;
     try {
       await deleteSlot(slot._id);
       queryClient.setQueryData(timetableKeys.slots({ gradeSectionId: sectionId }), (prev) => {
         const arr = Array.isArray(prev) ? prev : [];
         return arr.filter((s) => s?._id !== slot?._id);
       });
-      toast.success('Deleted');
-    } catch (e) { toast.error(e?.message || 'Delete failed'); }
+      toast.success(t('timetable.page.toasts.deleted'));
+    } catch (e) {
+      toast.error(e?.message || t('timetable.page.errors.deleteFailed'));
+    }
   };
 
-  const dayOpts = [0,1,2,3,4,5,6].map(d => ({ value: d, label: dayNames[d] }));
+  const dayOpts = useMemo(
+    () => [0, 1, 2, 3, 4, 5, 6].map((d) => ({ value: d, label: dayNames[d] })),
+    [dayNames]
+  );
 
   // Compute display days (if days selected, use them; else derive from slots)
   const displayDays = useMemo(() => {
@@ -435,11 +469,24 @@ export default function TimetablePage() {
 
   const handlePrint = () => {
     if (!canTimetablePrint) {
-      toast.error('You do not have permission to print timetable');
+      toast.error(t('timetable.page.errors.noPrintPermission'));
       return;
     }
     window.print();
   };
+
+  const exportColumns = useMemo(
+    () => [
+      { key: 'day', header: t('timetable.page.export.headers.day') },
+      { key: 'start', header: t('timetable.page.export.headers.start') },
+      { key: 'end', header: t('timetable.page.export.headers.end') },
+      { key: 'type', header: t('timetable.page.export.headers.type') },
+      { key: 'subject', header: t('timetable.page.export.headers.subject') },
+      { key: 'teacher', header: t('timetable.page.export.headers.teacher') },
+      { key: 'room', header: t('timetable.page.export.headers.room') },
+    ],
+    [t]
+  );
 
   const getExportRows = () => {
     const rows = (effectiveSlots || []).slice();
@@ -459,28 +506,38 @@ export default function TimetablePage() {
       const d = Number(s.dayOfWeek);
       const dayLabel = Number.isInteger(d) && d >= 0 && d <= 6 ? dayNames[d] : String(s.dayOfWeek ?? '');
       return {
-        Day: dayLabel,
-        Start: s.startTime || '',
-        End: s.endTime || '',
-        Type: s.isBreak ? 'Break' : 'Class',
-        Subject: s.isBreak ? '' : (s.subject?.subjectName || ''),
-        Teacher: s.isBreak ? '' : (s.teacher?.fullName || ''),
-        Room: s.room || '',
+        day: dayLabel,
+        start: s.startTime || '',
+        end: s.endTime || '',
+        type: s.isBreak ? t('timetable.page.export.type.break') : t('timetable.page.export.type.class'),
+        subject: s.isBreak ? '' : (s.subject?.subjectName || ''),
+        teacher: s.isBreak ? '' : (s.teacher?.fullName || ''),
+        room: s.room || '',
       };
     });
   };
 
   const handleDownloadCsv = () => {
-    if (!canTimetableDownload) { toast.error('You do not have permission to download timetable'); return; }
-    if (!sectionId) { toast.error('Select a section'); return; }
+    if (!canTimetableDownload) {
+      toast.error(t('timetable.page.errors.noDownloadPermission'));
+      return;
+    }
+    if (!sectionId) {
+      toast.error(t('timetable.page.errors.selectSection'));
+      return;
+    }
     const rows = getExportRows();
-    if (!rows.length) { toast.error('No slots to export'); return; }
+    if (!rows.length) {
+      toast.error(t('timetable.page.errors.noSlotsToExport'));
+      return;
+    }
 
-    const headers = Object.keys(rows[0]);
+    const keys = exportColumns.map((c) => c.key);
+    const headers = exportColumns.map((c) => c.header);
     const lines = [headers.join(',')];
     for (const r of rows) {
-      const vals = headers.map((h) => {
-        const raw = String(r[h] ?? '');
+      const vals = keys.map((k) => {
+        const raw = String(r[k] ?? '');
         const escaped = raw.replaceAll('"', '""');
         return `"${escaped}"`;
       });
@@ -491,7 +548,7 @@ export default function TimetablePage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'timetable.csv';
+    a.download = t('timetable.page.export.filename');
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -505,7 +562,7 @@ export default function TimetablePage() {
     const shiftName = gs?.shift?.shiftName;
     return [
       gradeName ? `${gradeName}` : null,
-      sectionNum ? `Sec ${sectionNum}` : null,
+      sectionNum ? `${t('common.sectionPrefix')} ${sectionNum}` : null,
       shiftName ? `(${shiftName})` : null,
     ].filter(Boolean).join(' - ');
   };
@@ -513,7 +570,7 @@ export default function TimetablePage() {
   return (
     <div className="space-y-4 with-print-header with-print-footer">
       <PrintHeader />
-      <PrintFooter left="Generated by Nuuru Al-Bayaan" />
+      <PrintFooter left={t('common.generatedBy')} />
       {dndBusy && (
         <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white/95 rounded-2xl shadow-xl border border-white/60 px-10 py-10">
@@ -521,7 +578,7 @@ export default function TimetablePage() {
               <div className="text-blue-600">
                 <Spinner size={72} color="currentColor" />
               </div>
-              <div className="text-xs text-gray-600 tracking-wide">WORKING…</div>
+              <div className="text-xs text-gray-600 tracking-wide">{t('common.working')}</div>
             </div>
           </div>
         </div>
@@ -530,7 +587,7 @@ export default function TimetablePage() {
       <Modal
         isOpen={swapUi.isOpen}
         onClose={() => !dndBusy && closeSwap()}
-        title="Choose Action"
+        title={t('timetable.page.swapModal.title')}
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <ActionButton
@@ -539,19 +596,19 @@ export default function TimetablePage() {
             disabled={dndBusy}
             className="justify-center py-3"
           >
-            {dndBusy ? 'Working…' : 'Swap'}
+            {dndBusy ? t('common.working') : t('timetable.page.actions.swap')}
           </ActionButton>
 
           <ActionButton
             variant="neutral"
             onClick={() => {
-              toast.error('Move is not allowed on an occupied cell.');
+              toast.error(t('timetable.page.errors.moveNotAllowedOnOccupiedCell'));
               closeSwap();
             }}
             disabled={dndBusy}
             className="justify-center py-3"
           >
-            Move
+            {t('timetable.page.actions.move')}
           </ActionButton>
 
           <ActionButton
@@ -560,31 +617,40 @@ export default function TimetablePage() {
             disabled={dndBusy}
             className="justify-center py-3"
           >
-            Cancel
+            {t('common.actions.cancel')}
           </ActionButton>
         </div>
       </Modal>
 
       <div className="w-full flex items-center justify-between gap-2 flex-wrap no-print">
-        <h1 className="text-2xl font-semibold">Timetable</h1>
+        <h1 className="text-2xl font-semibold">{t('nav.timetable')}</h1>
         <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
           {!isTeacher ? (
             <>
               {canTimetablePrint ? (
-                <ActionButton variant="neutral" onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+                <ActionButton variant="neutral" onClick={handlePrint} title={t('common.actions.print')} icon={<Printer size={16} />}>
+                  {t('common.actions.print')}
+                </ActionButton>
               ) : null}
               {canTimetableDownload ? (
-                <ActionButton variant="neutral" onClick={handleDownloadCsv} title="Download CSV" icon={<Download size={16} />}>CSV</ActionButton>
+                <ActionButton
+                  variant="neutral"
+                  onClick={handleDownloadCsv}
+                  title={t('timetable.page.actions.downloadCsv')}
+                  icon={<Download size={16} />}
+                >
+                  CSV
+                </ActionButton>
               ) : null}
             </>
           ) : null}
           {!isTeacher && canTimetableAdd ? (
             <>
               <ActionButton variant="brand" onClick={onAddSingle} disabled={addingSingle} className={addingSingle ? 'opacity-70 cursor-wait' : ''}>
-                {addingSingle ? 'Adding…' : 'Add Slot'}
+                {addingSingle ? t('timetable.page.states.adding') : t('timetable.page.actions.addSlot')}
               </ActionButton>
               <ActionButton variant="brand" onClick={onAddBulk} disabled={addingBulk} className={addingBulk ? 'opacity-70 cursor-wait' : ''}>
-                {addingBulk ? 'Adding…' : 'Add Slots (Days)'}
+                {addingBulk ? t('timetable.page.states.adding') : t('timetable.page.actions.addSlotsDays')}
               </ActionButton>
             </>
           ) : null}
@@ -592,11 +658,11 @@ export default function TimetablePage() {
       </div>
 
       <div className="print-only">
-        <div className="text-xl font-semibold">Timetable</div>
+        <div className="text-xl font-semibold">{t('nav.timetable')}</div>
         <div className="mt-1 text-sm text-gray-700">
           {selectedSection
-            ? `${selectedSection.grade?.gradeName || ''} • ${selectedSection.shift?.shiftName || ''} • Sec ${selectedSection.section}`
-            : 'Select Section'}
+            ? `${selectedSection.grade?.gradeName || ''} • ${selectedSection.shift?.shiftName || ''} • ${t('common.sectionPrefix')} ${selectedSection.section}`
+            : t('timetable.page.print.selectSection')}
         </div>
       </div>
 
@@ -610,11 +676,11 @@ export default function TimetablePage() {
             (teacherSectionsQuery.isLoading && (sections || []).length === 0) ||
             (teacherSlotsQuery.isLoading && !Array.isArray(teacherSlotsQuery.data))
           )}
-          error={teacherSlotsQuery.isError ? 'Failed to load timetable' : ''}
+          error={teacherSlotsQuery.isError ? t('timetable.page.errors.loadFailed') : ''}
           slots={teacherSlotsQuery.data || []}
           todaySlots={teacherTodayQuery.data || []}
           todayLoading={Boolean(teacherTodayQuery.isLoading && !Array.isArray(teacherTodayQuery.data))}
-          todayError={teacherTodayQuery.isError ? 'Failed to load today schedule' : ''}
+          todayError={teacherTodayQuery.isError ? t('timetable.page.errors.loadTodayFailed') : ''}
           periods={periods}
           displayDays={displayDays}
           formatRangeWithAmPm={formatRangeWithAmPm}
@@ -635,7 +701,7 @@ export default function TimetablePage() {
                         const db = new Date(b.createdAt || 0).getTime();
                         return da - db;
                       }).map(g => ({ value: g._id, label: g.gradeName }))}
-                      placeholder="Level"
+                      placeholder={t('common.filters.level')}
                     />
                   </FilterItem>
 
@@ -644,8 +710,8 @@ export default function TimetablePage() {
                       value={shiftId}
                       onChange={setShiftId}
                       options={(shifts||[]).map(s => ({ value: s._id, label: s.shiftName }))}
-                      placeholder="Shift"
-                      searchPlaceholder="Search shifts…"
+                      placeholder={t('common.filters.shift')}
+                      searchPlaceholder={t('common.searchPlaceholders.shifts')}
                     />
                   </FilterItem>
 
@@ -653,9 +719,9 @@ export default function TimetablePage() {
                     <FilterDropdownSelect
                       value={sectionId}
                       onChange={setSectionId}
-                      options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • Sec ${s.section}` }))}
-                      placeholder="Section"
-                      searchPlaceholder="Search sections…"
+                      options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • ${t('common.sectionPrefix')} ${s.section}` }))}
+                      placeholder={t('common.filters.section')}
+                      searchPlaceholder={t('common.searchPlaceholders.sections')}
                     />
                   </FilterItem>
 
@@ -664,14 +730,20 @@ export default function TimetablePage() {
                       value={subjectId}
                       onChange={setSubjectId}
                       options={(subjects||[]).map(s => ({ value: s._id, label: s.subjectName }))}
-                      placeholder="Subject"
-                      searchPlaceholder="Search subjects…"
+                      placeholder={t('timetable.page.filters.subject')}
+                      searchPlaceholder={t('common.searchPlaceholders.subjects')}
                       disabled={isBreak}
                     />
                   </FilterItem>
 
                   <FilterItem grow minWidthClass="min-w-50">
-                    <MultiSelectDropdown value={days} onChange={setDays} options={dayOpts} placeholder="Days" className="w-full" />
+                    <MultiSelectDropdown
+                      value={days}
+                      onChange={setDays}
+                      options={dayOpts}
+                      placeholder={t('timetable.page.filters.days')}
+                      className="w-full"
+                    />
                   </FilterItem>
 
                   <FilterItem minWidthClass="min-w-44" className="sm:w-auto">
@@ -683,7 +755,7 @@ export default function TimetablePage() {
                         onChange={(e) => setStartTime(e.target.value)}
                         className="px-2 py-1 border rounded w-full"
                       />
-                      <span className="text-sm text-gray-600">to</span>
+                      <span className="text-sm text-gray-600">{t('common.to')}</span>
                       <input
                         type="time"
                         step={60}
@@ -699,7 +771,7 @@ export default function TimetablePage() {
                       type="text"
                       value={room}
                       onChange={e=>setRoom(e.target.value)}
-                      placeholder="Room"
+                      placeholder={t('common.room')}
                       className="px-2 py-1 border rounded w-full"
                     />
                   </FilterItem>
@@ -708,8 +780,8 @@ export default function TimetablePage() {
               actionsSlot={(
                 <button
                   type="button"
-                  title="Break"
-                  aria-label="Break"
+                  title={t('timetable.grid.break')}
+                  aria-label={t('timetable.grid.break')}
                   onClick={() => {
                     setIsBreak(v => {
                       const next = !v;
@@ -740,9 +812,9 @@ export default function TimetablePage() {
               useDefaultHeaderStyles: false,
               renderHeader: () => (
                 <tr className="bg-black text-white">
-                  <th className="text-left px-3 py-2">Day</th>
+                  <th className="text-left px-3 py-2">{t('timetable.page.table.day')}</th>
                   {periods.length === 0 ? (
-                    <th className="text-left px-3 py-2">No periods</th>
+                    <th className="text-left px-3 py-2">{t('timetable.grid.noPeriods')}</th>
                   ) : (
                     periods.map((p, i) => (
                       <th key={i} className="text-left px-3 py-2">
@@ -755,16 +827,16 @@ export default function TimetablePage() {
               renderBody: () => (
                 <>
                   {loading && (
-                    <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Loading slots…</td></tr>
+                    <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>{t('timetable.page.loadingSlots')}</td></tr>
                   )}
                   {!loading && error && (
                     <tr><td className="px-3 py-2 text-sm text-red-600" colSpan={2}>{String(error)}</td></tr>
                   )}
                   {!loading && !error && slots.length === 0 && (
                     (displayDays.length === 0 ? (
-                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>Select Days to show the grid.</td></tr>
+                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>{t('timetable.grid.noDaysSelected')}</td></tr>
                     ) : periods.length === 0 ? (
-                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>Set a valid time range to show periods.</td></tr>
+                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>{t('timetable.page.empty.setValidTimeRange')}</td></tr>
                     ) : (
                       <TimetableGrid
                         slots={slots}

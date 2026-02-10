@@ -14,13 +14,20 @@ const hasPermission = (user, module, action) => {
 export const checkPermission = (module, action) => {
   return (req, res, next) => {
     if (!isAuthenticated(req)) {
-      return res.status(401).json({ success: false, message: "User not authenticated" });
+      return res.status(401).json({
+        success: false,
+        message: req.t('permissions.userNotAuthenticated', null, 'User not authenticated'),
+      });
     }
 
     if (!hasPermission(req.user, module, action)) {
       return res.status(403).json({
         success: false,
-        message: `You do not have permission to ${action} ${module}`
+        message: req.t(
+          'permissions.noPermissionActionModule',
+          { action, module },
+          `You do not have permission to ${action} ${module}`
+        ),
       });
     }
 
@@ -36,7 +43,10 @@ export const checkPermission = (module, action) => {
 export const checkAnyPermission = (requirements = []) => {
   return (req, res, next) => {
     if (!isAuthenticated(req)) {
-      return res.status(401).json({ success: false, message: "User not authenticated" });
+      return res.status(401).json({
+        success: false,
+        message: req.t('permissions.userNotAuthenticated', null, 'User not authenticated'),
+      });
     }
 
     // ADMIN ALWAYS ALLOWED
@@ -60,8 +70,12 @@ export const checkAnyPermission = (requirements = []) => {
       return res.status(403).json({
         success: false,
         message: expected
-          ? `Missing required permission: ${expected}`
-          : "Missing required permission"
+          ? req.t(
+              'permissions.missingRequiredPermissionWithExpected',
+              { expected },
+              `Missing required permission: ${expected}`
+            )
+          : req.t('permissions.missingRequiredPermission', null, 'Missing required permission'),
       });
     }
 
@@ -82,7 +96,10 @@ export const checkAnyPermission = (requirements = []) => {
 export const checkModuleAnyPermission = (module, actions = []) => {
   return (req, res, next) => {
     if (!isAuthenticated(req)) {
-      return res.status(401).json({ success: false, message: "User not authenticated" });
+      return res.status(401).json({
+        success: false,
+        message: req.t('permissions.userNotAuthenticated', null, 'User not authenticated'),
+      });
     }
 
     // ADMIN ALWAYS ALLOWED
@@ -90,7 +107,14 @@ export const checkModuleAnyPermission = (module, actions = []) => {
 
     const modulePerm = req.user?.permissions?.[module];
     if (!modulePerm) {
-      return res.status(403).json({ success: false, message: `No permissions found for module: ${module}` });
+      return res.status(403).json({
+        success: false,
+        message: req.t(
+          'permissions.noPermissionsForModule',
+          { module },
+          `No permissions found for module: ${module}`
+        ),
+      });
     }
 
     // Mongoose subdocs can have non-enumerable fields; normalize to a plain object
@@ -107,7 +131,14 @@ export const checkModuleAnyPermission = (module, actions = []) => {
       : Object.entries(permObj || {}).some(([k, v]) => k !== 'full' && v === true);
 
     if (!allow) {
-      return res.status(403).json({ success: false, message: `You do not have permission to access ${module}` });
+      return res.status(403).json({
+        success: false,
+        message: req.t(
+          'permissions.noPermissionAccessModule',
+          { module },
+          `You do not have permission to access ${module}`
+        ),
+      });
     }
 
     // We don't know which specific action was intended; mark as module access.

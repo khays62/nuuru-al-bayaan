@@ -7,6 +7,7 @@ import ActionButton from '../ui/ActionButton.jsx';
 import Card from '../ui/Card.jsx';
 import { useClientSort } from '../../hooks/useClientSort.js';
 import { formatAuditDescription, formatDeviceDisplay, formatIpDisplay, prettifyAuditAction } from '../../utils/auditFormat.js';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 
 export default function AuditHistoryTable({
   logs = [],
@@ -17,10 +18,15 @@ export default function AuditHistoryTable({
   onLimit,
   showRowsSelector = false,
   storageKey = 'audit:history:columns:v1',
-  emptyTitle = 'No audit history.',
-  emptyDescription = 'No recorded actions yet.',
+  emptyTitle,
+  emptyDescription,
   paginationProps,
 }) {
+  const { t } = useI18n();
+
+  const resolvedEmptyTitle = emptyTitle ?? t('common.audit.history.emptyTitle', { defaultValue: 'No audit history.' });
+  const resolvedEmptyDescription = emptyDescription ?? t('common.audit.history.emptyDescription', { defaultValue: 'No recorded actions yet.' });
+
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(null);
 
@@ -37,11 +43,11 @@ export default function AuditHistoryTable({
     getValue: (row, field) => {
       switch (field) {
         case 'action':
-          return String(prettifyAuditAction(row?.action) || row?.action || '').toLowerCase();
+          return String(prettifyAuditAction(row?.action, { t }) || row?.action || '').toLowerCase();
         case 'ip':
-          return String(formatIpDisplay(row?.ip) || row?.ip || '').toLowerCase();
+          return String(formatIpDisplay(row?.ip, { t }) || row?.ip || '').toLowerCase();
         case 'device':
-          return String(formatDeviceDisplay(row?.device) || row?.device || '').toLowerCase();
+          return String(formatDeviceDisplay(row?.device, { t }) || row?.device || '').toLowerCase();
         case 'timestamp':
         default:
           return new Date(row?.timestamp || 0).getTime();
@@ -49,14 +55,30 @@ export default function AuditHistoryTable({
     },
   });
 
+  const labels = useMemo(() => {
+    const unknownDevice = t('common.audit.unknownDevice', { defaultValue: 'Unknown device' });
+
+    return {
+      action: t('common.audit.labels.action', { defaultValue: 'Action' }),
+      description: t('common.audit.labels.description', { defaultValue: 'Description' }),
+      ip: t('common.audit.labels.ip', { defaultValue: 'IP' }),
+      device: t('common.audit.labels.device', { defaultValue: 'Device' }),
+      time: t('common.audit.labels.time', { defaultValue: 'Time' }),
+      viewDetails: t('common.audit.viewDetails', { defaultValue: 'View details' }),
+      detailsTitle: t('common.audit.detailsTitle', { defaultValue: 'Audit Details' }),
+      raw: t('common.audit.labels.raw', { defaultValue: 'Raw' }),
+      unknownDevice,
+    };
+  }, [t]);
+
   const columns = useMemo(() => ([
-    { key: 'action', label: 'Action', sortable: true, field: 'action', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-    { key: 'description', label: 'Description', sortable: false, field: 'description' },
-    { key: 'ip', label: 'IP', sortable: true, field: 'ip' },
-    { key: 'device', label: 'Device', sortable: true, field: 'device' },
-    { key: 'timestamp', label: 'Time', sortable: true, field: 'timestamp' },
+    { key: 'action', label: labels.action, sortable: true, field: 'action', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+    { key: 'description', label: labels.description, sortable: false, field: 'description' },
+    { key: 'ip', label: labels.ip, sortable: true, field: 'ip' },
+    { key: 'device', label: labels.device, sortable: true, field: 'device' },
+    { key: 'timestamp', label: labels.time, sortable: true, field: 'timestamp' },
     { key: 'view', label: '', sortable: false, field: 'view', align: 'right', noPrint: true, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
-  ]), []);
+  ]), [labels]);
 
   const openRow = (row) => {
     setSelected(row || null);
@@ -68,10 +90,12 @@ export default function AuditHistoryTable({
     setSelected(null);
   };
 
-  const selectedPrettyAction = selected ? (prettifyAuditAction(selected.action) || selected.action || '-') : '-';
-  const selectedPrettyDesc = selected ? (formatAuditDescription(selected) || selected.description || '-') : '-';
-  const selectedPrettyIp = selected ? (formatIpDisplay(selected.ip) || selected.ip || '-') : '-';
-  const selectedPrettyDevice = selected ? (formatDeviceDisplay(selected.device) || selected.device || 'Unknown device') : 'Unknown device';
+  const selectedPrettyAction = selected ? (prettifyAuditAction(selected.action, { t }) || selected.action || '-') : '-';
+  const selectedPrettyDesc = selected ? (formatAuditDescription(selected, { t }) || selected.description || '-') : '-';
+  const selectedPrettyIp = selected ? (formatIpDisplay(selected.ip, { t }) || selected.ip || '-') : '-';
+  const selectedPrettyDevice = selected
+    ? (formatDeviceDisplay(selected.device, { t }) || selected.device || labels.unknownDevice)
+    : labels.unknownDevice;
   const selectedTime = selected?.timestamp ? new Date(selected.timestamp).toLocaleString() : '-';
 
   const hasMeta = Boolean(meta);
@@ -101,8 +125,8 @@ export default function AuditHistoryTable({
         error={error}
         items={sortedRows}
         rows={sortedRows}
-        emptyTitle={emptyTitle}
-        emptyDescription={emptyDescription}
+        emptyTitle={resolvedEmptyTitle}
+        emptyDescription={resolvedEmptyDescription}
         loadingVariant="table"
         columns={columns}
         storageKey={storageKey}
@@ -121,25 +145,25 @@ export default function AuditHistoryTable({
             case 'action':
               return (
                 <span title={String(r?.action || '')}>
-                  {prettifyAuditAction(r?.action) || r?.action || '-'}
+                  {prettifyAuditAction(r?.action, { t }) || r?.action || '-'}
                 </span>
               );
             case 'description':
               return (
                 <span title={String(r?.description || '')} className="block max-w-180 truncate">
-                  {formatAuditDescription(r) || r?.description || '-'}
+                  {formatAuditDescription(r, { t }) || r?.description || '-'}
                 </span>
               );
             case 'ip':
               return (
                 <span title={String(r?.ip || '')} className="font-mono text-xs break-all">
-                  {formatIpDisplay(r?.ip) || r?.ip || '-'}
+                  {formatIpDisplay(r?.ip, { t }) || r?.ip || '-'}
                 </span>
               );
             case 'device':
               return (
                 <span title={String(r?.device || '')} className="block max-w-90 truncate">
-                  {formatDeviceDisplay(r?.device) || r?.device || 'Unknown device'}
+                  {formatDeviceDisplay(r?.device, { t }) || r?.device || labels.unknownDevice}
                 </span>
               );
             case 'timestamp':
@@ -148,7 +172,7 @@ export default function AuditHistoryTable({
               return (
                 <ActionButton
                   variant="neutral"
-                  title="View details"
+                  title={labels.viewDetails}
                   icon={<Eye size={16} />}
                   onClick={() => openRow(r)}
                   className="px-2"
@@ -163,40 +187,40 @@ export default function AuditHistoryTable({
       <Modal
         isOpen={open}
         onClose={close}
-        title="Audit Details"
+        title={labels.detailsTitle}
         panelClassName="max-w-3xl"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="p-4">
-            <div className="text-xs text-slate-500 mb-1">Action</div>
+            <div className="text-xs text-slate-500 mb-1">{labels.action}</div>
             <div className="font-medium">{selectedPrettyAction}</div>
-            <div className="mt-2 text-xs text-slate-500">Raw</div>
+            <div className="mt-2 text-xs text-slate-500">{labels.raw}</div>
             <div className="font-mono text-xs break-all">{String(selected?.action || '-')}</div>
           </Card>
 
           <Card className="p-4">
-            <div className="text-xs text-slate-500 mb-1">Time</div>
+            <div className="text-xs text-slate-500 mb-1">{labels.time}</div>
             <div className="font-medium">{selectedTime}</div>
           </Card>
 
           <Card className="p-4">
-            <div className="text-xs text-slate-500 mb-1">IP</div>
+            <div className="text-xs text-slate-500 mb-1">{labels.ip}</div>
             <div className="font-mono text-sm break-all">{selectedPrettyIp}</div>
-            <div className="mt-2 text-xs text-slate-500">Raw</div>
+            <div className="mt-2 text-xs text-slate-500">{labels.raw}</div>
             <div className="font-mono text-xs break-all">{String(selected?.ip || '-')}</div>
           </Card>
 
           <Card className="p-4">
-            <div className="text-xs text-slate-500 mb-1">Device</div>
+            <div className="text-xs text-slate-500 mb-1">{labels.device}</div>
             <div className="font-medium">{selectedPrettyDevice}</div>
-            <div className="mt-2 text-xs text-slate-500">Raw</div>
-            <div className="font-mono text-xs break-all">{String(selected?.device || 'Unknown device')}</div>
+            <div className="mt-2 text-xs text-slate-500">{labels.raw}</div>
+            <div className="font-mono text-xs break-all">{String(selected?.device || labels.unknownDevice)}</div>
           </Card>
 
           <Card className="p-4 md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">Description</div>
+            <div className="text-xs text-slate-500 mb-1">{labels.description}</div>
             <div className="text-sm">{selectedPrettyDesc}</div>
-            <div className="mt-2 text-xs text-slate-500">Raw</div>
+            <div className="mt-2 text-xs text-slate-500">{labels.raw}</div>
             <div className="font-mono text-xs break-all whitespace-pre-wrap">{String(selected?.description || '-')}</div>
           </Card>
         </div>

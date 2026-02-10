@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { FileDown } from 'lucide-react';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToCSV } from '../../../../utils/exportTable';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 export default function CsvDownloadButton({ getPayload, disabled = false, className = '' }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -13,7 +15,7 @@ export default function CsvDownloadButton({ getPayload, disabled = false, classN
       const payload = await (typeof getPayload === 'function' ? getPayload() : null);
       if (!payload) return;
 
-      const filename = String(payload.filename || 'export.pdf').replace(/\.pdf$/i, '.csv');
+      const filename = String(payload.filename || 'export.csv').replace(/\.pdf$/i, '.csv');
       if (Array.isArray(payload.tables) && payload.tables.length > 0) {
         exportTableToCSV({
           filename,
@@ -41,9 +43,9 @@ export default function CsvDownloadButton({ getPayload, disabled = false, classN
       icon={<FileDown size={16} />}
       disabled={disabled || busy}
       onClick={run}
-      title="CSV"
+      title={t('common.export.csv', { defaultValue: 'CSV' })}
     >
-      CSV
+      {t('common.export.csv', { defaultValue: 'CSV' })}
     </ActionButton>
   );
 }

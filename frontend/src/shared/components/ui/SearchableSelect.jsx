@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function SearchableSelect({
   value,
@@ -9,19 +10,27 @@ export default function SearchableSelect({
   options = [],
   disabled = false,
   className = '',
-  placeholder = 'Select…',
+  placeholder,
   id,
   name,
   maxVisible = 5,
-  searchPlaceholder = 'Type to search…',
+  searchPlaceholder,
   buttonProps = {},
   hideSelectedOption = true,
   clearable = true,
-  clearLabel = 'Clear',
+  clearLabel,
 }) {
+  const { t } = useI18n();
+
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const rootRef = useRef(null);
+
+  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
+  const resolvedClearLabel = clearLabel ?? t('common.actions.clear', { defaultValue: 'Clear' });
+  const resolvedNoOptionsFound = t('common.select.noOptionsFound', { defaultValue: 'No options found.' });
+  const resolvedTypeToSearchMore = t('common.select.typeToSearchMore', { defaultValue: 'Type to search more…' });
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -93,7 +102,7 @@ export default function SearchableSelect({
         {...buttonProps}
       >
         <span className={cn('truncate', selectedLabel ? 'text-gray-800' : 'text-gray-500')}>
-          {selectedLabel || placeholder}
+          {selectedLabel || resolvedPlaceholder}
         </span>
         <ChevronDown size={18} className="text-gray-500" />
       </button>
@@ -113,7 +122,7 @@ export default function SearchableSelect({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={searchPlaceholder}
+                placeholder={resolvedSearchPlaceholder}
                 className={cn(
                   'w-full pl-8 pr-2 py-2 text-sm',
                   'border border-gray-300 rounded-md',
@@ -131,12 +140,12 @@ export default function SearchableSelect({
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => onPick('')}
               >
-                {clearLabel}
+                {resolvedClearLabel}
               </button>
             ) : null}
 
             {listOptions.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500">No options found.</div>
+              <div className="px-3 py-2 text-sm text-gray-500">{resolvedNoOptionsFound}</div>
             ) : (
               listOptions.map((o) => {
                 const active = String(value || '') === o.value;
@@ -157,7 +166,7 @@ export default function SearchableSelect({
             )}
 
             {String(query || '').trim() === '' && safeOptions.length > (Number(maxVisible) || 5) ? (
-              <div className="px-3 py-2 text-xs text-gray-500">Type to search more…</div>
+              <div className="px-3 py-2 text-xs text-gray-500">{resolvedTypeToSearchMore}</div>
             ) : null}
           </div>
         </div>

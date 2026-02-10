@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { PenLine } from 'lucide-react';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const fmt = (n) => {
     const v = Number(n || 0);
@@ -158,6 +159,7 @@ const TinyStat = ({ label, value, tone = 'gray' }) => {
 };
 
 export default function ScoreActivityCard({ buckets, series }) {
+    const { t } = useI18n();
     const safeBuckets = buckets && typeof buckets === 'object' ? buckets : null;
     const safeSeries = Array.isArray(series) ? series : [];
 
@@ -289,7 +291,7 @@ export default function ScoreActivityCard({ buckets, series }) {
     }, [range, safeBuckets, safeSeries]);
 
     const derivedTotals = useMemo(() => {
-        const t = activeSeries.reduce(
+        const totals = activeSeries.reduce(
             (acc, r) => {
                 acc.touched += Number(r?.touched || 0);
                 acc.created += Number(r?.created || 0);
@@ -298,38 +300,38 @@ export default function ScoreActivityCard({ buckets, series }) {
             },
             { touched: 0, created: 0, updated: 0 }
         );
-        return t;
+        return totals;
     }, [activeSeries]);
 
-    const t = derivedTotals;
+    const totals = derivedTotals;
 
     return (
         <div className="rounded-2xl border border-indigo-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
             <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <div className="text-lg font-semibold">Scores Activity</div>
-                    <div className="text-sm text-white/80 mt-1">Mark entry edits (tabbed)</div>
+                    <div className="text-lg font-semibold">{t('dashboard.cards.scoreActivity.title')}</div>
+                    <div className="text-sm text-white/80 mt-1">{t('dashboard.cards.scoreActivity.subtitle')}</div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                    <TinyStat label="Touched" value={t?.touched} tone="indigo" />
-                    <TinyStat label="Created" value={t?.created} tone="emerald" />
-                    <TinyStat label="Updated" value={t?.updated} tone="amber" />
+                    <TinyStat label={t('dashboard.cards.scoreActivity.stats.touched')} value={totals?.touched} tone="indigo" />
+                    <TinyStat label={t('dashboard.cards.scoreActivity.stats.created')} value={totals?.created} tone="emerald" />
+                    <TinyStat label={t('dashboard.cards.scoreActivity.stats.updated')} value={totals?.updated} tone="amber" />
                 </div>
             </div>
 
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 flex-wrap">
                 <div className="inline-flex items-center gap-2 text-sm text-gray-700">
                     <PenLine size={16} />
-                    <span className="font-semibold">Range</span>
+                    <span className="font-semibold">{t('common.range.title')}</span>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-2 text-xs text-gray-600 tabular-nums">
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                            Today: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.today?.touched)}</span>
+                            {t('common.range.today')}: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.today?.touched)}</span>
                         </span>
                         <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                            Last 7: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.last7?.touched)}</span>
+                            {t('common.range.last7')}: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.last7?.touched)}</span>
                         </span>
                     </div>
 
@@ -337,10 +339,10 @@ export default function ScoreActivityCard({ buckets, series }) {
                         value={range}
                         onChange={setRange}
                         items={[
-                            { value: 'day', label: 'Day' },
-                            { value: 'week', label: 'Week' },
-                            { value: 'month', label: 'Month' },
-                            { value: 'year', label: 'Year' },
+                            { value: 'day', label: t('common.range.buckets.day') },
+                            { value: 'week', label: t('common.range.buckets.week') },
+                            { value: 'month', label: t('common.range.buckets.month') },
+                            { value: 'year', label: t('common.range.buckets.year') },
                         ]}
                     />
                 </div>
@@ -349,7 +351,9 @@ export default function ScoreActivityCard({ buckets, series }) {
             <div className="p-5">
                 <SvgBars series={activeSeries} height={180} />
                 <div className="mt-3 text-xs text-gray-500">
-                    “Touched” = scores whose latest edit happened in that bucket.
+                    {t('dashboard.cards.scoreActivity.noteDefinition', {
+                        label: t('dashboard.cards.scoreActivity.stats.touched'),
+                    })}
                 </div>
             </div>
         </div>

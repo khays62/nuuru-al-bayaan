@@ -4,23 +4,28 @@ import React, { useEffect, useState } from 'react';
 import { getAcademicYears, invalidateAcademicYearsCache } from '../api/lookups';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import Select from '../../../shared/components/ui/Select.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function AcademicYearSelect({
   value,
   onChange,
   disabled = false,
   className = '',
-  placeholder = 'Any',
+  placeholder,
   id,
   name,
   refreshKey,
   searchable = true,
   maxVisible = 5,
-  searchPlaceholder = 'Type to search…',
+  searchPlaceholder,
   ...rest
 }) {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const resolvedPlaceholder = placeholder ?? t('common.filters.any', { defaultValue: 'Any' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
 
   // refreshKey: when changed by parent, re-fetch the academic years
   useEffect(() => {
@@ -83,9 +88,9 @@ export default function AcademicYearSelect({
         onChange={(v) => onChange?.(v)}
         disabled={disabled || loading}
         options={options}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         maxVisible={maxVisible}
-        searchPlaceholder={searchPlaceholder}
+        searchPlaceholder={resolvedSearchPlaceholder}
         className={className}
         buttonProps={rest}
       />
@@ -102,7 +107,7 @@ export default function AcademicYearSelect({
       disabled={disabled || loading}
       className={className}
     >
-      <option value="">{placeholder}</option>
+      <option value="">{resolvedPlaceholder}</option>
       {items.map(y => <option key={y._id} value={y._id}>{y.yearName}</option>)}
     </Select>
   );

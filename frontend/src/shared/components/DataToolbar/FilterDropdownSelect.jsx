@@ -1,6 +1,7 @@
 import React from 'react';
 import SearchableSelect from '../ui/SearchableSelect.jsx';
 import DropdownSelect from '../ui/DropdownSelect.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 /**
  * FilterDropdownSelect
@@ -15,16 +16,20 @@ export default function FilterDropdownSelect({
   options = [],
   disabled = false,
   className = '',
-  placeholder = 'Select…',
+  placeholder,
   id,
   name,
   searchable = false,
   maxVisible = 5,
-  searchPlaceholder = 'Type to search…',
+  searchPlaceholder,
   maxHeightClassName = 'max-h-64',
   hideSelectedOption = true,
   buttonProps,
 }) {
+  const { t } = useI18n();
+  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
+
   if (searchable) {
     return (
       <SearchableSelect
@@ -35,9 +40,9 @@ export default function FilterDropdownSelect({
         options={options}
         disabled={disabled}
         className={className}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         maxVisible={maxVisible}
-        searchPlaceholder={searchPlaceholder}
+        searchPlaceholder={resolvedSearchPlaceholder}
         hideSelectedOption={hideSelectedOption}
         buttonProps={buttonProps || {}}
       />
@@ -53,7 +58,7 @@ export default function FilterDropdownSelect({
       options={options}
       disabled={disabled}
       className={className}
-      placeholder={placeholder}
+      placeholder={resolvedPlaceholder}
       maxHeightClassName={maxHeightClassName}
       hideSelectedOption={hideSelectedOption}
       buttonProps={buttonProps || {}}

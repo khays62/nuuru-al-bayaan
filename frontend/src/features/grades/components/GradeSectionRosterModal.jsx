@@ -12,8 +12,10 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import { useEntityList } from '../../../hooks/useEntityList';
 import { fetchJson } from '../../../shared/api/http';
 import toast from 'react-hot-toast';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection }) {
+  const { t } = useI18n();
   const sectionId = gradeSection?._id || '';
   const toastId = sectionId ? `roster-empty-${sectionId}` : 'roster-empty';
 
@@ -25,7 +27,7 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
       return { data: [], meta: { page: 1, limit: limit || 10, total: 0, totalPages: 1 } };
     }
     const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
       const query = new URLSearchParams();
       if (sortBy) query.append('sort', `${sortBy}:${sortDir || 'asc'}`);
@@ -37,13 +39,13 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
       return { data: res?.data || [], meta: res?.meta || {} };
     } catch (e) {
       if (e?.name === 'AbortError') {
-        throw new Error('Loading students timed out. Please try again.');
+        throw new Error(t('gradeSections.roster.errors.timeout', { defaultValue: 'Loading students timed out. Please try again.' }));
       }
       throw e;
     } finally {
-      clearTimeout(t);
+      clearTimeout(timeoutId);
     }
-  }, [isOpen]);
+  }, [isOpen, t]);
 
   const {
     items: students,
@@ -99,20 +101,20 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
     }
 
     if (total === 0) {
-      toast.error('No active students found for this Grade Section.', { id: toastId });
+      toast.error(t('gradeSections.roster.toasts.noActiveStudents', { defaultValue: 'No active students found for this Grade Section.' }), { id: toastId });
     }
-  }, [isOpen, sectionId, isLoading, error, students, meta?.total, toastId]);
+  }, [isOpen, sectionId, isLoading, error, students, meta?.total, toastId, t]);
 
   const STORAGE_KEY = 'gradeSections:roster:columns:v1';
   const columns = useMemo(() => ([
-    { key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-    { key: 'fullName', label: 'Full Name', sortable: true, field: 'fullName', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-    { key: 'gender', label: 'Gender', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
-    { key: 'grade', label: 'Grade', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-    { key: 'section', label: 'Section', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-    { key: 'shift', label: 'Shift', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-    { key: 'status', label: 'Status', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-  ]), []);
+    { key: 'studentId', label: t('gradeSections.roster.columns.studentId', { defaultValue: 'Student ID' }), sortable: true, field: 'studentId', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'fullName', label: t('gradeSections.roster.columns.fullName', { defaultValue: 'Full Name' }), sortable: true, field: 'fullName', thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+    { key: 'gender', label: t('gradeSections.roster.columns.gender', { defaultValue: 'Gender' }), thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
+    { key: 'grade', label: t('common.filters.grade', { defaultValue: 'Grade' }), thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'section', label: t('common.filters.section', { defaultValue: 'Section' }), thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
+    { key: 'shift', label: t('common.filters.shift', { defaultValue: 'Shift' }), thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
+    { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }), thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
+  ]), [t]);
 
   const outlineBtn = 'bg-white! text-blue-700! border-blue-400! hover:bg-blue-50!';
   const canExport = Boolean(!isLoading && Array.isArray(students) && students.length > 0);
@@ -132,13 +134,13 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
     const v = (key) => localVisible?.[String(key)] !== false;
 
     const cols = [
-      { key: 'studentId', label: 'Student ID', get: (r) => r.studentId || '' },
-      { key: 'fullName', label: 'Full Name', get: (r) => r.fullName || '' },
-      { key: 'gender', label: 'Gender', get: (r) => r.gender || '' },
-      { key: 'grade', label: 'Grade', get: (r) => r.grade || '' },
-      { key: 'section', label: 'Section', get: (r) => (r.section ? `Sec ${r.section}` : '') },
-      { key: 'shift', label: 'Shift', get: (r) => r.shift || '' },
-      { key: 'status', label: 'Status', get: (r) => r.status || '' },
+      { key: 'studentId', label: t('gradeSections.roster.columns.studentId', { defaultValue: 'Student ID' }), get: (r) => r.studentId || '' },
+      { key: 'fullName', label: t('gradeSections.roster.columns.fullName', { defaultValue: 'Full Name' }), get: (r) => r.fullName || '' },
+      { key: 'gender', label: t('gradeSections.roster.columns.gender', { defaultValue: 'Gender' }), get: (r) => r.gender || '' },
+      { key: 'grade', label: t('common.filters.grade', { defaultValue: 'Grade' }), get: (r) => r.grade || '' },
+      { key: 'section', label: t('common.filters.section', { defaultValue: 'Section' }), get: (r) => (r.section ? `${t('common.sectionPrefix', { defaultValue: 'Sec' })} ${r.section}` : '') },
+      { key: 'shift', label: t('common.filters.shift', { defaultValue: 'Shift' }), get: (r) => r.shift || '' },
+      { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }), get: (r) => r.status || '' },
     ].filter((c) => v(c.key));
 
     const headers = cols.map((c) => c.label);
@@ -149,29 +151,30 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
     const sectionNum = gradeSection?.section || '';
 
     const subtitle = [
-      gradeName ? `Grade: ${gradeName}` : null,
-      sectionNum ? `Section: ${sectionNum}` : null,
-      shiftName ? `Shift: ${shiftName}` : null,
+      gradeName ? `${t('common.filters.grade', { defaultValue: 'Grade' })}: ${gradeName}` : null,
+      sectionNum ? `${t('common.filters.section', { defaultValue: 'Section' })}: ${sectionNum}` : null,
+      shiftName ? `${t('common.filters.shift', { defaultValue: 'Shift' })}: ${shiftName}` : null,
     ].filter(Boolean).join(' • ');
 
     return {
       filename: 'students-roster',
-      sheetName: 'Roster',
-      title: 'Students Roster',
+      sheetName: t('gradeSections.roster.export.sheetName', { defaultValue: 'Roster' }),
+      title: t('gradeSections.roster.export.title', { defaultValue: 'Students Roster' }),
       subtitle,
       headerImageSrc: headerImg,
       headers,
       rows,
     };
-  }, [canExport, students, gradeSection]);
+  }, [canExport, students, gradeSection, t]);
 
   const title = useMemo(() => {
-    const gradeName = gradeSection?.grade?.gradeName || gradeSection?.grade?.name || 'Grade';
+    const gradeName = gradeSection?.grade?.gradeName || gradeSection?.grade?.name || t('common.filters.grade', { defaultValue: 'Grade' });
     const shiftName = gradeSection?.shift?.shiftName || gradeSection?.shift?.name || '';
     const sectionNum = gradeSection?.section || '';
-    const tail = [shiftName ? `Shift ${shiftName}` : null].filter(Boolean).join(' • ');
-    return tail ? `${gradeName} • Sec ${sectionNum} • ${tail}` : `${gradeName} • Sec ${sectionNum}`;
-  }, [gradeSection]);
+    const secPrefix = t('common.sectionPrefix', { defaultValue: 'Sec' });
+    const tail = [shiftName ? `${t('common.filters.shift', { defaultValue: 'Shift' })} ${shiftName}` : null].filter(Boolean).join(' • ');
+    return tail ? `${gradeName} • ${secPrefix} ${sectionNum} • ${tail}` : `${gradeName} • ${secPrefix} ${sectionNum}`;
+  }, [gradeSection, t]);
 
   return (
     <Modal
@@ -191,9 +194,9 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
         {error ? (
           <Alert variant="danger">{error}</Alert>
         ) : isLoading && students.length === 0 ? (
-          <LoadingState variant="table" message="Loading students..." rows={6} columns={7} />
+          <LoadingState variant="table" message={t('gradeSections.roster.loading', { defaultValue: 'Loading students...' })} rows={6} columns={7} />
         ) : students.length === 0 ? (
-          <EmptyState title="No students in this section" description="No active students found for this grade section." />
+          <EmptyState title={t('gradeSections.roster.emptyTitle', { defaultValue: 'No students in this section' })} description={t('gradeSections.roster.emptyDescription', { defaultValue: 'No active students found for this grade section.' })} />
         ) : (
           <>
             <StandardTable
@@ -229,7 +232,7 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
                 if (col.key === 'fullName') return st?.fullName;
                 if (col.key === 'gender') return st?.gender || '-';
                 if (col.key === 'grade') return st?.grade || '-';
-                if (col.key === 'section') return st?.section ? `Sec ${st.section}` : '-';
+                if (col.key === 'section') return st?.section ? `${t('common.sectionPrefix', { defaultValue: 'Sec' })} ${st.section}` : '-';
                 if (col.key === 'shift') return st?.shift || '-';
                 if (col.key === 'status') return st?.status || '-';
                 return '';

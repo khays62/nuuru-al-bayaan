@@ -3,22 +3,27 @@ import React, { useEffect, useState } from 'react';
 import { getGrades } from '../api/lookups';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function GradeSelect({
   value,
   onChange,
   disabled = false,
   className = '',
-  placeholder = 'Any',
+  placeholder,
   id,
   name,
   searchable = false,
   maxVisible = 5,
-  searchPlaceholder = 'Type to search…',
+  searchPlaceholder,
   ...rest
 }) {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const resolvedPlaceholder = placeholder ?? t('common.filters.any', { defaultValue: 'Any' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
 
   useEffect(() => {
     let ignore = false;
@@ -49,9 +54,9 @@ export default function GradeSelect({
         onChange={(v) => onChange?.(v)}
         disabled={disabled || loading}
         options={options}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         maxVisible={maxVisible}
-        searchPlaceholder={searchPlaceholder}
+        searchPlaceholder={resolvedSearchPlaceholder}
         className={className}
         buttonProps={rest}
       />
@@ -68,7 +73,7 @@ export default function GradeSelect({
       onChange={(v) => onChange?.(v)}
       disabled={disabled || loading}
       options={options}
-      placeholder={placeholder}
+      placeholder={resolvedPlaceholder}
       className={className}
       buttonProps={rest}
     />

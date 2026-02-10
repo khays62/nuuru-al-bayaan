@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const variants = {
   indigo: 'border-indigo-200 bg-indigo-50 text-indigo-700',
@@ -11,11 +12,14 @@ export default function Chip({
   variant = 'indigo',
   className = '',
   onRemove,
-  removeLabel = 'Remove',
+  removeLabel,
   children,
   ...rest
 }) {
+  const { t } = useI18n();
+
   const removable = typeof onRemove === 'function';
+  const resolvedRemoveLabel = removeLabel ?? t('common.actions.remove', { defaultValue: 'Remove' });
 
   return (
     <span
@@ -36,8 +40,8 @@ export default function Chip({
             'opacity-80 hover:opacity-100',
             variant === 'brand' ? 'bg-white/20 hover:bg-white/25' : 'hover:bg-black/5'
           )}
-          aria-label={removeLabel}
-          title={removeLabel}
+          aria-label={resolvedRemoveLabel}
+          title={resolvedRemoveLabel}
         >
           ×
         </button>

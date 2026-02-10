@@ -19,6 +19,7 @@ import CopyTableButton from '../../../shared/components/exports/downloadButtons/
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 import GradeSetupForm from '../components/GradeSetupForm.jsx';
 
@@ -32,6 +33,7 @@ import {
 
 export default function GradesSetupPage() {
   const qc = useQueryClient();
+  const { t } = useI18n();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -95,29 +97,33 @@ export default function GradesSetupPage() {
   const createMut = useMutation({
     mutationFn: createSetupGrade,
     onSuccess: async () => {
-      toast.success('Grade created');
+      toast.success(t('setup.grades.toasts.created', { defaultValue: 'Grade created' }));
       setOpen(false);
       setEditing(null);
       await qc.invalidateQueries({ queryKey: setupKeys.grades() });
     },
-    onError: (e) => toast.error(String(e?.data?.message || e?.data?.error || e?.message || 'Failed to create')),
+    onError: (e) => toast.error(String(
+      e?.data?.message || e?.data?.error || e?.message || t('common.errors.failedToCreate', { defaultValue: 'Failed to create' })
+    )),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, payload }) => updateSetupGrade(id, payload),
     onSuccess: async () => {
-      toast.success('Grade updated');
+      toast.success(t('setup.grades.toasts.updated', { defaultValue: 'Grade updated' }));
       setOpen(false);
       setEditing(null);
       await qc.invalidateQueries({ queryKey: setupKeys.grades() });
     },
-    onError: (e) => toast.error(String(e?.data?.message || e?.data?.error || e?.message || 'Failed to update')),
+    onError: (e) => toast.error(String(
+      e?.data?.message || e?.data?.error || e?.message || t('common.errors.failedToUpdate', { defaultValue: 'Failed to update' })
+    )),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id) => deleteSetupGrade(id),
     onSuccess: async () => {
-      toast.success('Grade deleted');
+      toast.success(t('setup.grades.toasts.deleted', { defaultValue: 'Grade deleted' }));
       await qc.invalidateQueries({ queryKey: setupKeys.grades() });
     },
     onError: (e) => {
@@ -125,26 +131,29 @@ export default function GradesSetupPage() {
       if (data?.inUse) {
         const refs = data?.refs || {};
         const parts = [];
-        if ((refs.gradeSections ?? 0) > 0) parts.push(`Grade Sections: ${refs.gradeSections}`);
-        if ((refs.enrollments ?? 0) > 0) parts.push(`Enrollments: ${refs.enrollments}`);
-        if ((refs.subjects ?? 0) > 0) parts.push(`Subjects: ${refs.subjects}`);
+        if ((refs.gradeSections ?? 0) > 0) parts.push(`${t('setup.grades.refs.gradeSections', { defaultValue: 'Grade Sections' })}: ${refs.gradeSections}`);
+        if ((refs.enrollments ?? 0) > 0) parts.push(`${t('setup.grades.refs.enrollments', { defaultValue: 'Enrollments' })}: ${refs.enrollments}`);
+        if ((refs.subjects ?? 0) > 0) parts.push(`${t('setup.grades.refs.subjects', { defaultValue: 'Subjects' })}: ${refs.subjects}`);
         const suffix = parts.length ? ` (${parts.join(', ')})` : '';
-        toast.error(`Cannot delete: Grade is in use${suffix}`);
+        toast.error(t('setup.grades.errors.cannotDeleteInUse', {
+          defaultValue: 'Cannot delete: Grade is in use{{suffix}}',
+          suffix,
+        }));
         return;
       }
-      const msg = data?.error || data?.message || e?.message || 'Failed to delete';
+      const msg = data?.error || data?.message || e?.message || t('common.errors.failedToDelete', { defaultValue: 'Failed to delete' });
       toast.error(String(msg));
     },
   });
 
   const columns = useMemo(
     () => [
-      { key: 'gradeName', label: 'Grade', sortable: true, field: 'gradeName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-      { key: 'order', label: 'Order', sortable: true, field: 'order', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-      { key: 'updatedAt', label: 'Updated', sortable: true, field: 'updatedAt', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-      { key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
+      { key: 'gradeName', label: t('setup.grades.columns.grade', { defaultValue: 'Grade' }), sortable: true, field: 'gradeName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+      { key: 'order', label: t('common.table.order', { defaultValue: 'Order' }), sortable: true, field: 'order', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+      { key: 'updatedAt', label: t('common.table.updated', { defaultValue: 'Updated' }), sortable: true, field: 'updatedAt', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+      { key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
     ],
-    []
+    [t]
   );
 
   const onAdd = () => {
@@ -159,7 +168,7 @@ export default function GradesSetupPage() {
 
   const onDelete = async (row) => {
     if (!row?._id) return;
-    if (!window.confirm('Delete this grade? This is only allowed if not in use.')) return;
+    if (!window.confirm(t('setup.grades.confirms.delete', { defaultValue: 'Delete this grade? This is only allowed if not in use.' }))) return;
     deleteMut.mutate(row._id);
   };
 
@@ -182,9 +191,9 @@ export default function GradesSetupPage() {
 
     const dtf = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
     const cols = [
-      { key: 'gradeName', label: 'Grade', get: (g) => g?.gradeName || '' },
-      { key: 'order', label: 'Order', get: (g) => (Number.isFinite(Number(g?.order)) ? String(g.order) : '') },
-      { key: 'updatedAt', label: 'Updated', get: (g) => (g?.updatedAt ? dtf.format(new Date(g.updatedAt)) : '') },
+      { key: 'gradeName', label: t('setup.grades.columns.grade', { defaultValue: 'Grade' }), get: (g) => g?.gradeName || '' },
+      { key: 'order', label: t('common.table.order', { defaultValue: 'Order' }), get: (g) => (Number.isFinite(Number(g?.order)) ? String(g.order) : '') },
+      { key: 'updatedAt', label: t('common.table.updated', { defaultValue: 'Updated' }), get: (g) => (g?.updatedAt ? dtf.format(new Date(g.updatedAt)) : '') },
       // actions are UI-only; never export
     ].filter((c) => isVisible(c.key));
 
@@ -193,9 +202,13 @@ export default function GradesSetupPage() {
 
     return {
       filename: 'setup-grades.pdf',
-      sheetName: 'Grades',
+      sheetName: t('setup.grades.sheetName', { defaultValue: 'Grades' }),
       title: '',
-      subtitle: `Total: ${sorted.length} • Generated: ${new Date().toLocaleString()}`,
+      subtitle: t('common.export.subtitle', {
+        defaultValue: 'Total: {{count}} • Generated: {{date}}',
+        count: sorted.length,
+        date: new Date().toLocaleString(),
+      }),
       headerImageSrc: headerImg,
       headers,
       rows,
@@ -246,7 +259,7 @@ export default function GradesSetupPage() {
                     setSearch(v);
                     setPage(1);
                   }}
-                  placeholder="Search grades..."
+                  placeholder={t('setup.grades.searchPlaceholder', { defaultValue: 'Search grades...' })}
                 />
               </div>
             </div>
@@ -260,7 +273,7 @@ export default function GradesSetupPage() {
                   onClick={onAdd}
                   icon={<Plus size={20} />}
                 >
-                  Add Grade
+                  {t('setup.grades.actions.add', { defaultValue: 'Add Grade' })}
                 </Button>
               </div>
 
@@ -271,9 +284,9 @@ export default function GradesSetupPage() {
                   icon={<Printer size={16} />}
                   disabled={!canExport}
                   onClick={handlePrint}
-                  title="Print"
+                  title={t('common.actions.print', { defaultValue: 'Print' })}
                 >
-                  Print
+                  {t('common.actions.print', { defaultValue: 'Print' })}
                 </ActionButton>
                 <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
                 <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
@@ -285,7 +298,7 @@ export default function GradesSetupPage() {
                   icon={<RotateCcw size={16} />}
                   onClick={onReset}
                 >
-                  Reset
+                  {t('common.actions.reset', { defaultValue: 'Reset' })}
                 </ActionButton>
               </div>
             </div>
@@ -295,19 +308,22 @@ export default function GradesSetupPage() {
     >
       <div className="space-y-6 with-print-header with-print-footer">
         <PrintHeader />
-        <PrintFooter left="Generated by Nuuru Al-Bayaan" />
+        <PrintFooter left={t('common.generatedBy', { defaultValue: 'Generated by Nuuru Al-Bayaan' })} />
 
         <StandardTable
           isLoading={query.isLoading && grades.length === 0}
           error={query.error}
           items={sorted}
-          loadingMessage="Loading grades..."
+          loadingMessage={t('setup.grades.loading', { defaultValue: 'Loading grades...' })}
           loadingVariant="table"
           loadingRows={6}
           loadingColumns={3}
-          emptyTitle="No grades found"
-          emptyDescription={search ? 'Try a different search.' : 'Create your first grade.'}
-          emptyActionLabel="Add Grade"
+          emptyTitle={t('setup.grades.emptyTitle', { defaultValue: 'No grades found' })}
+          emptyDescription={search
+            ? t('common.emptyStates.tryDifferentSearch', { defaultValue: 'Try a different search.' })
+            : t('setup.grades.emptyCreateFirst', { defaultValue: 'Create your first grade.' })
+          }
+          emptyActionLabel={t('setup.grades.actions.add', { defaultValue: 'Add Grade' })}
           onEmptyAction={onAdd}
           onRetry={() => query.refetch()}
 
@@ -342,8 +358,8 @@ export default function GradesSetupPage() {
                     actions={[
                       {
                         key: 'edit',
-                        label: 'Edit',
-                        title: 'Edit grade',
+                        label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                        title: t('setup.grades.rowActions.editTitle', { defaultValue: 'Edit grade' }),
                         tone: 'edit',
                         icon: <Pencil size={16} />,
                         disabled: createMut.isPending || updateMut.isPending,
@@ -351,8 +367,8 @@ export default function GradesSetupPage() {
                       },
                       {
                         key: 'delete',
-                        label: 'Delete',
-                        title: 'Delete grade',
+                        label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                        title: t('setup.grades.rowActions.deleteTitle', { defaultValue: 'Delete grade' }),
                         tone: 'delete',
                         icon: <Trash2 size={16} />,
                         disabled: deleteMut.isPending,
@@ -387,7 +403,10 @@ export default function GradesSetupPage() {
           setOpen(false);
           setEditing(null);
         }}
-        title={editing ? 'Edit Grade' : 'Add Grade'}
+        title={editing
+          ? t('setup.grades.modal.editTitle', { defaultValue: 'Edit Grade' })
+          : t('setup.grades.modal.addTitle', { defaultValue: 'Add Grade' })
+        }
       >
         <GradeSetupForm
           initial={editing || {}}

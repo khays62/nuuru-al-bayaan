@@ -3,9 +3,12 @@ import Label from '../../../shared/components/ui/Label.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 // Kani waa foomka oo si buuxda u shaqaynaya
 export default function SubjectForm({ subject, onClose, onSubmit, allGrades, isSubmitting=false, onDirty }) {
+    const { t } = useI18n();
+
     // State lagu keydiyo xogta foomka
     const [formData, setFormData] = useState({
         subjectName: '',
@@ -76,15 +79,15 @@ export default function SubjectForm({ subject, onClose, onSubmit, allGrades, isS
         <form onSubmit={handleSubmit} className="space-y-4">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <Label>Subject Name</Label>
+                    <Label>{t('subjects.form.labels.subjectName', { defaultValue: 'Subject Name' })}</Label>
                     <Input type="text" name="subjectName" value={formData.subjectName} onChange={handleChange} className="mt-1" required disabled={isSubmitting} />
                 </div>
                 <div>
-                    <Label>Subject Code</Label>
+                    <Label>{t('subjects.form.labels.subjectCode', { defaultValue: 'Subject Code' })}</Label>
                     <Input type="text" name="subjectCode" value={formData.subjectCode} onChange={handleCodeChange} className="mt-1" disabled={isSubmitting} />
                 </div>
                 <div className="md:col-span-2">
-                    <Label>Associated Grades</Label>
+                    <Label>{t('subjects.form.labels.associatedGrades', { defaultValue: 'Associated Grades' })}</Label>
                     <div className="mt-1 max-h-56 overflow-y-auto border border-gray-300 rounded-md px-3 py-2 divide-y divide-gray-100">
                         {[...allGrades].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map(grade => {
                             const id = grade._id;
@@ -97,15 +100,18 @@ export default function SubjectForm({ subject, onClose, onSubmit, allGrades, isS
                             );
                         })}
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">Select one or more grades.</p>
+                    <p className="mt-1 text-xs text-gray-500">{t('subjects.form.hints.selectGrades', { defaultValue: 'Select one or more grades.' })}</p>
                 </div>
             </div>
             <div className="mt-6 flex justify-end space-x-4">
                 <Button type="button" variant="neutral" onClick={onClose} disabled={isSubmitting}>
-                    Cancel
+                    {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                 </Button>
                 <Button type="submit" variant="brand" disabled={isSubmitting}>
-                    {isSubmitting ? (subject ? 'Updating...' : 'Saving...') : (subject ? 'Update Subject' : 'Save Subject')}
+                    {isSubmitting
+                      ? (subject ? t('common.updating', { defaultValue: 'Updating…' }) : t('common.saving', { defaultValue: 'Saving…' }))
+                      : (subject ? t('subjects.actions.updateSubject', { defaultValue: 'Update Subject' }) : t('subjects.actions.saveSubject', { defaultValue: 'Save Subject' }))
+                    }
                 </Button>
             </div>
         </form>

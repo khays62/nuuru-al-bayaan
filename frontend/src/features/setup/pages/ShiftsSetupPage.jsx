@@ -19,6 +19,7 @@ import CopyTableButton from '../../../shared/components/exports/downloadButtons/
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 import ShiftSetupForm from '../components/ShiftSetupForm.jsx';
 
@@ -32,6 +33,7 @@ import {
 
 export default function ShiftsSetupPage() {
   const qc = useQueryClient();
+  const { t } = useI18n();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -88,29 +90,33 @@ export default function ShiftsSetupPage() {
   const createMut = useMutation({
     mutationFn: createSetupShift,
     onSuccess: async () => {
-      toast.success('Shift created');
+      toast.success(t('setup.shifts.toasts.created', { defaultValue: 'Shift created' }));
       setOpen(false);
       setEditing(null);
       await qc.invalidateQueries({ queryKey: setupKeys.shifts() });
     },
-    onError: (e) => toast.error(String(e?.data?.message || e?.data?.error || e?.message || 'Failed to create')),
+    onError: (e) => toast.error(String(
+      e?.data?.message || e?.data?.error || e?.message || t('common.errors.failedToCreate', { defaultValue: 'Failed to create' })
+    )),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, payload }) => updateSetupShift(id, payload),
     onSuccess: async () => {
-      toast.success('Shift updated');
+      toast.success(t('setup.shifts.toasts.updated', { defaultValue: 'Shift updated' }));
       setOpen(false);
       setEditing(null);
       await qc.invalidateQueries({ queryKey: setupKeys.shifts() });
     },
-    onError: (e) => toast.error(String(e?.data?.message || e?.data?.error || e?.message || 'Failed to update')),
+    onError: (e) => toast.error(String(
+      e?.data?.message || e?.data?.error || e?.message || t('common.errors.failedToUpdate', { defaultValue: 'Failed to update' })
+    )),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id) => deleteSetupShift(id),
     onSuccess: async () => {
-      toast.success('Shift deleted');
+      toast.success(t('setup.shifts.toasts.deleted', { defaultValue: 'Shift deleted' }));
       await qc.invalidateQueries({ queryKey: setupKeys.shifts() });
     },
     onError: (e) => {
@@ -118,24 +124,27 @@ export default function ShiftsSetupPage() {
       if (data?.inUse) {
         const refs = data?.refs || {};
         const parts = [];
-        if ((refs.gradeSections ?? 0) > 0) parts.push(`Grade Sections: ${refs.gradeSections}`);
-        if ((refs.enrollments ?? 0) > 0) parts.push(`Enrollments: ${refs.enrollments}`);
+        if ((refs.gradeSections ?? 0) > 0) parts.push(`${t('setup.shifts.refs.gradeSections', { defaultValue: 'Grade Sections' })}: ${refs.gradeSections}`);
+        if ((refs.enrollments ?? 0) > 0) parts.push(`${t('setup.shifts.refs.enrollments', { defaultValue: 'Enrollments' })}: ${refs.enrollments}`);
         const suffix = parts.length ? ` (${parts.join(', ')})` : '';
-        toast.error(`Cannot delete: Shift is in use${suffix}`);
+        toast.error(t('setup.shifts.errors.cannotDeleteInUse', {
+          defaultValue: 'Cannot delete: Shift is in use{{suffix}}',
+          suffix,
+        }));
         return;
       }
-      const msg = data?.error || data?.message || e?.message || 'Failed to delete';
+      const msg = data?.error || data?.message || e?.message || t('common.errors.failedToDelete', { defaultValue: 'Failed to delete' });
       toast.error(String(msg));
     },
   });
 
   const columns = useMemo(
     () => [
-      { key: 'shiftName', label: 'Shift', sortable: true, field: 'shiftName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-      { key: 'updatedAt', label: 'Updated', sortable: true, field: 'updatedAt', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-      { key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
+      { key: 'shiftName', label: t('setup.shifts.columns.shift', { defaultValue: 'Shift' }), sortable: true, field: 'shiftName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+      { key: 'updatedAt', label: t('common.table.updated', { defaultValue: 'Updated' }), sortable: true, field: 'updatedAt', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+      { key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
     ],
-    []
+    [t]
   );
 
   const onAdd = () => {
@@ -150,7 +159,7 @@ export default function ShiftsSetupPage() {
 
   const onDelete = async (row) => {
     if (!row?._id) return;
-    if (!window.confirm('Delete this shift? This is only allowed if not in use.')) return;
+    if (!window.confirm(t('setup.shifts.confirms.delete', { defaultValue: 'Delete this shift? This is only allowed if not in use.' }))) return;
     deleteMut.mutate(row._id);
   };
 
@@ -173,8 +182,8 @@ export default function ShiftsSetupPage() {
 
     const dtf = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
     const cols = [
-      { key: 'shiftName', label: 'Shift', get: (s) => s?.shiftName || '' },
-      { key: 'updatedAt', label: 'Updated', get: (s) => (s?.updatedAt ? dtf.format(new Date(s.updatedAt)) : '') },
+      { key: 'shiftName', label: t('setup.shifts.columns.shift', { defaultValue: 'Shift' }), get: (s) => s?.shiftName || '' },
+      { key: 'updatedAt', label: t('common.table.updated', { defaultValue: 'Updated' }), get: (s) => (s?.updatedAt ? dtf.format(new Date(s.updatedAt)) : '') },
       // actions are UI-only; never export
     ].filter((c) => isVisible(c.key));
 
@@ -183,9 +192,13 @@ export default function ShiftsSetupPage() {
 
     return {
       filename: 'setup-shifts.pdf',
-      sheetName: 'Shifts',
+      sheetName: t('setup.shifts.sheetName', { defaultValue: 'Shifts' }),
       title: '',
-      subtitle: `Total: ${sorted.length} • Generated: ${new Date().toLocaleString()}`,
+      subtitle: t('common.export.subtitle', {
+        defaultValue: 'Total: {{count}} • Generated: {{date}}',
+        count: sorted.length,
+        date: new Date().toLocaleString(),
+      }),
       headerImageSrc: headerImg,
       headers,
       rows,
@@ -236,7 +249,7 @@ export default function ShiftsSetupPage() {
                     setSearch(v);
                     setPage(1);
                   }}
-                  placeholder="Search shifts..."
+                  placeholder={t('setup.shifts.searchPlaceholder', { defaultValue: 'Search shifts...' })}
                 />
               </div>
             </div>
@@ -250,7 +263,7 @@ export default function ShiftsSetupPage() {
                   onClick={onAdd}
                   icon={<Plus size={20} />}
                 >
-                  Add Shift
+                  {t('setup.shifts.actions.add', { defaultValue: 'Add Shift' })}
                 </Button>
               </div>
 
@@ -261,9 +274,9 @@ export default function ShiftsSetupPage() {
                   icon={<Printer size={16} />}
                   disabled={!canExport}
                   onClick={handlePrint}
-                  title="Print"
+                  title={t('common.actions.print', { defaultValue: 'Print' })}
                 >
-                  Print
+                  {t('common.actions.print', { defaultValue: 'Print' })}
                 </ActionButton>
                 <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
                 <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
@@ -275,7 +288,7 @@ export default function ShiftsSetupPage() {
                   icon={<RotateCcw size={16} />}
                   onClick={onReset}
                 >
-                  Reset
+                  {t('common.actions.reset', { defaultValue: 'Reset' })}
                 </ActionButton>
               </div>
             </div>
@@ -285,19 +298,22 @@ export default function ShiftsSetupPage() {
     >
       <div className="space-y-6 with-print-header with-print-footer">
         <PrintHeader />
-        <PrintFooter left="Generated by Nuuru Al-Bayaan" />
+        <PrintFooter left={t('common.generatedBy', { defaultValue: 'Generated by Nuuru Al-Bayaan' })} />
 
         <StandardTable
           isLoading={query.isLoading && shifts.length === 0}
           error={query.error}
           items={sorted}
-          loadingMessage="Loading shifts..."
+          loadingMessage={t('setup.shifts.loading', { defaultValue: 'Loading shifts...' })}
           loadingVariant="table"
           loadingRows={6}
           loadingColumns={2}
-          emptyTitle="No shifts found"
-          emptyDescription={search ? 'Try a different search.' : 'Create your first shift.'}
-          emptyActionLabel="Add Shift"
+          emptyTitle={t('setup.shifts.emptyTitle', { defaultValue: 'No shifts found' })}
+          emptyDescription={search
+            ? t('common.emptyStates.tryDifferentSearch', { defaultValue: 'Try a different search.' })
+            : t('setup.shifts.emptyCreateFirst', { defaultValue: 'Create your first shift.' })
+          }
+          emptyActionLabel={t('setup.shifts.actions.add', { defaultValue: 'Add Shift' })}
           onEmptyAction={onAdd}
           onRetry={() => query.refetch()}
 
@@ -330,8 +346,8 @@ export default function ShiftsSetupPage() {
                     actions={[
                       {
                         key: 'edit',
-                        label: 'Edit',
-                        title: 'Edit shift',
+                        label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                        title: t('setup.shifts.rowActions.editTitle', { defaultValue: 'Edit shift' }),
                         tone: 'edit',
                         icon: <Pencil size={16} />,
                         disabled: createMut.isPending || updateMut.isPending,
@@ -339,8 +355,8 @@ export default function ShiftsSetupPage() {
                       },
                       {
                         key: 'delete',
-                        label: 'Delete',
-                        title: 'Delete shift',
+                        label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                        title: t('setup.shifts.rowActions.deleteTitle', { defaultValue: 'Delete shift' }),
                         tone: 'delete',
                         icon: <Trash2 size={16} />,
                         disabled: deleteMut.isPending,
@@ -375,7 +391,10 @@ export default function ShiftsSetupPage() {
           setOpen(false);
           setEditing(null);
         }}
-        title={editing ? 'Edit Shift' : 'Add Shift'}
+        title={editing
+          ? t('setup.shifts.modal.editTitle', { defaultValue: 'Edit Shift' })
+          : t('setup.shifts.modal.addTitle', { defaultValue: 'Add Shift' })
+        }
       >
         <ShiftSetupForm
           initial={editing || {}}

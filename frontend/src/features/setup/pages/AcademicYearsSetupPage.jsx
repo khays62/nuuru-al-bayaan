@@ -19,6 +19,7 @@ import CopyTableButton from '../../../shared/components/exports/downloadButtons/
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 import AcademicYearSetupForm from '../components/AcademicYearSetupForm.jsx';
 
@@ -32,6 +33,7 @@ import {
 
 export default function AcademicYearsSetupPage() {
   const qc = useQueryClient();
+  const { t } = useI18n();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -91,29 +93,33 @@ export default function AcademicYearsSetupPage() {
   const createMut = useMutation({
     mutationFn: createSetupAcademicYear,
     onSuccess: async () => {
-      toast.success('Academic year created');
+      toast.success(t('setup.academicYears.toasts.created', { defaultValue: 'Academic year created' }));
       setOpen(false);
       setEditing(null);
       await qc.invalidateQueries({ queryKey: setupKeys.academicYears() });
     },
-    onError: (e) => toast.error(String(e?.data?.message || e?.data?.error || e?.message || 'Failed to create')),
+    onError: (e) => toast.error(String(
+      e?.data?.message || e?.data?.error || e?.message || t('common.errors.failedToCreate', { defaultValue: 'Failed to create' })
+    )),
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, payload }) => updateSetupAcademicYear(id, payload),
     onSuccess: async () => {
-      toast.success('Academic year updated');
+      toast.success(t('setup.academicYears.toasts.updated', { defaultValue: 'Academic year updated' }));
       setOpen(false);
       setEditing(null);
       await qc.invalidateQueries({ queryKey: setupKeys.academicYears() });
     },
-    onError: (e) => toast.error(String(e?.data?.message || e?.data?.error || e?.message || 'Failed to update')),
+    onError: (e) => toast.error(String(
+      e?.data?.message || e?.data?.error || e?.message || t('common.errors.failedToUpdate', { defaultValue: 'Failed to update' })
+    )),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id) => deleteSetupAcademicYear(id),
     onSuccess: async () => {
-      toast.success('Academic year deleted');
+      toast.success(t('setup.academicYears.toasts.deleted', { defaultValue: 'Academic year deleted' }));
       await qc.invalidateQueries({ queryKey: setupKeys.academicYears() });
     },
     onError: (e) => {
@@ -121,27 +127,30 @@ export default function AcademicYearsSetupPage() {
       if (data?.inUse) {
         const refs = data?.refs || {};
         const parts = [];
-        if ((refs.enrollments ?? 0) > 0) parts.push(`Enrollments: ${refs.enrollments}`);
-        if ((refs.exams ?? 0) > 0) parts.push(`Exams: ${refs.exams}`);
-        if ((refs.lessonPlans ?? 0) > 0) parts.push(`Lesson Plans: ${refs.lessonPlans}`);
-        if ((refs.cohorts ?? 0) > 0) parts.push(`Cohorts: ${refs.cohorts}`);
-        if ((refs.teachers ?? 0) > 0) parts.push(`Teachers: ${refs.teachers}`);
+        if ((refs.enrollments ?? 0) > 0) parts.push(`${t('setup.academicYears.refs.enrollments', { defaultValue: 'Enrollments' })}: ${refs.enrollments}`);
+        if ((refs.exams ?? 0) > 0) parts.push(`${t('setup.academicYears.refs.exams', { defaultValue: 'Exams' })}: ${refs.exams}`);
+        if ((refs.lessonPlans ?? 0) > 0) parts.push(`${t('setup.academicYears.refs.lessonPlans', { defaultValue: 'Lesson Plans' })}: ${refs.lessonPlans}`);
+        if ((refs.cohorts ?? 0) > 0) parts.push(`${t('setup.academicYears.refs.cohorts', { defaultValue: 'Cohorts' })}: ${refs.cohorts}`);
+        if ((refs.teachers ?? 0) > 0) parts.push(`${t('setup.academicYears.refs.teachers', { defaultValue: 'Teachers' })}: ${refs.teachers}`);
         const suffix = parts.length ? ` (${parts.join(', ')})` : '';
-        toast.error(`Cannot delete: Academic year is in use${suffix}`);
+        toast.error(t('setup.academicYears.errors.cannotDeleteInUse', {
+          defaultValue: 'Cannot delete: Academic year is in use{{suffix}}',
+          suffix,
+        }));
         return;
       }
-      const msg = data?.error || data?.message || e?.message || 'Failed to delete';
+      const msg = data?.error || data?.message || e?.message || t('common.errors.failedToDelete', { defaultValue: 'Failed to delete' });
       toast.error(String(msg));
     },
   });
 
   const columns = useMemo(
     () => [
-      { key: 'yearName', label: 'Academic Year', sortable: true, field: 'yearName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-      { key: 'updatedAt', label: 'Updated', sortable: true, field: 'updatedAt', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-      { key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
+      { key: 'yearName', label: t('setup.academicYears.columns.academicYear', { defaultValue: 'Academic Year' }), sortable: true, field: 'yearName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+      { key: 'updatedAt', label: t('common.table.updated', { defaultValue: 'Updated' }), sortable: true, field: 'updatedAt', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+      { key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
     ],
-    []
+    [t]
   );
 
   const onAdd = () => {
@@ -156,7 +165,7 @@ export default function AcademicYearsSetupPage() {
 
   const onDelete = async (row) => {
     if (!row?._id) return;
-    if (!window.confirm('Delete this academic year? This is only allowed if not in use.')) return;
+    if (!window.confirm(t('setup.academicYears.confirms.delete', { defaultValue: 'Delete this academic year? This is only allowed if not in use.' }))) return;
     deleteMut.mutate(row._id);
   };
 
@@ -180,8 +189,8 @@ export default function AcademicYearsSetupPage() {
 
     const dtf = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
     const cols = [
-      { key: 'yearName', label: 'Academic Year', get: (y) => y?.yearName || '' },
-      { key: 'updatedAt', label: 'Updated', get: (y) => (y?.updatedAt ? dtf.format(new Date(y.updatedAt)) : '') },
+      { key: 'yearName', label: t('setup.academicYears.columns.academicYear', { defaultValue: 'Academic Year' }), get: (y) => y?.yearName || '' },
+      { key: 'updatedAt', label: t('common.table.updated', { defaultValue: 'Updated' }), get: (y) => (y?.updatedAt ? dtf.format(new Date(y.updatedAt)) : '') },
       // actions are UI-only; never export
     ].filter((c) => isVisible(c.key));
 
@@ -190,9 +199,13 @@ export default function AcademicYearsSetupPage() {
 
     return {
       filename: 'setup-academic-years.pdf',
-      sheetName: 'AcademicYears',
+         sheetName: t('setup.academicYears.sheetName', { defaultValue: 'Academic Years' }),
       title: '',
-      subtitle: `Total: ${sorted.length} • Generated: ${new Date().toLocaleString()}`,
+      subtitle: t('common.export.subtitle', {
+        defaultValue: 'Total: {{count}} • Generated: {{date}}',
+        count: sorted.length,
+        date: new Date().toLocaleString(),
+      }),
       headerImageSrc: headerImg,
       headers,
       rows,
@@ -242,7 +255,7 @@ export default function AcademicYearsSetupPage() {
                     setSearch(v);
                     setPage(1);
                   }}
-                  placeholder="Search academic years..."
+                  placeholder={t('setup.academicYears.searchPlaceholder', { defaultValue: 'Search academic years...' })}
                 />
               </div>
             </div>
@@ -256,7 +269,7 @@ export default function AcademicYearsSetupPage() {
                   onClick={onAdd}
                   icon={<Plus size={20} />}
                 >
-                  Add Academic Year
+                  {t('setup.academicYears.actions.add', { defaultValue: 'Add Academic Year' })}
                 </Button>
               </div>
 
@@ -267,9 +280,9 @@ export default function AcademicYearsSetupPage() {
                   icon={<Printer size={16} />}
                   disabled={!canExport}
                   onClick={handlePrint}
-                  title="Print"
+                  title={t('common.actions.print', { defaultValue: 'Print' })}
                 >
-                  Print
+                  {t('common.actions.print', { defaultValue: 'Print' })}
                 </ActionButton>
                 <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
                 <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
@@ -281,7 +294,7 @@ export default function AcademicYearsSetupPage() {
                   icon={<RotateCcw size={16} />}
                   onClick={onReset}
                 >
-                  Reset
+                  {t('common.actions.reset', { defaultValue: 'Reset' })}
                 </ActionButton>
               </div>
             </div>
@@ -291,19 +304,22 @@ export default function AcademicYearsSetupPage() {
     >
       <div className="space-y-6 with-print-header with-print-footer">
         <PrintHeader />
-        <PrintFooter left="Generated by Nuuru Al-Bayaan" />
+        <PrintFooter left={t('common.generatedBy', { defaultValue: 'Generated by Nuuru Al-Bayaan' })} />
 
         <StandardTable
           isLoading={query.isLoading && years.length === 0}
           error={query.error}
           items={sorted}
-          loadingMessage="Loading academic years..."
+          loadingMessage={t('setup.academicYears.loading', { defaultValue: 'Loading academic years...' })}
           loadingVariant="table"
           loadingRows={6}
           loadingColumns={2}
-          emptyTitle="No academic years found"
-          emptyDescription={search ? 'Try a different search.' : 'Create your first academic year.'}
-          emptyActionLabel="Add Academic Year"
+          emptyTitle={t('setup.academicYears.emptyTitle', { defaultValue: 'No academic years found' })}
+          emptyDescription={search
+            ? t('common.emptyStates.tryDifferentSearch', { defaultValue: 'Try a different search.' })
+            : t('setup.academicYears.emptyCreateFirst', { defaultValue: 'Create your first academic year.' })
+          }
+          emptyActionLabel={t('setup.academicYears.actions.add', { defaultValue: 'Add Academic Year' })}
           onEmptyAction={onAdd}
           onRetry={() => query.refetch()}
 
@@ -336,8 +352,8 @@ export default function AcademicYearsSetupPage() {
                     actions={[
                       {
                         key: 'edit',
-                        label: 'Edit',
-                        title: 'Edit academic year',
+                        label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                        title: t('setup.academicYears.rowActions.editTitle', { defaultValue: 'Edit academic year' }),
                         tone: 'edit',
                         icon: <Pencil size={16} />,
                         disabled: createMut.isPending || updateMut.isPending,
@@ -345,8 +361,8 @@ export default function AcademicYearsSetupPage() {
                       },
                       {
                         key: 'delete',
-                        label: 'Delete',
-                        title: 'Delete academic year',
+                        label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                        title: t('setup.academicYears.rowActions.deleteTitle', { defaultValue: 'Delete academic year' }),
                         tone: 'delete',
                         icon: <Trash2 size={16} />,
                         disabled: deleteMut.isPending,
@@ -381,7 +397,10 @@ export default function AcademicYearsSetupPage() {
           setOpen(false);
           setEditing(null);
         }}
-        title={editing ? 'Edit Academic Year' : 'Add Academic Year'}
+        title={editing
+          ? t('setup.academicYears.modal.editTitle', { defaultValue: 'Edit Academic Year' })
+          : t('setup.academicYears.modal.addTitle', { defaultValue: 'Add Academic Year' })
+        }
       >
         <AcademicYearSetupForm
           initial={editing || {}}

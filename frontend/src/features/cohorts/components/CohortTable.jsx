@@ -3,6 +3,7 @@ import { Archive, ArchiveRestore, Edit, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function CohortTable({
   isLoading,
@@ -22,6 +23,7 @@ export default function CohortTable({
   onPage,
   onLimit,
 }) {
+  const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
   const roleLower = String(auth?.user?.role || '').toLowerCase();
   const isAdmin = roleLower === 'admin';
@@ -35,19 +37,24 @@ export default function CohortTable({
       isLoading={isLoading}
       error={error}
       items={items}
-      loadingMessage="Loading..."
+      loadingMessage={t('common.loading', { defaultValue: 'Loading…' })}
       loadingVariant="table"
       loadingRows={6}
       loadingColumns={5}
-      emptyTitle="No cohorts found"
-      emptyDescription="Try adjusting filters or create a new cohort."
-      emptyActionLabel={canAdd ? 'Add Cohort' : undefined}
+      emptyTitle={t('cohorts.table.emptyTitle', { defaultValue: 'No cohorts found' })}
+      emptyDescription={t('cohorts.table.emptyDescription', { defaultValue: 'Try adjusting filters or create a new cohort.' })}
+      emptyActionLabel={canAdd ? t('cohorts.actions.add', { defaultValue: 'Add Cohort' }) : undefined}
       onEmptyAction={canAdd ? onEmptyAction : undefined}
       onRetry={onRetry}
       topSlot={
         <div className="flex justify-between items-center mb-2 text-sm text-gray-600 no-print">
           <div>
-            Page {meta.page} of {meta.totalPages || meta.pages || 1} — {meta.total} total
+            {t('common.pagination.pageSummary', {
+              defaultValue: 'Page {{page}} of {{pages}} — {{total}} total',
+              page: meta.page,
+              pages: meta.totalPages || meta.pages || 1,
+              total: meta.total,
+            })}
           </div>
         </div>
       }
@@ -64,17 +71,17 @@ export default function CohortTable({
       columns={[
         {
           key: 'name',
-          label: 'Name',
+          label: t('cohorts.table.columns.name', { defaultValue: 'Name' }),
           sortable: true,
           field: 'name',
           tdClassName: 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-x border-gray-200',
         },
-        { key: 'status', label: 'Status', sortable: true, field: 'status' },
-        { key: 'startAy', label: 'AY (Start)', sortable: true, field: 'startAcademicYear' },
-        { key: 'createdAt', label: 'Created', sortable: true, field: 'createdAt' },
+        { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }), sortable: true, field: 'status' },
+        { key: 'startAy', label: t('cohorts.table.columns.startAy', { defaultValue: 'AY (Start)' }), sortable: true, field: 'startAcademicYear' },
+        { key: 'createdAt', label: t('common.table.created', { defaultValue: 'Created' }), sortable: true, field: 'createdAt' },
         {
           key: 'actions',
-          label: 'Actions',
+          label: t('common.table.actions', { defaultValue: 'Actions' }),
           align: 'right',
           noPrint: true,
           tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium border-x border-gray-200 no-print',
@@ -92,7 +99,9 @@ export default function CohortTable({
                   row.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
                 }`}
               >
-                {row.status}
+                {row.status === 'active'
+                  ? t('common.status.active', { defaultValue: 'Active' })
+                  : t('cohorts.status.archived', { defaultValue: 'Archived' })}
               </span>
             );
           case 'startAy':
@@ -104,8 +113,8 @@ export default function CohortTable({
               canEdit
                 ? {
                     key: 'edit',
-                    label: 'Edit',
-                    title: 'Edit',
+                    label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                    title: t('common.actions.edit', { defaultValue: 'Edit' }),
                     tone: 'edit',
                     icon: <Edit size={16} />,
                     onClick: () => onEdit(row),
@@ -115,16 +124,16 @@ export default function CohortTable({
                 ? (row.status === 'active'
                     ? {
                         key: 'archive',
-                        label: 'Archive',
-                        title: 'Archive',
+                        label: t('common.actions.archive', { defaultValue: 'Archive' }),
+                        title: t('common.actions.archive', { defaultValue: 'Archive' }),
                         tone: 'neutral',
                         icon: <Archive size={16} />,
                         onClick: () => onArchive(row),
                       }
                     : {
                         key: 'activate',
-                        label: 'Activate',
-                        title: 'Activate',
+                        label: t('common.actions.activate', { defaultValue: 'Activate' }),
+                        title: t('common.actions.activate', { defaultValue: 'Activate' }),
                         tone: 'neutral',
                         icon: <ArchiveRestore size={16} />,
                         onClick: () => onActivate(row),
@@ -133,8 +142,8 @@ export default function CohortTable({
               canDelete
                 ? {
                     key: 'delete',
-                    label: 'Delete',
-                    title: 'Delete',
+                    label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                    title: t('common.actions.delete', { defaultValue: 'Delete' }),
                     tone: 'delete',
                     icon: <Trash2 size={16} />,
                     onClick: () => onDelete(row),

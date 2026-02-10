@@ -46,7 +46,7 @@ export const csrfProtection = (req, res, next) => {
     return res.status(403).json({
       success: false,
       code: 'CSRF_INVALID',
-      message: 'CSRF token missing or invalid',
+      message: req.t('csrf.invalid', null, 'CSRF token missing or invalid'),
     });
   }
 

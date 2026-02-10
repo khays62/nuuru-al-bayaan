@@ -1,4 +1,5 @@
 import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 function SkeletonCell({ wClass = 'w-24' }) {
   return (
@@ -14,6 +15,7 @@ export default function AttendanceReportTable({
   emptyMessage,
   skeletonRows = 6,
 }) {
+  const { t } = useI18n();
   const safeColumns = Array.isArray(columns) ? columns : [];
   const safeRows = Array.isArray(rows) ? rows : [];
   const colCount = safeColumns.length || 1;
@@ -83,7 +85,7 @@ export default function AttendanceReportTable({
             {!loading && safeRows.length === 0 && (
               <tr>
                 <td className="px-6 py-4 text-sm text-gray-600" colSpan={colCount}>
-                  {emptyMessage || 'No records found.'}
+                  {emptyMessage || t('common.emptyStates.noDataFound')}
                 </td>
               </tr>
             )}

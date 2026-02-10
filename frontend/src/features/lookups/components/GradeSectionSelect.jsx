@@ -4,6 +4,7 @@ import { listGradeSections } from '../../grades/api/gradeSections';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import toast from 'react-hot-toast';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 // AY-agnostic: GradeSection is reusable across years; filter by Grade + Shift only.
 export default function GradeSectionSelect({
@@ -13,18 +14,19 @@ export default function GradeSectionSelect({
   value,
   onChange,
   toastOnEmpty = false,
-  toastOnEmptyMessage = 'No classes (sections) found for the selected shift.',
+  toastOnEmptyMessage,
   toastKeyPrefix = 'GradeSectionSelect',
   disabled = false,
   className = '',
-  placeholder = 'Any',
+  placeholder,
   id,
   name,
   searchable = false,
   maxVisible = 5,
-  searchPlaceholder = 'Type to search…',
+  searchPlaceholder,
   ...rest
 }) {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -66,7 +68,7 @@ export default function GradeSectionSelect({
         setItems(data);
         if (toastOnEmpty && Array.isArray(data) && data.length === 0) {
           const k = `${toastKeyPrefix}|empty|${academicYearId || ''}|${gradeId}|${shiftId}`;
-          if (allowToast(k)) toast.error(toastOnEmptyMessage);
+          if (allowToast(k)) toast.error(toastOnEmptyMessage || t('gradeSections.select.noClassesForShift', { defaultValue: 'No classes (sections) found for the selected shift.' }));
         }
       } catch (e) {
         if (e?.name === 'AbortError') return;
@@ -78,7 +80,7 @@ export default function GradeSectionSelect({
     return () => {
       if (abortRef.current) abortRef.current.abort();
     };
-  }, [gradeId, shiftId, academicYearId]);
+  }, [gradeId, shiftId, academicYearId, toastOnEmpty, toastOnEmptyMessage, toastKeyPrefix, t]);
 
   if (searchable) {
     const options = (items || []).map((gs) => {
@@ -86,12 +88,13 @@ export default function GradeSectionSelect({
       const sectionNum = gs?.section;
       const shiftName = gs?.shift?.shiftName;
       const tail = [shiftName].filter(Boolean).join(' - ');
+      const secPrefix = t('common.sectionPrefix', { defaultValue: 'Sec' });
       const label = [
         gradeName ? `${gradeName}` : null,
-        sectionNum ? `Sec ${sectionNum}` : null,
+        sectionNum ? `${secPrefix} ${sectionNum}` : null,
         tail ? `(${tail})` : null,
       ].filter(Boolean).join(' - ');
-      return { value: gs._id, label: label || gs.sectionName || 'Section' };
+      return { value: gs._id, label: label || gs.sectionName || t('common.filters.section', { defaultValue: 'Section' }) };
     });
 
     return (
@@ -102,9 +105,9 @@ export default function GradeSectionSelect({
         onChange={(v) => onChange?.(v)}
         disabled={disabled || loading || !gradeId || !shiftId}
         options={options}
-        placeholder={loading ? 'Loading…' : placeholder}
+        placeholder={loading ? t('common.loading', { defaultValue: 'Loading…' }) : (placeholder ?? t('common.filters.any', { defaultValue: 'Any' }))}
         maxVisible={maxVisible}
-        searchPlaceholder={searchPlaceholder}
+        searchPlaceholder={searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' })}
         className={className}
         buttonProps={rest}
       />
@@ -116,12 +119,13 @@ export default function GradeSectionSelect({
     const sectionNum = gs?.section;
     const shiftName = gs?.shift?.shiftName;
     const tail = [shiftName].filter(Boolean).join(' - ');
+    const secPrefix = t('common.sectionPrefix', { defaultValue: 'Sec' });
     const label = [
       gradeName ? `${gradeName}` : null,
-      sectionNum ? `Sec ${sectionNum}` : null,
+      sectionNum ? `${secPrefix} ${sectionNum}` : null,
       tail ? `(${tail})` : null,
     ].filter(Boolean).join(' - ');
-    return { value: gs._id, label: label || gs.sectionName || 'Section' };
+    return { value: gs._id, label: label || gs.sectionName || t('common.filters.section', { defaultValue: 'Section' }) };
   });
 
   return (
@@ -132,7 +136,7 @@ export default function GradeSectionSelect({
       onChange={(v) => onChange?.(v)}
       disabled={disabled || loading || !gradeId || !shiftId}
       options={options}
-      placeholder={loading ? 'Loading…' : placeholder}
+      placeholder={loading ? t('common.loading', { defaultValue: 'Loading…' }) : (placeholder ?? t('common.filters.any', { defaultValue: 'Any' }))}
       className={className}
       maxHeightClassName="max-h-72"
       buttonProps={rest}

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function DropdownSelect({
   value,
@@ -9,17 +10,23 @@ export default function DropdownSelect({
   options = [],
   disabled = false,
   className = '',
-  placeholder = 'Select…',
+  placeholder,
   id,
   name,
   maxHeightClassName = 'max-h-64',
   buttonProps = {},
   hideSelectedOption = true,
   clearable = true,
-  clearLabel = 'Clear',
+  clearLabel,
 }) {
+  const { t } = useI18n();
+
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+
+  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
+  const resolvedClearLabel = clearLabel ?? t('common.actions.clear', { defaultValue: 'Clear' });
+  const resolvedNoOptions = t('common.select.noOptions', { defaultValue: 'No options.' });
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -75,7 +82,7 @@ export default function DropdownSelect({
         {...buttonProps}
       >
         <span className={cn('truncate', selectedLabel ? 'text-gray-800' : 'text-gray-500')}>
-          {selectedLabel || placeholder}
+          {selectedLabel || resolvedPlaceholder}
         </span>
         <ChevronDown size={18} className="text-gray-500" />
       </button>
@@ -94,12 +101,12 @@ export default function DropdownSelect({
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 onClick={() => onPick('')}
               >
-                {clearLabel}
+                {resolvedClearLabel}
               </button>
             ) : null}
 
             {listOptions.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500">No options.</div>
+              <div className="px-3 py-2 text-sm text-gray-500">{resolvedNoOptions}</div>
             ) : (
               listOptions.map((o) => {
                 const active = String(value || '') === o.value;

@@ -1,4 +1,5 @@
 import { ZodError } from 'zod';
+import { translateMessage } from '../i18n/index.js';
 
 const isProd = () => process.env.NODE_ENV === 'production';
 
@@ -52,12 +53,19 @@ export const validate = (schemas = {}) => {
         const message = first
           ? `${path ? `${path}: ` : ''}${firstMessage || 'Invalid value'}`
           : 'Validation error';
+
+        const localizedMessage = translateMessage(req, message);
         const payload = {
           success: false,
-          message,
+          message: localizedMessage,
         };
         if (!isProd()) {
-          payload.issues = err.issues;
+          payload.issues = err.issues.map((issue) => {
+            const msg = issue?.message ? String(issue.message) : '';
+            if (!msg) return issue;
+            const localized = translateMessage(req, msg);
+            return localized && localized !== msg ? { ...issue, message: localized } : issue;
+          });
         }
         return res.status(400).json(payload);
       }

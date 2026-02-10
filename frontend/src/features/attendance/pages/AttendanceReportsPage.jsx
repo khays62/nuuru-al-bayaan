@@ -28,8 +28,10 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import { getAttendanceReportDetailsWithOptions, getAttendanceReportSummaryWithOptions } from '../api/attendanceReports';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function AttendanceReportsPage() {
+  const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
   const role = String(auth?.user?.role || '').toLowerCase();
   const isTeacher = role === 'teacher';
@@ -59,7 +61,15 @@ export default function AttendanceReportsPage() {
     const d = Number(m[3]);
     const dt = new Date(Date.UTC(y, mo - 1, d));
     if (Number.isNaN(dt.getTime())) return '';
-    const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const names = [
+      t('common.days.long.sunday'),
+      t('common.days.long.monday'),
+      t('common.days.long.tuesday'),
+      t('common.days.long.wednesday'),
+      t('common.days.long.thursday'),
+      t('common.days.long.friday'),
+      t('common.days.long.saturday'),
+    ];
     return names[dt.getUTCDay()] || '';
   };
 
@@ -70,15 +80,15 @@ export default function AttendanceReportsPage() {
 
   const statusLabel = (status) => {
     const s = String(status || '').toLowerCase();
-    if (!s || s === 'not_marked') return 'Not marked';
-    if (s === 'present') return 'Present';
-    if (s === 'absent') return 'Absent';
-    if (s === 'late') return 'Late';
-    if (s === 'excused') return 'Excused';
-    if (s === 'sick') return 'Sick';
-    if (s === 'medical') return 'Medical';
-    if (s === 'family') return 'Family';
-    if (s === 'other') return 'Other';
+    if (!s || s === 'not_marked') return t('attendance.status.notMarked');
+    if (s === 'present') return t('attendance.status.present');
+    if (s === 'absent') return t('attendance.status.absent');
+    if (s === 'late') return t('attendance.status.late');
+    if (s === 'excused') return t('attendance.status.excused');
+    if (s === 'sick') return t('attendance.status.sick');
+    if (s === 'medical') return t('attendance.status.medical');
+    if (s === 'family') return t('attendance.status.family');
+    if (s === 'other') return t('attendance.status.other');
     return s.replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
   };
 
@@ -309,10 +319,10 @@ export default function AttendanceReportsPage() {
       const toastKey = `no-subject-periods|${String(sectionId)}|${String(subjectId)}|${String(teacherRef)}`;
       if (noSubjectPeriodsToastKeyRef.current !== toastKey) {
         noSubjectPeriodsToastKeyRef.current = toastKey;
-        toast.error('No timetable periods found for this subject.');
+        toast.error(t('attendance.reports.errors.noPeriodsForSubject'));
       }
     }
-  }, [isTeacher, sectionId, subjectId, teacherRef, subjectSlotsQuery.data, subjectSlotsQuery.isLoading, subjectSlotsQuery.isError]);
+  }, [isTeacher, sectionId, subjectId, teacherRef, subjectSlotsQuery.data, subjectSlotsQuery.isLoading, subjectSlotsQuery.isError, t]);
 
   // Build teacher-assigned filter sets similar to AttendancePage
   const assignedSectionIds = useMemo(() => {
@@ -366,10 +376,10 @@ export default function AttendanceReportsPage() {
     if (!isSummary && !isDetails) return;
     const r = clampRangeToMonth(from, to);
     if (r.clamped && r.to !== to) {
-      toast.error('Max range is 1 month. Clamped the end date.');
+      toast.error(t('attendance.reports.toasts.maxRangeClamped'));
       setTo(r.to);
     }
-  }, [isSummary, isDetails, from, to]);
+  }, [isSummary, isDetails, from, to, t]);
 
   const canRun = Boolean(
     sectionId && from && to && (!isTeacher || (subjectId && !subjectSlotsLoading && subjectPeriodCodes.length > 0))
@@ -513,25 +523,30 @@ export default function AttendanceReportsPage() {
           if (!isTeacher && code !== 'DAY') {
             const dow = getTimetableDayIndexFromISODate(r.date);
             const info = (dow == null) ? null : (sectionSlotInfoByKey?.[`${dow}__${String(code)}`] || null);
-            subjLine = `\nSubject: ${info?.subjectName || '—'}`;
-            teacherLine = `\nTeacher: ${info?.teacherName || '—'}`;
+            subjLine = `\n${t('attendance.reports.labels.subject')}: ${info?.subjectName || '—'}`;
+            teacherLine = `\n${t('attendance.reports.labels.teacher')}: ${info?.teacherName || '—'}`;
           }
-          return `P:${c.present} A:${c.absent} L:${c.late} E:${c.excused}\nMarked: ${m}\nUpdated: ${u}${subjLine}${teacherLine}`;
+          const countsLine = t('attendance.reports.summaryCell.counts', { present: c.present, absent: c.absent, late: c.late, excused: c.excused });
+          return `${countsLine}\n${t('attendance.reports.labels.markedBy')}: ${m}\n${t('attendance.reports.labels.updatedBy')}: ${u}${subjLine}${teacherLine}`;
         }),
       ]);
 
       const subtitle = meta
-        ? `Range: ${formatDateWithDay(meta.from)} to ${formatDateWithDay(meta.to)} • Roster: ${meta.rosterCount}`
-        : `Range: ${formatDateWithDay(from)} to ${formatDateWithDay(to)}`;
+        ? t('attendance.reports.export.subtitleWithRoster', {
+            from: formatDateWithDay(meta.from),
+            to: formatDateWithDay(meta.to),
+            rosterCount: meta.rosterCount,
+          })
+        : t('attendance.reports.export.subtitleRangeOnly', { from: formatDateWithDay(from), to: formatDateWithDay(to) });
 
       return {
         filename: `${filenameBase}.pdf`,
-        title: 'Attendance Report',
+        title: t('attendance.reports.title'),
         subtitle,
         headerImageSrc: headerImg,
         headers,
         rows,
-        sheetName: 'Summary',
+        sheetName: t('attendance.reports.export.sheet.summary'),
       };
     }
 
@@ -544,9 +559,9 @@ export default function AttendanceReportsPage() {
     }
 
     const headers = [
-      'Student ID',
-      'Full Name',
-      ...flatCols.map((c) => `${formatDateWithDay(c.date)} • ${c.period === 'DAY' ? 'All day' : c.period}`),
+      t('attendance.reports.columns.studentId'),
+      t('attendance.reports.columns.fullName'),
+      ...flatCols.map((c) => `${formatDateWithDay(c.date)} • ${c.period === 'DAY' ? t('attendance.marking.modes.allDay') : c.period}`),
     ];
 
     const rows = (Array.isArray(detailsGrid?.rows) ? detailsGrid.rows : []).map((r) => {
@@ -560,17 +575,17 @@ export default function AttendanceReportsPage() {
 
     const m = detailsGrid?.meta;
     const subtitle = m
-      ? `Range: ${formatDateWithDay(m.from)} to ${formatDateWithDay(m.to)}`
-      : `Range: ${formatDateWithDay(from)} to ${formatDateWithDay(to)}`;
+      ? t('attendance.reports.export.subtitleRangeOnly', { from: formatDateWithDay(m.from), to: formatDateWithDay(m.to) })
+      : t('attendance.reports.export.subtitleRangeOnly', { from: formatDateWithDay(from), to: formatDateWithDay(to) });
 
     return {
       filename: `${filenameBase}.pdf`,
-      title: 'Attendance Report',
+      title: t('attendance.reports.title'),
       subtitle,
       headerImageSrc: headerImg,
       headers,
       rows,
-      sheetName: 'Details',
+      sheetName: t('attendance.reports.export.sheet.details'),
     };
   };
 
@@ -603,12 +618,12 @@ export default function AttendanceReportsPage() {
 
   async function runSummary() {
     if (!sectionId || !from || !to || (isTeacher && !subjectId)) {
-      toast.error(isTeacher ? 'Please select Section, Subject, and date range' : 'Please select Level, Shift, Section, and date range');
+      toast.error(isTeacher ? t('attendance.reports.errors.selectFilters.teacher') : t('attendance.reports.errors.selectFilters.admin'));
       return;
     }
 
     if (isTeacher && (!subjectPeriodCodes || subjectPeriodCodes.length === 0)) {
-      toast.error('No timetable periods found for this subject.');
+      toast.error(t('attendance.reports.errors.noPeriodsForSubject'));
       return;
     }
 
@@ -637,7 +652,7 @@ export default function AttendanceReportsPage() {
       }
     } catch (e) {
       if (e?.name === 'AbortError') return;
-      toast.error(e?.data?.message || e?.message || 'Failed to load report');
+      toast.error(e?.data?.message || e?.message || t('attendance.reports.errors.loadFailed'));
       setReport(null);
     } finally {
       setLoading(false);
@@ -808,7 +823,7 @@ export default function AttendanceReportsPage() {
       });
     } catch (e) {
       if (e?.name === 'AbortError') return;
-      toast.error(e?.data?.message || e?.message || 'Failed to load details');
+      toast.error(e?.data?.message || e?.message || t('attendance.reports.errors.detailsLoadFailed'));
       setDetailsGrid(null);
     } finally {
       setDetailsLoading(false);
@@ -885,10 +900,10 @@ export default function AttendanceReportsPage() {
 
   const summaryColumns = useMemo(() => {
     const cols = [
-      { key: 'date', header: 'Date', skeletonClassName: 'w-24', render: (r) => formatDateWithDay(r.date) },
+      { key: 'date', header: t('attendance.reports.columns.date'), skeletonClassName: 'w-24', render: (r) => formatDateWithDay(r.date) },
     ];
     for (const code of summaryMatrix.periodCodes) {
-      const header = code === 'DAY' ? 'Daily' : code;
+      const header = code === 'DAY' ? t('attendance.marking.modes.allDay') : code;
       cols.push({
         key: `p_${code}`,
         header,
@@ -910,13 +925,13 @@ export default function AttendanceReportsPage() {
 
           return (
             <div className="leading-tight">
-              <div>{`P:${c.present} A:${c.absent} L:${c.late} E:${c.excused}`}</div>
-              <div className="text-[11px] text-gray-600 mt-1">Marked: {m}</div>
-              <div className="text-[11px] text-gray-600">Updated: {u}</div>
+              <div>{t('attendance.reports.summaryCell.counts', { present: c.present, absent: c.absent, late: c.late, excused: c.excused })}</div>
+              <div className="text-[11px] text-gray-600 mt-1">{t('attendance.reports.labels.markedBy')}: {m}</div>
+              <div className="text-[11px] text-gray-600">{t('attendance.reports.labels.updatedBy')}: {u}</div>
               {!isTeacher && code !== 'DAY' ? (
                 <>
-                  <div className="text-[11px] text-gray-600 mt-1">Subject: {subjectName}</div>
-                  <div className="text-[11px] text-gray-600">Teacher: {teacherName}</div>
+                  <div className="text-[11px] text-gray-600 mt-1">{t('attendance.reports.labels.subject')}: {subjectName}</div>
+                  <div className="text-[11px] text-gray-600">{t('attendance.reports.labels.teacher')}: {teacherName}</div>
                 </>
               ) : null}
             </div>
@@ -925,15 +940,15 @@ export default function AttendanceReportsPage() {
       });
     }
     return cols;
-  }, [summaryMatrix.periodCodes, formatActor, isTeacher, sectionSlotInfoByKey]);
+  }, [summaryMatrix.periodCodes, formatActor, isTeacher, sectionSlotInfoByKey, t]);
 
   const detailsHeaderRows = useMemo(() => {
     if (!detailsGrid?.groups?.length) return null;
 
     const row1 = [
       { key: 'view', label: '', rowSpan: 2, className: 'no-print w-10' },
-      { key: 'studentId', label: 'Student ID', rowSpan: 2 },
-      { key: 'fullName', label: 'Full Name', rowSpan: 2 },
+      { key: 'studentId', label: t('attendance.reports.columns.studentId'), rowSpan: 2 },
+      { key: 'fullName', label: t('attendance.reports.columns.fullName'), rowSpan: 2 },
       ...detailsGrid.groups.map((g) => ({
         key: `g_${g.date}`,
         label: formatDateWithDay(g.date),
@@ -944,12 +959,12 @@ export default function AttendanceReportsPage() {
     const row2 = detailsGrid.groups.flatMap((g) =>
       (Array.isArray(g.periods) ? g.periods : ['DAY']).map((p) => ({
         key: `p_${g.date}__${p}`,
-        label: p === 'DAY' ? 'Daily' : String(p),
+        label: p === 'DAY' ? t('attendance.marking.modes.allDay') : String(p),
       }))
     );
 
     return [row1, row2];
-  }, [detailsGrid, formatDateWithDay]);
+  }, [detailsGrid, formatDateWithDay, t]);
 
   const detailsColumns = useMemo(() => {
     const cols = [
@@ -963,8 +978,8 @@ export default function AttendanceReportsPage() {
           <button
             type="button"
             className="inline-flex items-center justify-center p-1 rounded hover:bg-blue-50 text-blue-600"
-            title="View student"
-            aria-label={`View ${r?.fullName || 'student'}`}
+            title={t('attendance.reports.actions.viewStudent')}
+            aria-label={t('attendance.reports.actions.viewStudentAria', { name: r?.fullName || t('common.studentFallback') })}
             onClick={() => {
               setSelectedStudent(r || null);
               setStudentModalOpen(true);
@@ -974,8 +989,8 @@ export default function AttendanceReportsPage() {
           </button>
         ),
       },
-      { key: 'studentId', header: 'Student ID', skeletonClassName: 'w-20', render: (r) => r.studentId },
-      { key: 'fullName', header: 'Full Name', skeletonClassName: 'w-56', render: (r) => r.fullName, cellClassName: 'font-medium text-gray-900' },
+      { key: 'studentId', header: t('attendance.reports.columns.studentId'), skeletonClassName: 'w-20', render: (r) => r.studentId },
+      { key: 'fullName', header: t('attendance.reports.columns.fullName'), skeletonClassName: 'w-56', render: (r) => r.fullName, cellClassName: 'font-medium text-gray-900' },
     ];
 
     const groups = Array.isArray(detailsGrid?.groups) ? detailsGrid.groups : [];
@@ -985,21 +1000,21 @@ export default function AttendanceReportsPage() {
         const cellKey = `${g.date}__${p}`;
         cols.push({
           key: cellKey,
-          header: p === 'DAY' ? 'Daily' : String(p),
+          header: p === 'DAY' ? t('attendance.marking.modes.allDay') : String(p),
           skeletonClassName: 'w-24',
           render: (r) => <AttendanceStatusBadge status={r?.byCell?.[cellKey]?.status || 'not_marked'} />,
         });
       }
     }
     return cols;
-  }, [detailsGrid]);
+  }, [detailsGrid, t]);
 
   const detailsHeaderRowsPrint = useMemo(() => {
     if (!detailsGrid?.groups?.length) return null;
 
     const row1 = [
-      { key: 'studentId', label: 'Student ID', rowSpan: 2 },
-      { key: 'fullName', label: 'Full Name', rowSpan: 2 },
+      { key: 'studentId', label: t('attendance.reports.columns.studentId'), rowSpan: 2 },
+      { key: 'fullName', label: t('attendance.reports.columns.fullName'), rowSpan: 2 },
       ...detailsGrid.groups.map((g) => ({
         key: `pg_${g.date}`,
         label: formatDateWithDay(g.date),
@@ -1010,17 +1025,17 @@ export default function AttendanceReportsPage() {
     const row2 = detailsGrid.groups.flatMap((g) =>
       (Array.isArray(g.periods) ? g.periods : ['DAY']).map((p) => ({
         key: `pp_${g.date}__${p}`,
-        label: p === 'DAY' ? 'All day' : String(p),
+        label: p === 'DAY' ? t('attendance.marking.modes.allDay') : String(p),
       }))
     );
 
     return [row1, row2];
-  }, [detailsGrid, formatDateWithDay]);
+  }, [detailsGrid, formatDateWithDay, t]);
 
   const detailsColumnsPrint = useMemo(() => {
     const cols = [
-      { key: 'studentId', header: 'Student ID', skeletonClassName: 'w-20', render: (r) => r.studentId },
-      { key: 'fullName', header: 'Full Name', skeletonClassName: 'w-56', render: (r) => r.fullName, cellClassName: 'font-medium text-gray-900' },
+      { key: 'studentId', header: t('attendance.reports.columns.studentId'), skeletonClassName: 'w-20', render: (r) => r.studentId },
+      { key: 'fullName', header: t('attendance.reports.columns.fullName'), skeletonClassName: 'w-56', render: (r) => r.fullName, cellClassName: 'font-medium text-gray-900' },
     ];
 
     const groups = Array.isArray(detailsGrid?.groups) ? detailsGrid.groups : [];
@@ -1030,19 +1045,19 @@ export default function AttendanceReportsPage() {
         const cellKey = `${g.date}__${p}`;
         cols.push({
           key: cellKey,
-          header: p === 'DAY' ? 'All day' : String(p),
+          header: p === 'DAY' ? t('attendance.marking.modes.allDay') : String(p),
           skeletonClassName: 'w-24',
           render: (r) => <AttendanceStatusBadge status={r?.byCell?.[cellKey]?.status || 'not_marked'} />,
         });
       }
     }
     return cols;
-  }, [detailsGrid]);
+  }, [detailsGrid, t]);
 
   const renderStudentCards = (studentRow, { print = false } = {}) => {
     const groups = Array.isArray(detailsGrid?.groups) ? detailsGrid.groups : [];
     if (!studentRow || !groups.length) {
-      return <div className="text-sm text-gray-600">No data.</div>;
+      return <div className="text-sm text-gray-600">{t('common.emptyStates.noDataFound')}</div>;
     }
 
     return (
@@ -1059,7 +1074,7 @@ export default function AttendanceReportsPage() {
               {(Array.isArray(g.periods) ? g.periods : []).map((p) => {
                 const cellKey = `${g.date}__${p}`;
                 const entry = studentRow?.byCell?.[cellKey] || { status: 'not_marked', remarks: '' };
-                const label = p === 'DAY' ? 'All day' : `Period: ${p}`;
+                const label = p === 'DAY' ? t('attendance.marking.modes.allDay') : t('attendance.reports.labels.periodWithCode', { code: p });
                 return (
                   <div key={cellKey} className="border border-gray-200 rounded-md p-3 bg-gray-50">
                     <div className="flex items-start justify-between gap-3">
@@ -1068,7 +1083,7 @@ export default function AttendanceReportsPage() {
                         <div className="mt-0.5 text-sm text-gray-900 font-semibold">{statusLabel(entry.status)}</div>
                         {entry.remarks ? (
                           <div className="mt-1 text-sm text-gray-700">
-                            <span className="text-xs text-gray-500">Remarks:</span>{' '}
+                            <span className="text-xs text-gray-500">{t('attendance.reports.labels.remarks')}:</span>{' '}
                             <span className="wrap-break-word">{entry.remarks}</span>
                           </div>
                         ) : null}
@@ -1090,33 +1105,33 @@ export default function AttendanceReportsPage() {
   return (
     <div className="p-4 space-y-4">
       <PrintHeader />
-      <PrintFooter left="Generated by Nuuru Al-Bayaan" />
+      <PrintFooter left={t('common.generatedBy')} />
 
       <div className="print-only space-y-4 attendance-report-print">
         {isSummary ? (
           <>
-            <div className="text-lg font-semibold">Attendance Report</div>
+            <div className="text-lg font-semibold">{t('attendance.reports.title')}</div>
             {meta && (
               <div className="text-sm text-gray-700">
-                Range: <span className="font-medium">{formatDateWithDay(meta.from)}</span> to <span className="font-medium">{formatDateWithDay(meta.to)}</span> · Roster count: <span className="font-medium">{meta.rosterCount}</span>
+                {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(meta.to)}</span> · {t('attendance.reports.labels.rosterCount')}: <span className="font-medium">{meta.rosterCount}</span>
               </div>
             )}
             <AttendanceReportTable
               columns={summaryColumns}
               rows={summaryMatrix.rows}
               loading={false}
-              emptyMessage="No attendance found for this range."
+              emptyMessage={t('attendance.reports.empty.noAttendanceInRange')}
             />
           </>
         ) : (
           <>
-            <div className="text-lg font-semibold">Attendance Report</div>
+            <div className="text-lg font-semibold">{t('attendance.reports.title')}</div>
             {(() => {
               const m = detailsGrid?.meta;
               if (!m) return null;
               return (
                 <div className="text-sm text-gray-700">
-                  Range: <span className="font-medium">{formatDateWithDay(m.from)}</span> to <span className="font-medium">{formatDateWithDay(m.to)}</span>
+                  {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(m.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(m.to)}</span>
                 </div>
               );
             })()}
@@ -1124,7 +1139,7 @@ export default function AttendanceReportsPage() {
             {printContext === 'student' && printStudent ? (
               <>
                 <div className="text-sm text-gray-700">
-                  Student: <span className="font-medium">{printStudent.fullName}</span> · ID: <span className="font-medium">{printStudent.studentId}</span>
+                  {t('attendance.reports.labels.student')}: <span className="font-medium">{printStudent.fullName}</span> · {t('attendance.reports.labels.studentId')}: <span className="font-medium">{printStudent.studentId}</span>
                 </div>
                 {renderStudentCards(printStudent, { print: true })}
               </>
@@ -1134,7 +1149,7 @@ export default function AttendanceReportsPage() {
                 headerRows={detailsHeaderRowsPrint}
                 rows={Array.isArray(detailsGrid?.rows) ? detailsGrid.rows : []}
                 loading={false}
-                emptyMessage="No attendance records found for this range."
+                emptyMessage={t('attendance.reports.empty.noRecordsInRange')}
               />
             )}
           </>
@@ -1152,8 +1167,8 @@ export default function AttendanceReportsPage() {
                 clearOutputs();
               }}
               options={[
-                { value: 'current', label: 'Students: Active now' },
-                { value: 'asOf', label: 'Students: On selected date' },
+                { value: 'current', label: t('attendance.marking.tabs.students.activeNow') },
+                { value: 'asOf', label: t('attendance.marking.tabs.students.onSelectedDate') },
               ]}
             />
           )}
@@ -1168,8 +1183,8 @@ export default function AttendanceReportsPage() {
               else setReport(null);
             }}
             options={[
-              { value: 'summary', label: 'Report: Summary' },
-              { value: 'details', label: 'Report: Details' },
+              { value: 'summary', label: t('attendance.reports.tabs.report.summary') },
+              { value: 'details', label: t('attendance.reports.tabs.report.details') },
             ]}
           />
 
@@ -1196,9 +1211,9 @@ export default function AttendanceReportsPage() {
               }
             }}
             options={[
-              { value: 'today', label: 'Range: Today' },
-              { value: 'last7', label: 'Range: Last 7 days' },
-              { value: 'custom', label: 'Range: Custom' },
+              { value: 'today', label: t('attendance.reports.tabs.range.today') },
+              { value: 'last7', label: t('attendance.reports.tabs.range.last7') },
+              { value: 'custom', label: t('attendance.reports.tabs.range.custom') },
             ]}
           />
         </div>
@@ -1208,7 +1223,7 @@ export default function AttendanceReportsPage() {
         <div className="w-full flex justify-center">
           <div className="flex flex-wrap justify-center gap-3 no-print">
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">From</label>
+              <label className="text-sm text-gray-700">{t('common.from')}</label>
               <input
                 type="date"
                 className="border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1218,7 +1233,7 @@ export default function AttendanceReportsPage() {
                   const r = clampRangeToMonth(nextFrom, to);
                   setFrom(r.from);
                   if (r.to !== to) {
-                    toast.error('Max range is 1 month. Clamped the end date.');
+                    toast.error(t('attendance.reports.toasts.maxRangeClamped'));
                     setTo(r.to);
                   }
                   clearOutputs();
@@ -1227,7 +1242,7 @@ export default function AttendanceReportsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">To</label>
+              <label className="text-sm text-gray-700">{t('common.to')}</label>
               <input
                 type="date"
                 className="border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1237,7 +1252,7 @@ export default function AttendanceReportsPage() {
                   const r = clampRangeToMonth(from, nextTo);
                   setTo(r.to);
                   if (r.to !== nextTo) {
-                    toast.error('Max range is 1 month. Clamped the end date.');
+                    toast.error(t('attendance.reports.toasts.maxRangeClamped'));
                   }
                   clearOutputs();
                 }}
@@ -1260,7 +1275,7 @@ export default function AttendanceReportsPage() {
                       onChange={(v) => { setGradeId(v); setSectionId(''); }}
                       disabled={teacherSectionsLoading}
                       options={teacherAssignedGrades}
-                      placeholder={teacherSectionsLoading ? 'Loading…' : 'Level'}
+                      placeholder={teacherSectionsLoading ? t('common.loading') : t('common.filters.level')}
                     />
                   </FilterItem>
                 )}
@@ -1272,8 +1287,8 @@ export default function AttendanceReportsPage() {
                       onChange={(v) => { setShiftId(v); setSectionId(''); }}
                       disabled={teacherSectionsLoading}
                       options={teacherAssignedShifts}
-                      placeholder={teacherSectionsLoading ? 'Loading…' : 'Shift'}
-                      searchPlaceholder="Search shifts…"
+                      placeholder={teacherSectionsLoading ? t('common.loading') : t('common.filters.shift')}
+                      searchPlaceholder={t('common.searchPlaceholders.shifts')}
                     />
                   </FilterItem>
                 )}
@@ -1286,12 +1301,12 @@ export default function AttendanceReportsPage() {
                     options={(teacherFilteredSections || []).map((gs) => {
                       const sectionNum = gs?.section;
                       const shiftName = gs?.shift?.shiftName;
-                      const base = sectionNum ? `Sec ${sectionNum}` : (gs?.sectionName || 'Section');
+                      const base = sectionNum ? `${t('common.sectionPrefix')} ${sectionNum}` : (gs?.sectionName || t('common.filters.section'));
                       const label = shiftName ? `${base} - (${shiftName})` : base;
                       return { value: gs?._id, label };
                     })}
-                    placeholder={teacherSectionsLoading ? 'Loading…' : 'Section'}
-                    searchPlaceholder="Search sections…"
+                    placeholder={teacherSectionsLoading ? t('common.loading') : t('common.filters.section')}
+                    searchPlaceholder={t('common.searchPlaceholders.sections')}
                   />
                 </FilterItem>
 
@@ -1303,23 +1318,23 @@ export default function AttendanceReportsPage() {
                     options={teacherSubjectsForSection}
                     placeholder={
                       !sectionId
-                        ? 'Subject (select section first)'
-                        : (subjectSlotsLoading ? 'Subject (loading periods…)' : 'Subject (required)')
+                        ? t('attendance.reports.filters.subjectSelectSectionFirst')
+                        : (subjectSlotsLoading ? t('attendance.reports.filters.subjectLoadingPeriods') : t('attendance.reports.filters.subjectRequired'))
                     }
-                    searchPlaceholder="Search subjects…"
+                    searchPlaceholder={t('common.searchPlaceholders.subjects')}
                   />
                 </FilterItem>
               </>
             ) : (
               <>
                 <FilterItem minWidthClass="sm:min-w-44">
-                  <GradeSelect value={gradeId} onChange={setGradeId} placeholder="Level" />
+                  <GradeSelect value={gradeId} onChange={setGradeId} placeholder={t('common.filters.level')} />
                 </FilterItem>
                 <FilterItem minWidthClass="sm:min-w-40">
-                  <ShiftSelect value={shiftId} onChange={setShiftId} placeholder="Shift" />
+                  <ShiftSelect value={shiftId} onChange={setShiftId} placeholder={t('common.filters.shift')} />
                 </FilterItem>
                 <FilterItem minWidthClass="sm:min-w-60">
-                  <GradeSectionSelect value={sectionId} onChange={setSectionId} gradeId={gradeId} shiftId={shiftId} placeholder="Section" />
+                  <GradeSectionSelect value={sectionId} onChange={setSectionId} gradeId={gradeId} shiftId={shiftId} placeholder={t('common.filters.section')} />
                 </FilterItem>
               </>
             )}
@@ -1334,9 +1349,9 @@ export default function AttendanceReportsPage() {
                 icon={<Printer size={16} />}
                 onClick={() => triggerPrint('table')}
                 disabled={isSummary ? !meta : !detailsGrid?.meta}
-                title="Print"
+                title={t('common.actions.print')}
               >
-                Print
+                {t('common.actions.print')}
               </ActionButton>
             ) : null}
 
@@ -1369,9 +1384,9 @@ export default function AttendanceReportsPage() {
                 variant="brand"
                 icon={<RotateCcw size={16} />}
                 onClick={resetAll}
-                title="Reset"
+                title={t('common.actions.reset')}
               >
-                Reset
+                {t('common.actions.reset')}
               </ActionButton>
             </div>
           </div>
@@ -1380,23 +1395,23 @@ export default function AttendanceReportsPage() {
       />
 
       {(loading || detailsLoading) && (
-        <div className="text-sm text-gray-600 no-print">Loading…</div>
+        <div className="text-sm text-gray-600 no-print">{t('common.loading')}</div>
       )}
 
       {!loading && !detailsLoading && !sectionId && (
-        <div className="text-sm text-gray-600 no-print">Select Level, Shift, and Section to view reports.</div>
+        <div className="text-sm text-gray-600 no-print">{t('attendance.reports.hints.selectFilters')}</div>
       )}
 
       <div className="no-print">
         {!loading && isSummary && meta && (
           <div className="text-sm text-gray-700">
-            Range: <span className="font-medium">{formatDateWithDay(meta.from)}</span> to <span className="font-medium">{formatDateWithDay(meta.to)}</span> · Roster count: <span className="font-medium">{meta.rosterCount}</span>
+            {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(meta.to)}</span> · {t('attendance.reports.labels.rosterCount')}: <span className="font-medium">{meta.rosterCount}</span>
           </div>
         )}
 
         {!detailsLoading && isDetails && detailsGrid?.meta && (
           <div className="text-sm text-gray-700">
-            Range: <span className="font-medium">{formatDateWithDay(detailsGrid.meta.from)}</span> to <span className="font-medium">{formatDateWithDay(detailsGrid.meta.to)}</span>
+            {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(detailsGrid.meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(detailsGrid.meta.to)}</span>
           </div>
         )}
       </div>
@@ -1407,7 +1422,7 @@ export default function AttendanceReportsPage() {
             columns={summaryColumns}
             rows={summaryMatrix.rows}
             loading={loading}
-            emptyMessage="No attendance found for this range."
+            emptyMessage={t('attendance.reports.empty.noAttendanceInRange')}
           />
         </div>
       )}
@@ -1419,7 +1434,7 @@ export default function AttendanceReportsPage() {
             headerRows={detailsHeaderRows}
             rows={Array.isArray(detailsGrid?.rows) ? detailsGrid.rows : []}
             loading={detailsLoading}
-            emptyMessage="No attendance records found for this range."
+            emptyMessage={t('attendance.reports.empty.noRecordsInRange')}
           />
 
           <Modal
@@ -1428,16 +1443,20 @@ export default function AttendanceReportsPage() {
               setStudentModalOpen(false);
               setSelectedStudent(null);
             }}
-            title={selectedStudent ? `Student • ${selectedStudent.fullName} (${selectedStudent.studentId})` : 'Student'}
+            title={
+              selectedStudent
+                ? t('attendance.reports.studentModal.titleWithName', { name: selectedStudent.fullName, id: selectedStudent.studentId })
+                : t('attendance.reports.studentModal.title')
+            }
             panelClassName="max-w-5xl"
           >
             {!selectedStudent ? (
-              <div className="text-sm text-gray-600">No student selected.</div>
+              <div className="text-sm text-gray-600">{t('attendance.reports.studentModal.noStudentSelected')}</div>
             ) : (
               <div className="space-y-3">
                 {detailsGrid?.meta && (
                   <div className="text-sm text-gray-700">
-                    Range: <span className="font-medium">{formatDateWithDay(detailsGrid.meta.from)}</span> to <span className="font-medium">{formatDateWithDay(detailsGrid.meta.to)}</span>
+                    {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(detailsGrid.meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(detailsGrid.meta.to)}</span>
                   </div>
                 )}
 
@@ -1452,7 +1471,7 @@ export default function AttendanceReportsPage() {
                         triggerPrint('student', selectedStudent);
                       }}
                     >
-                      Print
+                      {t('common.actions.print')}
                     </ActionButton>
                   ) : null}
                 </div>

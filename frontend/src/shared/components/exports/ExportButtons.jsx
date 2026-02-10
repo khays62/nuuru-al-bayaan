@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FileDown } from 'lucide-react';
 import ActionButton from '../ui/ActionButton';
 import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from '../../../utils/exportTable';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 function withExtension(filename, ext) {
   const base = String(filename || '').trim();
@@ -19,6 +20,7 @@ export default function ExportButtons({
   disabled = false,
   className = '',
 }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   const run = async (fn, ext) => {
@@ -41,7 +43,7 @@ export default function ExportButtons({
         icon={<FileDown size={16} />}
         disabled={disabled || busy}
         onClick={() => run(exportTableToPDF, '.pdf')}
-        title="Export PDF"
+        title={t('common.export.pdfTitle', { defaultValue: 'Export PDF' })}
       >
         PDF
       </ActionButton>
@@ -50,7 +52,7 @@ export default function ExportButtons({
         icon={<FileDown size={16} />}
         disabled={disabled || busy}
         onClick={() => run(exportTableToExcel, '.xlsx')}
-        title="Export Excel"
+        title={t('common.export.excelTitle', { defaultValue: 'Export Excel' })}
       >
         Excel
       </ActionButton>
@@ -59,7 +61,7 @@ export default function ExportButtons({
         icon={<FileDown size={16} />}
         disabled={disabled || busy}
         onClick={() => run(exportTableToCSV, '.csv')}
-        title="Export CSV"
+        title={t('common.export.csvTitle', { defaultValue: 'Export CSV' })}
       >
         CSV
       </ActionButton>

@@ -35,8 +35,10 @@ import GradeForm from '../components/GradeForm.jsx';
 import GradeSectionRosterModal from '../components/GradeSectionRosterModal.jsx';
 import { gradeSectionKeys } from '../queryKeys';
 import { useGradeSectionsRealtimeInvalidation } from '../useGradeSectionsRealtimeInvalidation';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function GradePage() {
+	const { t } = useI18n();
 	const { auth, hasPermission } = useAuth();
 	const role = auth?.user?.role;
 	const isAdmin = String(role || '').toLowerCase() === 'admin';
@@ -138,7 +140,7 @@ export default function GradePage() {
 
 	const handleAddNew = () => {
 		if (!canAdd) {
-			toast.error('You do not have permission to add grade sections');
+			toast.error(t('gradeSections.permissions.noAdd', { defaultValue: 'You do not have permission to add grade sections' }));
 			return;
 		}
 		setEditingClass(null);
@@ -146,7 +148,7 @@ export default function GradePage() {
 	};
 	const handleEdit = (cls) => {
 		if (!canEdit) {
-			toast.error('You do not have permission to edit grade sections');
+			toast.error(t('gradeSections.permissions.noEdit', { defaultValue: 'You do not have permission to edit grade sections' }));
 			return;
 		}
 		setEditingClass(cls);
@@ -157,7 +159,7 @@ export default function GradePage() {
 	const closeModal = () => { setIsModalOpen(false); setEditingClass(null); };
 	const handlePrint = () => {
 		if (!canView) {
-			toast.error('You do not have permission to view/print grade sections');
+			toast.error(t('gradeSections.permissions.noViewPrint', { defaultValue: 'You do not have permission to view/print grade sections' }));
 			return;
 		}
 		setTimeout(() => window.print(), 0);
@@ -165,15 +167,15 @@ export default function GradePage() {
 
 	const handleDelete = async (id) => {
 		if (!canDelete) {
-			toast.error('You do not have permission to delete grade sections');
+			toast.error(t('gradeSections.permissions.noDelete', { defaultValue: 'You do not have permission to delete grade sections' }));
 			return;
 		}
-		if (!window.confirm('Are you sure you want to delete this section?')) return;
+		if (!window.confirm(t('gradeSections.confirms.delete', { defaultValue: 'Are you sure you want to delete this section?' }))) return;
 		const res = await deleteGradeSection(id);
 		if (res && res.ok) {
-			toast.success('Deleted successfully');
+			toast.success(t('gradeSections.toasts.deleted', { defaultValue: 'Deleted successfully' }));
 		} else {
-			toast.error(res?.error || 'Failed to delete');
+			toast.error(res?.error || t('common.errors.failedToDelete', { defaultValue: 'Failed to delete' }));
 		}
 	};
 
@@ -202,39 +204,39 @@ export default function GradePage() {
 		const isVisible = (key) => visible?.[String(key)] !== false;
 
 		const cols = [
-			{ key: 'section', label: 'Section', get: (r) => r.section || '' },
-			{ key: 'grade', label: 'Grade', get: (r) => r.grade?.gradeName || '' },
-			{ key: 'shift', label: 'Shift', get: (r) => r.shift?.shiftName || '' },
-			{ key: 'subjects', label: 'Subjects', get: (r) => String((r.subjects || []).length) },
-			{ key: 'capacity', label: 'Capacity', get: (r) => (r.capacity == null ? '' : String(r.capacity)) },
+			{ key: 'section', label: t('common.filters.section', { defaultValue: 'Section' }), get: (r) => r.section || '' },
+			{ key: 'grade', label: t('common.filters.grade', { defaultValue: 'Grade' }), get: (r) => r.grade?.gradeName || '' },
+			{ key: 'shift', label: t('common.filters.shift', { defaultValue: 'Shift' }), get: (r) => r.shift?.shiftName || '' },
+			{ key: 'subjects', label: t('gradeSections.columns.subjects', { defaultValue: 'Subjects' }), get: (r) => String((r.subjects || []).length) },
+			{ key: 'capacity', label: t('gradeSections.columns.capacity', { defaultValue: 'Capacity' }), get: (r) => (r.capacity == null ? '' : String(r.capacity)) },
 		].filter((c) => isVisible(c.key));
 
 		const headers = cols.map((c) => c.label);
 		const rows = (sortedClassesForView || []).map((r) => cols.map((c) => c.get(r)));
 
 		const subtitleParts = [
-			gradeFilter ? `Grade: ${gradeFilter}` : null,
-			shiftFilter ? `Shift: ${shiftFilter}` : null,
-			sectionFilter ? `Section: ${sectionFilter}` : null,
+			gradeFilter ? `${t('common.filters.grade', { defaultValue: 'Grade' })}: ${gradeFilter}` : null,
+			shiftFilter ? `${t('common.filters.shift', { defaultValue: 'Shift' })}: ${shiftFilter}` : null,
+			sectionFilter ? `${t('common.filters.section', { defaultValue: 'Section' })}: ${sectionFilter}` : null,
 		].filter(Boolean);
 
 		return {
 			filename: 'grade-sections',
-			sheetName: 'Grade Sections',
-			title: 'Grade Sections',
+			sheetName: t('gradeSections.export.sheetName', { defaultValue: 'Grade Sections' }),
+			title: t('gradeSections.export.title', { defaultValue: 'Grade Sections' }),
 			subtitle: subtitleParts.join(' • '),
 			headerImageSrc: headerImg,
 			headers,
 			rows,
 		};
-	}, [canExport, gradeFilter, shiftFilter, sectionFilter, sortedClassesForView]);
+	}, [canExport, gradeFilter, shiftFilter, sectionFilter, sortedClassesForView, t]);
 
 	const outlineBtn = 'bg-white! text-blue-700! border-blue-400! hover:bg-blue-50!';
 
 	return (
 		<div className="space-y-6 with-print-header with-print-footer">
 			<PrintHeader />
-			<PrintFooter left="Generated by Nuuru Al-Bayaan" />
+			<PrintFooter left={t('common.generatedBy', { defaultValue: 'Generated by Nuuru Al-Bayaan' })} />
 
 			<Card className="p-4 no-print">
 				<div className="flex flex-col gap-3">
@@ -243,7 +245,7 @@ export default function GradePage() {
 							<SearchInput
 								value={searchTerm}
 								onChange={(v) => { setSearch(v); }}
-								placeholder="Search grade or section..."
+								placeholder={t('gradeSections.searchPlaceholder', { defaultValue: 'Search grade or section...' })}
 							/>
 						</div>
 						<FilterRow className="flex-1">
@@ -251,7 +253,7 @@ export default function GradePage() {
 								<DropdownSelect
 									value={gradeFilter}
 									onChange={(v) => applyFilters({ grade: v })}
-									placeholder="Grade"
+									placeholder={t('common.filters.grade', { defaultValue: 'Grade' })}
 									options={sortedGrades.map((g) => ({ value: g._id, label: g.gradeName }))}
 								/>
 							</FilterItem>
@@ -259,7 +261,7 @@ export default function GradePage() {
 								<FilterDropdownSelect
 									value={shiftFilter}
 									onChange={(v) => applyFilters({ shift: v })}
-									placeholder="Shift"
+									placeholder={t('common.filters.shift', { defaultValue: 'Shift' })}
 									options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
 									maxVisible={5}
 								/>
@@ -268,12 +270,12 @@ export default function GradePage() {
 								<Input
 									id="grades-section-filter"
 									name="grades-section-filter"
-									aria-label="Section"
+									aria-label={t('common.filters.section', { defaultValue: 'Section' })}
 									type="text"
 									value={sectionFilter}
 									onChange={(e) => applyFilters({ section: e.target.value })}
 									className="w-full"
-									placeholder="Section"
+									placeholder={t('common.filters.section', { defaultValue: 'Section' })}
 								/>
 							</FilterItem>
 						</FilterRow>
@@ -288,7 +290,7 @@ export default function GradePage() {
 								icon={<Plus className="w-5 h-5" />}
 								className="w-full sm:w-auto justify-center"
 							>
-								Add Grade Section
+								{t('gradeSections.actions.add', { defaultValue: 'Add Grade Section' })}
 							</Button>
 						)}
 
@@ -299,10 +301,10 @@ export default function GradePage() {
 										variant="neutral"
 										className={outlineBtn}
 										onClick={handlePrint}
-										title="Print"
+										title={t('common.actions.print', { defaultValue: 'Print' })}
 										icon={<Printer size={16} />}
 									>
-										Print
+										{t('common.actions.print', { defaultValue: 'Print' })}
 									</ActionButton>
 
 									<PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
@@ -321,9 +323,9 @@ export default function GradePage() {
 									setSectionFilter('');
 									resetAndReload({ filters: {}, search: '' });
 								}}
-								title="Reset filters"
+								title={t('common.filters.resetTitle', { defaultValue: 'Reset filters' })}
 							>
-								Reset
+								{t('common.actions.reset', { defaultValue: 'Reset' })}
 							</ActionButton>
 						</div>
 					</div>
@@ -351,7 +353,7 @@ export default function GradePage() {
 			<Modal
 				isOpen={isModalOpen}
 				onClose={closeModal}
-				title={editingClass ? 'Edit Grade Section' : 'Add Grade Section'}
+				title={editingClass ? t('gradeSections.modal.editTitle', { defaultValue: 'Edit Grade Section' }) : t('gradeSections.modal.addTitle', { defaultValue: 'Add Grade Section' })}
 			>
 				<GradeForm cls={editingClass} onClose={closeModal} onSuccess={() => { /* EDCI via realtime */ }} />
 			</Modal>

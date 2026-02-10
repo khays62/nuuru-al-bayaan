@@ -28,6 +28,7 @@ import ResultsChartsCard from '../components/ResultsChartsCard.jsx';
 import ScoreActivityCard from '../components/ScoreActivityCard.jsx';
 import AnnouncementsMixCard from '../components/AnnouncementsMixCard.jsx';
 import { useDashboardRealtimeInvalidation } from '../useDashboardRealtimeInvalidation';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 const tones = {
     blue: {
@@ -261,10 +262,11 @@ const ModuleCard = ({ title, subtitle, to, Icon, count, tone = 'blue', disabled 
     );
 };
 
-const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = 'Tirada Ardayda (Student Count)' }) => {
+const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' }) => {
+    const { t } = useI18n();
     const rows = Array.isArray(series) ? series : [];
     if (rows.length < 2) {
-        return <div className="h-40 flex items-center justify-center text-sm text-gray-600">Not enough data for a chart.</div>;
+        return <div className="h-40 flex items-center justify-center text-sm text-gray-600">{t('common.emptyStates.notEnoughDataForChart', { defaultValue: 'Not enough data for a chart.' })}</div>;
     }
 
     const [hoverIdx, setHoverIdx] = useState(null);
@@ -518,9 +520,10 @@ const CardShell = ({ children, className = '' }) => (
 );
 
 const SvgLineChart = ({ series = [], stroke = '#2563eb', fill = 'rgba(37,99,235,0.12)', height = 160 }) => {
+    const { t } = useI18n();
     const rows = Array.isArray(series) ? series : [];
     if (rows.length < 2) {
-        return <div className="h-40 flex items-center justify-center text-sm text-gray-600">Not enough data for a chart.</div>;
+        return <div className="h-40 flex items-center justify-center text-sm text-gray-600">{t('common.emptyStates.notEnoughDataForChart', { defaultValue: 'Not enough data for a chart.' })}</div>;
     }
     const w = 560;
     const h = height;
@@ -625,6 +628,7 @@ const StackedBar = ({ label, segments }) => {
 };
 
 export default function DashboardPage() {
+    const { t } = useI18n();
     const { auth, hasPermission } = useAuth();
     const role = String(auth?.user?.role || '').toLowerCase();
     const fullName = String(auth?.user?.fullName || '').trim();
@@ -787,7 +791,7 @@ export default function DashboardPage() {
     const isInitialLoading = Boolean(loading && data == null);
 
     if (isInitialLoading) return <DashboardSkeleton />;
-    if (isError) return <Alert type="error" message="Failed to load dashboard data." />;
+    if (isError) return <Alert type="error" message={t('dashboard.page.errors.loadFailed')} />;
 
     return (
         <div className="space-y-5">
@@ -795,15 +799,21 @@ export default function DashboardPage() {
                 <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
                 <div className="pointer-events-none absolute -left-20 -bottom-20 h-56 w-56 rounded-full bg-black/10 blur-3xl" />
                 <div className="relative">
-                    <div className="text-xl md:text-2xl font-extrabold tracking-tight text-white">{fullName ? `Welcome, ${fullName}` : 'Welcome'}</div>
-                    <div className="text-sm text-white/85 mt-1">{selectedAyLabel ? `Academic Year: ${selectedAyLabel}` : 'Dashboard overview'}</div>
+                    <div className="text-xl md:text-2xl font-extrabold tracking-tight text-white">
+                        {fullName ? t('dashboard.page.welcomeUser', { name: fullName }) : t('dashboard.page.welcome')}
+                    </div>
+                    <div className="text-sm text-white/85 mt-1">
+                        {selectedAyLabel
+                            ? t('dashboard.page.academicYearLabel', { year: selectedAyLabel })
+                            : t('dashboard.page.subtitle')}
+                    </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
                 <ModuleCard
-                    title="Students"
-                    subtitle={studentsActive !== null && studentsActive !== undefined ? `Active: ${fmtCount(studentsActive)}` : ' '}
+                    title={t('dashboard.page.modules.students')}
+                    subtitle={studentsActive !== null && studentsActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(studentsActive) }) : ' '}
                     to="/students"
                     Icon={Users}
                     count={studentsTotal}
@@ -811,8 +821,8 @@ export default function DashboardPage() {
                     disabled={!canStudents}
                 />
                 <ModuleCard
-                    title="Teachers"
-                    subtitle={teachersActive !== null && teachersActive !== undefined ? `Active: ${fmtCount(teachersActive)}` : ' '}
+                    title={t('dashboard.page.modules.teachers')}
+                    subtitle={teachersActive !== null && teachersActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(teachersActive) }) : ' '}
                     to="/teachers"
                     Icon={Users}
                     count={teachersTotal}
@@ -821,8 +831,8 @@ export default function DashboardPage() {
                 />
                 {isAdmin ? (
                     <ModuleCard
-                        title="Staff"
-                        subtitle={staffActive !== null && staffActive !== undefined ? `Active: ${fmtCount(staffActive)}` : ' '}
+                        title={t('dashboard.page.modules.staff')}
+                        subtitle={staffActive !== null && staffActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(staffActive) }) : ' '}
                         to="/users"
                         Icon={UserCog}
                         count={staffTotal}
@@ -832,8 +842,8 @@ export default function DashboardPage() {
                 ) : null}
 
                 <ModuleCard
-                    title="Classes"
-                    subtitle="Grade sections"
+                    title={t('dashboard.page.modules.classes')}
+                    subtitle={t('dashboard.page.modules.classesSubtitle')}
                     to="/grades"
                     Icon={Layers3}
                     count={classesCount}
@@ -841,8 +851,8 @@ export default function DashboardPage() {
                     disabled={!canGrades}
                 />
                 <ModuleCard
-                    title="Subjects"
-                    subtitle="All subjects"
+                    title={t('dashboard.page.modules.subjects')}
+                    subtitle={t('dashboard.page.modules.subjectsSubtitle')}
                     to="/subjects"
                     Icon={BookOpenCheck}
                     count={subjectsCount}
@@ -850,8 +860,8 @@ export default function DashboardPage() {
                     disabled={!canSubjects}
                 />
                 <ModuleCard
-                    title="Cohorts"
-                    subtitle="All cohorts"
+                    title={t('dashboard.page.modules.cohorts')}
+                    subtitle={t('dashboard.page.modules.cohortsSubtitle')}
                     to="/cohorts"
                     Icon={GraduationCap}
                     count={cohortsCount}
@@ -859,8 +869,8 @@ export default function DashboardPage() {
                     disabled={!canCohorts}
                 />
                 <ModuleCard
-                    title="Transfers"
-                    subtitle="In selected range"
+                    title={t('dashboard.page.modules.transfers')}
+                    subtitle={t('dashboard.page.modules.inSelectedRange')}
                     to="/transfers"
                     Icon={Repeat}
                     count={transfersInRange}
@@ -868,8 +878,8 @@ export default function DashboardPage() {
                     disabled={!canTransfers}
                 />
                 <ModuleCard
-                    title="Announcements"
-                    subtitle="In selected range"
+                    title={t('dashboard.page.modules.announcements')}
+                    subtitle={t('dashboard.page.modules.inSelectedRange')}
                     to="/announcements"
                     Icon={Megaphone}
                     count={announcementsInRange}
@@ -884,25 +894,29 @@ export default function DashboardPage() {
                     <div className="rounded-2xl border border-indigo-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
                         <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
-                                <div className="text-lg font-semibold">New Students</div>
-                                <div className="text-sm text-white/80 mt-1">First-ever enrollment trend</div>
+                                <div className="text-lg font-semibold">{t('dashboard.page.newStudents.title')}</div>
+                                <div className="text-sm text-white/80 mt-1">{t('dashboard.page.newStudents.subtitle')}</div>
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                                 <RangeTabs
                                     value={newStudentsRange}
                                     onChange={setNewStudentsRange}
                                     items={[
-                                        { value: 'day', label: 'Day' },
-                                        { value: 'week', label: 'Week' },
-                                        { value: 'month', label: 'Month' },
-                                        { value: 'year', label: 'Year' },
+                                        { value: 'day', label: t('common.range.buckets.day') },
+                                        { value: 'week', label: t('common.range.buckets.week') },
+                                        { value: 'month', label: t('common.range.buckets.month') },
+                                        { value: 'year', label: t('common.range.buckets.year') },
                                     ]}
                                 />
                             </div>
                         </div>
 
                         <div className="p-5">
-                            <SvgNewStudentsLineChart series={newStudentsSeries} height={320} yAxisLabel="Tirada Ardayda (Student Count)" />
+                            <SvgNewStudentsLineChart
+                                series={newStudentsSeries}
+                                height={320}
+                                yAxisLabel={t('dashboard.page.newStudents.yAxisLabel')}
+                            />
                         </div>
                     </div>
                 ) : null}

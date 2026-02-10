@@ -1,6 +1,7 @@
 import React from 'react';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function TransfersLogsTable({
 	items,
@@ -13,16 +14,19 @@ export default function TransfersLogsTable({
 	onPage,
 	onLimit,
 }) {
+	const { t } = useI18n();
+	const sectionPrefix = t('common.sectionPrefix', { defaultValue: 'Sec' });
+
 	return (
 		<StandardTable
 			isLoading={isLoading}
 			items={items}
-			loadingMessage="Loading transfers..."
+			loadingMessage={t('transfers.logs.loading', { defaultValue: 'Loading transfers...' })}
 			loadingVariant="table"
 			loadingRows={6}
 			loadingColumns={6}
-			emptyTitle="No transfers found"
-			emptyDescription="Transfers will appear here when recorded."
+			emptyTitle={t('transfers.logs.emptyTitle', { defaultValue: 'No transfers found' })}
+			emptyDescription={t('transfers.logs.emptyDescription', { defaultValue: 'Transfers will appear here when recorded.' })}
 
 			rows={rows}
 			storageKey="transfers:logs:columns:v1"
@@ -36,23 +40,25 @@ export default function TransfersLogsTable({
 				limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
 			}}
 			columns={[
-				{ key: 'date', label: 'Date', sortable: true, field: 'date' },
-				{ key: 'student', label: 'Student', sortable: true, field: 'student', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-				{ key: 'from', label: 'From', sortable: true, field: 'from' },
-				{ key: 'to', label: 'To', sortable: true, field: 'to' },
-				{ key: 'type', label: 'Type', sortable: true, field: 'type' },
-				{ key: 'reason', label: 'Reason', sortable: true, field: 'reason' },
+				{ key: 'date', label: t('transfers.logs.columns.date', { defaultValue: 'Date' }), sortable: true, field: 'date' },
+				{ key: 'student', label: t('transfers.logs.columns.student', { defaultValue: 'Student' }), sortable: true, field: 'student', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+				{ key: 'from', label: t('transfers.logs.columns.from', { defaultValue: 'From' }), sortable: true, field: 'from' },
+				{ key: 'to', label: t('transfers.logs.columns.to', { defaultValue: 'To' }), sortable: true, field: 'to' },
+				{ key: 'type', label: t('transfers.logs.columns.type', { defaultValue: 'Type' }), sortable: true, field: 'type' },
+				{ key: 'reason', label: t('transfers.logs.columns.reason', { defaultValue: 'Reason' }), sortable: true, field: 'reason' },
 			]}
 			getRowKey={(l) => l._id}
 			renderCell={(l, col) => {
 				const dateStr = l.date ? new Date(l.date).toLocaleString() : '';
-				const fromLbl = [l.from?.grade, (l.from?.section != null ? `Sec ${l.from.section}` : null), (l.from?.shift ? `(${l.from.shift})` : null)]
+				const fromLbl = [l.from?.grade, (l.from?.section != null ? `${sectionPrefix} ${l.from.section}` : null), (l.from?.shift ? `(${l.from.shift})` : null)]
 					.filter(Boolean)
 					.join(' ');
-				const toLbl = [l.to?.grade, (l.to?.section != null ? `Sec ${l.to.section}` : null), (l.to?.shift ? `(${l.to.shift})` : null)]
+				const toLbl = [l.to?.grade, (l.to?.section != null ? `${sectionPrefix} ${l.to.section}` : null), (l.to?.shift ? `(${l.to.shift})` : null)]
 					.filter(Boolean)
 					.join(' ');
-				const type = l.revertOf ? 'Revert' : 'Transfer';
+				const type = l.revertOf
+					? t('transfers.logs.type.revert', { defaultValue: 'Revert' })
+					: t('transfers.logs.type.transfer', { defaultValue: 'Transfer' });
 
 				switch (col.key) {
 					case 'date':

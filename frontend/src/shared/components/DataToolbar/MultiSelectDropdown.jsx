@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Card from '../ui/Card.jsx';
 import Checkbox from '../ui/Checkbox.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
-export default function MultiSelectDropdown({ value = [], onChange, options = [], placeholder = 'Select...', className = '' }) {
+export default function MultiSelectDropdown({ value = [], onChange, options = [], placeholder, className = '' }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -22,9 +24,11 @@ export default function MultiSelectDropdown({ value = [], onChange, options = []
   };
   const clearAll = () => onChange([]);
 
+  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
+
   const label = (Array.isArray(value) && value.length)
     ? options.filter(o => value.includes(o.value)).map(o => o.label).join(', ')
-    : placeholder;
+    : resolvedPlaceholder;
 
   return (
     <div className={`relative ${className}`} ref={ref}>
@@ -35,8 +39,8 @@ export default function MultiSelectDropdown({ value = [], onChange, options = []
       {open && (
         <Card className="absolute z-10 mt-1 w-56 rounded-md shadow-lg p-2">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-xs text-gray-500">Select days</span>
-            <button type="button" className="text-xs text-(--nb-color-brand)" onClick={clearAll}>Clear</button>
+            <span className="text-xs text-gray-500">{t('common.selectDays', { defaultValue: 'Select days' })}</span>
+            <button type="button" className="text-xs text-(--nb-color-brand)" onClick={clearAll}>{t('common.actions.clear', { defaultValue: 'Clear' })}</button>
           </div>
           <div className="max-h-48 overflow-auto space-y-1">
             {options.map(opt => (

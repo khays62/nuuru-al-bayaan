@@ -6,6 +6,85 @@ export default {
     somali: 'Soomaali',
 
     loading: 'جارٍ التحميل…',
+    pleaseWait: 'يرجى الانتظار…',
+
+    errors: {
+      somethingWentWrong: 'حدث خطأ ما.',
+      failedToCreate: 'فشل الإنشاء',
+      failedToUpdate: 'فشل التحديث',
+      failedToDelete: 'فشل الحذف',
+      failedToLoad: 'فشل التحميل',
+      networkOrServerError: 'خطأ في الشبكة أو الخادم',
+      copyFailed: 'فشل النسخ',
+    },
+
+    emptyStates: {
+      noData: 'لا توجد بيانات',
+      noDataFound: 'لم يتم العثور على بيانات',
+      tryDifferentSearch: 'جرّب بحثاً مختلفاً.',
+      notEnoughDataForChart: 'لا توجد بيانات كافية للمخطط.',
+    },
+
+    select: {
+      placeholder: 'اختر…',
+      noOptions: 'لا توجد خيارات.',
+      noOptionsFound: 'لم يتم العثور على خيارات.',
+      searchPlaceholder: 'اكتب للبحث…',
+      typeToSearchMore: 'اكتب للبحث عن المزيد…',
+    },
+
+    aria: {
+      tabs: 'علامات التبويب',
+      filterSuggestedStudents: 'تصفية الطلاب المقترحين',
+    },
+
+    filters: {
+      title: 'الفلاتر',
+      resetTitle: 'إعادة ضبط الفلاتر',
+      academicYear: 'السنة الدراسية',
+      academicYearShort: 'سنة',
+      level: 'المستوى',
+      grade: 'الصف',
+      shift: 'الدوام',
+      section: 'الشعبة',
+      subject: 'المادة',
+      cohort: 'الدفعة',
+      status: 'الحالة',
+      any: 'أي',
+    },
+
+    searchPlaceholders: {
+      academicYears: 'ابحث عن السنوات الدراسية…',
+      shifts: 'ابحث عن الدوامات…',
+      sections: 'ابحث عن الشعب…',
+      cohorts: 'ابحث عن الدفعات…',
+      subjects: 'ابحث عن المواد…',
+    },
+
+    export: {
+      subtitle: 'الإجمالي: {{count}} • تم الإنشاء: {{date}}',
+      csv: 'CSV',
+      pdf: 'PDF',
+      excel: 'Excel',
+      pdfTitle: 'تصدير PDF',
+      excelTitle: 'تصدير Excel',
+      csvTitle: 'تصدير CSV',
+      pdfFailed: 'فشل تصدير PDF',
+      excelFailed: 'فشل تصدير Excel',
+    },
+
+    onlyWithStatus: 'فقط {{status}}',
+    allIncludeClosed: 'الكل (بما في ذلك المغلقة)',
+    selectDays: 'اختر الأيام',
+
+    none: 'لا شيء',
+
+    table: {
+      order: 'الترتيب',
+      created: 'تم الإنشاء',
+      updated: 'تم التحديث',
+      actions: 'الإجراءات',
+    },
 
     columns: 'الأعمدة',
     chooseColumns: 'اختر الأعمدة',
@@ -30,11 +109,35 @@ export default {
     search: 'بحث…',
     close: 'إغلاق',
 
+    from: 'من',
+    to: 'إلى',
+
+    range: {
+      title: 'النطاق',
+      today: 'اليوم',
+      last7: 'آخر 7',
+      buckets: {
+        day: 'يوم',
+        week: 'أسبوع',
+        month: 'شهر',
+        year: 'سنة',
+      },
+
+      selected: 'مختار',
+    },
+
+    selected: 'محدد',
+
+    moreCount: '(+{{count}} أخرى)',
+
+    studentFallback: 'طالب',
+
     retry: 'إعادة المحاولة',
     saving: 'جارٍ الحفظ…',
     summary: 'ملخص',
     empty: 'فارغ',
     room: 'غرفة',
+    sectionPrefix: 'شعبة',
 
     days: {
       short: {
@@ -57,11 +160,21 @@ export default {
       },
     },
 
+    time: {
+      am: 'ص',
+      pm: 'م',
+    },
+
+    working: 'جارٍ العمل…',
+    updating: 'جارٍ التحديث…',
+    user: 'مستخدم',
+
     generatedBy: 'تم إنشاؤه بواسطة نور البيان',
 
     status: {
       active: 'نشط',
       inactive: 'غير نشط',
+      ok: 'موافق',
     },
 
     actions: {
@@ -72,8 +185,15 @@ export default {
       edit: 'تعديل',
       view: 'عرض',
       cancel: 'إلغاء',
+      clear: 'مسح',
       reset: 'إعادة ضبط',
       print: 'طباعة',
+      preview: 'معاينة',
+      copy: 'نسخ',
+      archive: 'أرشفة',
+      selectAll: 'تحديد الكل',
+      transfer: 'تحويل',
+      promote: 'ترقية',
       activate: 'تفعيل',
       deactivate: 'تعطيل',
       reactivate: 'إعادة التفعيل',
@@ -82,6 +202,325 @@ export default {
       delete: 'حذف',
       assignments: 'التكليفات',
       resetPassword: 'إعادة تعيين كلمة المرور',
+    },
+
+    pagination: {
+      pageSummary: 'صفحة {{page}} من {{pages}} — الإجمالي {{total}}',
+    },
+
+    audit: {
+      viewDetails: 'عرض التفاصيل',
+      detailsTitle: 'تفاصيل السجل',
+      unknownDevice: 'جهاز غير معروف',
+      localhost: 'المضيف المحلي',
+      fields: 'الحقول',
+      mobile: 'جوال',
+      unknownOs: 'نظام غير معروف',
+      unknownBrowser: 'متصفح غير معروف',
+      history: {
+        emptyTitle: 'لا يوجد سجل تدقيق.',
+        emptyDescription: 'لا توجد إجراءات مسجلة حتى الآن.',
+      },
+      labels: {
+        action: 'الإجراء',
+        description: 'الوصف',
+        ip: 'IP',
+        device: 'الجهاز',
+        time: 'الوقت',
+        raw: 'خام',
+      },
+    },
+
+    securityBell: {
+      notificationsTitle: 'إشعارات الأمان',
+      alertsTitle: 'تنبيهات الأمان',
+      noLockedAccounts: 'لا توجد حسابات مقفلة حالياً.',
+      unknownUser: 'غير معروف: {{username}}',
+      userRoleFallback: 'مستخدم',
+      inactiveTag: 'غير نشط',
+      until: 'حتى {{date}}',
+      attemptsLockCount: 'عدد محاولات القفل: {{count}}',
+      titles: {
+        resetToDefaultAndUnlock: 'إعادة تعيين كلمة المرور للوضع الافتراضي + فتح القفل',
+        unlockAccount: 'فتح الحساب (مسح قفل تسجيل الدخول)',
+        markActive: 'تعيين الحساب نشطاً',
+        markInactive: 'تعيين الحساب غير نشط',
+        clearNotification: 'مسح الإشعار',
+      },
+      states: {
+        resetting: 'جارٍ إعادة التعيين…',
+        unlocking: 'جارٍ فتح القفل…',
+        activating: 'جارٍ التفعيل…',
+        inactivating: 'جارٍ التعطيل…',
+        clearing: 'جارٍ المسح…',
+      },
+      confirms: {
+        markInactive: 'تعيين هذا الحساب كغير نشط؟ سيتم تسجيل خروجهم خلال ثوانٍ.',
+        markActive: 'تعيين هذا الحساب كنشط؟',
+      },
+      toasts: {
+        studentPasswordResetDefault: 'تمت إعادة تعيين كلمة مرور الطالب إلى الافتراضي',
+        teacherPasswordResetDefault: 'تمت إعادة تعيين كلمة مرور المعلم إلى الافتراضي',
+        passwordResetDefault: 'تمت إعادة تعيين كلمة المرور إلى الافتراضي',
+        accountUnlocked: 'تم فتح قفل الحساب',
+        accountMarkedInactive: 'تم تعيين الحساب غير نشط',
+        accountMarkedActive: 'تم تعيين الحساب نشطاً',
+      },
+      errors: {
+        resetFailed: 'فشل إعادة التعيين',
+        unlockFailed: 'فشل فتح القفل',
+        inactiveFailed: 'فشل التعطيل',
+        activateFailed: 'فشل التفعيل',
+        clearFailed: 'فشل المسح',
+      },
+    },
+  },
+
+  auth: {
+    forcePasswordChange: {
+      title: 'تغيير كلمة المرور',
+      body: {
+        studentDefault: 'يستخدم حسابك كلمة المرور الافتراضية. لأسباب أمنية، يرجى تعيين كلمة مرور جديدة.',
+        userRequired: 'يجب على حسابك تعيين كلمة مرور جديدة قبل المتابعة.',
+      },
+      fields: {
+        newPassword: 'كلمة مرور جديدة',
+        confirmPassword: 'تأكيد كلمة المرور',
+      },
+      placeholders: {
+        newPassword: 'أدخل كلمة مرور جديدة',
+        confirmPassword: 'أعد إدخال كلمة المرور الجديدة',
+      },
+      actions: {
+        notNow: 'ليس الآن',
+        save: 'حفظ',
+      },
+      states: {
+        saving: 'جارٍ الحفظ…',
+      },
+      tooltips: {
+        showPassword: 'إظهار كلمة المرور',
+      },
+      toasts: {
+        fillBoth: 'يرجى ملء كلا الحقلين.',
+        minLength: 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.',
+        mismatch: 'كلمتا المرور غير متطابقتين.',
+        updated: 'تم تحديث كلمة المرور بنجاح',
+      },
+      errors: {
+        failed: 'فشل تغيير كلمة المرور.',
+      },
+    },
+  },
+
+  audit: {
+    actions: {
+      account: {
+        permissionsUpdated: 'الحساب • تم تحديث الصلاحيات',
+      },
+    },
+  },
+
+  attendance: {
+    status: {
+      notMarked: 'غير مسجل',
+      present: 'حاضر',
+      absent: 'غائب',
+      late: 'متأخر',
+      excused: 'بعذر',
+      sick: 'مريض',
+      medical: 'طبي',
+      medicalAppointment: 'موعد طبي',
+      family: 'عائلي',
+      familyEmergency: 'طوارئ عائلية',
+      other: 'أخرى',
+    },
+
+    marking: {
+      table: {
+        columns: {
+          studentId: 'رقم الطالب',
+          fullName: 'الاسم الكامل',
+          marked: 'تم التسجيل',
+          updated: 'تم التحديث',
+          status: 'الحالة',
+        },
+        loading: 'جارٍ تحميل الطلاب…',
+        empty: 'لم يتم العثور على طلاب',
+      },
+
+      moreStatusesAria: 'حالات إضافية',
+      reasonPlaceholder: 'السبب (بحد أقصى {{max}} كلمات)',
+
+      actions: {
+        saveAttendance: 'حفظ الحضور',
+      },
+
+      footer: {
+        summary: 'حاضر: {{present}} • غائب: {{absent}} • متأخر: {{late}} • بعذر: {{excused}}',
+        notSavedYet: 'لم يتم الحفظ بعد',
+        saved: 'تم الحفظ ({{mode}}) لتاريخ {{date}}',
+      },
+
+      modes: {
+        allDay: 'طوال اليوم',
+        perLesson: 'لكل حصة',
+      },
+
+      tabs: {
+        students: {
+          activeNow: 'الطلاب: النشطون الآن',
+          onSelectedDate: 'الطلاب: في التاريخ المحدد',
+        },
+        mode: {
+          perLesson: 'الوضع: لكل حصة',
+          allDay: 'الوضع: طوال اليوم',
+        },
+        date: {
+          today: 'التاريخ: اليوم',
+          yesterday: 'التاريخ: أمس',
+          custom: 'التاريخ: مخصص',
+        },
+      },
+
+      labels: {
+        date: 'التاريخ',
+        day: 'اليوم',
+        thisDay: 'هذا اليوم',
+      },
+
+      filters: {
+        period: 'الحصة',
+      },
+      searchPlaceholders: {
+        periods: 'ابحث عن الحصص…',
+      },
+
+      periodOptions: {
+        noSubject: 'بدون مادة',
+        savedPeriodLabel: 'محفوظ',
+      },
+
+      hints: {
+        teacherLesson: 'اختر الشعبة + المادة + الحصة لتسجيل الحضور.',
+        adminLesson: 'اختر المستوى + الدوام + الشعبة + المادة + الحصة لتسجيل الحضور.',
+        daily: 'اختر المستوى + الدوام + الشعبة لتسجيل حضور اليوم كاملًا.',
+      },
+
+      toasts: {
+        noActiveStudentsInClass: 'لا يوجد طلاب نشطون في هذا الصف.',
+        saved: 'تم حفظ الحضور.',
+        inactiveStudentsSwitchedToAsOf: 'تضم القائمة طلاباً غير نشطين. تم التبديل إلى “في التاريخ المحدد”.',
+        allStudentsActiveUseCurrent: 'كل الطلاب نشطون. يمكنك استخدام “النشطون الآن”.',
+      },
+
+      errors: {
+        selectLessonFilters: 'يرجى اختيار الشعبة والمادة والحصة والتاريخ.',
+        selectDailyFilters: 'يرجى اختيار المستوى والدوام والشعبة والتاريخ.',
+        noPermissionEdit: 'ليست لديك صلاحية لتعديل الحضور.',
+        inactiveStudentsNewNotAllowed: 'لا يمكن تسجيل حضور جديد بينما تضم القائمة طلاباً غير نشطين.',
+        dailyAlreadyExistsNoLesson: 'يوجد حضور يومي لهذا التاريخ. تم حظر حضور الحصص.',
+        noActiveStudents: 'لم يتم العثور على طلاب نشطين.',
+        alreadySavedNoChanges: 'تم الحفظ مسبقاً. لا توجد تغييرات للحفظ.',
+        noPeriodsForSubjectToday: 'لا توجد حصص لهذه المادة اليوم.',
+        noLessonsInTimetable: 'لا توجد حصص في الجدول لهذه الشعبة.',
+        noPeriodsScheduledForDay: 'لا توجد حصص مجدولة لـ {{day}}.',
+        noSectionsForSelectedLevelShift: 'لا توجد شعب للمستوى/الدوام المحدد.',
+        conflictTeacher: 'يمكنك تعديل سجلات حضورك فقط.',
+        conflictHasLessonSwitchToPerLesson: 'يوجد حضور حصص لهذا التاريخ. بدّل إلى وضع لكل حصة.',
+        conflictHasDailySwitchToAllDay: 'يوجد حضور طوال اليوم لهذا التاريخ. بدّل إلى وضع طوال اليوم.',
+        saveFailed: 'فشل حفظ الحضور.',
+        dailySavedReadOnlyTeacher: 'تم حفظ الحضور لهذا التاريخ وهو للقراءة فقط للمعلمين.',
+        cannotSaveNow: 'لا يمكن الحفظ الآن.',
+      },
+    },
+
+    reports: {
+      title: 'تقرير الحضور',
+
+      columns: {
+        date: 'التاريخ',
+        studentId: 'رقم الطالب',
+        fullName: 'الاسم الكامل',
+      },
+
+      labels: {
+        range: 'النطاق',
+        rosterCount: 'عدد الطلاب',
+        student: 'الطالب',
+        studentId: 'المعرف',
+        markedBy: 'سجّل',
+        updatedBy: 'حدّث',
+        subject: 'المادة',
+        teacher: 'المعلم',
+        periodWithCode: 'الحصة: {{code}}',
+        remarks: 'ملاحظات',
+      },
+
+      summaryCell: {
+        counts: 'ح:{{present}} غ:{{absent}} ت:{{late}} ع:{{excused}}',
+      },
+
+      empty: {
+        noAttendanceInRange: 'لا يوجد حضور في هذا النطاق.',
+        noRecordsInRange: 'لم يتم العثور على سجلات حضور في هذا النطاق.',
+      },
+
+      tabs: {
+        report: {
+          summary: 'التقرير: ملخص',
+          details: 'التقرير: تفاصيل',
+        },
+        range: {
+          today: 'النطاق: اليوم',
+          last7: 'النطاق: آخر 7 أيام',
+          custom: 'النطاق: مخصص',
+        },
+      },
+
+      filters: {
+        subjectSelectSectionFirst: 'المادة (اختر الشعبة أولاً)',
+        subjectLoadingPeriods: 'المادة (جارٍ تحميل الحصص…)',
+        subjectRequired: 'المادة (مطلوبة)',
+      },
+
+      hints: {
+        selectFilters: 'اختر المستوى والدوام والشعبة لعرض التقارير.',
+      },
+
+      toasts: {
+        maxRangeClamped: 'الحد الأقصى للنطاق شهر واحد. تم ضبط تاريخ النهاية.',
+      },
+
+      errors: {
+        selectFilters: {
+          teacher: 'يرجى اختيار الشعبة والمادة ونطاق التاريخ',
+          admin: 'يرجى اختيار المستوى والدوام والشعبة ونطاق التاريخ',
+        },
+        noPeriodsForSubject: 'لم يتم العثور على حصص للجدول لهذه المادة.',
+        loadFailed: 'فشل تحميل التقرير',
+        detailsLoadFailed: 'فشل تحميل التفاصيل',
+      },
+
+      actions: {
+        viewStudent: 'عرض الطالب',
+        viewStudentAria: 'عرض {{name}}',
+      },
+
+      studentModal: {
+        title: 'الطالب',
+        titleWithName: 'الطالب • {{name}} ({{id}})',
+        noStudentSelected: 'لم يتم اختيار طالب.',
+      },
+
+      export: {
+        subtitleWithRoster: 'النطاق: {{from}} إلى {{to}} • العدد: {{rosterCount}}',
+        subtitleRangeOnly: 'النطاق: {{from}} إلى {{to}}',
+        sheet: {
+          summary: 'ملخص',
+          details: 'تفاصيل',
+        },
+      },
     },
   },
 
@@ -92,6 +531,112 @@ export default {
       break: 'استراحة',
       breakLocked: 'استراحة (مقفلة)',
       dragToMove: 'اسحب للنقل',
+    },
+
+    page: {
+      loadingSlots: 'جارٍ تحميل الحصص…',
+
+      table: {
+        day: 'اليوم',
+      },
+
+      filters: {
+        subject: 'المادة',
+        days: 'الأيام',
+      },
+
+      actions: {
+        downloadCsv: 'تنزيل CSV',
+        addSlot: 'إضافة حصة',
+        addSlotsDays: 'إضافة حصص (أيام)',
+        swap: 'تبديل',
+        move: 'نقل',
+      },
+
+      states: {
+        adding: 'جارٍ الإضافة…',
+      },
+
+      swapModal: {
+        title: 'اختر الإجراء',
+      },
+
+      print: {
+        selectSection: 'اختر الشعبة',
+      },
+
+      confirms: {
+        deleteSlot: 'حذف هذه الحصة؟',
+      },
+
+      toasts: {
+        slotMoved: 'تم نقل الحصة',
+        slotsSwapped: 'تم تبديل الحصص',
+        slotCreated: 'تم إنشاء الحصة',
+        slotsCreated: 'تم إنشاء الحصص',
+        deleted: 'تم الحذف',
+      },
+
+      errors: {
+        teacherViewOnly: 'يمكن للمعلمين عرض الجدول فقط',
+        noEditPermission: 'ليس لديك صلاحية لتعديل الجدول',
+        noAddPermission: 'ليس لديك صلاحية لإضافة حصص للجدول',
+        noDeletePermission: 'ليس لديك صلاحية لحذف حصص الجدول',
+        noPrintPermission: 'ليس لديك صلاحية لطباعة الجدول',
+        noDownloadPermission: 'ليس لديك صلاحية لتنزيل الجدول',
+
+        fillRequiredFields: 'املأ الحقول المطلوبة',
+        selectExactlyOneDayForAddSlot: 'اختر يوماً واحداً فقط لإضافة حصة',
+
+        breakCannotBeMoved: 'لا يمكن نقل الاستراحة',
+        cannotDropOnBreak: 'لا يمكن الإفلات على استراحة',
+        breakCannotBeSwapped: 'لا يمكن تبديل الاستراحة',
+        moveNotAllowedOnOccupiedCell: 'لا يمكن النقل إلى خانة مشغولة.',
+
+        loadFailed: 'فشل تحميل الجدول',
+        loadTodayFailed: 'فشل تحميل جدول اليوم',
+
+        moveFailed: 'فشل النقل',
+        swapFailed: 'فشل التبديل',
+        createFailed: 'فشل الإنشاء',
+        createBulkFailed: 'فشل الإنشاء بالجملة',
+        deleteFailed: 'فشل الحذف',
+
+        selectSection: 'اختر شعبة',
+        noSlotsToExport: 'لا توجد حصص للتصدير',
+
+        someDaysFailed: 'فشل بعض الأيام: {{details}}{{moreSuffix}}',
+        moreSuffix: ' (+{{count}} أكثر)',
+      },
+
+      empty: {
+        setValidTimeRange: 'حدد نطاق وقت صالح لعرض الحصص.',
+      },
+
+      conflicts: {
+        classConflict: 'تعارض شعبة',
+        teacherConflict: 'تعارض معلم',
+        roomConflict: 'تعارض غرفة',
+        invalidDay: 'يوم غير صالح',
+        conflict: 'تعارض',
+      },
+
+      export: {
+        filename: 'timetable.csv',
+        headers: {
+          day: 'اليوم',
+          start: 'البداية',
+          end: 'النهاية',
+          type: 'النوع',
+          subject: 'المادة',
+          teacher: 'المعلم',
+          room: 'الغرفة',
+        },
+        type: {
+          break: 'استراحة',
+          class: 'حصة',
+        },
+      },
     },
   },
 
@@ -106,6 +651,7 @@ export default {
     userManagement: 'إدارة المستخدمين',
 
     academics: 'الأكاديميات',
+      selectAll: 'تحديد الكل',
     classes: 'الصفوف',
     subjects: 'المواد',
     cohorts: 'المجموعات',
@@ -172,6 +718,514 @@ export default {
     input: 'إدخال',
   },
 
+  setup: {
+    table: {
+      emptyTitle: 'لا توجد {{title}}',
+      emptyDescription: 'أنشئ أول {{title}} للبدء.',
+      emptyAction: 'إضافة {{title}}',
+    },
+    grades: {
+      form: {
+        validation: {
+          gradeNameRequired: 'اسم الصف مطلوب',
+          orderInvalid: 'يجب أن يكون الترتيب عدداً صحيحاً (1..N)',
+        },
+        labels: {
+          gradeName: 'اسم الصف',
+        },
+        placeholders: {
+          gradeName: 'مثال: Level 1 / Fasalka 1',
+          order: '1',
+        },
+        hints: {
+          order: 'يُستخدم في الترقيات (غير مرتبط باللغة). الصف النهائي هو الأعلى ترتيباً.',
+        },
+      },
+      columns: {
+        grade: 'الصف',
+      },
+      searchPlaceholder: 'ابحث عن الصفوف…',
+      loading: 'جارٍ تحميل الصفوف…',
+      emptyTitle: 'لم يتم العثور على صفوف',
+      emptyCreateFirst: 'أنشئ أول صف لك.',
+      sheetName: 'الصفوف',
+      actions: {
+        add: 'إضافة صف',
+      },
+      modal: {
+        addTitle: 'إضافة صف',
+        editTitle: 'تعديل الصف',
+      },
+      rowActions: {
+        editTitle: 'تعديل الصف',
+        deleteTitle: 'حذف الصف',
+      },
+      confirms: {
+        delete: 'هل تريد حذف هذا الصف؟ هذا مسموح فقط إذا لم يكن قيد الاستخدام.',
+      },
+      toasts: {
+        created: 'تم إنشاء الصف',
+        updated: 'تم تحديث الصف',
+        deleted: 'تم حذف الصف',
+      },
+      errors: {
+        cannotDeleteInUse: 'لا يمكن الحذف: الصف قيد الاستخدام{{suffix}}',
+      },
+      refs: {
+        gradeSections: 'أقسام الصف',
+        enrollments: 'التسجيلات',
+        subjects: 'المواد',
+      },
+    },
+
+    shifts: {
+      form: {
+        validation: {
+          shiftNameRequired: 'اسم الدوام مطلوب',
+        },
+        labels: {
+          shiftName: 'اسم الدوام',
+        },
+        placeholders: {
+          shiftName: 'مثلاً: صباحي / مسائي',
+        },
+      },
+      columns: {
+        shift: 'الدوام',
+      },
+      searchPlaceholder: 'ابحث عن الدوامات…',
+      loading: 'جارٍ تحميل الدوامات…',
+      emptyTitle: 'لم يتم العثور على دوام',
+      emptyCreateFirst: 'أنشئ أول دوام لك.',
+      sheetName: 'الدوامات',
+      actions: {
+        add: 'إضافة دوام',
+      },
+      modal: {
+        addTitle: 'إضافة دوام',
+        editTitle: 'تعديل الدوام',
+      },
+      rowActions: {
+        editTitle: 'تعديل الدوام',
+        deleteTitle: 'حذف الدوام',
+      },
+      confirms: {
+        delete: 'هل تريد حذف هذا الدوام؟ هذا مسموح فقط إذا لم يكن قيد الاستخدام.',
+      },
+      toasts: {
+        created: 'تم إنشاء الدوام',
+        updated: 'تم تحديث الدوام',
+        deleted: 'تم حذف الدوام',
+      },
+      errors: {
+        cannotDeleteInUse: 'لا يمكن الحذف: الدوام قيد الاستخدام{{suffix}}',
+      },
+      refs: {
+        gradeSections: 'أقسام الصف',
+        enrollments: 'التسجيلات',
+      },
+    },
+
+    academicYears: {
+      form: {
+        validation: {
+          yearNameRequired: 'اسم السنة الدراسية مطلوب',
+        },
+        labels: {
+          yearName: 'السنة الدراسية',
+        },
+        hints: {
+          yearName: 'مثال: 2025/2026 (قد يتم إنشاؤها تلقائياً عند ترقية نهاية العام إذا كانت مفقودة)',
+        },
+        placeholders: {
+          yearName: '2025/2026',
+        },
+      },
+      columns: {
+        academicYear: 'السنة الدراسية',
+      },
+      searchPlaceholder: 'ابحث عن السنوات الدراسية…',
+      loading: 'جارٍ تحميل السنوات الدراسية…',
+      emptyTitle: 'لم يتم العثور على سنوات دراسية',
+      emptyCreateFirst: 'أنشئ أول سنة دراسية لك.',
+      sheetName: 'السنوات الدراسية',
+      actions: {
+        add: 'إضافة سنة دراسية',
+      },
+      modal: {
+        addTitle: 'إضافة سنة دراسية',
+        editTitle: 'تعديل السنة الدراسية',
+      },
+      rowActions: {
+        editTitle: 'تعديل السنة الدراسية',
+        deleteTitle: 'حذف السنة الدراسية',
+      },
+      confirms: {
+        delete: 'هل تريد حذف هذه السنة الدراسية؟ هذا مسموح فقط إذا لم تكن قيد الاستخدام.',
+      },
+      toasts: {
+        created: 'تم إنشاء السنة الدراسية',
+        updated: 'تم تحديث السنة الدراسية',
+        deleted: 'تم حذف السنة الدراسية',
+      },
+      errors: {
+        cannotDeleteInUse: 'لا يمكن الحذف: السنة الدراسية قيد الاستخدام{{suffix}}',
+      },
+      refs: {
+        enrollments: 'التسجيلات',
+        exams: 'الامتحانات',
+        lessonPlans: 'خطط الدروس',
+        cohorts: 'المجموعات',
+        teachers: 'المعلمون',
+      },
+    },
+  },
+
+  gradeSections: {
+    searchPlaceholder: 'ابحث عن الصف أو الشعبة…',
+    actions: {
+      add: 'إضافة شعبة صف',
+    },
+    modal: {
+      addTitle: 'إضافة شعبة صف',
+      editTitle: 'تعديل شعبة الصف',
+    },
+    permissions: {
+      noAdd: 'ليست لديك صلاحية لإضافة شُعب الصفوف',
+      noEdit: 'ليست لديك صلاحية لتعديل شُعب الصفوف',
+      noViewPrint: 'ليست لديك صلاحية لعرض/طباعة شُعب الصفوف',
+      noDelete: 'ليست لديك صلاحية لحذف شُعب الصفوف',
+    },
+    confirms: {
+      delete: 'هل أنت متأكد أنك تريد حذف هذه الشعبة؟',
+    },
+    toasts: {
+      deleted: 'تم الحذف بنجاح',
+    },
+    columns: {
+      subjects: 'المواد',
+      capacity: 'السعة',
+    },
+    export: {
+      title: 'شُعب الصفوف',
+      sheetName: 'شُعب الصفوف',
+    },
+    table: {
+      loading: 'جارٍ التحميل…',
+      emptyTitle: 'لا توجد شُعب صفوف',
+      emptyDescription: 'جرّب تعديل الفلاتر أو أنشئ واحدة جديدة.',
+    },
+    rowActions: {
+      viewStudentsTitle: 'عرض الطلاب',
+    },
+    select: {
+      noClassesForShift: 'لم يتم العثور على شُعب للدوام المحدد.',
+    },
+    roster: {
+      loading: 'جارٍ تحميل الطلاب…',
+      emptyTitle: 'لا يوجد طلاب في هذه الشعبة',
+      emptyDescription: 'لم يتم العثور على طلاب نشطين لهذه الشعبة.',
+      columns: {
+        studentId: 'رقم الطالب',
+        fullName: 'الاسم الكامل',
+        gender: 'الجنس',
+      },
+      export: {
+        title: 'قائمة الطلاب',
+        sheetName: 'الكشف',
+      },
+      toasts: {
+        noActiveStudents: 'لم يتم العثور على طلاب نشطين لهذه شعبة الصف.',
+      },
+      errors: {
+        timeout: 'انتهت مهلة تحميل الطلاب. الرجاء المحاولة مرة أخرى.',
+      },
+    },
+    form: {
+      labels: {
+        subjects: 'المواد',
+        capacity: 'السعة',
+      },
+      placeholders: {
+        section: 'مثال: 1، 2، A، B',
+      },
+      subjects: {
+        refreshTitle: 'تحديث المواد لهذا الصف',
+        noneForGrade: 'لا توجد مواد لهذا الصف.',
+        hasScores: 'له درجات',
+        help: 'حدد المواد لإضافتها. المواد التي لديها درجات لا يمكن إزالتها.',
+      },
+      errors: {
+        requiredFields: 'يرجى تعبئة جميع الحقول المطلوبة',
+        updateBlocked: 'تم منع التحديث: {{error}}. ({{blocked}})',
+        cannotRemoveWithScores: 'لا يمكن إزالة مواد لديها درجات: {{items}}',
+        operationFailed: 'فشلت العملية',
+      },
+      toasts: {
+        subjectsCleared: 'تم مسح المواد السابقة (تغيير الصف)',
+        removedSubjectsTitle: 'المواد المُزالة:',
+        updated: 'تم التحديث',
+        created: 'تم الإنشاء',
+      },
+      states: {
+        resyncing: 'جارٍ إعادة المزامنة…',
+        updating: 'جارٍ التحديث…',
+      },
+      changeGradeConfirm: {
+        title: 'تغيير الصف؟',
+        body: 'إذا غيّرت الصف سيتم مسح جميع المواد المحددة مسبقاً. هل أنت متأكد؟',
+        confirm: 'نعم، غيّر',
+      },
+    },
+  },
+
+  subjects: {
+    searchPlaceholder: 'ابحث عن المواد بالاسم أو الرمز…',
+    permissions: {
+      noAdd: 'ليست لديك صلاحية لإضافة المواد',
+      noEdit: 'ليست لديك صلاحية لتعديل المواد',
+      noDelete: 'ليست لديك صلاحية لحذف المواد',
+      noExport: 'ليست لديك صلاحية لتصدير/طباعة المواد',
+    },
+    confirms: {
+      delete: 'هل أنت متأكد أنك تريد حذف هذه المادة؟',
+    },
+    errors: {
+      failedToLoadGrades: 'فشل تحميل الصفوف',
+      subjectCodeExists: 'رمز المادة موجود بالفعل. الرجاء اختيار رمز آخر.',
+      cannotDeleteInUse: 'لا يمكن الحذف: هذه المادة مستخدمة في {{count}} صف/صفوف.',
+    },
+    toasts: {
+      created: 'تم إنشاء المادة',
+      updated: 'تم تحديث المادة',
+      deleted: 'تم حذف المادة',
+    },
+    actions: {
+      addNew: 'إضافة مادة جديدة',
+      addSubject: 'إضافة مادة',
+      saveSubject: 'حفظ المادة',
+      updateSubject: 'تحديث المادة',
+    },
+    modal: {
+      addTitle: 'إضافة مادة جديدة',
+      editTitle: 'تعديل المادة',
+    },
+    form: {
+      labels: {
+        subjectName: 'اسم المادة',
+        subjectCode: 'رمز المادة',
+        associatedGrades: 'الصفوف المرتبطة',
+      },
+      hints: {
+        selectGrades: 'اختر صفاً واحداً أو أكثر.',
+      },
+    },
+    table: {
+      loading: 'جارٍ تحميل المواد…',
+      emptyTitle: 'لم يتم العثور على مواد',
+      emptyDescription: 'جرّب تعديل البحث أو أضف مادة جديدة.',
+      columns: {
+        subjectName: 'اسم المادة',
+        subjectCode: 'رمز المادة',
+        grades: 'الصفوف المرتبطة',
+      },
+      actionTitles: {
+        edit: 'تعديل المادة',
+        delete: 'حذف المادة',
+      },
+    },
+  },
+
+  cohorts: {
+    searchPlaceholder: 'ابحث عن الدفعات…',
+    filters: {
+      startAy: 'سنة البداية',
+    },
+    permissions: {
+      noExport: 'ليست لديك صلاحية لتصدير/طباعة الدفعات',
+    },
+    confirms: {
+      delete: 'هل تريد حذف هذه الدفعة؟ هذا مسموح فقط إذا لم تكن قيد الاستخدام.',
+    },
+    toasts: {
+      created: 'تم إنشاء الدفعة',
+      updated: 'تم تحديث الدفعة',
+      deleted: 'تم حذف الدفعة',
+      archived: 'تمت الأرشفة',
+      activated: 'تم التفعيل',
+    },
+    actions: {
+      add: 'إضافة دفعة',
+    },
+    modal: {
+      addTitle: 'إضافة دفعة',
+      editTitle: 'تعديل الدفعة',
+    },
+    status: {
+      archived: 'مؤرشف',
+    },
+    form: {
+      labels: {
+        name: 'الاسم',
+        startAcademicYear: 'سنة البداية',
+      },
+      placeholders: {
+        name: 'مثلاً: الدفعة الأولى',
+        selectAcademicYear: 'اختر السنة الدراسية',
+      },
+    },
+    table: {
+      emptyTitle: 'لم يتم العثور على دفعات',
+      emptyDescription: 'جرّب تعديل الفلاتر أو أنشئ دفعة جديدة.',
+      columns: {
+        name: 'الاسم',
+        startAy: 'السنة (البداية)',
+      },
+    },
+  },
+
+  promotions: {
+    permissions: {
+      noPreview: 'ليست لديك صلاحية: معاينة الترقيات',
+      noPromote: 'ليست لديك صلاحية: تنفيذ الترقيات',
+    },
+    errors: {
+      selectFiltersFirst: 'اختر السنة والصف والدوام والشعبة والدفعة أولاً',
+      selectAtLeastOneStudent: 'اختر طالباً واحداً على الأقل للمعاينة',
+      previewFailed: 'فشلت المعاينة',
+      noScoresAllShort: 'جميع الطلاب المحددين لا يملكون درجات امتحانات.',
+      runPreviewFirst: 'قم بتشغيل المعاينة أولاً',
+      promotionFailed: 'فشلت الترقية',
+      noScoresAllLong: 'جميع الطلاب المحددين لا يملكون درجات امتحانات. الرجاء إضافة/استيراد الدرجات أولاً، ثم حاول الترقية مرة أخرى.',
+    },
+    toasts: {
+      completedBase: 'اكتملت الترقية.',
+      promotedCount: 'تمت الترقية: {{count}}.',
+      notEligibleCount: 'غير مؤهل (المتوسط < 60): {{count}}.',
+      graduatedCount: 'تخرّج: {{count}}.',
+      failedCount: 'راسب: {{count}}.',
+    },
+    roster: {
+      title: 'الطلاب',
+      loading: 'جارٍ تحميل الطلاب…',
+      emptyTitleNeedsFilters: 'اختر الفلاتر لتحميل الطلاب',
+      emptyTitleNone: 'لم يتم العثور على طلاب',
+      emptyDescriptionNeedsFilters: 'اختر السنة والصف والدوام والشعبة والدفعة.',
+      columns: {
+        student: 'الطالب',
+        current: 'الحالي',
+      },
+    },
+    preview: {
+      empty: 'شغّل المعاينة لرؤية الأهداف واحتياجات الإنشاء التلقائي وحالات التخرج',
+      columns: {
+        student: 'الطالب',
+        from: 'من',
+        to: 'إلى',
+        avg: 'المتوسط',
+        failed: 'راسب',
+      },
+      summary: {
+        total: 'الإجمالي',
+        promotable: 'قابل للترقية',
+        graduates: 'الخريجون',
+        missingTargets: 'أهداف مفقودة',
+        capacityIssues: 'مشاكل السعة',
+      },
+      status: {
+        graduate: 'تخرّج',
+        notEligible: 'غير مؤهل (المتوسط < 60)',
+        missingGs: 'قسم مفقود (سيُنشأ تلقائياً عند الترقية)',
+      },
+    },
+    timing: {
+      label: 'التوقيت',
+      placeholder: 'التوقيت',
+      midYear: 'منتصف العام',
+      yearEnd: 'نهاية العام',
+    },
+  },
+
+  transfers: {
+    searchPlaceholder: 'ابحث بالاسم أو الرقم',
+    permissions: {
+      noTransfer: 'ليست لديك صلاحية لتحويل الطلاب',
+      noReturn: 'ليست لديك صلاحية لإرجاع التحويلات',
+    },
+    errors: {
+      failedToOpen: 'فشل فتح التحويل',
+      selectAllFields: 'يرجى اختيار السنة والصف والدوام والشعبة',
+      failedToTransferWithStatus: 'فشل التحويل (الحالة {{status}})',
+      failedToReturnWithStatus: 'فشل الإرجاع (الحالة {{status}})',
+    },
+    toasts: {
+      noChanges: 'لا تغييرات: موجود بالفعل في هذه الشعبة',
+      transferred: 'تم تحويل التسجيل',
+      returned: 'تم الإرجاع إلى السابق',
+    },
+    labels: {
+      previousSection: 'الشعبة السابقة',
+      studentFallback: 'طالب',
+      from: 'من',
+    },
+    actions: {
+      transferSectionTitle: 'تحويل الشعبة',
+      opening: 'جارٍ الفتح…',
+      returnTitle: 'إرجاع',
+      return: 'إرجاع',
+      transferring: 'جارٍ التحويل…',
+      confirmTransfer: 'تأكيد التحويل',
+    },
+    recent: {
+      title: 'التحويلات الأخيرة (الجلسة)',
+      note: 'تُحفظ التحويلات الأخيرة فقط خلال جلسة هذه الصفحة.',
+    },
+    logs: {
+      title: 'كل التحويلات',
+      searchPlaceholder: 'ابحث بالاسم أو الرقم...',
+      loading: 'جارٍ تحميل التحويلات...',
+      emptyTitle: 'لم يتم العثور على تحويلات',
+      emptyDescription: 'ستظهر التحويلات هنا عند تسجيلها.',
+      columns: {
+        date: 'التاريخ',
+        student: 'الطالب',
+        from: 'من',
+        to: 'إلى',
+        type: 'النوع',
+        reason: 'السبب',
+      },
+      type: {
+        revert: 'إرجاع',
+        transfer: 'تحويل',
+      },
+    },
+    candidates: {
+      loading: 'جارٍ تحميل المرشحين...',
+      emptyTitleNone: 'لم يتم العثور على مرشحين',
+      emptyTitleNeedsFilters: 'اختر الفلاتر للبدء',
+      emptyDescriptionNone: 'جرّب تعديل الفلاتر أو كلمة البحث.',
+      emptyDescriptionNeedsFilters: 'اختر السنة الدراسية أو الصف أو الدوام لتحميل المرشحين.',
+      columns: {
+        studentId: 'رقم الطالب',
+        fullName: 'الاسم الكامل',
+      },
+    },
+    modal: {
+      title: 'تحويل الشعبة',
+      titleWithName: 'تحويل الشعبة: {{name}}',
+      loadingEnrollment: 'جارٍ تحميل التسجيل الحالي…',
+      placeholders: {
+        selectAcademicYear: '-- اختر السنة الدراسية --',
+        selectGrade: '-- اختر الصف --',
+        selectShift: '-- اختر الدوام --',
+      },
+      notes: {
+        forwardRules: 'التحويل للأمام مسموح لأي سنة مستقبلية. الإرجاع يجب أن يطابق الشعبة السابقة.',
+        noScoresMigrate: 'لا تنتقل الدرجات بين السنوات الدراسية.',
+      },
+    },
+  },
+
   students: {
     common: {
       studentFallback: 'طالب',
@@ -181,6 +1235,12 @@ export default {
       title: 'لوحة تحكم الطالب',
       loadingStudent: 'جارٍ تحميل بيانات الطالب…',
       moreTabs: 'المزيد من التبويبات',
+    },
+
+    transferTimeline: {
+      empty: 'لا توجد تحويلات.',
+      transferred: 'تم التحويل',
+      returned: 'تمت الإعادة',
     },
 
     attendance: {
@@ -476,6 +1536,20 @@ export default {
     editTitle: 'تعديل المعلم',
     resetFilters: 'إعادة ضبط الفلاتر',
 
+    profile: {
+      backToTeachers: 'العودة إلى المعلمين',
+      role: 'الدور',
+      loading: 'جارٍ تحميل ملف المعلم…',
+      loadFailed: 'فشل تحميل ملف المعلم',
+      audit: {
+        title: 'سجل التدقيق',
+        subtitle: 'آخر الإجراءات المسجلة لهذا الحساب',
+        loadFailed: 'فشل تحميل سجل التدقيق',
+        emptyTitle: 'لا يوجد سجل تدقيق.',
+        emptyDescription: 'لم يتم تسجيل أي إجراءات بعد.',
+      },
+    },
+
     dashboard: {
       home: {
         welcome: 'مرحباً',
@@ -708,6 +1782,7 @@ export default {
         top: {
           title: 'أفضل الطلاب',
           subtitle: 'حسب المتوسط',
+          studentFallback: 'طالب',
         },
         studentFallback: 'طالب',
         source: 'المصدر: ملخص الامتحانات (خاص بالمعلم)',
@@ -962,6 +2037,451 @@ export default {
     confirms: {
       toggleStatus: '{{verb}} هذا المستخدم؟',
       resetLockout: 'إعادة ضبط حظر تسجيل الدخول لهذا المستخدم؟',
+    },
+  },
+
+  exams: {
+    settings: {
+      actions: {
+        saveTotal: 'حفظ الإجمالي',
+        cloneToNewTemplate: 'نسخ إلى قالب جديد',
+        setAsDefault: 'تعيين كافتراضي',
+        deleteTemplate: 'حذف القالب',
+      },
+      states: {
+        loadingTemplate: 'جارٍ تحميل القالب…',
+        refreshing: 'جارٍ التحديث…',
+      },
+      hints: {
+        selectTemplateToEdit: 'اختر قالباً للتعديل.',
+        mustMatchToActivate: '(يجب أن يتطابق للتفعيل)',
+        templateLockedHelp: 'هذا القالب يحتوي على درجات محفوظة وهو مقفل. لا يمكنك تعديل الإجمالي أو الأعمدة. يمكنك حذف الأعمدة التي لا تحتوي على درجات، أو استخدام “نسخ إلى قالب جديد”.',
+      },
+      labels: {
+        declaredTotal: 'الإجمالي المعلن',
+        templateWithVersion: 'القالب',
+        defaultBadge: 'افتراضي',
+        defaultSuffix: ' (افتراضي)',
+        sumMax: 'مجموع الحد الأقصى',
+        total: 'الإجمالي',
+        hasScores: 'يحتوي على درجات',
+      },
+      placeholders: {
+        template: 'القالب',
+        newColumnName: 'اسم عمود جديد',
+        max: 'الحد الأقصى',
+      },
+      table: {
+        emptyTitle: 'لا توجد مكوّنات.',
+        emptyDescription: 'أضف مكوّناً إلى هذا القالب.',
+        columns: {
+          name: 'الاسم',
+          maxScore: 'الدرجة القصوى',
+        },
+      },
+      confirms: {
+        deleteColumn: 'حذف هذا العمود؟ لا يمكن التراجع عن ذلك.',
+        deleteTemplateVersion: 'حذف القالب v{{version}}؟ لا يمكن التراجع عن ذلك.',
+      },
+      toasts: {
+        clonedToVersion: 'تم النسخ إلى v{{version}}',
+        defaultTemplateUpdated: 'تم تحديث القالب الافتراضي',
+        deleted: 'تم الحذف',
+        deletedTemplateVersion: 'تم حذف القالب v{{version}}',
+      },
+      errors: {
+        loadTemplateVersionsFailed: 'فشل تحميل إصدارات القالب',
+        loadTemplateFailed: 'فشل تحميل القالب',
+        noPermissionEditTemplates: 'ليس لديك صلاحية لتعديل قوالب الامتحانات',
+        templateLockedTotal: 'هذا القالب يحتوي على درجات وهو مقفل. لا يمكن تعديل الإجمالي.',
+        templateLockedColumns: 'هذا القالب يحتوي على درجات وهو مقفل. لا يمكن تعديل الأعمدة.',
+        totalMustBeGt0: 'يجب أن يكون الإجمالي أكبر من 0',
+        saveTotalFailed: 'فشل حفظ الإجمالي',
+        cloneFailed: 'فشل النسخ',
+        activateFailed: 'فشل التفعيل',
+        nameRequired: 'الاسم مطلوب',
+        maxScoreMustBeGt0: 'يجب أن تكون الدرجة القصوى أكبر من 0',
+        orderMustBeGt0: 'يجب أن يكون الترتيب أكبر من 0',
+        sumMaxCannotExceedTotal: 'لا يمكن أن يتجاوز مجموع الدرجات القصوى الإجمالي المعلن',
+        maxScoreExceedsTotal: 'الدرجة القصوى تتجاوز الإجمالي المعلن',
+        orderMustBeUnique: 'يجب أن يكون الترتيب فريداً',
+        saveFailed: 'فشل الحفظ',
+        addFailed: 'فشل الإضافة',
+        deleteFailed: 'فشل الحذف',
+        deleteTemplateFailed: 'فشل حذف القالب',
+        templateHasScoresCloneToAdd: 'هذا القالب يحتوي على درجات. انسخ قالباً جديداً لإضافة الأعمدة.',
+        cannotDeleteColumnHasScores: 'لا يمكن الحذف: هذا العمود يحتوي على درجات محفوظة',
+        cannotDeleteDefaultTemplate: 'لا يمكن حذف القالب الافتراضي (النشط)',
+        cannotDeleteTemplateHasScores: 'لا يمكن الحذف: هذا القالب يحتوي على درجات محفوظة',
+      },
+    },
+
+    management: {
+      timeline: {
+        title: 'الخط الزمني للدفعة',
+        noData: 'لم يتم العثور على بيانات الخط الزمني لهذه الدفعة.',
+        itemFallback: 'عنصر في الخط الزمني',
+      },
+
+      searchPlaceholders: {
+        templates: 'ابحث عن القوالب…',
+      },
+
+      emptyStates: {
+        selectFilters: 'اختر السنة الدراسية والصف والدوام والشعبة.',
+        chooseSubject: 'اختر مادة لتحميل الشبكة.',
+        loadingGrid: 'جارٍ تحميل الشبكة…',
+        noStudents: 'لا يوجد طلاب أو بيانات لهذا الاختيار.',
+      },
+
+      locked: {
+        teacherHelp: 'بعض الطلاب مقفلون لأن لديهم درجات محفوظة بالفعل ضمن قالب آخر.',
+        adminHelp: 'بعض الطلاب مقفلون لأن لديهم درجات ضمن قالب آخر. استخدم قائمة القالب أعلاه للتبديل إلى الإصدار الموضح في رسالة الخطأ.',
+        title: 'مقفل',
+        titleWithVersions: 'مقفل ({{versions}})',
+      },
+
+      table: {
+        student: 'الطالب',
+        totalWithMax: 'الإجمالي ({{totalMax}})',
+      },
+
+      cell: {
+        maxTitle: 'الحد الأقصى: {{max}}',
+        saveFailed: 'فشل الحفظ',
+        saved: 'تم الحفظ',
+      },
+
+      actions: {
+        saveAllTitle: 'حفظ جميع الإدخالات المعلّقة',
+      },
+
+      toasts: {
+        savedScoresSuccessfully: 'تم حفظ الدرجات بنجاح',
+        updatedScoresSuccessfully: 'تم تحديث الدرجات بنجاح',
+      },
+
+      errors: {
+        loadSectionSubjectsFailed: 'فشل تحميل مواد الشعبة',
+        noPermissionInputScores: 'ليس لديك صلاحية لإدخال درجات الامتحان',
+        anotherTemplate: 'قالب آخر',
+        lockedStudent: 'هذا الطالب لديه درجات محفوظة بالفعل ضمن {{version}}. انتقل إلى ذلك القالب للتعديل.',
+        saveFailed: 'فشل الحفظ',
+        fixInvalidEntries: 'أصلح {{count}} إدخالات غير صالحة قبل الحفظ.',
+        loadGridFailed: 'فشل تحميل الشبكة',
+        lockedCount: 'لدى {{count}} طالب(ة) درجات محفوظة ضمن قالب آخر (مقفل).',
+      },
+    },
+  },
+
+  results: {
+    page: {
+      errors: {
+        loadSubjectsFailed: 'فشل تحميل المواد',
+        loadSummaryFailed: 'فشل تحميل الملخص',
+        noPermissionPrint: 'ليست لديك صلاحية لطباعة النتائج',
+      },
+
+      toasts: {
+        noMarksForSelection: 'لم يتم العثور على درجات للصف والفلاتر المحددة.',
+      },
+
+      export: {
+        enrollment: 'القيد',
+        sheetName: 'النتائج',
+        title: 'النتائج والترتيب',
+      },
+
+      filters: {
+        mode: 'الوضع',
+        examType: 'نوع الامتحان',
+        nLabel: 'العدد',
+      },
+
+      searchPlaceholders: {
+        examTypes: 'ابحث عن أنواع الامتحان…',
+      },
+
+      timeline: {
+        title: 'الخط الزمني للفوج:',
+      },
+
+      emptyStates: {
+        selectFilters: 'اختر السنة الدراسية والصف والدوام والشعبة لعرض النتائج.',
+        chooseSubject: 'اختر مادة لعرض النتائج.',
+        chooseExamType: 'اختر نوع امتحان لعرض النتائج.',
+        noResults: 'لا توجد نتائج للفلاتر المحددة.',
+      },
+
+      modes: {
+        subject: 'مادة',
+        overall: 'إجمالي',
+        examType: 'نوع الامتحان',
+        top: 'أعلى N',
+        bottom: 'أدنى N',
+        trend: 'الاتجاه (النصفي مقابل النهائي)',
+        difficulty: 'صعوبة المادة',
+      },
+
+      table: {
+        rank: 'الترتيب',
+        student: 'الطالب',
+        totalWithMax: 'المجموع ({{max}})',
+        average: 'المعدل',
+        midTerm: 'نصفي',
+        final: 'نهائي',
+        delta: 'الفرق',
+        classAvgDelta: 'متوسط الفرق للصف',
+        avg: 'المعدل',
+        students: 'الطلاب',
+        classAvgSubjects: 'متوسط الصف (مواد)',
+        classAverage: 'متوسط الصف',
+      },
+    },
+  },
+
+  transcript: {
+    page: {
+      errors: {
+        loadLookupsFailed: 'فشل تحميل القوائم',
+        noPermissionPrint: 'ليست لديك صلاحية لطباعة كشف الدرجات',
+      },
+
+      toasts: {
+        gradeNoTranscript: 'لا يوجد كشف درجات للصف {{grade}}.',
+        nothingToExportYet: 'لا يوجد ما يمكن تصديره بعد. قم بتحميل كشف الدرجات أولاً.',
+      },
+
+      export: {
+        sheetName: 'كشف الدرجات',
+      },
+
+      states: {
+        loadingLastTranscript: 'جارٍ تحميل آخر كشف درجات…',
+        loadingTranscriptsLevels: 'جارٍ تحميل كشوف الدرجات (المستويات)…',
+        loadingFullTranscript: 'جارٍ تحميل كشف الدرجات الكامل…',
+      },
+
+      timeline: {
+        title: 'الخط الزمني للفوج',
+        noData: 'لا توجد بيانات للخط الزمني.',
+        itemFallback: 'عنصر في الخط الزمني',
+      },
+
+      studentPicker: {
+        searchLabel: 'بحث عن طالب',
+        openClassListTitle: 'فتح قائمة الصف',
+        selectFromClass: 'اختيار من الصف',
+        filterListPlaceholder: 'تصفية القائمة…',
+        noStudentsFound: 'لم يتم العثور على طلاب.',
+        selectStudentAria: 'اختيار {{name}}',
+        removeStudentAria: 'إزالة {{name}}',
+      },
+
+      modes: {
+        full: 'كامل',
+        latest: 'الأحدث',
+        levels: 'المستويات',
+      },
+
+      levels: {
+        levelsButton: 'المستويات',
+        selectTitle: 'اختر المستويات',
+        noGrades: 'لا توجد صفوف.',
+      },
+
+      labels: {
+        studentId: 'رقم الطالب',
+      },
+
+      emptyStates: {
+        noTranscriptData: 'لا توجد بيانات كشف درجات للوضع/الفلاتر المحددة.',
+        noTranscriptRows: 'لا توجد صفوف في كشف الدرجات',
+        selectGrades: 'اختر صفًا واحدًا أو أكثر لعرض كشوف الدرجات.',
+      },
+
+      table: {
+        total: 'المجموع',
+        overall: 'الإجمالي',
+      },
+    },
+  },
+
+  announcements: {
+    page: {
+      title: 'الإعلانات',
+      loading: 'جارٍ تحميل الإعلانات…',
+      empty: 'لا توجد إعلانات بعد.',
+      confirmDelete: 'هل أنت متأكد أنك تريد حذف هذا الإعلان؟',
+      actions: {
+        post: 'نشر',
+      },
+      status: {
+        posting: 'جارٍ النشر…',
+        updating: 'جارٍ التحديث…',
+        deleting: 'جارٍ الحذف…',
+      },
+      form: {
+        titlePlaceholder: 'عنوان الإعلان…',
+        bodyPlaceholder: 'اكتب تفاصيل الإعلان…',
+        editTitlePlaceholder: 'تعديل العنوان',
+      },
+      meta: {
+        postedBy: 'نشره {{author}} ({{role}}) بتاريخ {{date}}',
+        updatedBy: 'حدّثه {{updatedBy}}{{roleSuffix}}{{dateSuffix}}',
+        onPrefix: 'بتاريخ',
+      },
+      toasts: {
+        fillTitleAndBody: 'يرجى تعبئة العنوان والمحتوى',
+        posted: 'تم نشر الإعلان بنجاح!',
+        updated: 'تم تحديث الإعلان!',
+        deleted: 'تم حذف الإعلان!',
+      },
+    },
+  },
+
+  dashboard: {
+    cards: {
+      scoreActivity: {
+        title: 'نشاط الدرجات',
+        subtitle: 'تعديلات إدخال الدرجات (علامات تبويب)',
+        stats: {
+          touched: 'تم تعديلها',
+          created: 'تم إنشاؤها',
+          updated: 'تم تحديثها',
+        },
+        noteDefinition: '“{{label}}” = الدرجات التي حدث آخر تعديل لها ضمن هذا النطاق.',
+      },
+
+      announcementsMix: {
+        title: 'مزيج الإعلانات',
+        subtitle: 'تم الإنشاء مقابل التحديث (علامات تبويب)',
+        labels: {
+          allCreated: 'الكل (تم الإنشاء)',
+        },
+        legend: {
+          created: 'تم الإنشاء',
+          updated: 'تم التحديث',
+        },
+        roles: {
+          all: 'الكل',
+          students: 'الطلاب',
+          teachers: 'المعلمون',
+          staff: 'الموظفون',
+          admin: 'المدير',
+          unknown: 'غير معروف',
+        },
+        empty: 'لا توجد إعلانات في هذا النطاق.',
+      },
+
+      attendance: {
+        subtitle: 'نظرة عامة للإدارة/الموظفين (جميع الشعب)',
+        kpis: {
+          presentPct: 'نسبة الحضور%',
+          days: 'الأيام',
+        },
+        labels: {
+          allDay: 'طوال اليوم',
+          perPeriod: 'حسب الحصص',
+        },
+        notes: {
+          oneRowPerDate: 'صف واحد لكل تاريخ (يفضل طوال اليوم عند توفره)',
+          pickAnyRange: 'اختر أي نطاق تاريخ.',
+          showsRecords: 'يعرض سجلات الحضور ضمن النطاق المحدد.',
+        },
+        export: {
+          title: 'تصدير لوحة الحضور',
+        },
+        errors: {
+          loadFailed: 'فشل تحميل ملخص الحضور.',
+        },
+        performance: {
+          subtitle: 'تفصيل النسب',
+          totalRecordsTitle: 'إجمالي السجلات',
+          totalRecordsNote: 'مجموع جميع الحالات',
+        },
+        byPeriod: {
+          subtitle: 'مجمّع ضمن النطاق المحدد',
+          noLessonData: 'لم يتم العثور على بيانات حسب الحصة ضمن هذا النطاق.',
+          periodsTitle: 'الحصص',
+          excludesAllDay: 'يستثني طوال اليوم',
+        },
+        statusTrend: {
+          subtitle: 'لكل يوم (جميع الشعب)',
+          hoverNote: 'مرّر المؤشر فوق الأجزاء لعرض الأعداد',
+        },
+        footer: {
+          source: 'المصدر: ملخص لوحة التحكم (الإدارة/الموظفين)',
+          kpisLine: 'المؤشرات: نسبة الحضور% • الأيام',
+        },
+      },
+
+      results: {
+        subtitle: 'نظرة عامة للإدارة/الموظفين (الشعبة المحددة)',
+        export: {
+          title: 'تصدير لوحة النتائج',
+        },
+        onlyAdminStaff: 'هذه البطاقة متاحة للإدارة/الموظفين فقط.',
+        selectFilters: 'اختر السنة الدراسية + الشعبة لعرض الرسوم. (المادة/نوع الامتحان اختياريان.)',
+        footer: {
+          source: 'المصدر: ملخص الامتحانات (نطاق الإدارة/الموظفين)',
+        },
+        modes: {
+          allSubjects: 'كل المواد',
+          subject: 'مادة',
+          examType: 'نوع الامتحان',
+        },
+        labels: {
+          subjectsInClass: 'المواد في هذه الشعبة',
+          showing: 'عرض',
+          subject: 'المادة',
+        },
+        placeholders: {
+          subjectOptional: 'المادة (اختياري)',
+          selectSectionFirst: 'اختر الشعبة أولاً',
+          selectYearFirst: 'اختر السنة أولاً',
+        },
+        notes: {
+          modeTip: 'نصيحة: بدّل',
+          modeTipTail: 'لتصفية مادة واحدة، أو اترك',
+        },
+        errors: {
+          loadClassSubjectsFailed: 'فشل تحميل مواد الشعبة.',
+        },
+        distribution: {
+          kpiLine: 'مؤشر KPI: متوسط الشعبة • نسبة النجاح • أعلى 10',
+        },
+      },
+    },
+
+    page: {
+      welcome: 'مرحباً',
+      welcomeUser: 'مرحباً، {{name}}',
+      academicYearLabel: 'السنة الدراسية: {{year}}',
+      subtitle: 'نظرة عامة على لوحة التحكم',
+      errors: {
+        loadFailed: 'فشل تحميل بيانات لوحة التحكم.',
+      },
+      modules: {
+        students: 'الطلاب',
+        teachers: 'المعلمون',
+        staff: 'الموظفون',
+        classes: 'الشعب',
+        subjects: 'المواد',
+        cohorts: 'الدفعات',
+        transfers: 'التحويلات',
+        announcements: 'الإعلانات',
+        activeCount: 'نشط: {{count}}',
+        classesSubtitle: 'شعب الصفوف',
+        subjectsSubtitle: 'كل المواد',
+        cohortsSubtitle: 'كل الدفعات',
+        inSelectedRange: 'ضمن النطاق المحدد',
+      },
+      newStudents: {
+        title: 'طلاب جدد',
+        subtitle: 'اتجاه التسجيل لأول مرة',
+        yAxisLabel: 'عدد الطلاب',
+      },
     },
   },
 };

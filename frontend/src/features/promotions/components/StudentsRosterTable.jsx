@@ -3,6 +3,7 @@ import Card from '../../../shared/components/ui/Card.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox';
 import Chip from '../../../shared/components/ui/Chip.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function StudentsRosterTable({
   filtersReady,
@@ -13,6 +14,7 @@ export default function StudentsRosterTable({
   setSelectedIds,
   formatCurrent,
 }) {
+  const { t } = useI18n();
   const safeStudents = Array.isArray(students) ? students : [];
 
   const allSelected = useMemo(
@@ -42,37 +44,37 @@ export default function StudentsRosterTable({
       },
       {
         key: 'student',
-        label: 'Student',
+        label: t('promotions.roster.columns.student', { defaultValue: 'Student' }),
         thClassName: 'p-2 text-left border-b border-gray-200',
         tdClassName: 'p-2 whitespace-nowrap font-medium text-gray-700',
       },
       {
         key: 'current',
-        label: 'Current',
+        label: t('promotions.roster.columns.current', { defaultValue: 'Current' }),
         thClassName: 'p-2 text-left border-b border-gray-200',
         tdClassName: 'p-2 text-xs text-gray-600',
       },
       {
         key: 'cohort',
-        label: 'Cohort',
+        label: t('common.filters.cohort', { defaultValue: 'Cohort' }),
         thClassName: 'p-2 text-left border-b border-gray-200',
         tdClassName: 'p-2',
       },
     ],
-    []
+    [t]
   );
 
   return (
     <Card className="p-3">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="font-semibold">Students</h3>
+        <h3 className="font-semibold">{t('promotions.roster.title', { defaultValue: 'Students' })}</h3>
         <label className="inline-flex items-center gap-2 text-sm">
           <Checkbox
             checked={allSelected}
             onChange={toggleSelectAll}
             disabled={!filtersReady || safeStudents.length === 0}
           />
-          <span>Select All</span>
+          <span>{t('common.actions.selectAll', { defaultValue: 'Select All' })}</span>
         </label>
       </div>
 
@@ -82,12 +84,18 @@ export default function StudentsRosterTable({
           error={studentsError}
           items={safeStudents}
           isEmpty={!studentsLoading && !studentsError && (!filtersReady || safeStudents.length === 0)}
-          loadingMessage="Loading students..."
+          loadingMessage={t('promotions.roster.loading', { defaultValue: 'Loading students...' })}
           loadingVariant="table"
           loadingRows={7}
           loadingColumns={4}
-          emptyTitle={!filtersReady ? 'Select filters to load students' : 'No students found'}
-          emptyDescription={!filtersReady ? 'Select AY, Grade, Shift, Section and Cohort.' : ''}
+          emptyTitle={!filtersReady
+            ? t('promotions.roster.emptyTitleNeedsFilters', { defaultValue: 'Select filters to load students' })
+            : t('promotions.roster.emptyTitleNone', { defaultValue: 'No students found' })
+          }
+          emptyDescription={!filtersReady
+            ? t('promotions.roster.emptyDescriptionNeedsFilters', { defaultValue: 'Select AY, Grade, Shift, Section and Cohort.' })
+            : ''
+          }
           rows={safeStudents}
           columns={studentsColumns}
           getRowKey={(s) => s._id}

@@ -4,6 +4,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function SubjectTable({
     items = [],
@@ -20,6 +21,7 @@ export default function SubjectTable({
     onEdit,
     onDelete,
 }) {
+    const { t } = useI18n();
     const STORAGE_KEY = 'subjects:columns:v1';
 
     const { auth, hasPermission } = useAuth();
@@ -32,32 +34,32 @@ export default function SubjectTable({
     const columns = useMemo(() => ([
         {
             key: 'subjectName',
-            label: 'Subject Name',
+            label: t('subjects.table.columns.subjectName', { defaultValue: 'Subject Name' }),
             sortable: true,
             field: 'subjectName',
             tdClassName: 'px-6 py-4 whitespace-nowrap font-medium text-gray-900 border-x border-gray-200',
         },
         {
             key: 'subjectCode',
-            label: 'Subject Code',
+            label: t('subjects.table.columns.subjectCode', { defaultValue: 'Subject Code' }),
             sortable: true,
             field: 'subjectCode',
             tdClassName: 'px-6 py-4 whitespace-nowrap text-gray-600 border-x border-gray-200',
         },
         {
             key: 'grades',
-            label: 'Associated Grades',
+            label: t('subjects.table.columns.grades', { defaultValue: 'Associated Grades' }),
             tdClassName: 'px-6 py-4 text-gray-600 border-x border-gray-200',
         },
         {
             key: 'actions',
-            label: 'Actions',
+            label: t('common.table.actions', { defaultValue: 'Actions' }),
             align: 'right',
             noPrint: true,
             locked: false,
             tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium border-x border-gray-200',
         },
-    ]), []);
+    ]), [t]);
 
     return (
         <StandardTable
@@ -65,12 +67,12 @@ export default function SubjectTable({
             error={error}
             items={items}
             loadingVariant="table"
-            loadingMessage="Loading subjects..."
+            loadingMessage={t('subjects.table.loading', { defaultValue: 'Loading subjects...' })}
             loadingRows={6}
             loadingColumns={5}
-            emptyTitle="No subjects found"
-            emptyDescription="Try adjusting search or add a new subject."
-            emptyActionLabel={canAdd ? 'Add Subject' : undefined}
+            emptyTitle={t('subjects.table.emptyTitle', { defaultValue: 'No subjects found' })}
+            emptyDescription={t('subjects.table.emptyDescription', { defaultValue: 'Try adjusting search or add a new subject.' })}
+            emptyActionLabel={canAdd ? t('subjects.actions.addSubject', { defaultValue: 'Add Subject' }) : undefined}
             onEmptyAction={canAdd ? onAdd : undefined}
 
             rows={rows}
@@ -113,8 +115,8 @@ export default function SubjectTable({
                                     canEdit
                                         ? {
                                               key: 'edit',
-                                              label: 'Edit',
-                                              title: 'Edit Subject',
+                                              label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                              title: t('subjects.table.actionTitles.edit', { defaultValue: 'Edit Subject' }),
                                               tone: 'edit',
                                               icon: <Pencil size={16} />,
                                               onClick: () => onEdit?.(subject),
@@ -123,8 +125,8 @@ export default function SubjectTable({
                                     canDelete
                                         ? {
                                               key: 'delete',
-                                              label: 'Delete',
-                                              title: 'Delete Subject',
+                                              label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                                              title: t('subjects.table.actionTitles.delete', { defaultValue: 'Delete Subject' }),
                                               tone: 'delete',
                                               icon: <Trash2 size={16} />,
                                               onClick: () => onDelete?.(subject._id),

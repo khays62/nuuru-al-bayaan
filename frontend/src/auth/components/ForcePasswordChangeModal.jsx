@@ -5,20 +5,25 @@ import { Eye, EyeOff } from 'lucide-react';
 import { fetchJson } from '../../shared/api/http';
 import Input from '../../shared/components/ui/Input';
 import Button from '../../shared/components/ui/Button';
+import { useI18n } from '../../i18n/I18nProvider';
 
 export default function ForcePasswordChangeModal({
   isOpen,
   onSkip,
   onChanged,
   mode = 'user',
-  title = 'Change your password',
+  title,
   description,
 }) {
+  const { t } = useI18n();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+
+  const resolvedTitle =
+    title ?? t('auth.forcePasswordChange.title', { defaultValue: 'Change your password' });
 
   const confirmTouched = String(confirmPassword || '').length > 0;
   const nextTouched = String(newPassword || '').length > 0;
@@ -39,15 +44,15 @@ export default function ForcePasswordChangeModal({
     const confirm = String(confirmPassword || '').trim();
 
     if (!next || !confirm) {
-      toast.error('Please fill in both fields.');
+      toast.error(t('auth.forcePasswordChange.toasts.fillBoth', { defaultValue: 'Please fill in both fields.' }));
       return;
     }
     if (next.length < 6) {
-      toast.error('Password must be at least 6 characters.');
+      toast.error(t('auth.forcePasswordChange.toasts.minLength', { defaultValue: 'Password must be at least 6 characters.' }));
       return;
     }
     if (next !== confirm) {
-      toast.error('Passwords do not match.');
+      toast.error(t('auth.forcePasswordChange.toasts.mismatch', { defaultValue: 'Passwords do not match.' }));
       return;
     }
 
@@ -59,12 +64,16 @@ export default function ForcePasswordChangeModal({
         await fetchJson('/auth/change-password', { method: 'POST', body: JSON.stringify({ newPassword: next }) });
       }
 
-      toast.success('Password updated successfully');
+      toast.success(t('auth.forcePasswordChange.toasts.updated', { defaultValue: 'Password updated successfully' }));
       setNewPassword('');
       setConfirmPassword('');
       if (typeof onChanged === 'function') await onChanged();
     } catch (err) {
-      toast.error(err?.data?.message || err?.message || 'Failed to change password.');
+      toast.error(
+        err?.data?.message
+          || err?.message
+          || t('auth.forcePasswordChange.errors.failed', { defaultValue: 'Failed to change password.' }),
+      );
     } finally {
       setSaving(false);
     }
@@ -73,14 +82,14 @@ export default function ForcePasswordChangeModal({
   const bodyText =
     description ||
     (String(mode).toLowerCase() === 'student'
-      ? 'Your account is using the default password. For security, please set a new password.'
-      : 'Your account must set a new password before continuing.');
+      ? t('auth.forcePasswordChange.body.studentDefault', { defaultValue: 'Your account is using the default password. For security, please set a new password.' })
+      : t('auth.forcePasswordChange.body.userRequired', { defaultValue: 'Your account must set a new password before continuing.' }));
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={typeof onSkip === 'function' ? onSkip : undefined}
-      title={title}
+      title={resolvedTitle}
       panelClassName="max-w-md"
       closeOnBackdrop={false}
       showCloseButton={false}
@@ -90,7 +99,7 @@ export default function ForcePasswordChangeModal({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.forcePasswordChange.fields.newPassword', { defaultValue: 'New password' })}</label>
             <div className="relative">
               <Input
                 type={showNew ? 'text' : 'password'}
@@ -99,7 +108,7 @@ export default function ForcePasswordChangeModal({
                 className={`pr-10 ${
                   passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : 'border-slate-300')
                 }`}
-                placeholder="Enter new password"
+                placeholder={t('auth.forcePasswordChange.placeholders.newPassword', { defaultValue: 'Enter new password' })}
                 autoComplete="new-password"
                 disabled={saving}
               />
@@ -107,7 +116,7 @@ export default function ForcePasswordChangeModal({
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer select-none"
                 onMouseEnter={() => setShowNew(true)}
                 onMouseLeave={() => setShowNew(false)}
-                title="Show password"
+                title={t('auth.forcePasswordChange.tooltips.showPassword', { defaultValue: 'Show password' })}
               >
                 {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
               </div>
@@ -115,7 +124,7 @@ export default function ForcePasswordChangeModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('auth.forcePasswordChange.fields.confirmPassword', { defaultValue: 'Confirm password' })}</label>
             <div className="relative">
               <Input
                 type={showConfirm ? 'text' : 'password'}
@@ -124,7 +133,7 @@ export default function ForcePasswordChangeModal({
                 className={`pr-10 ${
                   passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : 'border-slate-300')
                 }`}
-                placeholder="Re-enter new password"
+                placeholder={t('auth.forcePasswordChange.placeholders.confirmPassword', { defaultValue: 'Re-enter new password' })}
                 autoComplete="new-password"
                 disabled={saving}
               />
@@ -132,7 +141,7 @@ export default function ForcePasswordChangeModal({
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer select-none"
                 onMouseEnter={() => setShowConfirm(true)}
                 onMouseLeave={() => setShowConfirm(false)}
-                title="Show password"
+                title={t('auth.forcePasswordChange.tooltips.showPassword', { defaultValue: 'Show password' })}
               >
                 {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
               </div>
@@ -148,7 +157,7 @@ export default function ForcePasswordChangeModal({
               variant="neutral"
               disabled={saving}
             >
-              Not now
+              {t('auth.forcePasswordChange.actions.notNow', { defaultValue: 'Not now' })}
             </Button>
           ) : null}
 
@@ -158,7 +167,9 @@ export default function ForcePasswordChangeModal({
             variant="brand"
             disabled={saving || !canSubmit}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving
+              ? t('auth.forcePasswordChange.states.saving', { defaultValue: 'Saving…' })
+              : t('auth.forcePasswordChange.actions.save', { defaultValue: 'Save' })}
           </Button>
         </div>
       </div>

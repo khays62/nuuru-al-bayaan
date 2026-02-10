@@ -133,14 +133,14 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             // (NOT the Teacher/Student profile id), so we must use the security endpoints here.
             await resetUserPasswordAndUnlock(principalId);
             toast.success(r === 'student'
-                ? 'Student password reset to default'
+                ? t('common.securityBell.toasts.studentPasswordResetDefault', { defaultValue: 'Student password reset to default' })
                 : r === 'teacher'
-                    ? 'Teacher password reset to default'
-                    : 'Password reset to default');
+                    ? t('common.securityBell.toasts.teacherPasswordResetDefault', { defaultValue: 'Teacher password reset to default' })
+                    : t('common.securityBell.toasts.passwordResetDefault', { defaultValue: 'Password reset to default' }));
 
             await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
         } catch (e) {
-            toast.error(e?.data?.message || e?.message || 'Reset failed');
+            toast.error(e?.data?.message || e?.message || t('common.securityBell.errors.resetFailed', { defaultValue: 'Reset failed' }));
         } finally {
             setPending(k, false);
         }
@@ -151,10 +151,10 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         try {
             setPending(k, true);
             await unlockUserLogin(principalId);
-            toast.success('Account unlocked');
+            toast.success(t('common.securityBell.toasts.accountUnlocked', { defaultValue: 'Account unlocked' }));
             await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
         } catch (e) {
-            toast.error(e?.data?.message || e?.message || 'Unlock failed');
+            toast.error(e?.data?.message || e?.message || t('common.securityBell.errors.unlockFailed', { defaultValue: 'Unlock failed' }));
         } finally {
             setPending(k, false);
         }
@@ -168,7 +168,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     };
 
     const doDeactivate = async (principalId, principalRoleLower) => {
-        const ok = window.confirm('Mark this account as Inactive? This will log them out within seconds.');
+        const ok = window.confirm(t('common.securityBell.confirms.markInactive', {
+            defaultValue: 'Mark this account as Inactive? This will log them out within seconds.',
+        }));
         if (!ok) return;
         const k = `inactive:${principalId}`;
         try {
@@ -176,18 +178,18 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
 
             await deactivateUserAccount(principalId);
 
-            toast.success('Account marked inactive');
+            toast.success(t('common.securityBell.toasts.accountMarkedInactive', { defaultValue: 'Account marked inactive' }));
             await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
             emitPrincipalChanged(principalRoleLower);
         } catch (e) {
-            toast.error(e?.data?.message || e?.message || 'Inactive failed');
+            toast.error(e?.data?.message || e?.message || t('common.securityBell.errors.inactiveFailed', { defaultValue: 'Inactive failed' }));
         } finally {
             setPending(k, false);
         }
     };
 
     const doActivate = async (principalId, principalRoleLower) => {
-        const ok = window.confirm('Mark this account as Active?');
+        const ok = window.confirm(t('common.securityBell.confirms.markActive', { defaultValue: 'Mark this account as Active?' }));
         if (!ok) return;
         const k = `active:${principalId}`;
         try {
@@ -195,11 +197,11 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
 
             await activateUserAccount(principalId);
 
-            toast.success('Account marked active');
+            toast.success(t('common.securityBell.toasts.accountMarkedActive', { defaultValue: 'Account marked active' }));
             await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
             emitPrincipalChanged(principalRoleLower);
         } catch (e) {
-            toast.error(e?.data?.message || e?.message || 'Activate failed');
+            toast.error(e?.data?.message || e?.message || t('common.securityBell.errors.activateFailed', { defaultValue: 'Activate failed' }));
         } finally {
             setPending(k, false);
         }
@@ -212,7 +214,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             await clearAuthLockEvent(eventId);
             await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
         } catch (e) {
-            toast.error(e?.data?.message || e?.message || 'Clear failed');
+            toast.error(e?.data?.message || e?.message || t('common.securityBell.errors.clearFailed', { defaultValue: 'Clear failed' }));
         } finally {
             setPending(k, false);
         }
@@ -337,7 +339,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                 type="button"
                 onClick={() => setOpenLocks((v) => !v)}
                 className="relative p-2 rounded-md hover:bg-gray-100"
-                title="Security notifications"
+                title={t('common.securityBell.notificationsTitle', { defaultValue: 'Security notifications' })}
             >
                 <Bell size={20} className="text-gray-700" />
                 {Number(lockCountQuery.data || 0) > 0 && (
@@ -358,13 +360,13 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                 <div className="px-3 py-2 border-b flex items-center justify-between bg-gray-50">
                                     <div className="flex items-center gap-2">
                                         <ShieldAlert size={16} className="text-red-600" />
-                                        <span className="font-semibold text-sm">Security alerts</span>
+                                        <span className="font-semibold text-sm">{t('common.securityBell.alertsTitle', { defaultValue: 'Security alerts' })}</span>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setOpenLocks(false)}
                                         className="text-gray-500 hover:text-gray-800"
-                                        title="Close"
+                                        title={t('common.close', { defaultValue: 'Close' })}
                                     >
                                         <X size={16} />
                                     </button>
@@ -373,11 +375,16 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                 <div className="max-h-96 overflow-auto">
                                     {locksQuery.isLoading && (
                                         <div className="p-3">
-                                            <UiLoadingState label="Loading…" className="border-0 bg-transparent p-0 justify-start" />
+                                            <UiLoadingState
+                                                label={t('common.loading', { defaultValue: 'Loading…' })}
+                                                className="border-0 bg-transparent p-0 justify-start"
+                                            />
                                         </div>
                                     )}
                                     {!locksQuery.isLoading && (locksQuery.data?.length || 0) === 0 && (
-                                        <div className="p-3 text-sm text-gray-600">No locked accounts right now.</div>
+                                        <div className="p-3 text-sm text-gray-600">
+                                            {t('common.securityBell.noLockedAccounts', { defaultValue: 'No locked accounts right now.' })}
+                                        </div>
                                     )}
 
                                     {(locksQuery.data || []).map((ev) => {
@@ -417,7 +424,10 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         const accountStatusLower = String(ev.accountStatus || '').toLowerCase();
                                         const isInactiveAccount = accountStatusLower === 'inactive';
                                         const displayName = isUnknown
-                                            ? `Unknown: ${ev.username || '—'}`
+                                            ? t('common.securityBell.unknownUser', {
+                                                defaultValue: 'Unknown: {{username}}',
+                                                username: ev.username || '—',
+                                            })
                                             : (ev.fullName || ev.username || '—');
                                         const showUsername = Boolean(ev.fullName) && Boolean(ev.username);
                                         const r = String(ev.role || '').toUpperCase();
@@ -443,13 +453,23 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                             <div className="text-xs text-gray-500 truncate">{ev.username}</div>
                                                         )}
                                                         <div className="text-xs text-gray-500">
-                                                            {r || 'USER'}
+                                                            {r || t('common.securityBell.userRoleFallback', { defaultValue: 'USER' })}
                                                             {isInactiveAccount
-                                                                ? ' • INACTIVE'
-                                                                : (until ? ` • until ${until}` : '')}
+                                                                ? ` • ${t('common.securityBell.inactiveTag', { defaultValue: 'INACTIVE' })}`
+                                                                : (until
+                                                                    ? ` • ${t('common.securityBell.until', {
+                                                                        defaultValue: 'until {{date}}',
+                                                                        date: until,
+                                                                    })}`
+                                                                    : '')}
                                                         </div>
                                                         {ev.occurrences > 1 && (
-                                                            <div className="text-xs text-gray-500">Attempts lock count: {ev.occurrences}</div>
+                                                            <div className="text-xs text-gray-500">
+                                                                {t('common.securityBell.attemptsLockCount', {
+                                                                    defaultValue: 'Attempts lock count: {{count}}',
+                                                                    count: ev.occurrences,
+                                                                })}
+                                                            </div>
                                                         )}
                                                     </div>
                                                     <div className="flex gap-2">
@@ -460,10 +480,12 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                         type="button"
                                                                         className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-100 disabled:opacity-60"
                                                                         onClick={() => doResetToDefault(String(ev.principalId), role)}
-                                                                        title="Reset password to default + unlock"
+                                                                        title={t('common.securityBell.titles.resetToDefaultAndUnlock', { defaultValue: 'Reset password to default + unlock' })}
                                                                         disabled={resetBusy || unlockBusy || disableSecurityActions}
                                                                     >
-                                                                        {resetBusy ? 'Resetting…' : 'Reset Password'}
+                                                                        {resetBusy
+                                                                            ? t('common.securityBell.states.resetting', { defaultValue: 'Resetting…' })
+                                                                            : t('common.actions.resetPassword', { defaultValue: 'Reset Password' })}
                                                                     </button>
                                                                 ))
                                                                 : (canUnlockThis && (
@@ -471,10 +493,12 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                         type="button"
                                                                         className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-100 disabled:opacity-60"
                                                                         onClick={() => doUnlock(String(ev.principalId))}
-                                                                        title="Unlock account (clear login lockout)"
+                                                                        title={t('common.securityBell.titles.unlockAccount', { defaultValue: 'Unlock account (clear login lockout)' })}
                                                                         disabled={unlockBusy || resetBusy || disableSecurityActions}
                                                                     >
-                                                                        {unlockBusy ? 'Unlocking…' : 'Unlock'}
+                                                                        {unlockBusy
+                                                                            ? t('common.securityBell.states.unlocking', { defaultValue: 'Unlocking…' })
+                                                                            : t('common.actions.unlock', { defaultValue: 'Unlock' })}
                                                                     </button>
                                                                 ))
                                                         )}
@@ -485,10 +509,12 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                     type="button"
                                                                     className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
                                                                     onClick={() => doActivate(String(ev.principalId), role)}
-                                                                    title="Mark account active"
+                                                                    title={t('common.securityBell.titles.markActive', { defaultValue: 'Mark account active' })}
                                                                     disabled={toggleBusy || resetBusy || unlockBusy}
                                                                 >
-                                                                    {activeBusy ? 'Activating…' : 'Active'}
+                                                                    {activeBusy
+                                                                        ? t('common.securityBell.states.activating', { defaultValue: 'Activating…' })
+                                                                        : t('common.status.active', { defaultValue: 'Active' })}
                                                                 </button>
                                                                 ) : null
                                                             ) : (
@@ -497,10 +523,12 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                     type="button"
                                                                     className="px-2 py-1 text-xs rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-60"
                                                                     onClick={() => doDeactivate(String(ev.principalId), role)}
-                                                                    title="Mark account inactive"
+                                                                    title={t('common.securityBell.titles.markInactive', { defaultValue: 'Mark account inactive' })}
                                                                     disabled={toggleBusy || resetBusy || unlockBusy}
                                                                 >
-                                                                    {inactiveBusy ? 'Inactivating…' : 'Inactive'}
+                                                                    {inactiveBusy
+                                                                        ? t('common.securityBell.states.inactivating', { defaultValue: 'Inactivating…' })
+                                                                        : t('common.status.inactive', { defaultValue: 'Inactive' })}
                                                                 </button>
                                                                 ) : null
                                                             )
@@ -510,10 +538,12 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                             type="button"
                                                             className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-100 disabled:opacity-60"
                                                             onClick={() => doClear(String(ev._id))}
-                                                            title="Clear notification"
+                                                            title={t('common.securityBell.titles.clearNotification', { defaultValue: 'Clear notification' })}
                                                             disabled={clearBusy}
                                                         >
-                                                            {clearBusy ? 'Clearing…' : 'Clear'}
+                                                            {clearBusy
+                                                                ? t('common.securityBell.states.clearing', { defaultValue: 'Clearing…' })
+                                                                : t('common.actions.clear', { defaultValue: 'Clear' })}
                                                         </button>
                                                     </div>
                                                 </div>

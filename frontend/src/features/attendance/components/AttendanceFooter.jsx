@@ -1,4 +1,5 @@
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function AttendanceFooter({
   canAct,
@@ -18,6 +19,7 @@ export default function AttendanceFooter({
   lateCount,
   excusedCount,
 }) {
+  const { t } = useI18n();
   const baseDisabled = !canAct || isBusy || saving;
   const disabledByRule = Boolean(saveDisabled);
 
@@ -41,19 +43,31 @@ export default function AttendanceFooter({
             (disabledByRule ? 'opacity-60 cursor-not-allowed' : '')
           }
         >
-          {saving ? 'Saving…' : 'Save Attendance'}
+          {saving ? t('common.saving') : t('attendance.marking.actions.saveAttendance')}
         </ActionButton>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-700">
-        <div>Summary: Present {presentCount} · Absent {absentCount} · Late {lateCount} · Excused {excusedCount}</div>
+        <div>
+          {t('attendance.marking.footer.summary', {
+            present: presentCount,
+            absent: absentCount,
+            late: lateCount,
+            excused: excusedCount,
+          })}
+        </div>
         {loaded && (
           <div className={dirty ? 'text-amber-700' : 'text-green-700'}>
             {dirty
-              ? 'Not saved yet'
+              ? t('attendance.marking.footer.notSavedYet')
               : (selectionHasRecords
-                  ? `Saved attendance (${selectedDate} • ${mode === 'daily' ? 'All day' : 'Per lesson'})`
-                  : 'Not saved yet')}
+                  ? t('attendance.marking.footer.saved', {
+                    date: selectedDate,
+                    mode: mode === 'daily'
+                      ? t('attendance.marking.modes.allDay')
+                      : t('attendance.marking.modes.perLesson'),
+                  })
+                  : t('attendance.marking.footer.notSavedYet'))}
             {!dirty && selectionHasRecords && lastSavedAt ? <span className="text-gray-500"> • {new Date(lastSavedAt).toLocaleTimeString()}</span> : null}
           </div>
         )}

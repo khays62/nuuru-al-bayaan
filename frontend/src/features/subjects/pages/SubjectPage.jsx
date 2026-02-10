@@ -23,6 +23,7 @@ import CopyTableButton from '../../../shared/components/exports/downloadButtons/
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 // API services (existing ones for now)
 import { getSubjects, addSubject, updateSubject, deleteSubject } from '../api/subjects';
@@ -33,6 +34,7 @@ import { useSubjectsRealtimeInvalidation } from '../useSubjectsRealtimeInvalidat
 // NOTE: getSubjects(apiService) returns { data, meta }. We'll wrap it in fetchFn signature.
 
 export default function SubjectPage() {
+  const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
   const isAdmin = String(auth?.user?.role || '').toLowerCase() === 'admin';
   const canAdd = isAdmin || hasPermission('subjects', 'add');
@@ -110,10 +112,10 @@ export default function SubjectPage() {
         const gradeList = await getGrades();
         setGrades(gradeList);
       } catch {
-        toast.error('Failed to load grades');
+        toast.error(t('subjects.errors.failedToLoadGrades', { defaultValue: 'Failed to load grades' }));
       }
     })();
-  }, []);
+  }, [t]);
 
   // --- CRUD Handlers ---
   const closeModal = () => {
@@ -123,7 +125,7 @@ export default function SubjectPage() {
 
   const handleAddNew = () => {
     if (!canAdd) {
-      toast.error('You do not have permission to add subjects');
+      toast.error(t('subjects.permissions.noAdd', { defaultValue: 'You do not have permission to add subjects' }));
       return;
     }
     setEditingSubject(null);
@@ -133,7 +135,7 @@ export default function SubjectPage() {
 
   const handleEdit = (subject) => {
     if (!canEdit) {
-      toast.error('You do not have permission to edit subjects');
+      toast.error(t('subjects.permissions.noEdit', { defaultValue: 'You do not have permission to edit subjects' }));
       return;
     }
     setEditingSubject(subject);
@@ -143,31 +145,34 @@ export default function SubjectPage() {
 
   const handleDelete = async (subjectId) => {
     if (!canDelete) {
-      toast.error('You do not have permission to delete subjects');
+      toast.error(t('subjects.permissions.noDelete', { defaultValue: 'You do not have permission to delete subjects' }));
       return;
     }
-    if (!window.confirm('Are you sure you want to delete this subject?')) return;
+    if (!window.confirm(t('subjects.confirms.delete', { defaultValue: 'Are you sure you want to delete this subject?' }))) return;
     const result = await deleteSubject(subjectId);
     if (result.error) {
       if (result.details?.inUse) {
-        toast.error(`Cannot delete: subject used in ${result.details.usageCount} class(es).`, { position: 'top-center' });
+        toast.error(t('subjects.errors.cannotDeleteInUse', {
+          defaultValue: 'Cannot delete: subject used in {{count}} class(es).',
+          count: result.details.usageCount,
+        }), { position: 'top-center' });
       } else {
         toast.error(result.error, { position: 'top-center' });
       }
       return;
     }
-    toast.success('Subject deleted', { position: 'top-center' });
+    toast.success(t('subjects.toasts.deleted', { defaultValue: 'Subject deleted' }), { position: 'top-center' });
   };
 
   const handleFormSubmit = async (formData) => {
     if (editingSubject) {
       if (!canEdit) {
-        toast.error('You do not have permission to edit subjects');
+        toast.error(t('subjects.permissions.noEdit', { defaultValue: 'You do not have permission to edit subjects' }));
         return;
       }
     } else {
       if (!canAdd) {
-        toast.error('You do not have permission to add subjects');
+        toast.error(t('subjects.permissions.noAdd', { defaultValue: 'You do not have permission to add subjects' }));
         return;
       }
     }
@@ -181,7 +186,7 @@ export default function SubjectPage() {
     }
     if (result.error) {
       if (result.field === 'subjectCode') {
-        setFormError('Subject code already exists. Please choose another.');
+        setFormError(t('subjects.errors.subjectCodeExists', { defaultValue: 'Subject code already exists. Please choose another.' }));
       } else {
         setFormError(result.error);
       }
@@ -191,7 +196,12 @@ export default function SubjectPage() {
     }
     // EDCI: realtime invalidation will refresh the list across browsers/tabs.
     closeModal();
-    toast.success(editingSubject ? 'Subject updated' : 'Subject created', { position: 'top-center' });
+    toast.success(
+      editingSubject
+        ? t('subjects.toasts.updated', { defaultValue: 'Subject updated' })
+        : t('subjects.toasts.created', { defaultValue: 'Subject created' }),
+      { position: 'top-center' }
+    );
     setIsSubmitting(false);
   };
 
@@ -200,7 +210,7 @@ export default function SubjectPage() {
     <SearchInput
       value={searchTerm}
       onChange={(v) => setSearch(v)}
-      placeholder="Search subjects by name or code..."
+      placeholder={t('subjects.searchPlaceholder', { defaultValue: 'Search subjects by name or code...' })}
     />
   );
 
@@ -210,7 +220,7 @@ export default function SubjectPage() {
 
   const handlePrint = () => {
     if (!canView) {
-      toast.error('You do not have permission to export/print subjects');
+      toast.error(t('subjects.permissions.noExport', { defaultValue: 'You do not have permission to export/print subjects' }));
       return;
     }
     setTimeout(() => window.print(), 0);
@@ -230,9 +240,9 @@ export default function SubjectPage() {
     const isVisible = (key) => visible?.[String(key)] !== false;
 
     const cols = [
-      isVisible('subjectName') ? { key: 'subjectName', label: 'Subject Name' } : null,
-      isVisible('subjectCode') ? { key: 'subjectCode', label: 'Subject Code' } : null,
-      isVisible('grades') ? { key: 'grades', label: 'Associated Grades' } : null,
+      isVisible('subjectName') ? { key: 'subjectName', label: t('subjects.table.columns.subjectName', { defaultValue: 'Subject Name' }) } : null,
+      isVisible('subjectCode') ? { key: 'subjectCode', label: t('subjects.table.columns.subjectCode', { defaultValue: 'Subject Code' }) } : null,
+      isVisible('grades') ? { key: 'grades', label: t('subjects.table.columns.grades', { defaultValue: 'Associated Grades' }) } : null,
     ].filter(Boolean);
 
     const headers = cols.map((c) => c.label);
@@ -253,8 +263,12 @@ export default function SubjectPage() {
 
     return {
       filename: 'subjects',
-      title: 'Subjects',
-      subtitle: `Total: ${sortedSubjectsForView.length} • Generated: ${new Date().toLocaleString()}`,
+      title: t('modules.subjects', { defaultValue: 'Subjects' }),
+      subtitle: t('common.export.subtitle', {
+        defaultValue: 'Total: {{count}} • Generated: {{date}}',
+        count: sortedSubjectsForView.length,
+        date: new Date().toLocaleString(),
+      }),
       headerImageSrc: headerImg,
       headers,
       rows,
@@ -275,13 +289,13 @@ export default function SubjectPage() {
                   <GradeSelect
                     id="subjects-grade-filter"
                     name="subjects-grade-filter"
-                    aria-label="Grade"
+                    aria-label={t('common.filters.grade', { defaultValue: 'Grade' })}
                     value={gradeFilter}
                     onChange={(v) => {
                       setGradeFilter(v);
                       setPage(1);
                     }}
-                    placeholder="Grade"
+                    placeholder={t('common.filters.grade', { defaultValue: 'Grade' })}
                   />
                 </FilterItem>
               </FilterRow>
@@ -298,7 +312,7 @@ export default function SubjectPage() {
                   onClick={handleAddNew}
                   icon={<Plus size={20} />}
                 >
-                  Add New Subject
+                  {t('subjects.actions.addNew', { defaultValue: 'Add New Subject' })}
                 </Button>
               ) : null}
             </div>
@@ -310,9 +324,9 @@ export default function SubjectPage() {
                 icon={<Printer size={16} />}
                 disabled={!canExport}
                 onClick={handlePrint}
-                title="Print"
+                title={t('common.actions.print', { defaultValue: 'Print' })}
               >
-                Print
+                {t('common.actions.print', { defaultValue: 'Print' })}
               </ActionButton>
               <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
               <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
@@ -327,7 +341,7 @@ export default function SubjectPage() {
                   resetAndReload({ filters: {}, search: '' });
                 }}
               >
-                Reset
+                {t('common.actions.reset', { defaultValue: 'Reset' })}
               </ActionButton>
             </div>
           </div>
@@ -356,7 +370,14 @@ export default function SubjectPage() {
         <PrintFooter />
       </div>
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={editingSubject ? 'Edit Subject' : 'Add New Subject'}>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingSubject
+          ? t('subjects.modal.editTitle', { defaultValue: 'Edit Subject' })
+          : t('subjects.modal.addTitle', { defaultValue: 'Add New Subject' })
+        }
+      >
         {formError && <div className="mb-3 text-red-600 text-sm">{formError}</div>}
         <SubjectForm
           subject={editingSubject}

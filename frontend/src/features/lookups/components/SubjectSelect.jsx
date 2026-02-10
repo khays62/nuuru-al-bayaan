@@ -3,22 +3,27 @@ import React, { useEffect, useState } from 'react';
 import { getSubjects } from '../../subjects/api/subjects';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function SubjectSelect({
   value,
   onChange,
   disabled = false,
   className = '',
-  placeholder = 'Any',
+  placeholder,
   id,
   name,
   searchable = false,
   maxVisible = 5,
-  searchPlaceholder = 'Type to search…',
+  searchPlaceholder,
   ...rest
 }) {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const resolvedPlaceholder = placeholder ?? t('common.filters.any', { defaultValue: 'Any' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
 
   useEffect(() => {
     let ignore = false;
@@ -47,9 +52,9 @@ export default function SubjectSelect({
         value={value}
         onChange={onChange}
         options={options}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         maxVisible={maxVisible}
-        searchPlaceholder={searchPlaceholder}
+        searchPlaceholder={resolvedSearchPlaceholder}
         disabled={disabled || loading}
         className={className}
         id={id}
@@ -64,7 +69,7 @@ export default function SubjectSelect({
       value={value}
       onChange={onChange}
       options={options}
-      placeholder={placeholder}
+      placeholder={resolvedPlaceholder}
       disabled={disabled || loading}
       className={className}
       id={id}

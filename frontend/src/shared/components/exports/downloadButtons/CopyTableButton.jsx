@@ -3,8 +3,10 @@ import { Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToClipboard } from '../../../../utils/exportTable';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 export default function CopyTableButton({ getPayload, disabled = false, className = '' }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -25,7 +27,7 @@ export default function CopyTableButton({ getPayload, disabled = false, classNam
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('Copy failed:', e);
-      toast.error(e?.message || 'Copy failed');
+      toast.error(e?.message || t('common.errors.copyFailed', { defaultValue: 'Copy failed' }));
     } finally {
       setBusy(false);
     }
@@ -38,9 +40,9 @@ export default function CopyTableButton({ getPayload, disabled = false, classNam
       icon={<Copy size={16} />}
       disabled={disabled || busy}
       onClick={run}
-      title="Copy"
+      title={t('common.actions.copy', { defaultValue: 'Copy' })}
     >
-      Copy
+      {t('common.actions.copy', { defaultValue: 'Copy' })}
     </ActionButton>
   );
 }

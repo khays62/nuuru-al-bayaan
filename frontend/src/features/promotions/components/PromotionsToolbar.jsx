@@ -9,6 +9,7 @@ import CohortSelect from '../../lookups/components/CohortSelect';
 import Button from '../../../shared/components/ui/Button';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import TimingSelector from './TimingSelector.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function PromotionsToolbar({
   timing,
@@ -26,6 +27,7 @@ export default function PromotionsToolbar({
   onPromote,
   onReset,
 }) {
+  const { t } = useI18n();
   return (
     <DataToolbar
       showReset={false}
@@ -40,10 +42,10 @@ export default function PromotionsToolbar({
               value={filters.ay}
               onChange={(v) => setFilters({ ...filters, ay: v })}
               refreshKey={ayRefreshKey}
-              placeholder="AY"
+              placeholder={t('common.filters.academicYearShort', { defaultValue: 'AY' })}
               searchable
               maxVisible={5}
-              searchPlaceholder="Search academic years…"
+              searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
             />
           </FilterItem>
 
@@ -51,7 +53,7 @@ export default function PromotionsToolbar({
             <GradeSelect
               value={filters.grade}
               onChange={(v) => setFilters({ ...filters, grade: v })}
-              placeholder="Grade"
+              placeholder={t('common.filters.grade', { defaultValue: 'Grade' })}
             />
           </FilterItem>
 
@@ -59,7 +61,7 @@ export default function PromotionsToolbar({
             <ShiftSelect
               value={filters.shift}
               onChange={(v) => setFilters({ ...filters, shift: v })}
-              placeholder="Shift"
+              placeholder={t('common.filters.shift', { defaultValue: 'Shift' })}
             />
           </FilterItem>
 
@@ -69,7 +71,7 @@ export default function PromotionsToolbar({
               shiftId={filters.shift}
               value={filters.section}
               onChange={(v) => setFilters({ ...filters, section: v })}
-              placeholder="Section"
+              placeholder={t('common.filters.section', { defaultValue: 'Section' })}
             />
           </FilterItem>
 
@@ -83,10 +85,10 @@ export default function PromotionsToolbar({
               section={null}
               value={filters.cohort}
               onChange={(v) => setFilters({ ...filters, cohort: v })}
-              placeholder="Cohort"
+              placeholder={t('common.filters.cohort', { defaultValue: 'Cohort' })}
               searchable
               maxVisible={5}
-              searchPlaceholder="Search cohorts…"
+              searchPlaceholder={t('common.searchPlaceholders.cohorts', { defaultValue: 'Search cohorts…' })}
             />
           </FilterItem>
         </FilterRow>
@@ -102,7 +104,7 @@ export default function PromotionsToolbar({
               size="lg"
               icon={loadingPreview ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}
             >
-              Preview
+              {t('common.actions.preview', { defaultValue: 'Preview' })}
             </Button>
           )}
 
@@ -115,7 +117,7 @@ export default function PromotionsToolbar({
               size="lg"
               icon={loadingPromote ? <Loader2 className="animate-spin" size={16} /> : <Rocket size={16} />}
             >
-              Promote
+              {t('common.actions.promote', { defaultValue: 'Promote' })}
             </Button>
           )}
 
@@ -129,7 +131,7 @@ export default function PromotionsToolbar({
             size="lg"
             icon={<RefreshCw size={16} />}
           >
-            Reset
+            {t('common.actions.reset', { defaultValue: 'Reset' })}
           </Button>
         </div>
       )}

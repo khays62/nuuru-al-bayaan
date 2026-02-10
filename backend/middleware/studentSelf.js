@@ -16,7 +16,7 @@ export const allowStudentSelfOr = (permissionMiddleware, opts = {}) => {
       const ownStudentId = req.user?.studentRef || req.user?._id;
 
       if (!provided || String(provided) !== String(ownStudentId)) {
-        return res.status(403).json({ message: 'Access denied' });
+        return res.status(403).json({ message: req.t('common.accessDenied', null, 'Access denied') });
       }
 
       return next();

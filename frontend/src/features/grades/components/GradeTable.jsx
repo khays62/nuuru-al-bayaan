@@ -3,6 +3,7 @@ import { Eye, Pencil, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 // GradeTable shows section + grade + shift + subjects count; no AY/Cohort columns
 const GradeTable = ({
@@ -22,6 +23,7 @@ const GradeTable = ({
   onPage,
   onLimit,
 }) => {
+  const { t } = useI18n();
   const STORAGE_KEY = 'gradeSections:columns:v1';
 
   const { auth, hasPermission } = useAuth();
@@ -33,26 +35,26 @@ const GradeTable = ({
   const canDelete = isAdmin || hasPermission('grades', 'delete');
 
   const columns = useMemo(() => ([
-    { key: 'section', label: 'Section', sortable: true, field: 'section', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-    { key: 'grade', label: 'Grade', sortable: true, field: 'gradeName', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-    { key: 'shift', label: 'Shift', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-    { key: 'subjects', label: 'Subjects', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-    { key: 'capacity', label: 'Capacity', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-    { key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200 no-print' },
-  ]), []);
+    { key: 'section', label: t('common.filters.section', { defaultValue: 'Section' }), sortable: true, field: 'section', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'grade', label: t('common.filters.grade', { defaultValue: 'Grade' }), sortable: true, field: 'gradeName', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'shift', label: t('common.filters.shift', { defaultValue: 'Shift' }), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'subjects', label: t('gradeSections.columns.subjects', { defaultValue: 'Subjects' }), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'capacity', label: t('gradeSections.columns.capacity', { defaultValue: 'Capacity' }), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
+    { key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium space-x-2 border-x border-gray-200 no-print' },
+  ]), [t]);
 
   return (
     <StandardTable
       isLoading={isLoading && (items || []).length === 0}
       error={error}
       items={items}
-      loadingMessage="Loading..."
+      loadingMessage={t('gradeSections.table.loading', { defaultValue: 'Loading...' })}
       loadingVariant="table"
       loadingRows={6}
       loadingColumns={5}
-      emptyTitle="No grade sections found"
-      emptyDescription="Try adjusting filters or create a new one."
-      emptyActionLabel={canAdd ? 'Add' : undefined}
+      emptyTitle={t('gradeSections.table.emptyTitle', { defaultValue: 'No grade sections found' })}
+      emptyDescription={t('gradeSections.table.emptyDescription', { defaultValue: 'Try adjusting filters or create a new one.' })}
+      emptyActionLabel={canAdd ? t('common.actions.add', { defaultValue: 'Add' }) : undefined}
       onEmptyAction={canAdd ? onAdd : undefined}
       onRetry={onRetry}
 
@@ -91,8 +93,8 @@ const GradeTable = ({
                   canView
                     ? {
                         key: 'view',
-                        label: 'View',
-                        title: 'View Students',
+                        label: t('common.actions.view', { defaultValue: 'View' }),
+                        title: t('gradeSections.rowActions.viewStudentsTitle', { defaultValue: 'View Students' }),
                         tone: 'view',
                         icon: <Eye size={18} />,
                         onClick: () => onView?.(cls),
@@ -101,7 +103,7 @@ const GradeTable = ({
                   canEdit
                     ? {
                         key: 'edit',
-                        label: 'Edit',
+                        label: t('common.actions.edit', { defaultValue: 'Edit' }),
                         tone: 'edit',
                         icon: <Pencil size={18} />,
                         onClick: () => onEdit?.(cls),
@@ -110,7 +112,7 @@ const GradeTable = ({
                   canDelete
                     ? {
                         key: 'delete',
-                        label: 'Delete',
+                        label: t('common.actions.delete', { defaultValue: 'Delete' }),
                         tone: 'delete',
                         icon: <Trash2 size={18} />,
                         onClick: () => onDelete?.(cls._id),

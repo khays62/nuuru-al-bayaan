@@ -12,8 +12,10 @@ import PromotionsToolbar from '../components/PromotionsToolbar.jsx';
 import StudentsRosterTable from '../components/StudentsRosterTable.jsx';
 import PromotionPreviewPanel from '../components/PromotionPreviewPanel.jsx';
 import { formatApiErrorToast, formatCurrent, formatFrom, formatTo } from '../utils/formatters.js';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function PromotionPage() {
+  const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
   const role = String(auth?.user?.role || '').toLowerCase();
   const isAdmin = role === 'admin';
@@ -115,15 +117,15 @@ export default function PromotionPage() {
 
   const handlePreview = async () => {
     if (!canPreview) {
-      toast.error('You do not have permission: Promotions Preview');
+      toast.error(t('promotions.permissions.noPreview', { defaultValue: 'You do not have permission: Promotions Preview' }));
       return;
     }
     if (!filtersReady) {
-      toast.error('Select AY, Grade, Shift, Section, and Cohort first');
+      toast.error(t('promotions.errors.selectFiltersFirst', { defaultValue: 'Select AY, Grade, Shift, Section, and Cohort first' }));
       return;
     }
     if (students.length === 0 || selectedIds.size === 0) {
-      toast.error('Select at least one student to preview');
+      toast.error(t('promotions.errors.selectAtLeastOneStudent', { defaultValue: 'Select at least one student to preview' }));
       return;
     }
     setLoadingPreview(true);
@@ -136,7 +138,7 @@ export default function PromotionPage() {
       const res = await previewPromotion(params);
       const { ok, items, summary, error, warnings, allNoScores } = res || {};
       if (!ok) {
-        toast.error(formatApiErrorToast(res || { error: error || 'Preview failed' }));
+        toast.error(formatApiErrorToast(res || { error: error || t('promotions.errors.previewFailed', { defaultValue: 'Preview failed' }) }));
         setPreview(null);
         return;
       }
@@ -147,7 +149,7 @@ export default function PromotionPage() {
       setPreview({ items: safeItems, summary });
       // Show a short toast if all selected have no scores, but still render table
       if (allNoScores || (Array.isArray(warnings) && warnings.includes('NO_SCORES_ALL'))) {
-        toast.error('All selected students have no exam scores.');
+        toast.error(t('promotions.errors.noScoresAllShort', { defaultValue: 'All selected students have no exam scores.' }));
       }
     } catch (err) {
       toast.error(formatApiErrorToast(err));
@@ -159,10 +161,10 @@ export default function PromotionPage() {
 
   const handlePromote = async () => {
     if (!canPromote) {
-      toast.error('You do not have permission: Promotions Promote');
+      toast.error(t('promotions.permissions.noPromote', { defaultValue: 'You do not have permission: Promotions Promote' }));
       return;
     }
-    if (!preview) { toast.error('Run preview first'); return; }
+    if (!preview) { toast.error(t('promotions.errors.runPreviewFirst', { defaultValue: 'Run preview first' })); return; }
 
     setLoadingPromote(true);
     try {
@@ -176,7 +178,7 @@ export default function PromotionPage() {
         return;
       }
         const { ok, results, error } = response;
-  if (!ok) throw new Error(error || 'Promotion failed');
+    if (!ok) throw new Error(error || t('promotions.errors.promotionFailed', { defaultValue: 'Promotion failed' }));
       // Clear preview after a successful promotion so Promote cannot be accidentally re-run
       // on stale preview (user must re-run Preview for the current timing/selection).
       setPreview(null);
@@ -205,8 +207,16 @@ export default function PromotionPage() {
       )).length;
 
       let msg = `Promotion completed. Promoted: ${promotedCount}. Not eligible (avg < 60): ${notEligibleCount}.`;
-      if (graduatesCount > 0) msg += ` Graduated: ${graduatesCount}.`;
-      if (otherFailedCount > 0) msg += ` Failed: ${otherFailedCount}.`;
+      {
+        const parts = [
+          t('promotions.toasts.completedBase', { defaultValue: 'Promotion completed.' }),
+          t('promotions.toasts.promotedCount', { defaultValue: 'Promoted: {{count}}.', count: promotedCount }),
+          t('promotions.toasts.notEligibleCount', { defaultValue: 'Not eligible (avg < 60): {{count}}.', count: notEligibleCount }),
+        ];
+        if (graduatesCount > 0) parts.push(t('promotions.toasts.graduatedCount', { defaultValue: 'Graduated: {{count}}.', count: graduatesCount }));
+        if (otherFailedCount > 0) parts.push(t('promotions.toasts.failedCount', { defaultValue: 'Failed: {{count}}.', count: otherFailedCount }));
+        msg = parts.join(' ');
+      }
 
       if (otherFailedCount > 0) toast.error(msg);
       else toast.success(msg);
@@ -215,7 +225,7 @@ export default function PromotionPage() {
     } catch (err) {
       const code = err?.data?.error || '';
       if (code === 'NO_SCORES_ALL') {
-        toast.error('All selected students have no exam scores. Please add/import scores first, then try Promote again.');
+        toast.error(t('promotions.errors.noScoresAllLong', { defaultValue: 'All selected students have no exam scores. Please add/import scores first, then try Promote again.' }));
       } else {
         toast.error(formatApiErrorToast(err));
       }

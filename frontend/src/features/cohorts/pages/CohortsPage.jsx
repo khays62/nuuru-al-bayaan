@@ -24,8 +24,10 @@ import { cohortsKeys } from '../queryKeys';
 import { useCohortsRealtimeInvalidation } from '../useCohortsRealtimeInvalidation';
 import { useAuth } from '../../../auth/AuthContext';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function CohortsPage() {
+  const { t } = useI18n();
   useCohortsRealtimeInvalidation();
   const { auth, hasPermission } = useAuth();
   const roleLower = String(auth?.user?.role || '').toLowerCase();
@@ -41,10 +43,10 @@ export default function CohortsPage() {
   useEffect(() => {
     (async () => {
       const items = await getAcademicYears();
-      const opts = (items || []).map(ay => ({ value: ay._id, label: ay.yearName || ay.name || 'AY' }));
+      const opts = (items || []).map(ay => ({ value: ay._id, label: ay.yearName || ay.name || t('common.filters.academicYearShort', { defaultValue: 'AY' }) }));
       setAyOptions(opts);
     })();
-  }, []);
+  }, [t]);
 
   const fetchFn = async (params) => {
     const { search, page, limit, sortBy, sortDir, status, startAcademicYear } = params;
@@ -93,38 +95,54 @@ export default function CohortsPage() {
 
   const handleCreate = async (payload) => {
     const { ok, error: err } = await createCohort(payload);
-    if (!ok) return toast.error(err || 'Failed to create');
-    toast.success('Cohort created');
+    if (!ok) return toast.error(err || t('common.errors.failedToCreate', { defaultValue: 'Failed to create' }));
+    toast.success(t('cohorts.toasts.created', { defaultValue: 'Cohort created' }));
     setShowModal(false);
     setEditing(null);
     await refresh();
   };
   const handleUpdate = async (id, payload) => {
     const { ok, error: err } = await updateCohort(id, payload);
-    if (!ok) return toast.error(err || 'Failed to update');
-    toast.success('Cohort updated');
+    if (!ok) return toast.error(err || t('common.errors.failedToUpdate', { defaultValue: 'Failed to update' }));
+    toast.success(t('cohorts.toasts.updated', { defaultValue: 'Cohort updated' }));
     setShowModal(false);
     setEditing(null);
     await refresh();
   };
   const handleDelete = async (id) => {
-    if (!confirm('Delete this cohort? This is only allowed if not in use.')) return;
+    if (!confirm(t('cohorts.confirms.delete', { defaultValue: 'Delete this cohort? This is only allowed if not in use.' }))) return;
     const { ok, error: err } = await deleteCohort(id);
-    if (!ok) return toast.error(err || 'Failed to delete');
-    toast.success('Cohort deleted');
+    if (!ok) return toast.error(err || t('common.errors.failedToDelete', { defaultValue: 'Failed to delete' }));
+    toast.success(t('cohorts.toasts.deleted', { defaultValue: 'Cohort deleted' }));
     await refresh();
   };
-  const handleArchive = async (id) => { const { ok, error: err } = await archiveCohort(id); if (!ok) return toast.error(err || 'Failed'); toast.success('Archived'); await refresh(); };
-  const handleActivate = async (id) => { const { ok, error: err } = await activateCohort(id); if (!ok) return toast.error(err || 'Failed'); toast.success('Activated'); await refresh(); };
+  const handleArchive = async (id) => {
+    const { ok, error: err } = await archiveCohort(id);
+    if (!ok) return toast.error(err || t('common.errors.somethingWentWrong', { defaultValue: 'Something went wrong.' }));
+    toast.success(t('cohorts.toasts.archived', { defaultValue: 'Archived' }));
+    await refresh();
+  };
+  const handleActivate = async (id) => {
+    const { ok, error: err } = await activateCohort(id);
+    if (!ok) return toast.error(err || t('common.errors.somethingWentWrong', { defaultValue: 'Something went wrong.' }));
+    toast.success(t('cohorts.toasts.activated', { defaultValue: 'Activated' }));
+    await refresh();
+  };
 
-  const statuses = useMemo(() => ([{ value: 'active', label: 'Active' }, { value: 'archived', label: 'Archived' }]), []);
+  const statuses = useMemo(
+    () => ([
+      { value: 'active', label: t('common.status.active', { defaultValue: 'Active' }) },
+      { value: 'archived', label: t('cohorts.status.archived', { defaultValue: 'Archived' }) },
+    ]),
+    [t]
+  );
   const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
   const isPageLoading = Boolean(isLoading);
   const canExport = Boolean(canView && !isPageLoading && Array.isArray(sortedItemsForView) && sortedItemsForView.length > 0);
 
   const handlePrint = () => {
     if (!canView) {
-      toast.error('You do not have permission to export/print cohorts');
+      toast.error(t('cohorts.permissions.noExport', { defaultValue: 'You do not have permission to export/print cohorts' }));
       return;
     }
     setTimeout(() => window.print(), 0);
@@ -146,10 +164,10 @@ export default function CohortsPage() {
     const isVisible = (key) => visible?.[String(key)] !== false;
 
     const cols = [
-      isVisible('name') ? { key: 'name', label: 'Name' } : null,
-      isVisible('status') ? { key: 'status', label: 'Status' } : null,
-      isVisible('startAy') ? { key: 'startAy', label: 'AY (Start)' } : null,
-      isVisible('createdAt') ? { key: 'createdAt', label: 'Created' } : null,
+      isVisible('name') ? { key: 'name', label: t('cohorts.table.columns.name', { defaultValue: 'Name' }) } : null,
+      isVisible('status') ? { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }) } : null,
+      isVisible('startAy') ? { key: 'startAy', label: t('cohorts.table.columns.startAy', { defaultValue: 'AY (Start)' }) } : null,
+      isVisible('createdAt') ? { key: 'createdAt', label: t('common.table.created', { defaultValue: 'Created' }) } : null,
     ].filter(Boolean);
 
     const headers = cols.map((c) => c.label);
@@ -170,8 +188,12 @@ export default function CohortsPage() {
 
     return {
       filename: 'cohorts',
-      title: 'Cohorts',
-      subtitle: `Total: ${sortedItemsForView.length} • Generated: ${new Date().toLocaleString()}`,
+      title: t('modules.cohorts', { defaultValue: 'Cohorts' }),
+      subtitle: t('common.export.subtitle', {
+        defaultValue: 'Total: {{count}} • Generated: {{date}}',
+        count: sortedItemsForView.length,
+        date: new Date().toLocaleString(),
+      }),
       headerImageSrc: headerImg,
       headers,
       rows,
@@ -190,7 +212,7 @@ export default function CohortsPage() {
                   setSearch(v);
                   setPage(1);
                 }}
-                placeholder="Search cohorts..."
+                placeholder={t('cohorts.searchPlaceholder', { defaultValue: 'Search cohorts...' })}
               />
             </div>
             <div className="w-full lg:max-w-2xl">
@@ -204,7 +226,7 @@ export default function CohortsPage() {
                       setPage(1);
                     }}
                     options={statuses}
-                    placeholder="Status"
+                    placeholder={t('common.filters.status', { defaultValue: 'Status' })}
                   />
                 </FilterItem>
 
@@ -217,10 +239,10 @@ export default function CohortsPage() {
                       setPage(1);
                     }}
                     options={ayOptions}
-                    placeholder="Start AY"
+                    placeholder={t('cohorts.filters.startAy', { defaultValue: 'Start AY' })}
                     searchable
                     maxVisible={5}
-                    searchPlaceholder="Search academic years…"
+                    searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
                   />
                 </FilterItem>
 
@@ -240,7 +262,7 @@ export default function CohortsPage() {
                 }}
                 icon={<Plus size={20} />}
               >
-                Add Cohort
+                {t('cohorts.actions.add', { defaultValue: 'Add Cohort' })}
               </Button>
             </div>
 
@@ -251,9 +273,9 @@ export default function CohortsPage() {
                 icon={<Printer size={16} />}
                 disabled={!canExport}
                 onClick={handlePrint}
-                title="Print"
+                title={t('common.actions.print', { defaultValue: 'Print' })}
               >
-                Print
+                {t('common.actions.print', { defaultValue: 'Print' })}
               </ActionButton>
               <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
               <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
@@ -269,7 +291,7 @@ export default function CohortsPage() {
                   resetAndReload({ filters: { status: undefined, startAcademicYear: undefined }, search: '' });
                 }}
               >
-                Reset
+                {t('common.actions.reset', { defaultValue: 'Reset' })}
               </ActionButton>
             </div>
           </div>
@@ -310,7 +332,11 @@ export default function CohortsPage() {
         <PrintFooter />
       </div>
 
-      <Modal isOpen={showModal} onClose={()=>{ setShowModal(false); setEditing(null); }} title={editing ? 'Edit Cohort' : 'Add Cohort'}>
+      <Modal
+        isOpen={showModal}
+        onClose={()=>{ setShowModal(false); setEditing(null); }}
+        title={editing ? t('cohorts.modal.editTitle', { defaultValue: 'Edit Cohort' }) : t('cohorts.modal.addTitle', { defaultValue: 'Add Cohort' })}
+      >
         <CohortForm
           initial={editing || {}}
           onCancel={()=>{ setShowModal(false); setEditing(null); }}

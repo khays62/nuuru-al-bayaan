@@ -31,8 +31,10 @@ import { useAuth } from '../../../auth/AuthContext';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { transcriptKeys } from '../queryKeys';
 import { useTranscriptRealtimeInvalidation } from '../useTranscriptRealtimeInvalidation';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function TranscriptPage() {
+  const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const role = String(auth?.user?.role || '').toLowerCase();
@@ -60,6 +62,22 @@ export default function TranscriptPage() {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const hasAutoOpenedRef = useRef(false); // controls one-time auto-open for class picker
   const noTranscriptToastKeyRef = useRef('');
+
+  const formatEnrollmentStatus = (raw) => {
+    const v = String(raw || '').toLowerCase();
+    if (!v) return '';
+    const allowed = ['open', 'active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn', 'all'];
+    if (allowed.includes(v)) return t(`students.enrollmentStatus.${v}`);
+    return String(raw);
+  };
+
+  const formatStatusHint = (raw) => {
+    const v = String(raw || '').toLowerCase();
+    if (!v) return '';
+    const allowed = ['active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn'];
+    if (allowed.includes(v)) return t(`students.enrollmentStatus.${v}`);
+    return String(raw);
+  };
 
   // Controls
   const [mode, setMode] = useState('latest'); // full | latest (default latest per request)
@@ -246,7 +264,7 @@ export default function TranscriptPage() {
       if (!enrolls.length) continue;
       const have = new Set(enrolls.map((en) => String(en?.gradeSection?.grade || '').toLowerCase()).filter(Boolean));
       const missing = selectedNames.filter((nm) => !have.has(String(nm).toLowerCase()));
-      for (const nm of missing) msgs.push(`Grade ${nm} has no transcript.`);
+      for (const nm of missing) msgs.push(t('transcript.page.toasts.gradeNoTranscript', { grade: nm }));
     }
     const unique = [...new Set(msgs)];
     if (!unique.length) return;
@@ -285,7 +303,7 @@ export default function TranscriptPage() {
           setShifts(sData);
         }
       } catch {
-        toast.error('Failed to load lookups');
+        toast.error(t('transcript.page.errors.loadLookupsFailed'));
       }
     })();
   }, []);
@@ -454,9 +472,9 @@ export default function TranscriptPage() {
       let enrollmentsForExport = [];
 
       if (isLatestMode) {
-        const t = latestTranscripts[studentId];
-        const ok = t?.ok && t?.data;
-        const dataObj = ok ? t.data : null;
+        const latestResp = latestTranscripts[studentId];
+        const ok = latestResp?.ok && latestResp?.data;
+        const dataObj = ok ? latestResp.data : null;
         enrollmentsForExport = getTranscriptEnrollmentsForDisplay(dataObj);
       } else {
         const metaEnrolls = getTargetEnrollmentsFromIndex(studentId);
@@ -480,10 +498,10 @@ export default function TranscriptPage() {
         });
 
         const headers = [
-          'Subject',
+          t('common.filters.subject'),
           ...examTypesSorted.map((et) => et.typeName),
-          'Total',
-          'Average',
+          t('transcript.page.table.total'),
+          t('results.page.table.average'),
         ];
 
         const transcriptRows = Array.isArray(en.transcript?.rows) ? en.transcript.rows : [];
@@ -502,7 +520,7 @@ export default function TranscriptPage() {
 
         // Overall row (matches UI)
         rows.push([
-          'Overall',
+          t('transcript.page.table.overall'),
           ...examTypesSorted.map(() => ''),
           Number(en.transcript?.overall?.total || 0).toFixed(2),
           Number(en.transcript?.overall?.average || 0).toFixed(2),
@@ -510,11 +528,11 @@ export default function TranscriptPage() {
 
         const tableTitle = `${sel?.fullName || ''} (${sel?.studentId || ''})`;
         const tableSubtitle = [
-          `Academic Year: ${en.academicYear?.yearName || '-'}`,
-          `Grade: ${en.gradeSection?.grade || '-'}`,
-          `Section: ${en.gradeSection?.section || '-'}`,
-          `Shift: ${en.gradeSection?.shift || '-'}`,
-          `Status: ${en.status || ''}`,
+          `${t('common.filters.academicYear')}: ${en.academicYear?.yearName || '-'}`,
+          `${t('common.filters.grade')}: ${en.gradeSection?.grade || '-'}`,
+          `${t('common.filters.section')}: ${en.gradeSection?.section || '-'}`,
+          `${t('common.filters.shift')}: ${en.gradeSection?.shift || '-'}`,
+          `${t('common.filters.status')}: ${formatEnrollmentStatus(en.status) || ''}`,
         ].join(' • ');
 
         const pageBreakBefore = isFirstEnrollmentForStudent && sIdx > 0;
@@ -530,7 +548,7 @@ export default function TranscriptPage() {
         isFirstEnrollmentForStudent = false;
 
         // One Excel sheet per enrollment table (closest to "as-is")
-        const baseSheetName = `${sel?.studentId || 'Student'} ${en.academicYear?.yearName || ''}`.trim();
+        const baseSheetName = `${sel?.studentId || t('common.studentFallback')} ${en.academicYear?.yearName || ''}`.trim();
         sheets.push({
           sheetName: baseSheetName,
           title: tableTitle,
@@ -542,14 +560,14 @@ export default function TranscriptPage() {
     }
 
     if (!tables.length) {
-      toast.error('Nothing to export yet. Wait for transcripts to load.');
+      toast.error(t('transcript.page.toasts.nothingToExportYet'));
       return null;
     }
 
     return {
       filename: `transcript-${safeMode}-${safeStatus}-${safeDate}.pdf`,
       // Backwards-compatible single-table fields (not used when tables/sheets exist)
-      sheetName: 'Transcript',
+      sheetName: t('transcript.page.export.sheetName'),
       title: '',
       subtitle: '',
       headerImageSrc: headerImg,
@@ -580,7 +598,7 @@ export default function TranscriptPage() {
 
   const handlePrint = () => {
     if (!canPrintTranscript) {
-      toast.error('You do not have permission to print transcripts');
+      toast.error(t('transcript.page.errors.noPermissionPrint'));
       return;
     }
     setTimeout(() => window.print(), 0);
@@ -625,7 +643,16 @@ export default function TranscriptPage() {
           <Skeleton className="h-4 w-40" />
         </div>
         <div className="mt-3">
-          <LoadingState variant="table" message={mode === 'latest' ? 'Loading last transcript…' : (mode === 'levels' ? 'Loading transcripts (levels)…' : 'Loading full transcript…')} rows={6} columns={6} />
+          <LoadingState
+            variant="table"
+            message={mode === 'latest'
+              ? t('transcript.page.states.loadingLastTranscript')
+              : (mode === 'levels'
+                ? t('transcript.page.states.loadingTranscriptsLevels')
+                : t('transcript.page.states.loadingFullTranscript'))}
+            rows={6}
+            columns={6}
+          />
         </div>
       </div>
     </div>
@@ -642,7 +669,9 @@ export default function TranscriptPage() {
       <div className="mt-3">
         <LoadingState
           variant="table"
-          message={mode === 'levels' ? 'Loading transcripts (levels)…' : 'Loading full transcript…'}
+          message={mode === 'levels'
+            ? t('transcript.page.states.loadingTranscriptsLevels')
+            : t('transcript.page.states.loadingFullTranscript')}
           rows={6}
           columns={6}
         />
@@ -675,7 +704,7 @@ export default function TranscriptPage() {
             setCohortId(next);
             setActiveTimelineIndex(-1);
           }}
-          cohortPlaceholder="Cohort (optional)"
+          cohortPlaceholder={t('students.cohortOptional')}
           cohortSelectId="transcript-cohort"
           cohortSelectName="transcript-cohort"
           cohortSelectProps={{
@@ -698,10 +727,10 @@ export default function TranscriptPage() {
                   setCohortId('');
                   setActiveTimelineIndex(-1);
                 }}
-                placeholder="Academic Year"
+                placeholder={t('common.filters.academicYear')}
                 searchable
                 maxVisible={5}
-                searchPlaceholder="Search academic years…"
+                searchPlaceholder={t('common.searchPlaceholders.academicYears')}
                 className="w-full"
               />
             </FilterItem>
@@ -710,7 +739,7 @@ export default function TranscriptPage() {
               <DropdownSelect
                 value={gradeId}
                 onChange={(v) => { setGradeId(v); resetLower('grade'); setActiveTimelineIndex(-1); }}
-                placeholder="Level"
+                placeholder={t('common.filters.level')}
                 options={[...(grades || [])]
                   .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
                   .map((g) => ({ value: g._id, label: g.gradeName }))}
@@ -721,7 +750,7 @@ export default function TranscriptPage() {
               <FilterDropdownSelect
                 value={shiftId}
                 onChange={(v) => { setShiftId(v); resetLower('shift'); setActiveTimelineIndex(-1); }}
-                placeholder="Shift"
+                placeholder={t('common.filters.shift')}
                 options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
                 maxVisible={5}
               />
@@ -731,7 +760,7 @@ export default function TranscriptPage() {
               <FilterDropdownSelect
                 value={gradeSectionId}
                 onChange={(v) => { setGradeSectionId(v); setActiveTimelineIndex(-1); }}
-                placeholder="Section"
+                placeholder={t('common.filters.section')}
                 disabled={!gradeId || !shiftId || loadingSections}
                 options={(effectiveSections || []).map((gs) => {
                   const gradeName = gs?.grade?.gradeName;
@@ -740,13 +769,13 @@ export default function TranscriptPage() {
                   const tail = [shiftName].filter(Boolean).join(' - ');
                   const label = [
                     gradeName ? `${gradeName}` : null,
-                    sectionNum ? `Sec ${sectionNum}` : null,
+                    sectionNum ? `${t('common.sectionPrefix')} ${sectionNum}` : null,
                     tail ? `(${tail})` : null,
                   ].filter(Boolean).join(' - ');
-                  return { value: gs._id, label: label || gs.sectionName || 'Section' };
+                  return { value: gs._id, label: label || gs.sectionName || t('common.filters.section') };
                 })}
                 maxVisible={5}
-                searchPlaceholder="Type to search sections…"
+                searchPlaceholder={t('common.searchPlaceholders.sections')}
               />
             </FilterItem>
           </FilterRow>
@@ -755,22 +784,22 @@ export default function TranscriptPage() {
         {cohortId ? (
           <Card className="p-3 mt-3">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-800">Cohort timeline</div>
-              {timelineLoading ? <div className="text-xs text-gray-500">Loading…</div> : null}
+              <div className="text-sm font-semibold text-gray-800">{t('transcript.page.timeline.title')}</div>
+              {timelineLoading ? <div className="text-xs text-gray-500">{t('common.loading')}</div> : null}
             </div>
             {!timelineLoading && (!timeline || timeline.length === 0) ? (
-              <div className="text-sm text-gray-500 mt-2">No timeline data found for this cohort.</div>
+              <div className="text-sm text-gray-500 mt-2">{t('transcript.page.timeline.noData')}</div>
             ) : null}
             {Array.isArray(timeline) && timeline.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
-                {timeline.map((t, idx) => {
-                  const key = `${t?.academicYear?._id}-${t?.gradeSection?._id}-${idx}`;
+                {timeline.map((entry, idx) => {
+                  const key = `${entry?.academicYear?._id}-${entry?.gradeSection?._id}-${idx}`;
                   const label = [
-                    t?.academicYear?.yearName,
-                    t?.grade?.gradeName,
-                    t?.shift?.shiftName,
-                    t?.gradeSection?.section ? `Sec ${t.gradeSection.section}` : null,
-                    t?.statusHint ? `(${t.statusHint})` : null,
+                    entry?.academicYear?.yearName,
+                    entry?.grade?.gradeName,
+                    entry?.shift?.shiftName,
+                    entry?.gradeSection?.section ? `${t('common.sectionPrefix')} ${entry.gradeSection.section}` : null,
+                    entry?.statusHint ? `(${formatStatusHint(entry.statusHint)})` : null,
                   ].filter(Boolean).join(' - ');
                   const isActive = activeTimelineIndex === idx;
                   return (
@@ -779,24 +808,24 @@ export default function TranscriptPage() {
                       type="button"
                       onClick={() => {
                         setActiveTimelineIndex(idx);
-                        const ay = t?.academicYear?._id;
-                        const g = t?.grade?._id;
-                        const sh = t?.shift?._id;
-                        const gs = t?.gradeSection?._id;
+                        const ay = entry?.academicYear?._id;
+                        const g = entry?.grade?._id;
+                        const sh = entry?.shift?._id;
+                        const gs = entry?.gradeSection?._id;
                         if (ay) setAcademicYearId(String(ay));
                         if (g) setGradeId(String(g));
                         if (sh) setShiftId(String(sh));
                         if (gs) setGradeSectionId(String(gs));
 
-                        const hint = String(t?.statusHint || '').toLowerCase();
+                        const hint = String(entry?.statusHint || '').toLowerCase();
                         if (hint && ['active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn'].includes(hint)) {
                           setEnrollmentStatus(hint);
                         }
                       }}
                       className={`px-3 py-1.5 rounded-md text-sm border ${isActive ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                      title={label || 'Timeline item'}
+                      title={label || t('transcript.page.timeline.itemFallback')}
                     >
-                      {label || 'Timeline item'}
+                      {label || t('transcript.page.timeline.itemFallback')}
                     </button>
                   );
                 })}
@@ -807,7 +836,7 @@ export default function TranscriptPage() {
 
         <div className="mt-3 flex flex-row flex-wrap items-end w-full gap-3">
           <div className="flex-1 min-w-[320px]" ref={pickerRef}>
-            <FormField label="Search Student" htmlFor="transcript-search">
+            <FormField label={t('transcript.page.studentPicker.searchLabel')} htmlFor="transcript-search">
               <div className="relative">
                 <Input
                   id="transcript-search"
@@ -815,7 +844,7 @@ export default function TranscriptPage() {
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setShowSuggestions(true); }}
                   onFocus={() => setShowSuggestions(true)}
-                  placeholder="Search by name or ID"
+                  placeholder={t('students.searchPlaceholder')}
                   className="pr-28"
                 />
                 <div className="absolute right-1 top-1.5 flex gap-1">
@@ -825,10 +854,10 @@ export default function TranscriptPage() {
                       setIsPickerOpen((v) => !v);
                       setShowSuggestions(true);
                     }}
-                    title="Open class list"
+                    title={t('transcript.page.studentPicker.openClassListTitle')}
                     className="text-xs"
                   >
-                    Select from class ▾
+                    {t('transcript.page.studentPicker.selectFromClass')}
                   </ActionButton>
                 </div>
 
@@ -838,10 +867,10 @@ export default function TranscriptPage() {
                       <Input
                         id="transcript-student-filter"
                         name="transcript-student-filter"
-                        aria-label="Filter suggested students"
+                        aria-label={t('common.aria.filterSuggestedStudents', { defaultValue: 'Filter suggested students' })}
                         value={dropdownSearch}
                         onChange={(e) => setDropdownSearch(e.target.value)}
-                        placeholder="Filter list..."
+                        placeholder={t('transcript.page.studentPicker.filterListPlaceholder')}
                         className="text-sm"
                       />
                     </div>
@@ -850,13 +879,17 @@ export default function TranscriptPage() {
                       const list = (suggestions || []).filter((s) => !q
                         || s.fullName?.toLowerCase().includes(q)
                         || String(s.studentId).toLowerCase().includes(q));
-                      if (!list.length) return <div className="px-3 py-2 text-sm text-gray-500">No students found</div>;
+                      if (!list.length) return <div className="px-3 py-2 text-sm text-gray-500">{t('transcript.page.studentPicker.noStudentsFound')}</div>;
                       return list.map((s) => {
                         const checked = selectedStudents.some((x) => x._id === s._id);
                         return (
                           <label key={s._id} className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
                             <div className="flex items-center gap-2">
-                              <Checkbox checked={checked} onChange={() => (checked ? removeStudent(s._id) : addStudent(s))} aria-label={`Select ${s.fullName}`} />
+                              <Checkbox
+                                checked={checked}
+                                onChange={() => (checked ? removeStudent(s._id) : addStudent(s))}
+                                aria-label={t('transcript.page.studentPicker.selectStudentAria', { name: s.fullName })}
+                              />
                               <span>{s.fullName} <span className="text-gray-500">({s.studentId})</span></span>
                             </div>
                             {s.gradeDisplay && <span className="text-xs text-gray-500">{s.gradeDisplay}</span>}
@@ -869,7 +902,11 @@ export default function TranscriptPage() {
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {selectedStudents.map((s) => (
-                  <Chip key={s._id} onRemove={() => removeStudent(s._id)} removeLabel={`Remove ${s.fullName}`}>
+                  <Chip
+                    key={s._id}
+                    onRemove={() => removeStudent(s._id)}
+                    removeLabel={t('transcript.page.studentPicker.removeStudentAria', { name: s.fullName })}
+                  >
                     {s.fullName} ({s.studentId})
                   </Chip>
                 ))}
@@ -882,15 +919,15 @@ export default function TranscriptPage() {
           <div className="flex flex-row flex-wrap items-center gap-4 text-sm">
             <label className="flex items-center gap-2 cursor-pointer">
               <Radio name="transcript-mode" checked={mode === 'full'} onChange={() => setMode('full')} />
-              <span>Full Transcript</span>
+              <span>{t('transcript.page.modes.full')}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <Radio name="transcript-mode" checked={mode === 'latest'} onChange={() => setMode('latest')} />
-              <span>Last Transcript</span>
+              <span>{t('transcript.page.modes.latest')}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <Radio name="transcript-mode" checked={mode === 'levels'} onChange={() => setMode('levels')} />
-              <span>Levels</span>
+              <span>{t('transcript.page.modes.levels')}</span>
             </label>
             <div className="relative flex items-center gap-2" ref={levelsRef}>
               <button
@@ -899,12 +936,12 @@ export default function TranscriptPage() {
                 onClick={() => mode === 'levels' && setLevelsOpen((o) => !o)}
                 className={`px-2 py-1 border rounded text-xs flex items-center gap-1 ${mode === 'levels' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
               >
-                Levels ▾ {selectedLevels.length ? <span className="text-indigo-600">({selectedLevels.length})</span> : null}
+                {t('transcript.page.levels.levelsButton')} {selectedLevels.length ? <span className="text-indigo-600">({selectedLevels.length})</span> : null}
               </button>
               {levelsOpen && mode === 'levels' && (
                 <Card className="absolute z-40 mt-1 w-48 max-h-64 overflow-auto">
-                  <div className="sticky top-0 bg-white border-b px-2 py-1 text-xs font-medium">Select Levels</div>
-                  {(!grades || grades.length === 0) && <div className="px-3 py-2 text-xs text-gray-500">No grades</div>}
+                  <div className="sticky top-0 bg-white border-b px-2 py-1 text-xs font-medium">{t('transcript.page.levels.selectTitle')}</div>
+                  {(!grades || grades.length === 0) && <div className="px-3 py-2 text-xs text-gray-500">{t('transcript.page.levels.noGrades')}</div>}
                   {grades && [...grades]
                     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
                     .map((g) => {
@@ -913,7 +950,7 @@ export default function TranscriptPage() {
                       return (
                         <label key={id} className="flex items-center gap-2 px-3 py-1 text-xs hover:bg-gray-50 cursor-pointer">
                           <Checkbox checked={checked} onChange={() => setSelectedLevels((prev) => (checked ? prev.filter((x) => x !== id) : [...prev, id]))} />
-                          <span>{g.gradeName || g.name || 'Grade'}</span>
+                          <span>{g.gradeName || g.name || t('common.filters.grade')}</span>
                         </label>
                       );
                     })}
@@ -922,7 +959,7 @@ export default function TranscriptPage() {
                       type="button"
                       onClick={() => setSelectedLevels([])}
                       className="m-2 mt-1 px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 w-[calc(100%-1rem)]"
-                    >Clear</button>
+                    >{t('common.actions.clear')}</button>
                   )}
                 </Card>
               )}
@@ -931,14 +968,18 @@ export default function TranscriptPage() {
 
           <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
             {canPrintTranscript ? (
-              <ActionButton variant="neutral" className={outlineBtn} onClick={handlePrint} title="Print" icon={<Printer size={16} />}>Print</ActionButton>
+              <ActionButton variant="neutral" className={outlineBtn} onClick={handlePrint} title={t('common.actions.print')} icon={<Printer size={16} />}>
+                {t('common.actions.print')}
+              </ActionButton>
             ) : null}
 
             <PdfDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} orientation="landscape" />
             <ExcelDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} />
             <CopyTableButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} />
 
-            <ActionButton variant="neutral" className={outlineBtn} onClick={handleReset} title="Reset" icon={<RotateCcw size={16} />}>Reset</ActionButton>
+            <ActionButton variant="neutral" className={outlineBtn} onClick={handleReset} title={t('common.filters.resetTitle')} icon={<RotateCcw size={16} />}>
+              {t('common.actions.reset')}
+            </ActionButton>
           </div>
         </div>
       </Card>
@@ -962,27 +1003,27 @@ export default function TranscriptPage() {
                       </div>
                     );
                   }
-                  const t = latestTranscripts[studentId];
-                  const ok = t?.ok && t?.data;
-                  const dataObj = ok ? t.data : null;
+                  const latestResp = latestTranscripts[studentId];
+                  const ok = latestResp?.ok && latestResp?.data;
+                  const dataObj = ok ? latestResp.data : null;
                   const filteredEnrolls = getTranscriptEnrollmentsForDisplay(dataObj);
                   return (
                     <div key={sel._id} className="space-y-3 student-block">
                       <div className="print:text-center avoid-break">
                         <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
-                        <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
+                        <p className="text-sm text-gray-500">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
                       </div>
                       {(!ok || filteredEnrolls.length === 0) && (
-                        <Alert variant="neutral">No transcript data for the selected mode/filters.</Alert>
+                        <Alert variant="neutral">{t('transcript.page.emptyStates.noTranscriptData')}</Alert>
                       )}
                       {ok && filteredEnrolls.map((en, idx) => (
                         <section key={en.enrollmentId || idx} className="p-3 avoid-break">
                           <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
-                            <span><span className="font-medium">Academic Year:</span> {en.academicYear?.yearName || '-'}</span>
-                            <span><span className="font-medium">Grade:</span> {en.gradeSection?.grade || '-'}</span>
-                            <span><span className="font-medium">Section:</span> {en.gradeSection?.section || '-'}</span>
-                            <span><span className="font-medium">Shift:</span> {en.gradeSection?.shift || '-'}</span>
-                            <span><span className="font-medium">Status:</span> {en.status}</span>
+                            <span><span className="font-medium">{t('common.filters.academicYear')}:</span> {en.academicYear?.yearName || '-'}</span>
+                            <span><span className="font-medium">{t('common.filters.grade')}:</span> {en.gradeSection?.grade || '-'}</span>
+                            <span><span className="font-medium">{t('common.filters.section')}:</span> {en.gradeSection?.section || '-'}</span>
+                            <span><span className="font-medium">{t('common.filters.shift')}:</span> {en.gradeSection?.shift || '-'}</span>
+                            <span><span className="font-medium">{t('common.filters.status')}:</span> {formatEnrollmentStatus(en.status) || '-'}</span>
                           </div>
                           <div className="overflow-x-auto mt-3">
                             {(() => {
@@ -999,7 +1040,7 @@ export default function TranscriptPage() {
                           const columns = [
                             {
                               key: 'subject',
-                              label: 'Subject',
+                              label: t('common.filters.subject'),
                               thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                               tdClassName: 'px-4 py-3 border-x border-gray-700',
                             },
@@ -1013,14 +1054,14 @@ export default function TranscriptPage() {
                             })),
                             {
                               key: 'total',
-                              label: 'Total',
+                              label: t('transcript.page.table.total'),
                               align: 'right',
                               thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                               tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
                             },
                             {
                               key: 'avg',
-                              label: 'Average',
+                              label: t('results.page.table.average'),
                               align: 'right',
                               thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                               tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
@@ -1031,13 +1072,13 @@ export default function TranscriptPage() {
                                 <StandardTable
                                   isLoading={false}
                                   items={transcriptRows}
-                                  emptyTitle="No transcript rows"
+                                  emptyTitle={t('transcript.page.emptyStates.noTranscriptRows')}
                                   rows={rowsWithOverall}
                                   columns={columns}
                                   getRowKey={(row) => row?.__type === 'overall' ? 'overall' : String(row.subjectId)}
                                   renderCell={(row, col) => {
                                     if (row?.__type === 'overall') {
-                                      if (col.key === 'subject') return <span className="block text-right">Overall</span>;
+                                      if (col.key === 'subject') return <span className="block text-right">{t('transcript.page.table.overall')}</span>;
                                       if (String(col.key).startsWith('et:')) return '';
                                       if (col.key === 'total') return Number(en.transcript?.overall?.total || 0).toFixed(2);
                                       if (col.key === 'avg') return Number(en.transcript?.overall?.average || 0).toFixed(2);
@@ -1078,9 +1119,9 @@ export default function TranscriptPage() {
                     <div key={sel._id} className="space-y-3 student-block">
                       <div className="print:text-center avoid-break">
                         <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
-                        <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
+                        <p className="text-sm text-gray-500">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
                       </div>
-                      <Alert variant="neutral">Select one or more grades to view transcripts.</Alert>
+                      <Alert variant="neutral">{t('transcript.page.emptyStates.selectGrades')}</Alert>
                     </div>
                   );
                 }
@@ -1108,11 +1149,11 @@ export default function TranscriptPage() {
                   <div key={sel._id} className="space-y-3 student-block">
                     <div className="print:text-center avoid-break">
                       <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
-                      <p className="text-sm text-gray-500">Student ID: {sel.studentId}</p>
+                      <p className="text-sm text-gray-500">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
                     </div>
 
                     {targetMeta.length === 0 ? (
-                      <Alert variant="neutral">No transcript data for the selected mode/filters.</Alert>
+                      <Alert variant="neutral">{t('transcript.page.emptyStates.noTranscriptData')}</Alert>
                     ) : (
                       targetMeta.map((meta, idx2) => {
                         const enrollmentId = String(meta?.enrollmentId || meta?._id || idx2);
@@ -1125,11 +1166,11 @@ export default function TranscriptPage() {
                           return (
                             <section key={enrollmentId} className="p-3 avoid-break">
                               <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
-                                <span><span className="font-medium">Academic Year:</span> {meta?.academicYear?.yearName || '-'}</span>
-                                <span><span className="font-medium">Grade:</span> {meta?.gradeSection?.grade || '-'}</span>
-                                <span><span className="font-medium">Section:</span> {meta?.gradeSection?.section || '-'}</span>
-                                <span><span className="font-medium">Shift:</span> {meta?.gradeSection?.shift || '-'}</span>
-                                <span><span className="font-medium">Status:</span> {meta?.status || '-'}</span>
+                                <span><span className="font-medium">{t('common.filters.academicYear')}:</span> {meta?.academicYear?.yearName || '-'}</span>
+                                <span><span className="font-medium">{t('common.filters.grade')}:</span> {meta?.gradeSection?.grade || '-'}</span>
+                                <span><span className="font-medium">{t('common.filters.section')}:</span> {meta?.gradeSection?.section || '-'}</span>
+                                <span><span className="font-medium">{t('common.filters.shift')}:</span> {meta?.gradeSection?.shift || '-'}</span>
+                                <span><span className="font-medium">{t('common.filters.status')}:</span> {formatEnrollmentStatus(meta?.status) || '-'}</span>
                               </div>
                               <div className="mt-3">
                                 <EnrollmentTableSkeleton />
@@ -1141,11 +1182,11 @@ export default function TranscriptPage() {
                         return (
                           <section key={en.enrollmentId || enrollmentId} className="p-3 avoid-break">
                             <div className="border-b pb-2 mb-2 text-sm flex flex-wrap gap-x-4 gap-y-1">
-                              <span><span className="font-medium">Academic Year:</span> {en.academicYear?.yearName || '-'}</span>
-                              <span><span className="font-medium">Grade:</span> {en.gradeSection?.grade || '-'}</span>
-                              <span><span className="font-medium">Section:</span> {en.gradeSection?.section || '-'}</span>
-                              <span><span className="font-medium">Shift:</span> {en.gradeSection?.shift || '-'}</span>
-                              <span><span className="font-medium">Status:</span> {en.status}</span>
+                              <span><span className="font-medium">{t('common.filters.academicYear')}:</span> {en.academicYear?.yearName || '-'}</span>
+                              <span><span className="font-medium">{t('common.filters.grade')}:</span> {en.gradeSection?.grade || '-'}</span>
+                              <span><span className="font-medium">{t('common.filters.section')}:</span> {en.gradeSection?.section || '-'}</span>
+                              <span><span className="font-medium">{t('common.filters.shift')}:</span> {en.gradeSection?.shift || '-'}</span>
+                              <span><span className="font-medium">{t('common.filters.status')}:</span> {formatEnrollmentStatus(en.status) || '-'}</span>
                             </div>
                             <div className="overflow-x-auto mt-3">
                               {(() => {
@@ -1162,7 +1203,7 @@ export default function TranscriptPage() {
                                 const columns = [
                                   {
                                     key: 'subject',
-                                    label: 'Subject',
+                                    label: t('common.filters.subject'),
                                     thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                                     tdClassName: 'px-4 py-3 border-x border-gray-700',
                                   },
@@ -1176,14 +1217,14 @@ export default function TranscriptPage() {
                                   })),
                                   {
                                     key: 'total',
-                                    label: 'Total',
+                                    label: t('transcript.page.table.total'),
                                     align: 'right',
                                     thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                                     tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
                                   },
                                   {
                                     key: 'avg',
-                                    label: 'Average',
+                                    label: t('results.page.table.average'),
                                     align: 'right',
                                     thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
                                     tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
@@ -1194,13 +1235,13 @@ export default function TranscriptPage() {
                                   <StandardTable
                                     isLoading={false}
                                     items={transcriptRows}
-                                    emptyTitle="No transcript rows"
+                                    emptyTitle={t('transcript.page.emptyStates.noTranscriptRows')}
                                     rows={rowsWithOverall}
                                     columns={columns}
                                     getRowKey={(row) => row?.__type === 'overall' ? 'overall' : String(row.subjectId)}
                                     renderCell={(row, col) => {
                                       if (row?.__type === 'overall') {
-                                        if (col.key === 'subject') return <span className="block text-right">Overall</span>;
+                                        if (col.key === 'subject') return <span className="block text-right">{t('transcript.page.table.overall')}</span>;
                                         if (String(col.key).startsWith('et:')) return '';
                                         if (col.key === 'total') return Number(en.transcript?.overall?.total || 0).toFixed(2);
                                         if (col.key === 'avg') return Number(en.transcript?.overall?.average || 0).toFixed(2);
@@ -1243,7 +1284,7 @@ export default function TranscriptPage() {
         )}
       </Card>
 
-      <PrintFooter left="Generated by Nuuru Al-Bayaan" />
+      <PrintFooter left={t('common.generatedBy')} />
     </div>
   );
 }

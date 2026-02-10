@@ -23,6 +23,7 @@ import CopyTableButton from '../../../shared/components/exports/downloadButtons/
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/I18nProvider';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { useResultsRealtimeInvalidation } from '../useResultsRealtimeInvalidation.js';
 import Card from '../../../shared/components/ui/Card.jsx';
@@ -31,6 +32,7 @@ import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/Fi
 import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 
 export default function ResultPage() {
+    const { t } = useI18n();
     const { auth, hasPermission } = useAuth();
     const role = String(auth?.user?.role || '').toLowerCase();
     const isTeacher = role === 'teacher';
@@ -194,7 +196,7 @@ export default function ResultPage() {
         enabled: Boolean(gradeSectionId),
         queryFn: async () => {
             const { ok, data, error } = await getGradeSectionById(gradeSectionId);
-            if (!ok) throw new Error(error || 'Failed to load subjects');
+            if (!ok) throw new Error(error || t('results.page.errors.loadSubjectsFailed'));
             return data;
         },
         placeholderData: (prev) => prev,
@@ -299,7 +301,7 @@ export default function ResultPage() {
         enabled: summaryEnabled,
         queryFn: async ({ signal }) => {
             const { ok, data, error } = await getExamSummaryAbort(summaryParams, { signal });
-            if (!ok) throw new Error(error || 'Failed to load summary');
+            if (!ok) throw new Error(error || t('results.page.errors.loadSummaryFailed'));
             return data || { results: [], classAverage: 0 };
         },
         placeholderData: (prev) => prev,
@@ -311,7 +313,7 @@ export default function ResultPage() {
     useEffect(() => {
         if (!summaryEnabled) return;
         if (!summaryQuery.isError) return;
-        const msg = summaryQuery.error?.message || 'Failed to load summary';
+        const msg = summaryQuery.error?.message || t('results.page.errors.loadSummaryFailed');
         if (String(msg).toLowerCase() !== 'aborted') toast.error(msg);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [summaryQuery.isError]);
@@ -341,7 +343,7 @@ export default function ResultPage() {
         const hasNoMarks = Array.isArray(summary?.results) && summary.results.length === 0;
         if (hasNoMarks && lastNoMarksToastKeyRef.current !== key) {
             lastNoMarksToastKeyRef.current = key;
-            toast.error('No exam marks found for the selected class and filters.');
+            toast.error(t('results.page.toasts.noMarksForSelection'));
         }
     }, [summary, summaryEnabled, summaryParams, summaryQuery.isFetching, summaryQuery.isPlaceholderData, summaryQuery.isSuccess]);
 
@@ -376,11 +378,28 @@ export default function ResultPage() {
 
     const handlePrint = () => {
         if (!canPrintResults) {
-            toast.error('You do not have permission to print results');
+            toast.error(t('results.page.errors.noPermissionPrint'));
             return;
         }
         // Give the browser a tick to apply any pending layout before printing.
         setTimeout(() => window.print(), 0);
+    };
+
+    const formatEnrollmentStatus = (raw) => {
+        const v = String(raw || '').toLowerCase();
+        if (!v) return '';
+        const allowed = ['open', 'active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn', 'all'];
+        if (allowed.includes(v)) return t(`students.enrollmentStatus.${v}`);
+        return String(raw);
+    };
+
+    const getModeLabel = (m) => {
+        const v = String(m || '').toLowerCase();
+        const allowed = ['subject', 'overall', 'examtype', 'top', 'bottom', 'trend', 'difficulty'];
+        if (!v) return '';
+        if (!allowed.includes(v)) return String(m);
+        if (v === 'examtype') return t('results.page.modes.examType');
+        return t(`results.page.modes.${v}`);
     };
 
     const canExport = Boolean(
@@ -401,22 +420,35 @@ export default function ResultPage() {
         const shName = (shifts || []).find(s => String(s._id) === String(shiftId))?.shiftName || selSec?.shift?.shiftName || '';
         const secName = selSec?.section || '';
 
-        const modeLabel = String(mode || '').toUpperCase();
         const minimalMeta = Boolean(forPdf || forExcel);
+        const enrollmentLabel = formatEnrollmentStatus(enrollmentStatus);
+        const modeLabel = getModeLabel(mode);
         const subtitleParts = [
-            ayName ? `Academic Year: ${ayName}` : null,
-            gName ? `Grade: ${gName}` : null,
-            secName ? `Section: ${secName}` : null,
-            shName ? `Shift: ${shName}` : null,
+            ayName ? `${t('common.filters.academicYear')}: ${ayName}` : null,
+            gName ? `${t('common.filters.grade')}: ${gName}` : null,
+            secName ? `${t('common.filters.section')}: ${secName}` : null,
+            shName ? `${t('common.filters.shift')}: ${shName}` : null,
             // PDF + Excel: omit Enrollment/Cohort/Mode (requested)
-            !minimalMeta && enrollmentStatus ? `Enrollment: ${enrollmentStatus}` : null,
-            !minimalMeta && cohortId ? `Cohort: selected` : null,
-            !minimalMeta && modeLabel ? `Mode: ${modeLabel}` : null,
+            !minimalMeta && enrollmentLabel ? `${t('results.page.export.enrollment')}: ${enrollmentLabel}` : null,
+            !minimalMeta && cohortId ? `${t('common.filters.cohort')}: ${t('common.selected')}` : null,
+            !minimalMeta && modeLabel ? `${t('results.page.filters.mode')}: ${modeLabel}` : null,
         ].filter(Boolean);
 
         const headers = showSubjectTemplateCols
-            ? ['Rank', 'Student', ...overallExamTypeCols.map(et => et.typeName), 'Total (100)', 'Average']
-            : ['Rank', 'Student', ...visibleSubjectCols.map(s => s.subjectName), 'Total (100)', 'Average'];
+            ? [
+                t('results.page.table.rank'),
+                t('results.page.table.student'),
+                ...overallExamTypeCols.map(et => et.typeName),
+                t('results.page.table.totalWithMax', { max: 100 }),
+                t('results.page.table.average'),
+            ]
+            : [
+                t('results.page.table.rank'),
+                t('results.page.table.student'),
+                ...visibleSubjectCols.map(s => s.subjectName),
+                t('results.page.table.totalWithMax', { max: 100 }),
+                t('results.page.table.average'),
+            ];
 
         const rows = results.map((r) => {
             if (showSubjectTemplateCols) {
@@ -444,8 +476,8 @@ export default function ResultPage() {
 
         return {
             filename: 'results.pdf',
-            sheetName: 'Results',
-            title: minimalMeta ? '' : 'Results & Rankings',
+            sheetName: t('results.page.export.sheetName'),
+            title: minimalMeta ? '' : t('results.page.export.title'),
             subtitle: subtitleParts.join(' • '),
             headerImageSrc: headerImg,
             headers,
@@ -465,7 +497,7 @@ export default function ResultPage() {
             <div className="space-y-6 with-print-header with-print-footer">
                 {/* Print header/footer */}
                 <PrintHeader />
-                <PrintFooter left="Generated by Nuuru Al-Bayaan" />
+                <PrintFooter left={t('common.generatedBy')} />
 
             {!isTeacher && (
                 <div className="no-print">
@@ -474,7 +506,7 @@ export default function ResultPage() {
                         onEnrollmentStatusChange={setEnrollmentStatus}
                         cohortId={cohortId}
                         onCohortChange={setCohortId}
-                        cohortPlaceholder="Cohort (optional)"
+                        cohortPlaceholder={t('students.cohortOptional')}
                         cohortSelectId="results-cohort"
                         cohortSelectName="results-cohort"
                         cohortSelectProps={{
@@ -491,10 +523,10 @@ export default function ResultPage() {
                         <AcademicYearSelect
                             value={academicYearId}
                             onChange={(v)=>{ setAcademicYearId(v); if (!applyingTimelineRef.current) { resetLower('ay'); setCohortId(''); setTimeline([]); } else { applyingTimelineRef.current = false; } }}
-                            placeholder="Academic Year"
+                            placeholder={t('common.filters.academicYear')}
                             searchable
                             maxVisible={5}
-                            searchPlaceholder="Search academic years…"
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears')}
                             className="w-full"
                         />
                     </FilterItem>
@@ -503,7 +535,7 @@ export default function ResultPage() {
                             <DropdownSelect
                             value={gradeId}
                             onChange={(v)=>{ setGradeId(v); if (!applyingTimelineRef.current) { resetLower('grade'); } else { applyingTimelineRef.current = false; } }}
-                            placeholder="Grade"
+                            placeholder={t('common.filters.grade')}
                             options={[...(grades || [])]
                                 .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
                                 .map((g) => ({ value: g._id, label: g.gradeName }))}
@@ -516,7 +548,7 @@ export default function ResultPage() {
                             <FilterDropdownSelect
                             value={shiftId}
                             onChange={(v)=>{ setShiftId(v); if (!applyingTimelineRef.current) { resetLower('shift'); } else { applyingTimelineRef.current = false; } }}
-                            placeholder="Shift"
+                            placeholder={t('common.filters.shift')}
                             options={(shifts || []).map((s) => ({ value: s._id, label: s.shiftName }))}
                                 maxVisible={5}
                         />
@@ -527,7 +559,7 @@ export default function ResultPage() {
                         <FilterDropdownSelect
                         value={gradeSectionId}
                         onChange={setGradeSectionId}
-                        placeholder="Section"
+                        placeholder={t('common.filters.section')}
                         disabled={isTeacher ? teacherSectionsLoading : (!gradeId || !shiftId)}
                         options={(isTeacher ? teacherSections : sections || []).map((gs) => {
                             const gradeName = gs?.grade?.gradeName;
@@ -536,13 +568,13 @@ export default function ResultPage() {
                             const tail = [shiftName].filter(Boolean).join(' - ');
                             const label = [
                                 gradeName ? `${gradeName}` : null,
-                                sectionNum ? `Sec ${sectionNum}` : null,
+                                sectionNum ? `${t('common.sectionPrefix')} ${sectionNum}` : null,
                                 tail ? `(${tail})` : null,
                             ].filter(Boolean).join(' - ');
-                            return { value: gs._id, label: label || gs.sectionName || 'Section' };
+                            return { value: gs._id, label: label || gs.sectionName || t('common.filters.section') };
                         })}
                             maxVisible={5}
-                            searchPlaceholder="Type to search sections…"
+                            searchPlaceholder={t('common.searchPlaceholders.sections')}
                     />
                 </FilterItem>
 
@@ -550,21 +582,21 @@ export default function ResultPage() {
                     <DropdownSelect
                         value={mode}
                         onChange={(v) => setMode(v || 'subject')}
-                        placeholder="Mode"
+                        placeholder={t('results.page.filters.mode')}
                         options={(
                             isTeacher
                                 ? [
-                                    { value: 'subject', label: 'Subject' },
-                                    { value: 'examType', label: 'Exam Type' },
+                                    { value: 'subject', label: t('results.page.modes.subject') },
+                                    { value: 'examType', label: t('results.page.modes.examType') },
                                   ]
                                 : [
-                                    { value: 'subject', label: 'Subject' },
-                                    { value: 'overall', label: 'Overall' },
-                                    { value: 'examType', label: 'Exam Type' },
-                                    { value: 'top', label: 'Top N' },
-                                    { value: 'bottom', label: 'Bottom N' },
-                                    { value: 'trend', label: 'Trend (Mid vs Final)' },
-                                    { value: 'difficulty', label: 'Subject Difficulty' },
+                                    { value: 'subject', label: t('results.page.modes.subject') },
+                                    { value: 'overall', label: t('results.page.modes.overall') },
+                                    { value: 'examType', label: t('results.page.modes.examType') },
+                                    { value: 'top', label: t('results.page.modes.top') },
+                                    { value: 'bottom', label: t('results.page.modes.bottom') },
+                                    { value: 'trend', label: t('results.page.modes.trend') },
+                                    { value: 'difficulty', label: t('results.page.modes.difficulty') },
                                   ]
                         )}
                     />
@@ -575,7 +607,7 @@ export default function ResultPage() {
                             value={subjectId}
                             onChange={setSubjectId}
                             disabled={!gradeSectionId || (isTeacher && (teacherAssignmentsLoading || teacherAllowedSubjectIds?.size === 0))}
-                            placeholder={isTeacher && teacherAssignmentsLoading ? 'Loading…' : 'Subject'}
+                            placeholder={isTeacher && teacherAssignmentsLoading ? t('common.loading') : t('common.filters.subject')}
                             options={(() => {
                                 const list = subjects || [];
                                 if (!isTeacher || !teacherAllowedSubjectIds) return list.map((su) => ({ value: su._id, label: su.subjectName }));
@@ -585,7 +617,7 @@ export default function ResultPage() {
                                     .map((su) => ({ value: su._id, label: su.subjectName }));
                             })()}
 							maxVisible={5}
-							searchPlaceholder="Type to search subjects…"
+    						searchPlaceholder={t('common.searchPlaceholders.subjects')}
                         />
                     </FilterItem>
                 )}
@@ -595,17 +627,17 @@ export default function ResultPage() {
                             value={examTypeId}
                             onChange={setExamTypeId}
                             disabled={!gradeSectionId}
-                            placeholder="Exam Type"
+                            placeholder={t('results.page.filters.examType')}
                             options={(examTypes || []).map((et) => ({ value: et._id, label: et.typeName }))}
 							maxVisible={5}
-							searchPlaceholder="Type to search exam types…"
+						searchPlaceholder={t('results.page.searchPlaceholders.examTypes')}
                         />
                     </FilterItem>
                 )}
                 {(mode === 'top' || mode === 'bottom') && (
                     <FilterItem>
                         <div className="flex items-center gap-2">
-                            <label className="text-sm text-gray-600">N</label>
+                            <label className="text-sm text-gray-600">{t('results.page.filters.nLabel')}</label>
                             <Input className="w-20" type="number" min={1} max={100} value={mode==='top'?topN:bottomN} onChange={e=> (mode==='top'? setTopN(Number(e.target.value)||0): setBottomN(Number(e.target.value)||0))} />
                             {/* Number input styled separately for consistency */}
                         </div>
@@ -621,10 +653,10 @@ export default function ResultPage() {
                                     variant="neutral"
                                     className={outlineBtn}
                                     onClick={handlePrint}
-                                    title="Print"
+                                    title={t('common.actions.print')}
                                     icon={<Printer size={16} />}
                                 >
-                                    Print
+                                    {t('common.actions.print')}
                                 </ActionButton>
                             ) : null}
 
@@ -641,10 +673,10 @@ export default function ResultPage() {
                                 variant="neutral"
                                 className={outlineBtn}
                                 onClick={handleReset}
-                                title="Reset filters"
+                                title={t('common.filters.resetTitle')}
                                 icon={<RotateCcw size={16} />}
                             >
-                                Reset
+                                {t('common.actions.reset')}
                             </ActionButton>
                             </div>
                         </FilterItem>
@@ -655,8 +687,8 @@ export default function ResultPage() {
 
             {cohortId && timeline.length > 0 && (
                 <Card className="p-3 flex flex-row flex-wrap gap-2 items-center no-print">
-                    <div className="text-sm font-medium text-gray-600 mr-2">Cohort Timeline:</div>
-                    {timelineLoading && <div className="text-xs text-gray-500">Loading…</div>}
+                    <div className="text-sm font-medium text-gray-600 mr-2">{t('results.page.timeline.title')}</div>
+                    {timelineLoading && <div className="text-xs text-gray-500">{t('common.loading')}</div>}
                     {!timelineLoading && timeline.map(entry => {
                         const active = academicYearId === String(entry.academicYear._id) && gradeSectionId === String(entry.gradeSection._id);
                         return (
@@ -675,7 +707,7 @@ export default function ResultPage() {
                                 }}
                                 className={`text-xs px-2 py-1 rounded border ${active ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
                             >
-                                {entry.academicYear.yearName} / {entry.grade.gradeName}{entry.gradeSection.section ? ` Sec ${entry.gradeSection.section}` : ''}
+                                {entry.academicYear.yearName} / {entry.grade.gradeName}{entry.gradeSection.section ? ` ${t('common.sectionPrefix')} ${entry.gradeSection.section}` : ''}
                             </button>
                         );
                     })}
@@ -684,13 +716,13 @@ export default function ResultPage() {
 
             <Card className="p-4 overflow-auto results-print">
                 {(!academicYearId || !gradeSectionId) ? (
-                    <p className="text-sm text-gray-500">Select Academic Year, Grade, Shift, and Section to view results.</p>
+                    <p className="text-sm text-gray-500">{t('results.page.emptyStates.selectFilters')}</p>
                 ) : (mode === 'subject' && !subjectId) ? (
-                    <p className="text-sm text-gray-500">Choose a Subject to view results.</p>
+                    <p className="text-sm text-gray-500">{t('results.page.emptyStates.chooseSubject')}</p>
                 ) : (mode === 'examType' && !examTypeId) ? (
-                    <p className="text-sm text-gray-500">Choose an Exam Type to view results.</p>
+                    <p className="text-sm text-gray-500">{t('results.page.emptyStates.chooseExamType')}</p>
                 ) : loading ? (
-                    <p className="text-sm text-gray-500">Loading results…</p>
+                    <p className="text-sm text-gray-500">{t('teachers.dashboard.results.loading')}</p>
                                 ) : (mode === 'trend') ? (
                                         <>
                                             {/* Removed duplicate Print action (toolbar already provides it) */}
@@ -704,10 +736,10 @@ export default function ResultPage() {
                                                         const secName = selSec?.section || '-';
                                                         return (
                                                             <>
-                                                                <span><span className="font-medium">Academic Year:</span> {ayName}</span>
-                                                                <span><span className="font-medium">Grade:</span> {gName}</span>
-                                                                <span><span className="font-medium">Section:</span> {secName}</span>
-                                                                <span><span className="font-medium">Shift:</span> {shName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.academicYear')}:</span> {ayName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.grade')}:</span> {gName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.section')}:</span> {secName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.shift')}:</span> {shName}</span>
                                                             </>
                                                         );
                                                     })()}
@@ -716,19 +748,19 @@ export default function ResultPage() {
                                             <StandardTable
                                                 isLoading={false}
                                                 items={results}
-                                                emptyTitle="No results found for the selected filters."
+                                                emptyTitle={t('results.page.emptyStates.noResults')}
                                                 rows={[...results, { __type: 'summary' }]}
                                                 columns={[
-                                                    { key: 'rank', label: 'Rank', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'student', label: 'Student', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
-                                                    { key: 'mid', label: 'Mid-term', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'final', label: 'Final', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'delta', label: 'Delta', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-gray-700' },
+                                                    { key: 'rank', label: t('results.page.table.rank'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'student', label: t('results.page.table.student'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
+                                                    { key: 'mid', label: t('results.page.table.midTerm'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'final', label: t('results.page.table.final'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'delta', label: t('results.page.table.delta'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-gray-700' },
                                                 ]}
                                                 getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : r.studentId}
                                                 renderCell={(r, col) => {
                                                     if (r?.__type === 'summary') {
-                                                        if (col.key === 'student') return <span className="font-medium">Class Avg Delta</span>;
+                                                        if (col.key === 'student') return <span className="font-medium">{t('results.page.table.classAvgDelta')}</span>;
                                                         if (col.key === 'delta') return Number((summary.classAverage ?? 0).toFixed?.(2));
                                                         return '';
                                                     }
@@ -762,10 +794,10 @@ export default function ResultPage() {
                                                         const secName = selSec?.section || '-';
                                                         return (
                                                             <>
-                                                                <span><span className="font-medium">Academic Year:</span> {ayName}</span>
-                                                                <span><span className="font-medium">Grade:</span> {gName}</span>
-                                                                <span><span className="font-medium">Section:</span> {secName}</span>
-                                                                <span><span className="font-medium">Shift:</span> {shName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.academicYear', { defaultValue: 'Academic Year' })}:</span> {ayName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.grade', { defaultValue: 'Grade' })}:</span> {gName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.section', { defaultValue: 'Section' })}:</span> {secName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.shift', { defaultValue: 'Shift' })}:</span> {shName}</span>
                                                             </>
                                                         );
                                                     })()}
@@ -774,17 +806,17 @@ export default function ResultPage() {
                                             <StandardTable
                                                 isLoading={false}
                                                 items={summary?.subjects || []}
-                                                emptyTitle="No results found for the selected filters."
+                                                emptyTitle={t('results.page.emptyStates.noResults')}
                                                 rows={[...(summary?.subjects || []), { __type: 'summary' }]}
                                                 columns={[
-                                                    { key: 'subject', label: 'Subject', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
-                                                    { key: 'avg', label: 'Avg', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'students', label: 'Students', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right text-gray-700 border-x border-gray-700' },
+                                                    { key: 'subject', label: t('common.filters.subject'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
+                                                    { key: 'avg', label: t('results.page.table.avg'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'students', label: t('results.page.table.students'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right text-gray-700 border-x border-gray-700' },
                                                 ]}
                                                 getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : String(r._id)}
                                                 renderCell={(r, col) => {
                                                     if (r?.__type === 'summary') {
-                                                        if (col.key === 'subject') return <span className="font-medium text-gray-700">Class Avg (subjects)</span>;
+                                                        if (col.key === 'subject') return <span className="font-medium text-gray-700">{t('results.page.table.classAvgSubjects')}</span>;
                                                         if (col.key === 'avg') return Number((summary.classAverage ?? 0).toFixed?.(2));
                                                         if (col.key === 'students') return '—';
                                                         return '';
@@ -805,7 +837,7 @@ export default function ResultPage() {
                                             />
                                         </>
                                 ) : (results.length === 0) ? (
-                    <p className="text-sm text-gray-500">No results found for the selected filters.</p>
+                    <p className="text-sm text-gray-500">{t('results.page.emptyStates.noResults')}</p>
                 ) : (
                     <>
                     {/* Removed duplicate CSV/Print actions (toolbar already provides them) */}
@@ -820,10 +852,10 @@ export default function ResultPage() {
                                                     const secName = selSec?.section || '-';
                                                     return (
                                                         <>
-                                                            <span><span className="font-medium">Academic Year:</span> {ayName}</span>
-                                                            <span><span className="font-medium">Grade:</span> {gName}</span>
-                                                            <span><span className="font-medium">Section:</span> {secName}</span>
-                                                            <span><span className="font-medium">Shift:</span> {shName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.academicYear')}:</span> {ayName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.grade')}:</span> {gName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.section')}:</span> {secName}</span>
+                                                                <span><span className="font-medium">{t('common.filters.shift')}:</span> {shName}</span>
                                                         </>
                                                     );
                                                 })()}
@@ -832,12 +864,12 @@ export default function ResultPage() {
                                         <StandardTable
                                             isLoading={false}
                                             items={results}
-                                            emptyTitle="No results found for the selected filters."
+                                            emptyTitle={t('results.page.emptyStates.noResults')}
                                             rows={[...results, { __type: 'summary' }]}
                                             columns={(() => {
                                                 const base = [
-                                                    { key: 'rank', label: 'Rank', align: 'right', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'student', label: 'Student', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
+                                                    { key: 'rank', label: t('results.page.table.rank'), align: 'right', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'student', label: t('results.page.table.student'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
                                                 ];
 
                                                 const dynamic = showSubjectTemplateCols
@@ -859,8 +891,8 @@ export default function ResultPage() {
                                                     }));
 
                                                 const tail = [
-                                                    { key: 'total', label: 'Total (100)', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-gray-700' },
-                                                    { key: 'avg', label: 'Average', align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'total', label: t('results.page.table.totalWithMax', { max: 100 }), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-gray-700' },
+                                                    { key: 'avg', label: t('results.page.table.average'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
                                                 ];
 
                                                 return [...base, ...dynamic, ...tail];
@@ -868,7 +900,7 @@ export default function ResultPage() {
                                             getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : r.studentId}
                                             renderCell={(r, col) => {
                                                 if (r?.__type === 'summary') {
-                                                    if (col.key === 'student') return <span className="block text-right text-gray-700">Class Average</span>;
+                                                    if (col.key === 'student') return <span className="block text-right text-gray-700">{t('results.page.table.classAverage')}</span>;
 
                                                     if (String(col.key).startsWith('et:')) {
                                                         const etId = col._etId;

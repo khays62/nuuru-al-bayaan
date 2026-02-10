@@ -11,13 +11,14 @@ import {
 
 import Select from '../../../shared/components/ui/Select.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function CohortSelect({
   value,
   onChange,
   disabled = false,
   className = '',
-  placeholder = 'None',
+  placeholder,
   id,
   name,
   status = 'active',
@@ -30,11 +31,16 @@ export default function CohortSelect({
   section,
   searchable = true,
   maxVisible = 5,
-  searchPlaceholder = 'Type to search…',
+  searchPlaceholder,
   ...rest
 }) {
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const resolvedPlaceholder = placeholder ?? t('common.none', { defaultValue: 'None' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
+  const loadingLabel = t('common.loading', { defaultValue: 'Loading…' });
 
   useEffect(() => {
     let ignore = false;
@@ -122,9 +128,9 @@ export default function CohortSelect({
     return list.map((c) => {
       const ay = c?.startAcademicYear?.yearName;
       const label = `${c?.name || ''}${ay ? ` — ${ay}` : ''}`.trim();
-      return { value: String(c?._id || ''), label: label || 'Cohort' };
+      return { value: String(c?._id || ''), label: label || t('common.filters.cohort', { defaultValue: 'Cohort' }) };
     });
-  }, [items]);
+  }, [items, t]);
 
   // Default: keep native <select> for backwards compatibility
   if (!searchable) {
@@ -138,7 +144,7 @@ export default function CohortSelect({
         disabled={disabled || loading}
         className={className}
       >
-        <option value="">{placeholder}</option>
+        <option value="">{resolvedPlaceholder}</option>
         {items.map((c) => (
           <option key={c._id} value={c._id}>
             {c.name}{c.startAcademicYear?.yearName ? ` — ${c.startAcademicYear.yearName}` : ''}
@@ -156,9 +162,9 @@ export default function CohortSelect({
       onChange={(v) => onChange?.(v)}
       disabled={disabled || loading}
       options={options}
-      placeholder={loading ? 'Loading…' : placeholder}
+      placeholder={loading ? loadingLabel : resolvedPlaceholder}
       maxVisible={maxVisible}
-      searchPlaceholder={searchPlaceholder}
+      searchPlaceholder={resolvedSearchPlaceholder}
       className={className}
       buttonProps={rest}
     />

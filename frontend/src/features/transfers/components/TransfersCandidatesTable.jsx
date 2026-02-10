@@ -3,6 +3,7 @@ import React from 'react';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import Spinner from '../../../shared/components/feedback/Spinner.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function TransfersCandidatesTable({
 	items,
@@ -19,19 +20,25 @@ export default function TransfersCandidatesTable({
 	onPage,
 	onLimit,
 }) {
+	const { t } = useI18n();
+	const sectionPrefix = t('common.sectionPrefix', { defaultValue: 'Sec' });
+
 	return (
 		<StandardTable
 			isLoading={isLoading}
 			items={items}
-			loadingMessage="Loading candidates..."
+			loadingMessage={t('transfers.candidates.loading', { defaultValue: 'Loading candidates...' })}
 			loadingVariant="table"
 			loadingRows={6}
 			loadingColumns={8}
-			emptyTitle={candidatesCoreApplied ? 'No candidates found' : 'Select filters to begin'}
+			emptyTitle={candidatesCoreApplied
+				? t('transfers.candidates.emptyTitleNone', { defaultValue: 'No candidates found' })
+				: t('transfers.candidates.emptyTitleNeedsFilters', { defaultValue: 'Select filters to begin' })
+			}
 			emptyDescription={
 				candidatesCoreApplied
-					? 'Try adjusting filters or search keyword.'
-					: 'Choose Academic Year, Grade or Shift to load candidates.'
+					? t('transfers.candidates.emptyDescriptionNone', { defaultValue: 'Try adjusting filters or search keyword.' })
+					: t('transfers.candidates.emptyDescriptionNeedsFilters', { defaultValue: 'Choose Academic Year, Grade or Shift to load candidates.' })
 			}
 
 			rows={rows}
@@ -40,13 +47,13 @@ export default function TransfersCandidatesTable({
 			sortDir={sortDir}
 			onSort={onSort}
 			columns={[
-				{ key: 'studentId', label: 'Student ID', sortable: true, field: 'studentId' },
-				{ key: 'fullName', label: 'Full Name', sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-				{ key: 'academicYear', label: 'Academic Year', sortable: true, field: 'academicYear' },
-				{ key: 'grade', label: 'Grade', sortable: true, field: 'grade' },
-				{ key: 'section', label: 'Section', sortable: true, field: 'section' },
-				{ key: 'shift', label: 'Shift', sortable: true, field: 'shift' },
-				{ key: 'actions', label: 'Actions', align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-gray-200 no-print' },
+				{ key: 'studentId', label: t('transfers.candidates.columns.studentId', { defaultValue: 'Student ID' }), sortable: true, field: 'studentId' },
+				{ key: 'fullName', label: t('transfers.candidates.columns.fullName', { defaultValue: 'Full Name' }), sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+				{ key: 'academicYear', label: t('common.filters.academicYear', { defaultValue: 'Academic Year' }), sortable: true, field: 'academicYear' },
+				{ key: 'grade', label: t('common.filters.grade', { defaultValue: 'Grade' }), sortable: true, field: 'grade' },
+				{ key: 'section', label: t('common.filters.section', { defaultValue: 'Section' }), sortable: true, field: 'section' },
+				{ key: 'shift', label: t('common.filters.shift', { defaultValue: 'Shift' }), sortable: true, field: 'shift' },
+				{ key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-gray-200 no-print' },
 			]}
 			controlsProps={{
 				limit: meta?.limit,
@@ -72,24 +79,24 @@ export default function TransfersCandidatesTable({
 					case 'grade':
 						return gradeVal || '-';
 					case 'section':
-						return sectionVal != null ? `Sec ${sectionVal}` : '-';
+						return sectionVal != null ? `${sectionPrefix} ${sectionVal}` : '-';
 					case 'shift':
 						return shiftVal || '-';
 					case 'actions':
 						return (
 							<ActionButton
 								variant="info"
-								title="Transfer Section"
+								title={t('transfers.actions.transferSectionTitle', { defaultValue: 'Transfer Section' })}
 								onClick={() => onOpen?.(st)}
 								disabled={!canTransfer || openingId === st._id}
 							>
 								{openingId === st._id ? (
 									<>
 										<Spinner size={14} color="currentColor" />
-										<span>Opening…</span>
+										<span>{t('transfers.actions.opening', { defaultValue: 'Opening…' })}</span>
 									</>
 								) : (
-									'Transfer'
+									t('common.actions.transfer', { defaultValue: 'Transfer' })
 								)}
 							</ActionButton>
 						);

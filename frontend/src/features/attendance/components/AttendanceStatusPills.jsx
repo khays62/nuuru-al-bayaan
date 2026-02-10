@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function AttendanceStatusPills({
   value,
@@ -10,21 +11,22 @@ export default function AttendanceStatusPills({
   onPickExcusedPreset,
   reasonWordLimit = 40,
 }) {
+  const { t } = useI18n();
   const showReasonInput = value === 'excused' || value === 'other';
 
   const opts = [
-    { value: 'present', label: 'Present' },
-    { value: 'absent', label: 'Absent' },
-    { value: 'late', label: 'Late' },
-    { value: 'excused', label: 'Excused' },
+    { value: 'present', label: t('attendance.status.present') },
+    { value: 'absent', label: t('attendance.status.absent') },
+    { value: 'late', label: t('attendance.status.late') },
+    { value: 'excused', label: t('attendance.status.excused') },
   ];
 
   const [moreOpen, setMoreOpen] = useState(false);
   const extras = [
-    { value: 'sick', label: 'Sick' },
-    { value: 'medical', label: 'Medical appointment' },
-    { value: 'family', label: 'Family emergency' },
-    { value: 'other', label: 'Other' },
+    { value: 'sick', label: t('attendance.status.sick') },
+    { value: 'medical', label: t('attendance.status.medicalAppointment') },
+    { value: 'family', label: t('attendance.status.familyEmergency') },
+    { value: 'other', label: t('attendance.status.other') },
   ];
 
   const extraValues = extras.map(e => e.value);
@@ -130,7 +132,7 @@ export default function AttendanceStatusPills({
       <div className="relative">
         <button
           type="button"
-          aria-label="More statuses"
+          aria-label={t('attendance.marking.moreStatusesAria')}
           disabled={disabled}
           onClick={toggleMenu}
           ref={moreBtnRef}
@@ -200,7 +202,7 @@ export default function AttendanceStatusPills({
           if (disabled || !showReasonInput) return;
           onChangeRemarks(e.target.value);
         }}
-        placeholder={showReasonInput ? `Reason (optional, max ${reasonWordLimit} words)` : ''}
+        placeholder={showReasonInput ? t('attendance.marking.reasonPlaceholder', { max: reasonWordLimit }) : ''}
         className={
           "w-full sm:w-44 border rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 " +
           (disabled ? 'opacity-60 cursor-not-allowed' : '') +

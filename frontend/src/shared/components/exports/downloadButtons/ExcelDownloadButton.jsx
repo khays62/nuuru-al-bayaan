@@ -3,8 +3,10 @@ import { FileDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToExcel } from '../../../../utils/exportTable';
+import { useI18n } from '../../../../i18n/I18nProvider';
 
 export default function ExcelDownloadButton({ getPayload, disabled = false, className = '' }) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -38,7 +40,7 @@ export default function ExcelDownloadButton({ getPayload, disabled = false, clas
       // Surface the error so we can fix it quickly.
       // eslint-disable-next-line no-console
       console.error('Excel export failed:', e);
-      toast.error(e?.message || 'Excel export failed');
+      toast.error(e?.message || t('common.export.excelFailed', { defaultValue: 'Excel export failed' }));
     } finally {
       setBusy(false);
     }
@@ -51,9 +53,9 @@ export default function ExcelDownloadButton({ getPayload, disabled = false, clas
       icon={<FileDown size={16} />}
       disabled={disabled || busy}
       onClick={run}
-      title="Excel"
+      title={t('common.export.excel', { defaultValue: 'Excel' })}
     >
-      Excel
+      {t('common.export.excel', { defaultValue: 'Excel' })}
     </ActionButton>
   );
 }
