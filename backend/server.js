@@ -65,11 +65,21 @@ const startServer = async () => {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+
+  const isDev = String(process.env.NODE_ENV || '').toLowerCase() !== 'production';
+  const isLocalhostOrigin = (origin) => {
+    const value = String(origin || '');
+    return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(value);
+  };
   app.use(
     cors({
       origin(origin, cb) {
         // Allow non-browser clients (no Origin header).
         if (!origin) return cb(null, true);
+
+        // Dev QoL: allow any localhost origin (Vite may change ports).
+        if (isDev && isLocalhostOrigin(origin)) return cb(null, true);
+
         if (corsAllowlist.includes(origin)) return cb(null, true);
         return cb(new Error('CORS: Origin not allowed'));
       },

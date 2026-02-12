@@ -3,6 +3,7 @@ import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import { X, Trash2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useDeleteMonthlyChargesMutation } from '../hooks/studentFinanceHooks';
 
 export default function DeleteChargeModal({ onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
@@ -18,6 +19,8 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
     const [year, setYear] = useState(new Date().getFullYear().toString());
     const [useMultipleMonths, setUseMultipleMonths] = useState(false);
     const [selectedMonths, setSelectedMonths] = useState(() => new Set());
+
+    const deleteChargesMutation = useDeleteMonthlyChargesMutation();
 
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -102,7 +105,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                 ...(useCreatedDate && date ? { date } : {})
             };
 
-            const res = await financeService.deleteBulkInvoices(params);
+            const res = await deleteChargesMutation.mutateAsync(params);
             const cancelledCount = Number(res?.cancelledCount || 0);
             if (cancelledCount > 0) {
                 toast.success(`Charges deleted successfully (${cancelledCount})`);

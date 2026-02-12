@@ -1,8 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import financeService from '../api/finance';
-import axios from '../api/axios';
+import { listAccounts } from '../api/accountsApi';
+import { useChargePayrollMutation, usePayrollFullPaymentMutation } from '../hooks/payrollHooks';
+import { listUsers } from '../../users/api/usersApi.js';
+import AcademicYearSelect from '../../lookups/components/AcademicYearSelect.jsx';
+
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import FormField from '../../../shared/components/ui/FormField.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 
 export default function PayrollChargeModal({
     onClose,
@@ -11,6 +20,7 @@ export default function PayrollChargeModal({
     academicYears,
     defaultAcademicYearId,
 }) {
+    const { t } = useI18n();
     const [loading, setLoading] = useState(false);
     const [staffList, setStaffList] = useState([]);
     const [accounts, setAccounts] = useState([]);
@@ -25,15 +35,18 @@ export default function PayrollChargeModal({
         date: new Date().toISOString().slice(0, 10),
     });
 
+    const chargePayrollMutation = useChargePayrollMutation();
+    const fullPaymentMutation = usePayrollFullPaymentMutation();
+
     useEffect(() => {
         const load = async () => {
             try {
                 const [accRes, staffRes] = await Promise.all([
-                    financeService.getAccounts(),
-                    axios.get('/users', { params: { status: 'active', includeTeachers: true } }),
+                    listAccounts({ includeInactive: false }),
+                    listUsers({ status: 'active', includeTeachers: true }),
                 ]);
                 setAccounts(accRes || []);
-                setStaffList((staffRes.data || []).filter(u => u.status !== 'inactive'));
+                setStaffList((staffRes || []).filter((u) => u.status !== 'inactive'));
             } catch {
                 // best-effort; per-field validation will handle missing selections
             }
@@ -71,22 +84,22 @@ export default function PayrollChargeModal({
         if (missingSalary.length > 0) {
             const names = missingSalary.slice(0, 3).map(s => s.fullName || s.username || s._id).join(', ');
             const more = missingSalary.length > 3 ? ` (+${missingSalary.length - 3} more)` : '';
-            toast.error(`Missing salary amount for: ${names}${more}`);
+            toast.error(t('finance.payroll.charge.errors.missingSalary', { defaultValue: 'Missing salary amount for: {{names}}{{more}}', names, more }));
             return;
         }
 
         setLoading(true);
         try {
             if (form.mode === 'charge') {
-                await financeService.chargePayroll({
+                await chargePayrollMutation.mutateAsync({
                     chargeType: form.scope,
                     staffId: form.scope === 'single' ? form.staffId : undefined,
                     month: form.month,
                     academicYear: form.academicYear,
                 });
-                toast.success('Payroll charge created');
+                toast.success(t('finance.payroll.charge.success', { defaultValue: 'Payroll charge created' }));
             } else {
-                await financeService.payrollFullPayment({
+                await fullPaymentMutation.mutateAsync({
                     scope: form.scope,
                     staffId: form.scope === 'single' ? form.staffId : undefined,
                     month: form.month,
@@ -94,146 +107,120 @@ export default function PayrollChargeModal({
                     accountId: form.accountId,
                     date: form.date,
                 });
-                toast.success('Full payment completed');
+                toast.success(t('finance.payroll.fullPayment.success', { defaultValue: 'Full payment completed' }));
             }
 
             onSuccess?.();
             onClose();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Operation failed');
+            toast.error(error.response?.data?.message || t('finance.payroll.charge.errors.failed', { defaultValue: 'Operation failed' }));
         } finally {
             setLoading(false);
         }
     };
 
+    const scopeOptions = [
+        { value: 'all', label: t('finance.payroll.charge.scope.all', { defaultValue: 'All employees' }) },
+        { value: 'single', label: t('finance.payroll.charge.scope.single', { defaultValue: 'Single employee' }) },
+    ];
+    const modeOptions = [
+        { value: 'charge', label: t('finance.payroll.charge.mode.charge', { defaultValue: 'Charge' }) },
+        { value: 'fullPayment', label: t('finance.payroll.charge.mode.fullPayment', { defaultValue: 'Full payment (auto charge + payment)' }) },
+    ];
+    const staffOptions = (staffList || []).map((s) => ({ value: s._id, label: String(s?.fullName || s?.username || s?._id) }));
+    const accountOptions = (accounts || []).map((acc) => ({
+        value: acc._id,
+        label: `${acc.name}${acc.accountNumber ? ` (${acc.accountNumber})` : ''}`,
+    }));
+
+    const isFullPayment = form.mode === 'fullPayment';
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/30">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Payroll Charge</h3>
-                        <p className="text-xs text-slate-500 font-mono uppercase tracking-widest">Charge / Full Payment</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all shadow-sm">
-                        <X size={22} className="text-slate-400" />
-                    </button>
-                </div>
+        <Modal
+            isOpen
+            onClose={onClose}
+            title={t('finance.payroll.modals.chargeTitle', { defaultValue: 'Payroll Charge' })}
+            panelClassName="max-w-2xl"
+        >
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <FormField label={t('finance.payroll.filters.month', { defaultValue: 'Month' })} required>
+                        <Input type="month" value={form.month} onChange={(e) => setForm((prev) => ({ ...prev, month: e.target.value }))} />
+                    </FormField>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Month</label>
-                            <input
-                                type="month"
-                                value={form.month}
-                                onChange={(e) => setForm(prev => ({ ...prev, month: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</label>
-                            <select
-                                value={form.academicYear}
-                                onChange={(e) => setForm(prev => ({ ...prev, academicYear: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="">Select Academic Year</option>
-                                {academicYears.map(y => (
-                                    <option key={y._id} value={y._id}>{y.yearName}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
+                    <FormField label={t('common.filters.academicYear', { defaultValue: 'Academic Year' })} required>
+                        <AcademicYearSelect
+                            value={form.academicYear}
+                            onChange={(v) => setForm((prev) => ({ ...prev, academicYear: v }))}
+                            maxVisible={5}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                        />
+                    </FormField>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Salary Charging Options</label>
-                            <select
-                                value={form.scope}
-                                onChange={(e) => setForm(prev => ({ ...prev, scope: e.target.value, staffId: '' }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="all">All Employees</option>
-                                <option value="single">Single Employee</option>
-                            </select>
-                        </div>
+                    <FormField label={t('finance.payroll.charge.fields.scope', { defaultValue: 'Scope' })} required>
+                        <DropdownSelect
+                            value={form.scope}
+                            onChange={(v) => setForm((prev) => ({ ...prev, scope: v, staffId: '' }))}
+                            options={scopeOptions}
+                            clearable={false}
+                        />
+                    </FormField>
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mode</label>
-                            <select
-                                value={form.mode}
-                                onChange={(e) => setForm(prev => ({ ...prev, mode: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="charge">Charge</option>
-                                <option value="fullPayment">Full Payment (Auto charge + payment)</option>
-                            </select>
-                        </div>
-                    </div>
+                    <FormField label={t('finance.payroll.charge.fields.mode', { defaultValue: 'Mode' })} required>
+                        <DropdownSelect
+                            value={form.mode}
+                            onChange={(v) => setForm((prev) => ({ ...prev, mode: v }))}
+                            options={modeOptions}
+                            clearable={false}
+                        />
+                    </FormField>
 
-                    {form.scope === 'single' && (
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</label>
-                            <select
+                    {form.scope === 'single' ? (
+                        <FormField label={t('finance.payroll.fields.employee', { defaultValue: 'Employee' })} required className="sm:col-span-2">
+                            <SearchableSelect
                                 value={form.staffId}
-                                onChange={(e) => setForm(prev => ({ ...prev, staffId: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="">Select Employee</option>
-                                {staffList.map(s => (
-                                    <option key={s._id} value={s._id}>{s.fullName}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
+                                onChange={(v) => setForm((prev) => ({ ...prev, staffId: v }))}
+                                options={staffOptions}
+                                placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employee…' })}
+                                maxVisible={5}
+                                searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employees…' })}
+                            />
+                        </FormField>
+                    ) : null}
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account</label>
-                        <select
+                    <FormField
+                        label={t('finance.payroll.charge.fields.account', { defaultValue: 'Account' })}
+                        hint={t('finance.payroll.charge.hints.account', { defaultValue: 'Used for full payment.' })}
+                        className="sm:col-span-2"
+                    >
+                        <DropdownSelect
                             value={form.accountId}
-                            onChange={(e) => setForm(prev => ({ ...prev, accountId: e.target.value }))}
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                        >
-                            <option value="">Select Account</option>
-                            {accounts.map(acc => (
-                                <option key={acc._id} value={acc._id}>
-                                    {acc.name}{acc.accountNumber ? ` (${acc.accountNumber})` : ''}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">
-                            Used for full payment
-                        </div>
-                    </div>
+                            onChange={(v) => setForm((prev) => ({ ...prev, accountId: v }))}
+                            options={accountOptions}
+                            placeholder={t('finance.payroll.placeholders.account', { defaultValue: 'Select account…' })}
+                            disabled={!isFullPayment}
+                        />
+                    </FormField>
 
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</label>
-                        <input
+                    <FormField label={t('finance.payroll.charge.fields.date', { defaultValue: 'Date' })} className="sm:col-span-2">
+                        <Input
                             type="date"
                             value={form.date}
-                            onChange={(e) => setForm(prev => ({ ...prev, date: e.target.value }))}
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
+                            onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
+                            disabled={!isFullPayment}
                         />
-                    </div>
+                    </FormField>
+                </div>
 
-                    <div className="flex items-center justify-end gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-6 py-3 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl font-black uppercase text-[10px] tracking-[0.2em]"
-                        >
-                            Close
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!canSubmit || loading}
-                            className="px-8 py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-[0.2em] disabled:opacity-50"
-                        >
-                            {loading ? 'Saving...' : 'Save'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <div className="flex items-center justify-end gap-2">
+                    <Button variant="neutral" onClick={onClose}>
+                        {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                    </Button>
+                    <Button type="submit" variant="brand" disabled={!canSubmit || loading}>
+                        {loading ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
     );
 }

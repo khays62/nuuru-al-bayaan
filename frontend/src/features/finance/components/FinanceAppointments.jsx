@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import { listStudents } from '../../students/api/studentsApi';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 const paymentMethods = ['Cash', 'Bank', 'Mobile Money', 'Cheque'];
 
@@ -545,7 +546,7 @@ export default function FinanceAppointments() {
             </div>
 
             {activeTab === 'create' ? (
-                <div className="bg-white border rounded-xl min-h-[500px] p-6 space-y-6">
+                <div className="bg-white border rounded-xl min-h-125 p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</label>
@@ -616,35 +617,45 @@ export default function FinanceAppointments() {
                         )}
                         {studentResults.length > 0 && (
                             <div className="mt-4 border border-slate-200 rounded-xl overflow-hidden">
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="bg-white border-b">
-                                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            <th className="p-3">ID</th>
-                                            <th className="p-3">Student Name</th>
-                                            <th className="p-3">Class</th>
-                                            <th className="p-3">Contact</th>
-                                            <th className="p-3 text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {studentResults.map(s => (
-                                            <tr key={s._id} className="hover:bg-slate-100">
-                                                <td className="p-3 text-xs font-mono font-bold">{s.studentId || '—'}</td>
-                                                <td className="p-3 text-sm font-bold">{s.fullName || '—'}</td>
-                                                <td className="p-3 text-xs font-bold">{formatClassLabel(s.classLabel || s.class)}</td>
-                                                <td className="p-3 text-xs">{s.phoneNumber || s.contactNumber || '—'}</td>
-                                                <td className="p-3 text-right">
+                                <StandardTable
+                                    isLoading={false}
+                                    items={studentResults}
+                                    rows={studentResults}
+                                    columns={[
+                                        { key: 'id', label: 'ID' },
+                                        { key: 'name', label: 'Student Name' },
+                                        { key: 'class', label: 'Class' },
+                                        { key: 'contact', label: 'Contact' },
+                                        { key: 'action', label: 'Action', align: 'right' },
+                                    ]}
+                                    storageKey="finance:appointments:student-results"
+                                    getRowKey={(row) => row?._id}
+                                    emptyTitle="No students found"
+                                    tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
+                                    renderCell={(row, col) => {
+                                        switch (col.key) {
+                                            case 'id':
+                                                return <span className="text-xs font-mono font-bold">{row?.studentId || '—'}</span>;
+                                            case 'name':
+                                                return <span className="text-sm font-bold">{row?.fullName || '—'}</span>;
+                                            case 'class':
+                                                return <span className="text-xs font-bold">{formatClassLabel(row?.classLabel || row?.class)}</span>;
+                                            case 'contact':
+                                                return <span className="text-xs">{row?.phoneNumber || row?.contactNumber || '—'}</span>;
+                                            case 'action':
+                                                return (
                                                     <button
-                                                        onClick={() => handleSelectStudent(s)}
+                                                        onClick={() => handleSelectStudent(row)}
                                                         className="px-3 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-black uppercase"
                                                     >
                                                         Select
                                                     </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                                );
+                                            default:
+                                                return '—';
+                                        }
+                                    }}
+                                />
                             </div>
                         )}
                     </div>
@@ -732,64 +743,72 @@ export default function FinanceAppointments() {
                     </div>
                 </div>
             ) : (
-                <div className="bg-white border rounded-xl min-h-[500px] p-6 space-y-4">
+                <div className="bg-white border rounded-xl min-h-125 p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-black uppercase">{listTitle}</h3>
                         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{listData.length} items</span>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 border-b">
-                                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <th className="p-3">ID</th>
-                                    <th className="p-3">Student</th>
-                                    <th className="p-3">Class</th>
-                                    <th className="p-3">Amount Type</th>
-                                    <th className="p-3">Expected</th>
-                                    <th className="p-3">Date & Time</th>
-                                    <th className="p-3">Status</th>
-                                    <th className="p-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {loading ? (
-                                    <tr><td colSpan="8" className="p-6 text-center text-slate-400">Loading...</td></tr>
-                                ) : listData.length === 0 ? (
-                                    <tr><td colSpan="8" className="p-6 text-center text-slate-400">No appointments found</td></tr>
-                                ) : (
-                                    listData.map(appt => (
-                                        <tr key={appt._id} className="hover:bg-slate-50">
-                                            <td className="p-3 text-xs font-mono font-bold">{appt.appointmentId || appt._id?.slice(-6)}</td>
-                                            <td className="p-3">
-                                                <div className="font-bold">{appt.student?.fullName || '—'}</div>
-                                                <div className="text-xs text-slate-400">{appt.student?.studentId || ''}</div>
-                                            </td>
-                                            <td className="p-3 text-xs font-bold">{formatClassLabel(appt.class)}</td>
-                                            <td className="p-3 text-xs font-bold">{appt.amountType?.name || '—'}</td>
-                                            <td className="p-3 text-xs font-bold">${Number(appt.expectedAmount || 0).toFixed(2)}</td>
-                                            <td className="p-3 text-xs font-bold">{formatDateTime(appt.appointmentDate, appt.appointmentTime)}</td>
-                                            <td className="p-3"><span className={statusBadge(appt.status)}>{appt.status}</span></td>
-                                            <td className="p-3">
-                                                <div className="flex items-center gap-2 justify-end">
-                                                    {appt.status === 'Pending' && (
-                                                        <button onClick={() => openPayment(appt)} className="px-2 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-black uppercase flex items-center gap-1"><CreditCard size={12} /> Pay</button>
-                                                    )}
-                                                    {appt.status === 'Pending' && (
-                                                        <button onClick={() => openReschedule(appt)} className="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase">Reschedule</button>
-                                                    )}
-                                                    {appt.status !== 'Completed' && (
-                                                        <button onClick={() => handleCancel(appt)} className="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px] font-black uppercase">Cancel</button>
-                                                    )}
-                                                    <button onClick={() => handlePrintSlip(appt)} className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-black uppercase flex items-center gap-1"><Printer size={12} /> Slip</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    <StandardTable
+                        isLoading={loading}
+                        loadingMessage="Loading..."
+                        items={listData}
+                        rows={listData}
+                        columns={[
+                            { key: 'id', label: 'ID' },
+                            { key: 'student', label: 'Student' },
+                            { key: 'class', label: 'Class' },
+                            { key: 'amountType', label: 'Amount Type' },
+                            { key: 'expected', label: 'Expected' },
+                            { key: 'dateTime', label: 'Date & Time' },
+                            { key: 'status', label: 'Status' },
+                            { key: 'actions', label: 'Actions', align: 'right', noPrint: true, tdClassName: 'no-print' },
+                        ]}
+                        storageKey="finance:appointments:list"
+                        getRowKey={(row) => row?._id}
+                        emptyTitle="No appointments found"
+                        tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
+                        renderCell={(row, col) => {
+                            switch (col.key) {
+                                case 'id':
+                                    return <span className="text-xs font-mono font-bold">{row?.appointmentId || row?._id?.slice(-6) || '—'}</span>;
+                                case 'student':
+                                    return (
+                                        <div>
+                                            <div className="font-bold">{row?.student?.fullName || '—'}</div>
+                                            <div className="text-xs text-slate-400">{row?.student?.studentId || ''}</div>
+                                        </div>
+                                    );
+                                case 'class':
+                                    return <span className="text-xs font-bold">{formatClassLabel(row?.class)}</span>;
+                                case 'amountType':
+                                    return <span className="text-xs font-bold">{row?.amountType?.name || '—'}</span>;
+                                case 'expected':
+                                    return <span className="text-xs font-bold">${Number(row?.expectedAmount || 0).toFixed(2)}</span>;
+                                case 'dateTime':
+                                    return <span className="text-xs font-bold">{formatDateTime(row?.appointmentDate, row?.appointmentTime)}</span>;
+                                case 'status':
+                                    return <span className={statusBadge(row?.status)}>{row?.status}</span>;
+                                case 'actions':
+                                    return (
+                                        <div className="flex items-center gap-2 justify-end">
+                                            {row?.status === 'Pending' && (
+                                                <button onClick={() => openPayment(row)} className="px-2 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-black uppercase flex items-center gap-1"><CreditCard size={12} /> Pay</button>
+                                            )}
+                                            {row?.status === 'Pending' && (
+                                                <button onClick={() => openReschedule(row)} className="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase">Reschedule</button>
+                                            )}
+                                            {row?.status !== 'Completed' && (
+                                                <button onClick={() => handleCancel(row)} className="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px] font-black uppercase">Cancel</button>
+                                            )}
+                                            <button onClick={() => handlePrintSlip(row)} className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-black uppercase flex items-center gap-1"><Printer size={12} /> Slip</button>
+                                        </div>
+                                    );
+                                default:
+                                    return '—';
+                            }
+                        }}
+                    />
                 </div>
             )}
 

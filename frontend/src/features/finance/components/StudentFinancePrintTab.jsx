@@ -4,6 +4,8 @@ import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import { openMonthlyInvoicesPreview, openDailyAuditPreview, openPasscardsPreview } from './PrintModals';
 import toast from 'react-hot-toast';
+import { useInvoicesQuery } from '../hooks/studentFinanceHooks';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 export default function StudentFinancePrintTab() {
     const [classId, setClassId] = useState('');
@@ -11,6 +13,7 @@ export default function StudentFinancePrintTab() {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedStudents, setSelectedStudents] = useState([]);
+    const [submittedParams, setSubmittedParams] = useState({});
 
     useEffect(() => {
         const fetchClasses = async () => {
@@ -39,38 +42,47 @@ export default function StudentFinancePrintTab() {
         fetchClasses();
     }, [classId]);
 
+    const invoicesQuery = useInvoicesQuery(submittedParams, { enabled: true });
+
+    useEffect(() => {
+        setLoading(Boolean(invoicesQuery.isFetching));
+    }, [invoicesQuery.isFetching]);
+
+    useEffect(() => {
+        if (!invoicesQuery.isError) return;
+        toast.error('Failed to fetch students for this class');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [invoicesQuery.isError]);
+
+    useEffect(() => {
+        const response = invoicesQuery.data;
+        const data = Array.isArray(response)
+            ? response
+            : (Array.isArray(response?.data) ? response.data : (response?.data?.data || []));
+
+        const studentMap = {};
+        (data || []).forEach(inv => {
+            const sid = inv?.student?._id;
+            if (!sid) return;
+            if (!studentMap[sid]) {
+                studentMap[sid] = {
+                    student: inv.student,
+                    totalBalance: 0,
+                    invoices: []
+                };
+            }
+            studentMap[sid].totalBalance += (Number(inv.amount || 0) - Number(inv.paidAmount || 0));
+            studentMap[sid].invoices.push(inv);
+        });
+
+        const studentList = Object.values(studentMap);
+        setStudents(studentList);
+        setSelectedStudents(studentList.map(s => s.student._id));
+    }, [invoicesQuery.data]);
+
     const fetchStudentsByClass = async () => {
         if (!classId) return;
-        setLoading(true);
-        try {
-            const response = await financeService.getInvoices({ classId });
-            const data = Array.isArray(response)
-                ? response
-                : (response?.data || response?.data?.data || []);
-
-            // Group by student
-            const studentMap = {};
-            data.forEach(inv => {
-                const sid = inv.student._id;
-                if (!studentMap[sid]) {
-                    studentMap[sid] = {
-                        student: inv.student,
-                        totalBalance: 0,
-                        invoices: []
-                    };
-                }
-                studentMap[sid].totalBalance += (inv.amount - inv.paidAmount);
-                studentMap[sid].invoices.push(inv);
-            });
-
-            const studentList = Object.values(studentMap);
-            setStudents(studentList);
-            setSelectedStudents(studentList.map(s => s.student._id)); // Select all by default
-        } catch {
-            toast.error("Failed to fetch students for this class");
-        } finally {
-            setLoading(false);
-        }
+        setSubmittedParams({ classId });
     };
 
     const toggleStudent = (id) => {
@@ -113,7 +125,7 @@ export default function StudentFinancePrintTab() {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="md:col-span-3 space-y-6">
-                    <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-end gap-6">
+                    <div className="bg-white p-6 rounded-4xl border border-slate-200 shadow-sm flex items-end gap-6">
                         <div className="flex-1 space-y-3">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Academic Tier / Class</label>
                             <select
@@ -140,7 +152,7 @@ export default function StudentFinancePrintTab() {
                         </button>
                     </div>
 
-                    <div className="bg-white border border-slate-200 rounded-[2rem] overflow-hidden shadow-sm">
+                    <div className="bg-white border border-slate-200 rounded-4xl overflow-hidden shadow-sm">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class Census: {students.length} Students</h4>
                             <div className="flex gap-4">
@@ -148,39 +160,60 @@ export default function StudentFinancePrintTab() {
                                 <button onClick={() => setSelectedStudents([])} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:underline">Clear Selection</button>
                             </div>
                         </div>
-                        <div className="max-h-[600px] overflow-y-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
-                                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                                        <th className="p-4 pl-8">Selection</th>
-                                        <th className="p-4">Student ID</th>
-                                        <th className="p-4">Full Name</th>
-                                        <th className="p-4 text-right pr-8">Balance Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {loading ? (
-                                        <tr><td colSpan="4" className="p-20 text-center text-slate-400 font-bold italic tracking-widest uppercase">Streaming Registry Data...</td></tr>
-                                    ) : students.length === 0 ? (
-                                        <tr><td colSpan="4" className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest italic">Target a class to begin reporting.</td></tr>
-                                    ) : (
-                                        students.map(row => (
-                                            <tr key={row.student._id} onClick={() => toggleStudent(row.student._id)} className="hover:bg-blue-50/30 cursor-pointer transition-colors group">
-                                                <td className="p-4 pl-8">
-                                                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${selectedStudents.includes(row.student._id) ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-600/20' : 'border-slate-200 bg-white'}`}>
-                                                        {selectedStudents.includes(row.student._id) && <UserCheck size={14} className="text-white" />}
-                                                    </div>
-                                                </td>
-                                                <td className="p-4 font-mono text-xs font-bold text-slate-500">{row.student.studentId}</td>
-                                                <td className="p-4 font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{row.student.fullName}</td>
-                                                <td className="p-4 text-right pr-8 font-black tabular-nums transition-colors ${row.totalBalance > 0 ? 'text-red-500' : 'text-green-600'}">
-                                                    ${Number(row.totalBalance).toLocaleString()}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                        <div className="max-h-150 overflow-y-auto">
+                            <StandardTable
+                                isLoading={loading}
+                                loadingMessage="Streaming Registry Data..."
+                                items={students}
+                                rows={students}
+                                columns={[
+                                    { key: 'selection', label: 'Selection', noPrint: true, tdClassName: 'no-print' },
+                                    { key: 'studentId', label: 'Student ID' },
+                                    { key: 'fullName', label: 'Full Name' },
+                                    { key: 'balance', label: 'Balance Status', align: 'right' },
+                                ]}
+                                getRowKey={(row) => row.student?._id}
+                                emptyTitle="Target a class to begin reporting."
+                                tableProps={{
+                                    shellClassName: 'ring-0 shadow-none rounded-none',
+                                    theadClassName: 'bg-slate-50 border-b border-slate-200 sticky top-0 z-10',
+                                    useDefaultHeaderStyles: false,
+                                    renderHeader: () => (
+                                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                                            <th className="p-4 pl-8">Selection</th>
+                                            <th className="p-4">Student ID</th>
+                                            <th className="p-4">Full Name</th>
+                                            <th className="p-4 text-right pr-8">Balance Status</th>
+                                        </tr>
+                                    ),
+                                    renderBody: ({ rows }) => (
+                                        <>
+                                            {(rows || []).map((row) => {
+                                                const id = row?.student?._id;
+                                                const selected = Boolean(id && selectedStudents.includes(id));
+                                                const balance = Number(row?.totalBalance || 0);
+
+                                                return (
+                                                    <tr
+                                                        key={String(id)}
+                                                        onClick={() => id && toggleStudent(id)}
+                                                        className="border-t border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-blue-50/30 cursor-pointer transition-colors group"
+                                                    >
+                                                        <td className="p-4 pl-8 no-print">
+                                                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${selected ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-600/20' : 'border-slate-200 bg-white'}`}>
+                                                                {selected ? <UserCheck size={14} className="text-white" /> : null}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 font-mono text-xs font-bold text-slate-500">{row?.student?.studentId || '—'}</td>
+                                                        <td className="p-4 font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{row?.student?.fullName || '—'}</td>
+                                                        <td className={`p-4 text-right pr-8 font-black tabular-nums ${balance > 0 ? 'text-red-500' : 'text-green-600'}`}>${balance.toLocaleString()}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </>
+                                    ),
+                                }}
+                            />
                         </div>
                     </div>
                 </div>
@@ -191,7 +224,7 @@ export default function StudentFinancePrintTab() {
 
                         <button
                             onClick={handlePrintMonthlyInvoices}
-                            className="w-full group mt-4 h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-blue-600 rounded-[2rem] flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
+                            className="w-full group mt-4 h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-blue-600 rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
                         >
                             <FileText className="text-blue-600 group-hover:scale-110 transition-transform" size={24} />
                             <span className="text-[10px] font-black uppercase tracking-widest">Monthly Invoices</span>
@@ -199,7 +232,7 @@ export default function StudentFinancePrintTab() {
 
                         <button
                             onClick={handlePrintDailyAudit}
-                            className="w-full group h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-amber-500 rounded-[2rem] flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
+                            className="w-full group h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-amber-500 rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
                         >
                             <ShieldCheck className="text-amber-500 group-hover:scale-110 transition-transform" size={24} />
                             <span className="text-[10px] font-black uppercase tracking-widest">Daily Audit Ledger</span>
@@ -207,7 +240,7 @@ export default function StudentFinancePrintTab() {
 
                         <button
                             onClick={handlePrintPasscards}
-                            className="w-full group h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-purple-600 rounded-[2rem] flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
+                            className="w-full group h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-purple-600 rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
                         >
                             <Download className="text-purple-600 group-hover:scale-110 transition-transform" size={24} />
                             <span className="text-[10px] font-black uppercase tracking-widest">Enrollment Passcards</span>

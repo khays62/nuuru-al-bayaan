@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import financeService from '../../api/finance';
 import axios from '../../api/axios';
+import { listAccounts } from '../../api/accountsApi';
+import { adjustPayroll, listPayrolls, updatePayrollStatus } from '../../api/payrollApi';
+import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
 
 function safeNumber(value) {
     const n = Number(value || 0);
@@ -31,8 +33,7 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
             .then((res) => setStaffList(res.data || []))
             .catch(() => toast.error('Failed to load staff list'));
 
-        financeService
-            .getAccounts()
+        listAccounts({ includeInactive: false })
             .then((data) => {
                 setAccounts(data || []);
                 if (!form.accountId && data?.length) {
@@ -55,7 +56,7 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
 
         setLoading(true);
         try {
-            const payrolls = await financeService.getPayrolls({ academicYear: form.academicYear });
+            const payrolls = await listPayrolls({ academicYear: form.academicYear });
             const staffPayrolls = (payrolls || [])
                 .filter((p) => p.staff?._id === form.staffId)
                 .sort((a, b) => (a.month || '').localeCompare(b.month || ''));
@@ -98,7 +99,7 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
 
         setLoading(true);
         try {
-            await financeService.updatePayrollStatus(row._id, {
+            await updatePayrollStatus(row._id, {
                 status: 'Paid',
                 accountId: form.accountId,
                 date: form.registerDate,
@@ -120,7 +121,7 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
 
         setLoading(true);
         try {
-            await financeService.adjustPayroll(row._id, { basicSalary: amount });
+            await adjustPayroll(row._id, { basicSalary: amount });
             await fetchLedger();
             onChanged?.();
         } catch (error) {
@@ -236,70 +237,61 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
                     </div>
 
                     <div className="overflow-x-auto border border-surface-100 rounded-2xl">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-surface-50/70 border-b border-surface-100">
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">No</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Month</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Send Number</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Description</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Commission</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Decrease</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Dr</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Cr</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Paid</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Balance</th>
-                                    <th className="py-3 px-4 text-[10px] font-black text-surface-400 uppercase tracking-widest">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-surface-100">
-                                {rows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="11" className="py-10 text-center text-surface-400 font-bold">No records.</td>
-                                    </tr>
-                                ) : (
-                                    rows.map((r) => (
-                                        <tr key={r._id} className="hover:bg-surface-50 transition-all">
-                                            <td className="py-3 px-4 text-sm text-surface-700">{r.no}</td>
-                                            <td className="py-3 px-4 text-sm text-surface-700">{r.month}</td>
-                                            <td className="py-3 px-4 text-sm text-surface-700">{r.sendNumber}</td>
-                                            <td className="py-3 px-4 text-sm text-surface-700">{r.description}</td>
-                                            <td className="py-3 px-4 text-sm font-mono text-surface-700">{r.commission}</td>
-                                            <td className="py-3 px-4 text-sm font-mono text-surface-700">{r.decrease}</td>
-                                            <td className="py-3 px-4 text-sm font-mono text-surface-900">{r.dr}</td>
-                                            <td className="py-3 px-4 text-sm font-mono text-surface-900">{r.cr}</td>
-                                            <td className="py-3 px-4 text-sm font-mono text-surface-900">{r.paid}</td>
-                                            <td className="py-3 px-4 text-sm font-mono text-surface-900">{r.balance}</td>
-                                            <td className="py-2 px-4">
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => markPaid(r)}
-                                                        className="px-3 py-2 bg-surface-900 text-white rounded-lg font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all"
-                                                        disabled={loading || r.status === 'Paid'}
-                                                    >
-                                                        Paid
-                                                    </button>
-                                                    <button
-                                                        onClick={() => editRow(r)}
-                                                        className="px-3 py-2 bg-white border border-surface-200 text-surface-700 rounded-lg font-black uppercase text-[10px] tracking-widest hover:border-surface-300 transition-all"
-                                                        disabled={loading}
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        onClick={() => showRow(r)}
-                                                        className="px-3 py-2 bg-white border border-surface-200 text-surface-700 rounded-lg font-black uppercase text-[10px] tracking-widest hover:border-surface-300 transition-all"
-                                                        disabled={loading}
-                                                    >
-                                                        Show
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                        <StandardTable
+                            isLoading={loading}
+                            loadingMessage="Loading..."
+                            items={rows}
+                            rows={rows}
+                            columns={[
+                                { key: 'no', label: 'No' },
+                                { key: 'month', label: 'Month' },
+                                { key: 'sendNumber', label: 'Send Number' },
+                                { key: 'description', label: 'Description' },
+                                { key: 'commission', label: 'Commission' },
+                                { key: 'decrease', label: 'Decrease' },
+                                { key: 'dr', label: 'Dr' },
+                                { key: 'cr', label: 'Cr' },
+                                { key: 'paid', label: 'Paid' },
+                                { key: 'balance', label: 'Balance' },
+                                { key: 'actions', label: 'Actions', noPrint: true, tdClassName: 'no-print' },
+                            ]}
+                            storageKey="finance:payroll:employee-ledger"
+                            getRowKey={(row) => row?._id}
+                            emptyTitle="No records."
+                            tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
+                            renderCell={(row, col) => {
+                                switch (col.key) {
+                                    case 'actions':
+                                        return (
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => markPaid(row)}
+                                                    className="px-3 py-2 bg-surface-900 text-white rounded-lg font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all"
+                                                    disabled={loading || row.status === 'Paid'}
+                                                >
+                                                    Paid
+                                                </button>
+                                                <button
+                                                    onClick={() => editRow(row)}
+                                                    className="px-3 py-2 bg-white border border-surface-200 text-surface-700 rounded-lg font-black uppercase text-[10px] tracking-widest hover:border-surface-300 transition-all"
+                                                    disabled={loading}
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => showRow(row)}
+                                                    className="px-3 py-2 bg-white border border-surface-200 text-surface-700 rounded-lg font-black uppercase text-[10px] tracking-widest hover:border-surface-300 transition-all"
+                                                    disabled={loading}
+                                                >
+                                                    Show
+                                                </button>
+                                            </div>
+                                        );
+                                    default:
+                                        return row?.[col.key] ?? '—';
+                                }
+                            }}
+                        />
                     </div>
                 </div>
 

@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import financeService from '../api/finance';
 import { X, RefreshCcw, Percent, DollarSign, Calendar, Hash, ShieldCheck, AlertCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+    useUpdateChargeAmountMutation,
+    useApplyMonthlyDiscountMutation,
+    useApplyOverallDiscountMutation,
+    useDeleteMonthlyChargesMutation,
+} from '../hooks/studentFinanceHooks';
 
 export default function UpdateChargeModal({ onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
@@ -57,6 +63,11 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
         loadData();
     }, []);
 
+    const correctionMutation = useUpdateChargeAmountMutation();
+    const monthlyDiscountMutation = useApplyMonthlyDiscountMutation();
+    const overallDiscountMutation = useApplyOverallDiscountMutation();
+    const undoChargesMutation = useDeleteMonthlyChargesMutation();
+
     const handleSubmit = async (e) => {
         if (e) e.preventDefault();
 
@@ -92,14 +103,14 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
             };
 
             if (updateType === 'correction') {
-                res = await financeService.updateCharge({
+                res = await correctionMutation.mutateAsync({
                     ...payload,
                     categoryId: formData.amountTypeId,
                     amount: Number(formData.amount),
                     ...(useMultipleMonths ? { months: Array.from(selectedMonths) } : { month: formData.month })
                 });
             } else if (updateType === 'monthly_discount') {
-                res = await financeService.applyMonthlyDiscount({
+                res = await monthlyDiscountMutation.mutateAsync({
                     ...payload,
                     categoryId: formData.amountTypeId,
                     ...(useMultipleMonths ? { months: Array.from(selectedMonths) } : { month: formData.month }),
@@ -107,7 +118,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                 });
             } else if (updateType === 'undo_charge') {
                 if (!window.confirm('This will cancel unpaid charges for the selected month(s). Continue?')) return;
-                res = await financeService.deleteBulkInvoices({
+                res = await undoChargesMutation.mutateAsync({
                     scope: 'single',
                     studentId: sId,
                     amountTypeId: formData.amountTypeId,
@@ -115,7 +126,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                     reason: formData.reason.trim(),
                 });
             } else if (updateType === 'overall_discount') {
-                res = await financeService.applyOverallDiscount({
+                res = await overallDiscountMutation.mutateAsync({
                     ...payload,
                     discountType: formData.discountType,
                     discountValue: Number(formData.discountValue)
@@ -317,7 +328,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reason for Adjustment</label>
                                 <textarea
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all min-h-[80px]"
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all min-h-20"
                                     placeholder="Explain why this adjustment is being made (Audit Required)"
                                     value={formData.reason}
                                     onChange={e => setFormData({ ...formData, reason: e.target.value })}

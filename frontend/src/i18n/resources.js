@@ -1834,6 +1834,7 @@ const en = {
         teacherId: 'Teacher ID',
         email: 'Email',
         phone: 'Phone',
+        salary: 'Salary',
         createdAt: 'Created',
         status: 'Status',
         actions: 'Actions',

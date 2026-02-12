@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Receipt, Edit, Settings, GraduationCap, Search, Printer, PlusCircle, Trash2, FileText, Wallet } from 'lucide-react';
 import financeService from '../api/finance';
 import toast from 'react-hot-toast';
-import Table from '../common/Table';
+import { useFinanceStudentsSummaryQuery, usePreviousBalanceSummaryQuery } from '../hooks/studentFinanceHooks';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import StudentChargeModal from './StudentChargeModal';
 import UpdateChargeModal from './UpdateChargeModal';
 import DeleteChargeModal from './DeleteChargeModal';
@@ -26,6 +28,13 @@ const ReceiptTab = () => {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    const [submittedParams, setSubmittedParams] = useState({});
+
+    const [sortBy, setSortBy] = useState('fullName');
+    const [sortDir, setSortDir] = useState('asc');
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+
     // Modal States
     const [showChargeModal, setShowChargeModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -39,6 +48,43 @@ const ReceiptTab = () => {
     const [showInfoModal, setShowInfoModal] = useState(false);
 
     const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
+
+    const summaryQuery = useFinanceStudentsSummaryQuery(submittedParams, { enabled: true });
+    const prevQuery = usePreviousBalanceSummaryQuery({ ...submittedParams, month: currentMonth }, { enabled: true });
+
+    useEffect(() => {
+        // initial load
+        setSubmittedParams({});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        setLoading(Boolean(summaryQuery.isFetching || prevQuery.isFetching));
+    }, [summaryQuery.isFetching, prevQuery.isFetching]);
+
+    useEffect(() => {
+        if (!summaryQuery.isError && !prevQuery.isError) return;
+        toast.error('Search failed');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [summaryQuery.isError, prevQuery.isError]);
+
+    useEffect(() => {
+        const baseRows = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
+        const prevRows = Array.isArray(prevQuery.data?.rows) ? prevQuery.data.rows : [];
+        const prevByStudent = new Map(prevRows.map(r => [String(r.studentObjectId), r]));
+
+        const merged = baseRows.map(r => {
+            const p = prevByStudent.get(String(r._id));
+            const prevOutstanding = Number(p?.balance || 0);
+            const baseBalance = Number(r?.balance || 0);
+            return {
+                ...r,
+                previousBalance: prevOutstanding,
+                balanceWithPrevious: baseBalance + prevOutstanding,
+            };
+        });
+        setStudents(merged);
+    }, [summaryQuery.data, prevQuery.data]);
 
     // Removal of broken fetchStats - stats should be handled at parent level if needed
 
@@ -100,52 +146,93 @@ const ReceiptTab = () => {
         toast.success("Exporting to Excel...");
     };
 
+    useEffect(() => {
+        setPage(1);
+    }, [classId, filterType, search]);
+
 
 
     const handleSearch = async (overrides = {}) => {
         // Handle event if called from form
         if (overrides && overrides.preventDefault) overrides.preventDefault();
 
-        setLoading(true);
-        try {
-            const params = {};
+        const params = {};
+        const activeSearch = overrides.search !== undefined ? overrides.search : search;
+        const activeClassId = overrides.classId !== undefined ? overrides.classId : classId;
+        const activeType = overrides.type !== undefined ? overrides.type : (filterType || null);
 
-            // Use override or current state (state might be stale during immediate call)
-            const activeSearch = overrides.search !== undefined ? overrides.search : search;
-            const activeClassId = overrides.classId !== undefined ? overrides.classId : classId;
-            const activeType = overrides.type !== undefined ? overrides.type : (filterType || null);
+        if (activeSearch) params.search = activeSearch;
+        if (activeClassId) params.classId = activeClassId;
+        if (activeType) params.type = activeType;
 
-            if (activeSearch) params.search = activeSearch;
-            if (activeClassId) params.classId = activeClassId;
-            if (activeType) params.type = activeType;
-
-            const [summary, prev] = await Promise.all([
-                financeService.getStudentSummary(params),
-                financeService.getPreviousBalanceSummary({ ...params, month: currentMonth }),
-            ]);
-
-            const baseRows = Array.isArray(summary) ? summary : [];
-            const prevRows = Array.isArray(prev?.rows) ? prev.rows : [];
-            const prevByStudent = new Map(prevRows.map(r => [String(r.studentObjectId), r]));
-
-            const merged = baseRows.map(r => {
-                const p = prevByStudent.get(String(r._id));
-                const prevOutstanding = Number(p?.balance || 0);
-                const baseBalance = Number(r?.balance || 0);
-                return {
-                    ...r,
-                    previousBalance: prevOutstanding,
-                    balanceWithPrevious: baseBalance + prevOutstanding,
-                };
-            });
-
-            setStudents(merged);
-        } catch {
-            toast.error("Search failed");
-        } finally {
-            setLoading(false);
-        }
+        setSubmittedParams(params);
     };
+
+    const tableItems = useMemo(() => {
+        const list = Array.isArray(students) ? students : [];
+        return list.map((s) => {
+            const balance = Number((s.balanceWithPrevious ?? s.balance) || 0);
+            const chargeCountThisMonth = Number(s.chargeCountThisMonth || 0);
+            const totalPaid = Number(s.totalPaid || 0);
+            const totalBilled = Number(s.totalBilled || 0);
+
+            let balanceColor = 'text-red-500';
+            if (balance <= 0 && totalBilled > 0) balanceColor = 'text-green-600';
+            else if (totalPaid > 0 && balance > 0) balanceColor = 'text-orange-500';
+            else if (totalBilled === 0) balanceColor = 'text-slate-400';
+
+            const status = balance > 0
+                ? 'Unpaid'
+                : (chargeCountThisMonth === 0 ? 'Not Charged' : 'Paid');
+
+            return {
+                _id: s._id,
+                studentId: s.studentId || '—',
+                fullName: s.fullName || '—',
+                contact: s.phone || s.parentPhone || '—',
+                className: s.className || '—',
+                balance,
+                balanceColor,
+                hasHormaris: Number(s.hormarisOutstandingAmount || 0) > 0,
+                status,
+                raw: s,
+            };
+        });
+    }, [students]);
+
+    const onSort = (field) => {
+        const f = String(field || '').trim();
+        if (!f) return;
+        setSortBy((prev) => {
+            if (prev === f) {
+                setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                return prev;
+            }
+            setSortDir('asc');
+            return f;
+        });
+    };
+
+    const sortedItems = useMemo(() => {
+        const list = Array.isArray(tableItems) ? tableItems.slice() : [];
+        const dir = sortDir === 'desc' ? -1 : 1;
+        const field = String(sortBy || '').trim();
+        if (!field) return list;
+
+        list.sort((a, b) => {
+            const av = a?.[field];
+            const bv = b?.[field];
+            if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+            return String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true, sensitivity: 'base' }) * dir;
+        });
+        return list;
+    }, [tableItems, sortBy, sortDir]);
+
+    const total = sortedItems.length;
+    const totalPages = Math.max(1, Math.ceil(total / Math.max(1, limit)));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+    const currentRows = sortedItems.slice(start, start + limit);
 
     return (
         <div className="p-6">
@@ -197,7 +284,7 @@ const ReceiptTab = () => {
                     </div>
                 </form>
                 <select
-                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-[200px] font-bold text-sm"
+                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-50 font-bold text-sm"
                     value={classId}
                     onChange={e => {
                         const val = e.target.value;
@@ -217,7 +304,7 @@ const ReceiptTab = () => {
                 </select>
 
                 <select
-                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-[220px] font-bold text-sm"
+                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-55 font-bold text-sm"
                     value={filterType}
                     onChange={e => {
                         const val = e.target.value;
@@ -239,75 +326,93 @@ const ReceiptTab = () => {
 
             {/* Student Table */}
             <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            <th className="p-4 pl-6">ID</th>
-                            <th className="p-4">Student Name</th>
-                            <th className="p-4">Contact</th>
-                            <th className="p-4">Class</th>
-                            <th className="p-4 text-right">Balance</th>
-                            <th className="p-4 text-center">Info</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {loading ? (
-                            <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-bold italic tracking-widest uppercase">Syncing Ledger...</td></tr>
-                        ) : students.length === 0 ? (
-                            <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-medium">No records found for this selection.</td></tr>
-                        ) : (
-                            students.map(row => {
-                                const balance = (row.balanceWithPrevious ?? row.balance) || 0;
-                                const totalPaid = row.totalPaid || 0;
-                                const totalBilled = row.totalBilled || 0;
+                <StandardTable
+                    isLoading={loading}
+                    error={null}
+                    items={sortedItems}
+                    loadingMessage="Syncing Ledger..."
+                    loadingVariant="table"
+                    loadingRows={8}
+                    loadingColumns={6}
+                    emptyTitle="No records found for this selection."
+                    emptyDescription=""
 
-                                // Specific ERP Color Rules:
-                                // Green -> Fully paid
-                                // Orange -> Partially paid
-                                // Red -> Unpaid
-                                let balanceColor = "text-red-500"; // Default Red
-                                if (balance <= 0 && totalBilled > 0) balanceColor = "text-green-600";
-                                else if (totalPaid > 0 && balance > 0) balanceColor = "text-orange-500";
-                                else if (totalBilled === 0) balanceColor = "text-slate-400"; // No charge yet
-
+                    rows={currentRows}
+                    columns={[
+                        { key: 'studentId', label: 'ID', sortable: true, field: 'studentId' },
+                        { key: 'fullName', label: 'Student Name', sortable: true, field: 'fullName' },
+                        { key: 'contact', label: 'Contact', sortable: true, field: 'contact' },
+                        { key: 'className', label: 'Class', sortable: true, field: 'className' },
+                        { key: 'balance', label: 'Balance', sortable: true, field: 'balance', align: 'right' },
+                        { key: 'actions', label: 'Info', sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
+                    ]}
+                    storageKey="finance:students:columns:v1"
+                    controlsProps={{
+                        limit,
+                        total,
+                        onLimit: (v) => {
+                            setLimit(v);
+                            setPage(1);
+                        },
+                    }}
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={onSort}
+                    getRowKey={(row) => row?._id || row?.id}
+                    renderCell={(row, col) => {
+                        switch (col.key) {
+                            case 'studentId':
+                                return <span className="font-mono text-xs font-bold text-slate-500">{row?.studentId || '—'}</span>;
+                            case 'fullName':
+                                return <span className="font-bold text-slate-900">{row?.fullName || '—'}</span>;
+                            case 'contact':
+                                return <span className="text-slate-600 text-sm font-medium">{row?.contact || '—'}</span>;
+                            case 'className':
                                 return (
-                                    <tr key={row._id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="p-4 pl-6 font-mono text-xs font-bold text-slate-500">{row.studentId}</td>
-                                        <td className="p-4">
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-slate-900">{row.fullName}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-slate-600 text-sm font-medium">{row.phone || row.parentPhone || '—'}</td>
-                                        <td className="p-4">
-                                            <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
-                                                {row.className || '—'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex flex-col items-end leading-tight">
-                                                <span className={`font-black text-sm ${balanceColor}`}>
-                                                    ${Number(balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                                </span>
-                                                {Number(row.hormarisOutstandingAmount || 0) > 0 ? (
-                                                    <span className="text-[9px] font-black uppercase tracking-widest text-red-600">Hormaris</span>
-                                                ) : null}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <button
-                                                onClick={() => { setSelectedStudentRow({ student: row, totalBalance: balance }); setShowInfoModal(true); }}
-                                                className="bg-slate-800 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all hover:shadow-lg active:scale-95"
-                                            >
-                                                View Info
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
+                                        {row?.className || '—'}
+                                    </span>
                                 );
-                            })
-                        )}
-                    </tbody>
-                </table>
+                            case 'balance':
+                                return (
+                                    <div className="flex flex-col items-end leading-tight">
+                                        <span className={`font-black text-sm ${row?.balanceColor || 'text-slate-900'}`}>
+                                            ${Number(row?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </span>
+                                        {row?.hasHormaris ? (
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-red-600">Hormaris</span>
+                                        ) : null}
+                                    </div>
+                                );
+                            case 'actions':
+                                return (
+                                    <RowActionButtons
+                                        actions={[
+                                            {
+                                                key: 'info',
+                                                label: 'View Info',
+                                                title: 'View Info',
+                                                tone: 'view',
+                                                showLabel: true,
+                                                icon: null,
+                                                onClick: () => {
+                                                    setSelectedStudentRow({ student: row?.raw, totalBalance: row?.balance || 0 });
+                                                    setShowInfoModal(true);
+                                                },
+                                            },
+                                        ]}
+                                    />
+                                );
+                            default:
+                                return '';
+                        }
+                    }}
+                    meta={{ page: safePage, totalPages, limit, total }}
+                    onPage={setPage}
+                    onLimit={(v) => { setLimit(v); setPage(1); }}
+                    showRowsSelector={false}
+                    paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+                />
             </div>
 
             {/* Modal Components */}
@@ -389,7 +494,7 @@ export default function StudentFees() {
                 })}
             </div>
 
-            <div className="bg-white border rounded-xl min-h-[500px]">
+            <div className="bg-white border rounded-xl min-h-125">
                 {activeTab === 'receipt' && <ReceiptTab />}
                 {activeTab === 'previousBalance' && <PreviousBalanceTab />}
                 {activeTab === 'amountType' && <AmountTypeTab />}

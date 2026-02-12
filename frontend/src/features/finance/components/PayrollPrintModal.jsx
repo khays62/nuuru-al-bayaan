@@ -1,8 +1,25 @@
 import React, { useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
-import financeService from '../api/finance';
+import { printPayrollList } from '../api/payrollApi';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
+
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import FormField from '../../../shared/components/ui/FormField.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
+import {
+    exportTableToPDF,
+    exportTableToExcel,
+    exportTableToCSV,
+    exportTableToClipboard,
+} from '../../../utils/exportTable';
+
+import AcademicYearSelect from '../../lookups/components/AcademicYearSelect.jsx';
+
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 
 const getLogoUrl = () => {
     try {
@@ -31,34 +48,30 @@ export default function PayrollPrintModal({
     academicYears,
     defaultAcademicYearId,
 }) {
+    const { t, lang } = useI18n();
     const [loading, setLoading] = useState(false);
+
+    const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
+
     const [form, setForm] = useState({
         month: defaultMonth,
         academicYear: defaultAcademicYearId || '',
         status: 'Paid',
-        format: 'pdf', // pdf | excel
+        exportType: 'print', // print | pdf | excel | csv | copy
     });
 
-    const canPrint = useMemo(() => {
-        return Boolean(form.month && form.academicYear && form.format);
+    const canRun = useMemo(() => {
+        return Boolean(form.month && form.academicYear);
     }, [form]);
 
-    const downloadCsv = (filename, rows) => {
-        const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+    const getHeaderImageSrc = () => {
+        return getLogoUrl();
     };
 
     const printPdf = ({ title, tableHtml }) => {
         const logoUrl = getLogoUrl();
         const win = window.open('', '_blank');
-        if (!win) return toast.error('Popup blocked');
+        if (!win) return toast.error(t('finance.payroll.print.errors.popupBlocked', { defaultValue: 'Popup blocked' }));
 
         win.document.write(`
       <html>
@@ -86,178 +99,319 @@ export default function PayrollPrintModal({
         win.print();
     };
 
+    const formatMonthLong = (monthValue) => {
+        const raw = String(monthValue || '').trim();
+        if (!/^[0-9]{4}-[0-9]{2}$/.test(raw)) return raw;
+        const [yStr, mStr] = raw.split('-');
+        const y = Number(yStr);
+        const m = Number(mStr);
+        if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return raw;
+        const dt = new Date(y, m - 1, 1);
+        try {
+            return new Intl.DateTimeFormat(String(lang || 'en'), { month: 'long', year: 'numeric' }).format(dt);
+        } catch {
+            return raw;
+        }
+    };
+
+    const fetchPayrollRows = async () => {
+        const payload = await printPayrollList({
+            month: form.month,
+            academicYear: form.academicYear,
+            status: form.status,
+        });
+
+        const payrolls = payload?.payrolls || [];
+        const rows = payrolls.map((p, idx) => ({
+            no: idx + 1,
+            date: p.paymentDate
+                ? new Date(p.paymentDate).toLocaleDateString(String(lang || 'en'))
+                : new Date(p.createdAt).toLocaleDateString(String(lang || 'en')),
+            id: p.staff?.employeeId || (p._id ? String(p._id).slice(-6).toUpperCase() : ''),
+            name: p.staff?.fullName || '',
+            phone: p.staff?.phone || '',
+            employeeType: formatEmployeeType(p.staff?.employeeType, p.staff?.role),
+            salary: Number(p.netSalary || 0),
+            status: p.status || '',
+        }));
+        return rows;
+    };
+
+    const buildExportPayload = async () => {
+        if (!canRun) return null;
+
+        const STORAGE_KEY = 'finance:payroll:columns:v1';
+        let visible = {};
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') visible = parsed;
+            }
+        } catch {
+            // ignore
+        }
+        const isVisible = (key) => visible?.[String(key)] !== false;
+
+        const cols = [
+            { key: 'date', label: t('finance.payroll.columns.date', { defaultValue: 'Date' }), get: (r) => String(r?.date || '') },
+            { key: 'no', label: t('finance.payroll.columns.no', { defaultValue: 'No' }), get: (r) => Number(r?.no || 0) },
+            { key: 'employeeId', label: t('finance.payroll.columns.employeeId', { defaultValue: 'ID' }), get: (r) => String(r?.id || '') },
+            { key: 'employeeName', label: t('finance.payroll.columns.employeeName', { defaultValue: 'Employee Name' }), get: (r) => String(r?.name || '') },
+            { key: 'phone', label: t('finance.payroll.columns.phone', { defaultValue: 'Phone' }), get: (r) => String(r?.phone || '') },
+            { key: 'employeeType', label: t('finance.payroll.columns.employeeType', { defaultValue: 'Employee Type' }), get: (r) => String(r?.employeeType || '') },
+            { key: 'salary', label: t('finance.payroll.columns.salary', { defaultValue: 'Salary' }), get: (r) => Number(r?.salary || 0) },
+            { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }), get: (r) => String(r?.status || '') },
+        ].filter((c) => isVisible(c.key));
+
+        const rows = await fetchPayrollRows();
+
+        const headers = cols.map((c) => c.label);
+        const body = (rows || []).map((r) => cols.map((c) => c.get(r)));
+
+        const academicYearName = academicYears.find((y) => y?._id === form.academicYear)?.yearName || '';
+        const monthLabel = formatMonthLong(form.month);
+        const subtitle = [
+            monthLabel ? t('finance.payroll.export.month', { defaultValue: 'Month: {{month}}', month: monthLabel }) : null,
+            academicYearName ? t('finance.payroll.export.academicYear', { defaultValue: 'Academic Year: {{year}}', year: academicYearName }) : null,
+            form.status ? t('finance.payroll.export.status', { defaultValue: 'Status: {{status}}', status: form.status }) : null,
+        ].filter(Boolean).join(' • ');
+
+        return {
+            filename: `payroll-${form.month || 'all'}`,
+            sheetName: t('finance.payroll.export.sheetName', { defaultValue: 'Payroll' }),
+            title: t('finance.payroll.export.title', { defaultValue: 'Payroll' }),
+            subtitle,
+            headerImageSrc: getHeaderImageSrc() || headerImg,
+            headers,
+            rows: body,
+        };
+    };
+
+    const getPrimaryActionText = (exportType) => {
+        const type = String(exportType || 'print');
+        switch (type) {
+            case 'pdf':
+                return t('common.export.pdf', { defaultValue: 'PDF' });
+            case 'excel':
+                return t('common.export.excel', { defaultValue: 'Excel' });
+            case 'csv':
+                return t('common.export.csv', { defaultValue: 'CSV' });
+            case 'copy':
+                return t('common.actions.copy', { defaultValue: 'Copy' });
+            case 'print':
+            default:
+                return t('common.actions.print', { defaultValue: 'Print' });
+        }
+    };
+
     const handlePrint = async (e) => {
         e.preventDefault();
-        if (!canPrint) return;
+        if (!canRun) return;
 
         setLoading(true);
         try {
-            const payload = await financeService.printPayrollList({
-                month: form.month,
-                academicYear: form.academicYear,
-                status: form.status,
-            });
+            const exportType = String(form.exportType || 'print');
 
-            const payrolls = payload.payrolls || [];
-            const rows = payrolls.map((p, idx) => ({
-                no: idx + 1,
-                date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString() : new Date(p.createdAt).toLocaleDateString(),
-                id: p.staff?.employeeId || (p._id ? String(p._id).slice(-6).toUpperCase() : ''),
-                name: p.staff?.fullName || '',
-                phone: p.staff?.phone || '',
-                employeeType: formatEmployeeType(p.staff?.employeeType, p.staff?.role),
-                salary: Number(p.netSalary || 0),
-            }));
+            if (exportType !== 'print') {
+                const payload = await buildExportPayload();
+                if (!payload) return;
 
-            const total = rows.reduce((sum, r) => sum + Number(r.salary || 0), 0);
-
-            if (form.format === 'excel') {
-                const header = ['Date', 'No', 'ID', 'Employee Name', 'Phone', 'Employee Type', 'Salary'];
-                const csvRows = [header.map(escapeCsv).join(',')];
-                for (const r of rows) {
-                    csvRows.push([
-                        r.date,
-                        r.no,
-                        r.id,
-                        r.name,
-                        r.phone,
-                        r.employeeType,
-                        r.salary,
-                    ].map(escapeCsv).join(','));
+                if (exportType === 'pdf') {
+                    await exportTableToPDF({ ...payload, orientation: 'landscape' });
+                    onClose?.();
+                    return;
                 }
-                csvRows.push(['', '', '', '', '', 'Total', total].map(escapeCsv).join(','));
-                downloadCsv(`payroll_${form.month}.csv`, csvRows);
-                toast.success('Excel downloaded');
+
+                if (exportType === 'excel') {
+                    const filename = String(payload.filename || 'export.pdf').replace(/\.pdf$/i, '.xlsx');
+                    await exportTableToExcel({
+                        filename,
+                        sheetName: payload.sheetName || 'Sheet1',
+                        title: payload.title || '',
+                        subtitle: payload.subtitle || '',
+                        headerImageSrc: payload.headerImageSrc || '',
+                        headers: payload.headers || [],
+                        rows: payload.rows || [],
+                        sheets: Array.isArray(payload.sheets) ? payload.sheets : null,
+                    });
+                    onClose?.();
+                    return;
+                }
+
+                if (exportType === 'csv') {
+                    const filename = String(payload.filename || 'export.pdf').replace(/\.pdf$/i, '.csv');
+                    exportTableToCSV({
+                        filename,
+                        title: payload.title || '',
+                        subtitle: payload.subtitle || '',
+                        includeMetaRows: false,
+                        headers: payload.headers || [],
+                        rows: payload.rows || [],
+                        tables: Array.isArray(payload.tables) ? payload.tables : null,
+                    });
+                    onClose?.();
+                    return;
+                }
+
+                if (exportType === 'copy') {
+                    await exportTableToClipboard({
+                        headers: payload.headers || [],
+                        rows: payload.rows || [],
+                        tables: Array.isArray(payload.tables) ? payload.tables : null,
+                        includeMeta: true,
+                        delimiter: '\t',
+                    });
+                    toast.success(t('common.actions.copied', { defaultValue: 'Copied' }));
+                    onClose?.();
+                }
+
                 return;
             }
 
+            const rows = await fetchPayrollRows();
+            const total = rows.reduce((sum, r) => sum + Number(r.salary || 0), 0);
+
             const tableHtml = `
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>No</th>
-              <th>ID</th>
-              <th>Employee Name</th>
-              <th>Phone</th>
-              <th>Employee Type</th>
-              <th>Salary</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(r => `
-              <tr>
-                <td>${r.date}</td>
-                <td>${r.no}</td>
-                <td>${r.id}</td>
-                <td>${r.name}</td>
-                <td>${r.phone}</td>
-                <td>${r.employeeType}</td>
-                <td>${r.salary}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="6">Total</td>
-              <td>${total}</td>
-            </tr>
-          </tfoot>
-        </table>
-      `;
+                <table>
+                    <thead>
+                        <tr>
+                            <th>${t('finance.payroll.columns.date', { defaultValue: 'Date' })}</th>
+                            <th>${t('finance.payroll.columns.no', { defaultValue: 'No' })}</th>
+                            <th>${t('finance.payroll.columns.employeeId', { defaultValue: 'ID' })}</th>
+                            <th>${t('finance.payroll.columns.employeeName', { defaultValue: 'Employee Name' })}</th>
+                            <th>${t('finance.payroll.columns.phone', { defaultValue: 'Phone' })}</th>
+                            <th>${t('finance.payroll.columns.employeeType', { defaultValue: 'Employee Type' })}</th>
+                            <th>${t('finance.payroll.columns.salary', { defaultValue: 'Salary' })}</th>
+                            <th>${t('common.filters.status', { defaultValue: 'Status' })}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(r => `
+                            <tr>
+                                <td>${escapeCsv(r.date)}</td>
+                                <td>${escapeCsv(r.no)}</td>
+                                <td>${escapeCsv(r.id)}</td>
+                                <td>${escapeCsv(r.name)}</td>
+                                <td>${escapeCsv(r.phone)}</td>
+                                <td>${escapeCsv(r.employeeType)}</td>
+                                <td>${escapeCsv(r.salary)}</td>
+                                <td>${escapeCsv(r.status)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="7">${t('common.total', { defaultValue: 'Total' })}</td>
+                            <td>${escapeCsv(total)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
 
             const academicYearName = academicYears.find(y => y._id === form.academicYear)?.yearName || '';
-            printPdf({ title: `Payroll - ${form.month} ${academicYearName}`, tableHtml });
+            const monthLabel = formatMonthLong(form.month);
+
+            // Close the modal so the user only sees ONE thing (the print preview).
+            onClose?.();
+            printPdf({
+                title: t('finance.payroll.print.title', { defaultValue: 'Payroll - {{month}} {{year}}', month: monthLabel || form.month, year: academicYearName }),
+                tableHtml,
+            });
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Print failed');
+            toast.error(error?.response?.data?.message || t('finance.payroll.print.errors.failed', { defaultValue: 'Print failed' }));
         } finally {
             setLoading(false);
         }
     };
 
+    const statusOptions = useMemo(() => ([
+        { value: 'Paid', label: t('finance.payroll.status.paid', { defaultValue: 'Paid' }) },
+        { value: 'Draft', label: t('finance.payroll.status.draft', { defaultValue: 'Draft' }) },
+        { value: 'Approved', label: t('finance.payroll.status.approved', { defaultValue: 'Approved' }) },
+    ]), [t]);
+
+    const exportTypeOptions = useMemo(() => ([
+        { value: 'print', label: t('common.actions.print', { defaultValue: 'Print' }) },
+        { value: 'pdf', label: t('common.export.pdf', { defaultValue: 'PDF' }) },
+        { value: 'excel', label: t('common.export.excel', { defaultValue: 'Excel' }) },
+        { value: 'csv', label: t('common.export.csv', { defaultValue: 'CSV' }) },
+        { value: 'copy', label: t('common.actions.copy', { defaultValue: 'Copy' }) },
+    ]), [t]);
+
+    const monthLabel = formatMonthLong(form.month);
+    const academicYearName = academicYears.find((y) => y?._id === form.academicYear)?.yearName || '';
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/30">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Payroll Print</h3>
-                        <p className="text-xs text-slate-500 font-mono uppercase tracking-widest">PDF / Excel</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all shadow-sm">
-                        <X size={22} className="text-slate-400" />
-                    </button>
+        <Modal
+            isOpen
+            onClose={onClose}
+            title={t('finance.payroll.printModal.title', { defaultValue: 'Payroll Print & Export' })}
+            panelClassName="max-w-2xl"
+        >
+            <form onSubmit={handlePrint} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <FormField label={t('finance.payroll.filters.month', { defaultValue: 'Month' })} required>
+                        <Input
+                            type="month"
+                            value={form.month}
+                            onChange={(e) => setForm((prev) => ({ ...prev, month: e.target.value }))}
+                        />
+                    </FormField>
+
+                    <FormField label={t('common.filters.academicYear', { defaultValue: 'Academic Year' })} required>
+                        <AcademicYearSelect
+                            value={form.academicYear}
+                            onChange={(v) => setForm((prev) => ({ ...prev, academicYear: v }))}
+                            maxVisible={5}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                        />
+                    </FormField>
+
+                    <FormField label={t('common.filters.status', { defaultValue: 'Status' })}>
+                        <DropdownSelect
+                            value={form.status}
+                            onChange={(v) => setForm((prev) => ({ ...prev, status: v }))}
+                            options={statusOptions}
+                            clearable={false}
+                        />
+                    </FormField>
+
+                    <FormField
+                        label={t('common.export.title', { defaultValue: 'Export' })}
+                        hint={
+                            [
+                                monthLabel ? t('finance.payroll.export.month', { defaultValue: 'Month: {{month}}', month: monthLabel }) : null,
+                                academicYearName ? t('finance.payroll.export.academicYear', { defaultValue: 'Academic Year: {{year}}', year: academicYearName }) : null,
+                            ].filter(Boolean).join(' • ')
+                        }
+                        className="sm:col-span-2"
+                    >
+                        <DropdownSelect
+                            value={form.exportType}
+                            onChange={(v) => setForm((prev) => ({ ...prev, exportType: v }))}
+                            options={exportTypeOptions}
+                            clearable={false}
+                        />
+                    </FormField>
                 </div>
 
-                <form onSubmit={handlePrint} className="p-6 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Month</label>
-                            <input
-                                type="month"
-                                value={form.month}
-                                onChange={(e) => setForm(prev => ({ ...prev, month: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</label>
-                            <select
-                                value={form.academicYear}
-                                onChange={(e) => setForm(prev => ({ ...prev, academicYear: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="">Select Academic Year</option>
-                                {academicYears.map(y => (
-                                    <option key={y._id} value={y._id}>{y.yearName}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Format</label>
-                            <select
-                                value={form.format}
-                                onChange={(e) => setForm(prev => ({ ...prev, format: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="pdf">PDF</option>
-                                <option value="excel">Excel</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Show</label>
-                            <select
-                                value={form.status}
-                                onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="Paid">Paid</option>
-                                <option value="Draft">Draft</option>
-                                <option value="Approved">Approved</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-6 py-3 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl font-black uppercase text-[10px] tracking-[0.2em]"
-                        >
-                            Close
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!canPrint || loading}
-                            className="px-8 py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-[0.2em] disabled:opacity-50"
-                        >
-                            {loading ? 'Loading...' : 'Print'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <div className="flex items-center justify-end gap-2 flex-wrap">
+                    <Button variant="neutral" onClick={onClose}>
+                        {t('common.close', { defaultValue: 'Close' })}
+                    </Button>
+                    <ActionButton
+                        variant="neutral"
+                        className={outlineBtn}
+                        icon={<Printer size={16} />}
+                        type="submit"
+                        disabled={!canRun || loading}
+                        title={getPrimaryActionText(form.exportType)}
+                    >
+                        {loading ? t('common.loading', { defaultValue: 'Loading…' }) : getPrimaryActionText(form.exportType)}
+                    </ActionButton>
+                </div>
+            </form>
+        </Modal>
     );
 }

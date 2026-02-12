@@ -80,6 +80,7 @@ export default {
 
     searchPlaceholders: {
       academicYears: 'Raadi sanadaha tacliinta…',
+      employees: 'Raadi shaqaalaha…',
       shifts: 'Raadi shifts…',
       sections: 'Raadi qaybaha…',
       cohorts: 'Raadi cohorts…',
@@ -137,6 +138,7 @@ export default {
 
     actions: {
       add: 'Ku dar',
+      actions: 'Falal',
       archive: 'Kaydi (Archive)',
       create: 'Abuur',
       save: 'Kaydi',
@@ -151,6 +153,7 @@ export default {
       preview: 'Horudhac',
       promote: 'Dalacsiin',
       copy: 'Koobiye',
+      copied: 'Waa la koobiyeeyay',
       transfer: 'Wareeji',
       activate: 'Fur',
       deactivate: 'Xir',
@@ -479,6 +482,7 @@ export default {
     },
     modal: {
       addTitle: 'Ku dar Cohort',
+        editTitle: 'Wax ka beddel kharashka',
       editTitle: 'Tafatir Cohort',
     },
     status: {
@@ -1720,6 +1724,7 @@ export default {
         teacherId: 'ID Macallin',
         email: 'Email',
         phone: 'Telefoon',
+        salary: 'Mushahar',
         createdAt: 'La abuuray',
         status: 'Xaalad',
         actions: 'Falal',
@@ -2459,6 +2464,490 @@ export default {
     confirms: {
       toggleStatus: '{{verb}} user-kan?',
       resetLockout: 'Ma reset garaynaysaa lockout-ka login-ka user-kan?',
+    },
+  },
+
+  finance: {
+    accounts: {
+      tabs: {
+        institutionAccounts: 'Xisaabaadka Hay\'adda',
+        balanceOverview: 'Guudmar & Mashaariic',
+        ledgerHistory: 'Taariikhda Ledger-ka Guud',
+      },
+
+      sections: {
+        institutionAccounts: 'Xisaabaadka Hay\'adda',
+        institutionAccountsSubtitle: 'Maareynta dheecaanka (liquidity) waqtiga-dhabta ah',
+      },
+
+      cards: {
+        availableUsd: 'Lacag la heli karo (USD)',
+        refPrefix: 'Tixraac',
+      },
+
+      fields: {
+        fromSource: 'Laga wareejinayo',
+        toDestination: 'Loo wareejinayo',
+        transferAmountUsd: 'Lacagta wareejinta (USD)',
+        accountName: 'Magaca xisaabta',
+        type: 'Nooca',
+        branch: 'Laanta',
+        institution: 'Hay\'ad / Bangi',
+        accountNumber: 'Lambarka xisaabta',
+        openingBalance: 'Haraaga furitaanka',
+        depositTo: 'Ku shub',
+        incomeName: 'Sharaxaad dakhli / Magac',
+        refNumber: 'Tixraac #',
+        date: 'Taariikh',
+        totalReceivedAmount: 'Wadarta lacagta la helay',
+        status: 'Xaaladda',
+      },
+
+      placeholders: {
+        amount: '0.00',
+        accountNameExample: 'tusaale: Khasnad yar',
+        institutionExample: 'tusaale: Salaam Bank',
+        incomeNameExample: 'tusaale: Deeq ka timid XYZ',
+        notAvailable: 'N/A',
+      },
+
+      options: {
+        accountType: {
+          bank: 'Bank',
+          cash: 'Cash',
+          mobileMoney: 'Mobile Money',
+        },
+      },
+
+      overview: {
+        kicker: 'Guudmar Maaliyadeed',
+        title: 'Wadarta Dheecaanka (Liquidity)',
+        currency: 'USD',
+        verifiedFrom: 'La xaqiijiyay {{count}} xisaab oo ku xiran',
+      },
+
+      ledger: {
+        title: 'Taariikhda Ledger-ka Guud',
+        subtitle: 'Diiwaan xisaabeed oo aan la beddeli karin',
+        realtime: 'La socod waqtiga-dhabta ah',
+        loading: 'Ledger-ka waa la rarayaa…',
+        loadFailed: 'Ledger-ka lama soo dejin karo',
+        emptyTitle: 'Diiwaan ledger ah lama helin.',
+        columns: {
+          date: 'Taariikh / Audit',
+          domain: 'Domain',
+          operation: 'Nooca Hawlgalka',
+          user: 'Isticmaale la oggolyahay',
+          context: 'Macnaha Nidaamka',
+        },
+        export: {
+          systemUser: 'NIDAAM',
+          columns: {
+            date: 'Taariikh',
+            domain: 'Domain',
+            operation: 'Hawlgal',
+            user: 'Isticmaale',
+            context: 'Macne',
+          },
+        },
+      },
+
+      actions: {
+        income: 'Dakhli',
+        newAccount: 'Xisaab Cusub',
+        createAccount: 'Abuur Xisaab',
+        recordIncome: 'Diiwaan geli Dakhli',
+        executeFunds: 'Fulinta Wareejinta',
+        saveChanges: 'Kaydi Isbeddelada',
+      },
+
+      modals: {
+        transferTitle: 'Wareejin Xisaab-ilaa-Xisaab',
+        createTitle: 'Diiwaan geli Xisaab Cusub',
+        incomeTitle: 'Diiwaan geli Dakhli Guud',
+        editTitle: 'Tafatir Xisaab',
+      },
+
+      transfer: {
+        sourcePlaceholder: 'Xisaab laga wareejinayo…',
+        targetPlaceholder: 'Xisaab loo wareejinayo…',
+      },
+
+      income: {
+        depositToPlaceholder: 'Dooro xisaab…',
+      },
+
+      confirms: {
+        delete: 'Ma tirtiraysaa xisaabkan? Lama soo celin karo.',
+      },
+
+      toasts: {
+        incomeRecorded: 'Dakhli si guul ah ayaa loo diiwaangeliyay',
+        incomeFailed: 'Diiwaangelintu way fashilantay',
+        transferSuccess: 'Lacag si guul ah ayaa loo wareejiyay',
+        transferFailed: 'Wareejintu way fashilantay',
+        deleteBlockedBalance: 'Lama tirtiri karo xisaab aan eber ahayn',
+      },
+
+      apiErrors: {
+        FIN_ACCOUNT_NAME_REQUIRED: 'Magaca xisaabta waa qasab',
+        FIN_ACCOUNT_TYPE_REQUIRED: 'Nooca xisaabta waa qasab',
+        FIN_ACCOUNT_INSTITUTION_REQUIRED: 'Hay’adda / bangiga waa qasab',
+        FIN_ACCOUNT_NUMBER_REQUIRED: 'Lambarka xisaabta waa qasab',
+
+        FIN_ACCOUNT_NOT_FOUND: 'Xisaabta lama helin',
+        FIN_INVALID_ACCOUNT_ID: 'ID-ga xisaabta sax ma aha',
+
+        FIN_ACCOUNT_DELETE_BALANCE_NOT_ZERO: 'Lama tirtiri karo xisaab aan eber ahayn',
+        FIN_AMOUNT_MUST_BE_POSITIVE: 'Lacagtu waa inay noqotaa tiro togan',
+
+        FIN_SOURCE_ACCOUNT_INACTIVE: 'Xisaabta laga wareejinayo waa xiran tahay',
+        FIN_DEST_ACCOUNT_INACTIVE: 'Xisaabta loo wareejinayo waa xiran tahay',
+        FIN_INSUFFICIENT_FUNDS: 'Lacag ku filan ma jirto',
+        FIN_ACCOUNT_INACTIVE: 'Xisaabtu waa xiran tahay',
+
+        FIN_ACCOUNT_DUPLICATE: 'Xisaabkan hore ayuu u diiwaangashan yahay',
+        FIN_VALIDATION_ERROR: 'Xogta la geliyay sax ma aha',
+        FIN_INTERNAL_ERROR: 'Server-ka ayaa khalad galay',
+      },
+    },
+
+    expenses: {
+      tabs: {
+        ledger: 'Ledger-ka Kharashaadka',
+        categories: 'Qaybaha Kharashaadka',
+      },
+
+      modals: {
+        createTitle: 'Diiwaan geli Kharash Cusub',
+      },
+
+      fields: {
+        title: 'Cinwaanka Kharashka',
+        amountUsd: 'Lacagta (USD)',
+        date: 'Taariikh',
+        category: 'Qayb',
+        payingAccount: 'Xisaabta laga bixinayo',
+        description: 'Faahfaahin',
+      },
+
+      placeholders: {
+        title: 'tusaale: Biilka Korontada',
+        amount: '0.00',
+        category: 'Dooro qayb…',
+        account: 'Dooro xisaab…',
+        description: 'Faahfaahin dheeraad ah…',
+      },
+
+      actions: {
+        newExpense: 'Diiwaan geli Kharash Cusub',
+        recordExpense: 'Diiwaan geli Kharash',
+        createCategory: 'Abuur Qayb',
+      },
+
+      columns: {
+        date: 'Taariikh',
+        category: 'Qayb',
+        title: 'Cinwaan',
+        description: 'Faahfaahin',
+        amount: 'Lacag',
+        auditor: 'Kormeeraha',
+      },
+
+      export: {
+        title: 'Kharashaad',
+        month: 'Bil: {{month}}',
+      },
+
+      ledger: {
+        title: 'Ledger-ka Kharashaadka',
+        kpiSpend: 'Kharashka Mudada',
+        kpiRecords: 'Diiwaanada La Ansixiyay',
+        monthAria: 'Dooro bil',
+        loading: 'Kharashaadka waa la rarayaa…',
+        emptyTitle: 'Wax kharash ah lama helin.',
+      },
+
+      categories: {
+        title: 'Qaybaha Kharashaadka',
+        count: '{{count}} qaybood',
+        newPlaceholder: 'Magaca qayb cusub',
+        budgetPlaceholder: 'Miisaaniyad (ikhtiyaari)',
+        loading: 'Qaybaha waa la rarayaa…',
+        empty: 'Qaybo weli ma jiraan',
+        monthTag: 'Bil: {{month}}',
+        typeExpense: 'Nooc: Kharash',
+        spent: 'La bixiyay',
+        records: '{{count}} diiwaan',
+        budget: 'Miisaaniyad',
+        noBudget: '—',
+        overBudget: 'Ka badan miisaaniyadda',
+        remaining: 'Hadhay: ${{value}}',
+        editTitle: 'Tafatir Qayb',
+        fields: {
+          name: 'Magac',
+          budget: 'Miisaaniyad',
+        },
+        renameLockedHint: 'Qaybtan hore ayaa kharashaad loogu diiwaangeliyay. Magac-beddel lama oggola.',
+      },
+
+      budgetInfo: {
+        title: 'Macluumaadka miisaaniyadda',
+        month: 'Bil: {{month}}',
+        budget: 'Miisaaniyad',
+        spent: 'La bixiyay',
+        remaining: 'Hadhay',
+      },
+
+      confirms: {
+        delete: 'Ma tirtiraysaa? Lama soo celin karo.',
+        deleteCategory: 'Ma kaydin/archivaynaysaa qaybtaan? Mar dambe kama muuqan doonto kharashaadka cusub.',
+      },
+
+      toasts: {
+        created: 'Kharash si guul ah ayaa loo diiwaangeliyay',
+        createFailed: 'Diiwaangelinta kharashka way fashilantay',
+        deleted: 'Kharash waa la tirtiray',
+        deleteFailed: 'Tirtiridu way fashilantay',
+        loadFailed: 'Kharashaadka lama soo dejin',
+
+        categoryCreated: 'Qayb waa la abuuray',
+        categoryCreateFailed: 'Abuurista qaybta way fashilantay',
+        categoryUpdated: 'Qayb waa la cusboonaysiiyay',
+        categoryUpdateFailed: 'Cusboonaysiinta qaybta way fashilantay',
+        categoryDeleted: 'Qayb waa la kaydiyay (archived)',
+        categoryDeleteFailed: 'Kaydinta qaybta way fashilantay',
+        categoryNameRequired: 'Magaca qaybta waa qasab',
+        budgetInvalid: 'Miisaaniyaddu waa inay noqotaa tiro sax ah',
+      },
+
+      apiErrors: {
+        FIN_AMOUNT_MUST_BE_POSITIVE: 'Lacagtu waa inay noqotaa tiro togan',
+        FIN_AMOUNT_INVALID: 'Lacagta la geliyay sax ma aha',
+        FIN_DATE_INVALID: 'Taariikhda la geliyay sax ma aha',
+
+        FIN_EXPENSE_CATEGORY_REQUIRED: 'Qaybta kharashka waa qasab',
+        FIN_EXPENSE_CATEGORY_NOT_FOUND: 'Qaybta kharashka lama helin',
+        FIN_EXPENSE_BUDGET_EXCEEDED: 'Miisaaniyadda bishan waa la dhaafay',
+
+        FIN_ACCOUNT_NOT_FOUND: 'Xisaabta lama helin',
+        FIN_INVALID_ACCOUNT_ID: 'ID-ga xisaabta sax ma aha',
+        FIN_INSUFFICIENT_FUNDS: 'Lacag ku filan ma jirto',
+        FIN_EXPENSE_ACCOUNT_MISSING: 'Xisaab bixineed ayaa ka maqan',
+
+        FIN_INVALID_EXPENSE_ID: 'ID-ga kharashka sax ma aha',
+        FIN_EXPENSE_NOT_FOUND: 'Kharashka lama helin',
+
+        FIN_CATEGORY_NAME_REQUIRED: 'Magaca qaybta waa qasab',
+        FIN_CATEGORY_TYPE_REQUIRED: 'Nooca qaybta waa qasab',
+        FIN_INVALID_CATEGORY_ID: 'ID-ga qaybta sax ma aha',
+        FIN_CATEGORY_NOT_FOUND: 'Qaybta lama helin',
+        FIN_CATEGORY_DUPLICATE: 'Qaybkan hore ayuu u diiwaangashan yahay',
+        FIN_CATEGORY_IN_USE: 'Qaybtan hore ayaa kharashaad loogu diiwaangeliyay',
+
+        FIN_INTERNAL_ERROR: 'Server-ka ayaa khalad galay',
+      },
+    },
+
+    payroll: {
+      page: {
+        kicker: 'Maaliyad',
+        title: 'Mushahaaro',
+      },
+
+      modals: {
+        chargeTitle: 'Dallaca Mushahaaro',
+        deleteTitle: 'Tirtir Dallacaadaha Mushahaaro',
+        updateTitle: 'Cusboonaysii Mushahaaro',
+      },
+
+      actions: {
+        charge: 'Dallac',
+        show: 'Muuji',
+        viewInfo: 'Faahfaahin',
+      },
+
+      fields: {
+        employee: 'Shaqaale',
+      },
+
+      placeholders: {
+        employee: 'Dooro shaqaale…',
+        account: 'Dooro xisaab…',
+      },
+
+      charge: {
+        fields: {
+          scope: 'Xulasho',
+          mode: 'Hab',
+          account: 'Xisaab',
+          date: 'Taariikh',
+        },
+        scope: {
+          all: 'Dhammaan shaqaalaha',
+          single: 'Hal shaqaale',
+        },
+        mode: {
+          charge: 'Dallac',
+          fullPayment: 'Bixin buuxda (dallac + bixin)',
+        },
+        hints: {
+          account: 'Waxaa loo isticmaalaa bixin buuxda.',
+        },
+        success: 'Dallaca mushaharka waa la sameeyay',
+        errors: {
+          missingSalary: 'Mushahar ayaa ka maqan: {{names}}{{more}}',
+          failed: 'Hawlgalka wuu fashilmay',
+        },
+      },
+
+      fullPayment: {
+        success: 'Bixin buuxda waa la dhammeeyay',
+      },
+
+      filters: {
+        month: 'Bil',
+      },
+
+      status: {
+        paid: 'La bixiyay',
+        draft: 'Qabyo',
+        approved: 'La ansixiyay',
+      },
+
+      columns: {
+        date: 'Taariikh',
+        no: 'Lr',
+        employeeId: 'ID',
+        employeeName: 'Magaca Shaqaalaha',
+        phone: 'Telefoon',
+        employeeType: 'Nooca Shaqaalaha',
+        salary: 'Mushahar',
+      },
+
+      table: {
+        loading: 'Mushahaaro waa la rarayaa…',
+        emptyTitle: 'Mushahaaro lama helin.',
+        emptyDescription: '',
+      },
+
+      errors: {
+        loadFailed: 'Xogta mushahaarada lama soo dejin',
+      },
+
+      validations: {
+        monthRequired: 'Bil waa qasab',
+        academicYearRequired: 'Sanadka Tacliinta waa qasab',
+        employeeRequired: 'Shaqaale waa qasab',
+        amountRequired: 'Lacag waa qasab',
+      },
+
+      delete: {
+        fields: {
+          deleteType: 'Nooca tirtirka',
+        },
+        single: 'Hal shaqaale',
+        confirm: 'Ma hubtaa? Waxay tirtiraysaa dallacaadaha (ma aha kuwa la bixiyay).',
+        success: 'Waa la tirtiray',
+        errors: {
+          failed: 'Tirtiridu way fashilantay',
+        },
+      },
+
+      update: {
+        fields: {
+          updateType: 'Nooca cusboonaysiinta',
+          amount: 'Lacag',
+        },
+        types: {
+          salaryCharge: 'Dallaca mushahar',
+          commission: 'Guno',
+          salaryDecrease: 'Dhimi mushahar',
+        },
+        success: 'Mushahar waa la cusboonaysiiyay',
+        errors: {
+          failed: 'Cusboonaysiintu way fashilantay',
+        },
+      },
+
+      printModal: {
+        title: 'Daabac & Soo dejiso Mushahaaro',
+        exportHint: 'Soo dejiso adigoo isticmaalaya isla filters-ka.',
+      },
+
+      export: {
+        title: 'Mushahaaro',
+        sheetName: 'Mushahaaro',
+        month: 'Bil: {{month}}',
+        academicYear: 'Sanadka Tacliinta: {{year}}',
+        status: 'Xaalad: {{status}}',
+      },
+
+      print: {
+        title: 'Mushahaaro - {{month}} {{year}}',
+        errors: {
+          popupBlocked: 'Popup waa la xannibay',
+          failed: 'Daabicistu way fashilantay',
+        },
+      },
+
+      show: {
+        title: 'Mushahaaro Aan La Bixin',
+        hint: 'Marka hore dallac mushahaaro si liiskan loo buuxiyo.',
+        emptyTitle: 'Mushahaaro aan la bixin lama helin.',
+        columns: {
+          balance: 'Haraaga',
+          info: 'Faahfaahin',
+        },
+        actions: {
+          info: 'Faahfaahin',
+        },
+        errors: {
+          loadFailed: 'Lama soo dejin mushahaarada aan la bixin',
+        },
+      },
+
+      employeeInfo: {
+        title: 'Faahfaahinta Shaqaalaha',
+        fields: {
+          account: 'Xisaab',
+          date: 'Taariikhda Diiwaangelinta',
+        },
+        actions: {
+          show: 'Muuji',
+        },
+        columns: {
+          no: 'Lr',
+          month: 'Bil',
+          sendNumber: 'Lambarka Dirista',
+          description: 'Sharaxaad',
+          commission: 'Guno',
+          decrease: 'Dhimi',
+          dr: 'Dr',
+          cr: 'Cr',
+          paid: 'La bixiyay',
+          balance: 'Haraaga',
+        },
+        loading: 'Waa la rarayaa…',
+        empty: 'Xog ma jirto',
+        toasts: {
+          saved: 'Waa la kaydiyay',
+        },
+        errors: {
+          loadFailed: 'Lama soo dejin faahfaahinta shaqaalaha',
+          saveFailed: 'Kaydintu way fashilantay',
+        },
+        receipt: {
+          title: 'Rasiidka Mushaharka',
+          sendNumber: 'Lambarka Dirista',
+          description: 'Sharaxaad',
+          commission: 'Guno',
+          decrease: 'Dhimi',
+          salary: 'Mushahar',
+          paid: 'La bixiyay',
+          balance: 'Haraaga',
+        },
+      },
     },
   },
 };

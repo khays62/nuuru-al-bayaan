@@ -5,7 +5,7 @@ import StudentChargeModal from './StudentChargeModal';
 import GenerateMonthlyFeeModal from './GenerateMonthlyFeeModal';
 import RecordPaymentModal from './RecordPaymentModal';
 import ClearanceModal from './ClearanceModal';
-import Table from '../common/Table';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
@@ -104,27 +104,32 @@ export default function FeeManagement() {
 
     const columns = [
         {
-            header: 'Student',
+            key: 'student',
+            label: 'Student',
             render: (row) => row.student?.fullName || 'Unknown',
-            className: 'font-bold text-gray-900'
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 border-x border-gray-200'
         },
-        { header: 'Type', accessor: 'type' },
+        { key: 'type', label: 'Type', render: (row) => row.type || '' },
         {
-            header: 'Amount',
+            key: 'amount',
+            label: 'Amount',
             render: (row) => `$${row.amount}`,
-            className: 'font-bold'
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700 border-x border-gray-200'
         },
         {
-            header: 'Balance',
+            key: 'balance',
+            label: 'Balance',
             render: (row) => `$${row.balance}`,
-            className: 'font-bold text-primary'
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm font-bold text-primary border-x border-gray-200'
         },
         {
-            header: 'Due Date',
+            key: 'dueDate',
+            label: 'Due Date',
             render: (row) => new Date(row.dueDate).toLocaleDateString(),
         },
         {
-            header: 'Status',
+            key: 'status',
+            label: 'Status',
             render: (row) => (
                 <span className={`text-xs font-bold px-3 py-1 rounded-full ${getStatusColor(row.status)}`}>
                     {row.status}
@@ -132,8 +137,8 @@ export default function FeeManagement() {
             )
         },
         {
-            header: 'Actions',
-            className: 'text-right',
+            key: 'actions',
+            label: 'Actions',
             render: (row) => (
                 <div className="flex justify-end gap-2">
                     {row.status !== 'Paid' && (
@@ -146,7 +151,9 @@ export default function FeeManagement() {
                         </button>
                     )}
                 </div>
-            )
+            ),
+            align: 'right',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200 text-right'
         }
     ];
 
@@ -208,19 +215,17 @@ export default function FeeManagement() {
                     </select>
                 </div>
 
-                {/* Reusable Table */}
-                <Table
+                <StandardTable
+                    isLoading={loading}
+                    items={invoices}
+                    rows={invoices}
                     columns={columns}
-                    data={invoices}
-                    loading={loading}
-                    pagination={{
-                        page: meta.page,
-                        totalPages: meta.totalPages,
-                        limit: meta.limit,
-                        onPageChange: (p) => fetchInvoices(p, meta.limit),
-                        onLimitChange: (l) => fetchInvoices(1, l)
-                    }}
-                    emptyMessage="Records will appear here."
+                    storageKey="finance:fees:invoices"
+                    meta={meta}
+                    onPage={(p) => fetchInvoices(p, meta.limit)}
+                    onLimit={(l) => fetchInvoices(1, l)}
+                    showRowsSelector
+                    emptyTitle="Records will appear here."
                 />
             </div>
 

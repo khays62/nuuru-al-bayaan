@@ -3,6 +3,7 @@ import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import { X, CheckCircle, Wallet, Calendar, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useChargeStudentFeesMutation } from '../hooks/studentFinanceHooks';
 
 export default function StudentChargeModal({ onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
@@ -21,6 +22,8 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
     const [selectedMonths, setSelectedMonths] = useState(() => new Set());
 
     const [formStep, setFormStep] = useState(1); // 1: Select Option, 2: Select Charge Form
+
+    const chargeMutation = useChargeStudentFeesMutation();
 
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -113,7 +116,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                 // academicYearId is not yet in form, but backend allows it
             };
 
-            await financeService.chargeStudentFees(payload);
+            await chargeMutation.mutateAsync(payload);
 
             toast.success("Charge recorded successfully");
             onSuccess?.();

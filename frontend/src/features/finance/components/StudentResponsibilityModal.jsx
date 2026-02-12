@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Save, Printer, Calendar, Info, History, Layers, CheckCircle, Smartphone } from 'lucide-react';
 import financeService from '../api/finance';
 import toast from 'react-hot-toast';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 export default function StudentResponsibilityModal({ student, row, onClose, onSuccess }) {
     const [view, setView] = useState('finance'); // finance (ledger), history (responsible history)
@@ -75,13 +76,13 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-slate-50 w-full max-w-6xl h-[90vh] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
 
                 {/* Header Branding */}
                 <div className="bg-slate-900 px-10 py-8 flex justify-between items-center shrink-0 border-b border-white/5">
                     <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 bg-blue-600/20 rounded-[2rem] flex items-center justify-center border border-white/10 backdrop-blur-xl">
+                        <div className="w-16 h-16 bg-blue-600/20 rounded-4xl flex items-center justify-center border border-white/10 backdrop-blur-xl">
                             <Layers className="text-blue-500" size={32} />
                         </div>
                         <div>
@@ -96,7 +97,7 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                             </div>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-4 hover:bg-white/10 text-white/30 hover:text-white rounded-[2rem] transition-all">
+                    <button onClick={onClose} className="p-4 hover:bg-white/10 text-white/30 hover:text-white rounded-4xl transition-all">
                         <X size={32} />
                     </button>
                 </div>
@@ -168,7 +169,7 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                                     </div>
                                 </div>
                                 <div className="md:col-span-2 flex items-center justify-end">
-                                    <div className="h-20 bg-blue-600/5 p-6 rounded-[2rem] border-2 border-blue-600/10 flex justify-between items-center w-full max-w-xs">
+                                    <div className="h-20 bg-blue-600/5 p-6 rounded-4xl border-2 border-blue-600/10 flex justify-between items-center w-full max-w-xs">
                                         <span className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Responsibility Due</span>
                                         <span className="text-3xl font-black text-blue-600 tracking-tighter">${Number(row?.totalBalance || 0).toLocaleString()}</span>
                                     </div>
@@ -178,93 +179,111 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                             {/* Table */}
                             <div className="flex-1 bg-white rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/30 overflow-hidden flex flex-col">
                                 <div className="overflow-y-auto flex-1 custom-scrollbar">
-                                    <table className="w-full text-left border-collapse">
-                                        <thead className="sticky top-0 z-10 bg-slate-50/90 backdrop-blur-md">
-                                            <tr className="border-b border-slate-200">
-                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Month</th>
-                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Description</th>
-                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Dr</th>
-                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Cr</th>
-                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40 text-center">Paid</th>
-                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Actions</th>
-                                                <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Balance</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 font-bold">
-                                            {loading ? (
-                                                <tr><td colSpan={7} className="py-24 text-center text-slate-400 font-black animate-pulse uppercase tracking-widest">Compiling Records...</td></tr>
-                                            ) : filteredInvoices.length === 0 ? (
-                                                <tr><td colSpan={7} className="py-24 text-center text-slate-300 font-bold">No records for this selection.</td></tr>
-                                            ) : (
-                                                filteredInvoices.map((inv) => {
-                                                    const balance = inv.amount - inv.paidAmount;
-                                                    const normalizeMonth = (value) => {
-                                                        if (!value || typeof value !== 'string') return null;
-                                                        const raw = value.trim();
-                                                        const m2 = raw.match(/^(\d{4})-(\d{2})$/);
-                                                        if (m2) return `${m2[1]}-${m2[2]}`;
-                                                        const m1 = raw.match(/^(\d{4})-(\d{1})$/);
-                                                        if (m1) return `${m1[1]}-0${m1[2]}`;
-                                                        return null;
-                                                    };
-                                                    const createdMonth = inv.createdAt ? new Date(inv.createdAt).toISOString().slice(0, 7) : '';
-                                                    const billingMonthNorm = normalizeMonth(inv.billingMonth);
-                                                    const isHormaris = typeof inv?.isHormaris === 'boolean'
-                                                        ? inv.isHormaris
-                                                        : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
+                                    <StandardTable
+                                        isLoading={loading}
+                                        loadingMessage="Compiling Records..."
+                                        items={filteredInvoices}
+                                        rows={filteredInvoices}
+                                        columns={[
+                                            { key: 'month', label: 'Month' },
+                                            { key: 'description', label: 'Description' },
+                                            { key: 'dr', label: 'Dr', align: 'right' },
+                                            { key: 'cr', label: 'Cr', align: 'right' },
+                                            { key: 'paid', label: 'Paid', align: 'center' },
+                                            { key: 'actions', label: 'Actions', align: 'center', noPrint: true, tdClassName: 'no-print' },
+                                            { key: 'balance', label: 'Balance', align: 'right' },
+                                        ]}
+                                        getRowKey={(row) => row?._id}
+                                        emptyTitle="No records for this selection."
+                                        tableProps={{
+                                            shellClassName: 'ring-0 shadow-none rounded-none',
+                                            theadClassName: 'sticky top-0 z-10 bg-slate-50/90 backdrop-blur-md',
+                                            useDefaultHeaderStyles: false,
+                                            headerRowClassName: 'border-b border-slate-200',
+                                            tbodyClassName: 'divide-y divide-slate-100 font-bold',
+                                            renderHeader: () => (
+                                                <tr className="border-b border-slate-200">
+                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Month</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Description</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Dr</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Cr</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40 text-center">Paid</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center no-print">Actions</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Balance</th>
+                                                </tr>
+                                            ),
+                                            renderBody: ({ rows }) => (
+                                                <>
+                                                    {(rows || []).map((inv) => {
+                                                        const balance = Number(inv?.amount || 0) - Number(inv?.paidAmount || 0);
+                                                        const normalizeMonth = (value) => {
+                                                            if (!value || typeof value !== 'string') return null;
+                                                            const raw = value.trim();
+                                                            const m2 = raw.match(/^(\d{4})-(\d{2})$/);
+                                                            if (m2) return `${m2[1]}-${m2[2]}`;
+                                                            const m1 = raw.match(/^(\d{4})-(\d{1})$/);
+                                                            if (m1) return `${m1[1]}-0${m1[2]}`;
+                                                            return null;
+                                                        };
+                                                        const createdMonth = inv?.createdAt ? new Date(inv.createdAt).toISOString().slice(0, 7) : '';
+                                                        const billingMonthNorm = normalizeMonth(inv?.billingMonth);
+                                                        const isHormaris = typeof inv?.isHormaris === 'boolean'
+                                                            ? inv.isHormaris
+                                                            : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
 
-                                                    return (
-                                                        <tr key={inv._id} className="hover:bg-slate-50/50 transition-all">
-                                                            <td className="py-5 px-8">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="bg-slate-100 text-slate-900 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{inv.billingMonth || '—'}</span>
-                                                                    {isHormaris ? (
-                                                                        <span className="bg-slate-900 text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Hormaris</span>
-                                                                    ) : null}
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-5 px-8">
-                                                                <span className="text-sm text-slate-900">{inv.title || 'Tuition Fee'}</span>
-                                                            </td>
-                                                            <td className="py-5 px-8 text-right tabular-nums text-slate-900 font-black">${Number(inv.amount).toFixed(2)}</td>
-                                                            <td className="py-5 px-8 text-right tabular-nums text-green-600">${Number(inv.paidAmount).toFixed(2)}</td>
-                                                            <td className="py-5 px-8">
-                                                                <input
-                                                                    type="number"
-                                                                    className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-900 outline-none text-center focus:bg-white focus:ring-4 focus:ring-blue-600/10 transition-all"
-                                                                    placeholder="0.00"
-                                                                    value={editingPaid[inv._id] || ''}
-                                                                    onChange={e => handlePaidChange(inv._id, e.target.value)}
-                                                                />
-                                                            </td>
-                                                            <td className="py-5 px-8">
-                                                                <div className="flex items-center justify-center gap-2">
-                                                                    <button
-                                                                        onClick={() => handleSavePayment(inv)}
-                                                                        disabled={processingId === inv._id || inv.paidAmount >= inv.amount}
-                                                                        className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:opacity-90 shadow-lg disabled:opacity-20"
-                                                                    >
-                                                                        <Save size={16} />
-                                                                    </button>
-                                                                    <button className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black shadow-lg">
-                                                                        <Printer size={16} />
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                            <td className="py-5 px-8 text-right tabular-nums">
-                                                                <div className="flex flex-col items-end leading-tight">
-                                                                    <span className="text-red-500">${balance.toFixed(2)}</span>
-                                                                    {isHormaris && balance > 0 ? (
-                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-red-600">Hormaris</span>
-                                                                    ) : null}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            )}
-                                        </tbody>
-                                    </table>
+                                                        return (
+                                                            <tr key={inv._id} className="hover:bg-slate-50/50 transition-all">
+                                                                <td className="py-5 px-8">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="bg-slate-100 text-slate-900 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{inv.billingMonth || '—'}</span>
+                                                                        {isHormaris ? (
+                                                                            <span className="bg-slate-900 text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Hormaris</span>
+                                                                        ) : null}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-5 px-8">
+                                                                    <span className="text-sm text-slate-900">{inv.title || 'Tuition Fee'}</span>
+                                                                </td>
+                                                                <td className="py-5 px-8 text-right tabular-nums text-slate-900 font-black">${Number(inv.amount || 0).toFixed(2)}</td>
+                                                                <td className="py-5 px-8 text-right tabular-nums text-green-600">${Number(inv.paidAmount || 0).toFixed(2)}</td>
+                                                                <td className="py-5 px-8">
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-900 outline-none text-center focus:bg-white focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                                                        placeholder="0.00"
+                                                                        value={editingPaid[inv._id] || ''}
+                                                                        onChange={e => handlePaidChange(inv._id, e.target.value)}
+                                                                    />
+                                                                </td>
+                                                                <td className="py-5 px-8 no-print">
+                                                                    <div className="flex items-center justify-center gap-2">
+                                                                        <button
+                                                                            onClick={() => handleSavePayment(inv)}
+                                                                            disabled={processingId === inv._id || Number(inv.paidAmount || 0) >= Number(inv.amount || 0)}
+                                                                            className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:opacity-90 shadow-lg disabled:opacity-20"
+                                                                        >
+                                                                            <Save size={16} />
+                                                                        </button>
+                                                                        <button className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black shadow-lg">
+                                                                            <Printer size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-5 px-8 text-right tabular-nums">
+                                                                    <div className="flex flex-col items-end leading-tight">
+                                                                        <span className="text-red-500">${Number(balance || 0).toFixed(2)}</span>
+                                                                        {isHormaris && balance > 0 ? (
+                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-red-600">Hormaris</span>
+                                                                        ) : null}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </>
+                                            ),
+                                        }}
+                                    />
                                 </div>
                             </div>
                         </>

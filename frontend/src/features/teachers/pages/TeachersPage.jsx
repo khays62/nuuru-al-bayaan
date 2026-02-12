@@ -325,6 +325,7 @@ export default function TeachersPage() {
 			{ key: 'teacherId', label: t('teachers.table.columns.teacherId'), get: (tch) => tch?.teacherId || '' },
 			{ key: 'email', label: t('teachers.table.columns.email'), get: (tch) => tch?.email || '' },
 			{ key: 'phone', label: t('teachers.table.columns.phone'), get: (tch) => tch?.phone || '' },
+			{ key: 'salary', label: t('teachers.table.columns.salary'), get: (tch) => Number(tch?.salary || 0) },
 			{ key: 'createdAt', label: t('teachers.table.columns.createdAt'), get: (tch) => (tch?.createdAt ? dtf.format(new Date(tch.createdAt)) : '') },
 			{ key: 'status', label: t('teachers.table.columns.status'), get: (tch) => tch?.status || '' },
 			// actions are UI-only; never export

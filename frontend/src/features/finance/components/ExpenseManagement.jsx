@@ -1,11 +1,39 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Filter, FileText, Tags } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Trash2, FileText, Tags, Printer, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
+
 import financeService from '../api/finance';
+import { listExpenses as listExpensesApi, deleteExpense as deleteExpenseApi, updateExpense as updateExpenseApi } from '../api/expensesApi';
+import { expenseKeys, categoryKeys } from '../queryKeys';
+
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import Tabs from '../../attendance/components/Tabs.jsx';
+import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import FormField from '../../../shared/components/ui/FormField.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import PdfDownloadButton from '../../../shared/components/exports/downloadButtons/PdfDownloadButton.jsx';
+import ExcelDownloadButton from '../../../shared/components/exports/downloadButtons/ExcelDownloadButton.jsx';
+import CsvDownloadButton from '../../../shared/components/exports/downloadButtons/CsvDownloadButton.jsx';
+import CopyTableButton from '../../../shared/components/exports/downloadButtons/CopyTableButton.jsx';
+import headerImg from '../../../assets/nuuruBayaanHeader.png';
+
+import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
+import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
+
 import NewExpenseModal from './NewExpenseModal';
 
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
+
 export default function ExpenseManagement() {
+    const { t } = useI18n();
+
     const [expandedSection, setExpandedSection] = useState('ledger');
+
+    const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
 
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const d = new Date();
@@ -13,24 +41,24 @@ export default function ExpenseManagement() {
         return `${d.getFullYear()}-${m}`;
     });
 
+    const [sortBy, setSortBy] = useState('date');
+    const [sortDir, setSortDir] = useState('desc');
     const [page, setPage] = useState(1);
-    const pageSize = 10;
+    const [limit, setLimit] = useState(10);
 
     const [staffNameById, setStaffNameById] = useState({});
 
-    const [expenses, setExpenses] = useState([]);
-    const [loadingExpenses, setLoadingExpenses] = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [showEditExpenseModal, setShowEditExpenseModal] = useState(false);
+    const [editingExpense, setEditingExpense] = useState(null);
 
-    const [categories, setCategories] = useState([]);
-    const [loadingCategories, setLoadingCategories] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
-    const [creatingCategory, setCreatingCategory] = useState(false);
+    const [newCategoryBudget, setNewCategoryBudget] = useState('');
 
-    const totalExpenses = useMemo(
-        () => (expenses || []).reduce((sum, e) => sum + Number(e?.amount || 0), 0),
-        [expenses]
-    );
+    const [editingCategory, setEditingCategory] = useState(null); // { _id, name, budget }
+    const [showEditCategoryModal, setShowEditCategoryModal] = useState(false);
+
+    const queryClient = useQueryClient();
 
     const monthRange = useMemo(() => {
         if (!selectedMonth || !/^[0-9]{4}-[0-9]{2}$/.test(selectedMonth)) return null;
@@ -44,63 +72,178 @@ export default function ExpenseManagement() {
         return { from, to };
     }, [selectedMonth]);
 
-    const totalPages = useMemo(() => {
-        const total = (expenses || []).length;
-        return Math.max(1, Math.ceil(total / pageSize));
-    }, [expenses, pageSize]);
-
-    const pagedExpenses = useMemo(() => {
-        const start = (page - 1) * pageSize;
-        return (expenses || []).slice(start, start + pageSize);
-    }, [expenses, page, pageSize]);
-
-    const fetchExpenses = async () => {
-        setLoadingExpenses(true);
-        try {
-            const res = monthRange
-                ? await financeService.getExpenseChargesByDate({ from: monthRange.from, to: monthRange.to })
-                : await financeService.getExpenses();
+    const expensesQuery = useQuery({
+        queryKey: expenseKeys.list({ from: monthRange?.from, to: monthRange?.to }),
+        enabled: expandedSection === 'ledger' || expandedSection === 'categories',
+        queryFn: async ({ signal }) => {
+            const res = await listExpensesApi({ from: monthRange?.from, to: monthRange?.to }, { signal });
             const list = Array.isArray(res) ? res : (res?.rows || res?.data || []);
-            setExpenses(Array.isArray(list) ? list : []);
-            setPage(1);
-        } catch {
-            toast.error('Failed to load expenses');
-        } finally {
-            setLoadingExpenses(false);
-        }
-    };
+            return Array.isArray(list) ? list : [];
+        },
+        placeholderData: (prev) => prev,
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
 
-    const fetchCategories = async () => {
-        setLoadingCategories(true);
-        try {
+    const categoriesQuery = useQuery({
+        queryKey: categoryKeys.list({ type: 'expense' }),
+        enabled: expandedSection === 'categories',
+        queryFn: async ({ signal }) => {
+            // financeService methods don't accept signal; use api axios directly is heavier.
+            // We'll keep it simple and rely on React Query cancellation semantics here.
+            void signal;
             const res = await financeService.getFinanceCategories('expense');
             const list = Array.isArray(res) ? res : (res?.data || []);
-            setCategories(Array.isArray(list) ? list : []);
-        } catch {
-            toast.error('Failed to load categories');
-        } finally {
-            setLoadingCategories(false);
+            return Array.isArray(list) ? list : [];
+        },
+        placeholderData: (prev) => prev,
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
+
+    const getFinanceExpensesErrorText = (error, fallbackKey, fallbackDefaultValue) => {
+        const code = error?.response?.data?.code;
+        const serverMessage = error?.response?.data?.message;
+
+        if (code) {
+            return t(`finance.expenses.apiErrors.${code}`, {
+                defaultValue: serverMessage || fallbackDefaultValue,
+            });
         }
+
+        if (serverMessage) return serverMessage;
+
+        return t(fallbackKey, { defaultValue: fallbackDefaultValue });
     };
 
+    const deleteExpenseMutation = useMutation({
+        mutationFn: (id) => deleteExpenseApi(id),
+        onSuccess: () => {
+            toast.success(t('finance.expenses.toasts.deleted', { defaultValue: 'Expense deleted' }));
+            try {
+                queryClient.invalidateQueries({ queryKey: expenseKeys.listBase, refetchType: 'active' });
+            } catch { /* ignore */ }
+        },
+        onError: (error) => {
+            toast.error(getFinanceExpensesErrorText(error, 'finance.expenses.toasts.deleteFailed', 'Delete failed'));
+        },
+    });
+
+    const updateExpenseMutation = useMutation({
+        mutationFn: ({ id, payload }) => updateExpenseApi(id, payload),
+        onSuccess: () => {
+            toast.success(t('finance.expenses.toasts.updated', { defaultValue: 'Expense updated' }));
+            try {
+                queryClient.invalidateQueries({ queryKey: expenseKeys.listBase, refetchType: 'active' });
+            } catch { /* ignore */ }
+        },
+        onError: (error) => {
+            toast.error(getFinanceExpensesErrorText(error, 'finance.expenses.toasts.updateFailed', 'Update failed'));
+        },
+    });
+
+    const createCategoryMutation = useMutation({
+        mutationFn: (payload) => financeService.createFinanceCategory(payload),
+        onSuccess: () => {
+            toast.success(t('finance.expenses.toasts.categoryCreated', { defaultValue: 'Category created' }));
+            setNewCategoryName('');
+            setNewCategoryBudget('');
+            try {
+                queryClient.invalidateQueries({ queryKey: categoryKeys.listBase, refetchType: 'active' });
+            } catch { /* ignore */ }
+        },
+        onError: (error) => {
+            toast.error(getFinanceExpensesErrorText(error, 'finance.expenses.toasts.categoryCreateFailed', 'Failed to create category'));
+        },
+    });
+
+    const updateCategoryMutation = useMutation({
+        mutationFn: ({ id, payload }) => financeService.updateFinanceCategory(id, payload),
+        onSuccess: () => {
+            toast.success(t('finance.expenses.toasts.categoryUpdated', { defaultValue: 'Category updated' }));
+            try {
+                queryClient.invalidateQueries({ queryKey: categoryKeys.listBase, refetchType: 'active' });
+            } catch { /* ignore */ }
+        },
+        onError: (error) => {
+            toast.error(getFinanceExpensesErrorText(error, 'finance.expenses.toasts.categoryUpdateFailed', 'Failed to update category'));
+        },
+    });
+
+    const deleteCategoryMutation = useMutation({
+        mutationFn: (id) => financeService.deleteFinanceCategory(id),
+        onSuccess: () => {
+            toast.success(t('finance.expenses.toasts.categoryDeleted', { defaultValue: 'Category archived' }));
+            try {
+                queryClient.invalidateQueries({ queryKey: categoryKeys.listBase, refetchType: 'active' });
+            } catch { /* ignore */ }
+        },
+        onError: (error) => {
+            toast.error(getFinanceExpensesErrorText(error, 'finance.expenses.toasts.categoryDeleteFailed', 'Failed to archive category'));
+        },
+    });
+
+    const expenses = expensesQuery.data || [];
+    const categories = categoriesQuery.data || [];
+
+    const totalExpenses = useMemo(
+        () => (expenses || []).reduce((sum, e) => sum + Number(e?.amount || 0), 0),
+        [expenses]
+    );
+
+    const sortedItems = useMemo(() => {
+        const arr = Array.isArray(expenses) ? [...expenses] : [];
+        const dir = sortDir === 'asc' ? 1 : -1;
+        const key = sortBy;
+        arr.sort((a, b) => {
+            if (key === 'date') {
+                const ta = new Date(a?.date || 0).getTime();
+                const tb = new Date(b?.date || 0).getTime();
+                if (ta < tb) return -1 * dir;
+                if (ta > tb) return 1 * dir;
+                return 0;
+            }
+            if (key === 'amount') {
+                const va = Number(a?.amount || 0);
+                const vb = Number(b?.amount || 0);
+                if (va < vb) return -1 * dir;
+                if (va > vb) return 1 * dir;
+                return 0;
+            }
+            const va = String(a?.[key] || '').toLowerCase();
+            const vb = String(b?.[key] || '').toLowerCase();
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+            return 0;
+        });
+        return arr;
+    }, [expenses, sortBy, sortDir]);
+
+    // Keep page in range if total shrinks
     useEffect(() => {
-        if (expandedSection === 'ledger') {
-            fetchExpenses();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [expandedSection, selectedMonth]);
+        const total = sortedItems.length;
+        const tp = total <= 0 ? 1 : (limit >= total ? 1 : Math.ceil(total / limit));
+        if (page > tp) setPage(tp);
+    }, [sortedItems.length, limit, page]);
+
+    const total = sortedItems.length;
+    const totalPages = total <= 0 ? 1 : (limit >= total ? 1 : Math.ceil(total / limit));
+    const currentRows = useMemo(() => {
+        if (!Array.isArray(sortedItems)) return [];
+        if (total <= 0) return [];
+        if (limit >= total) return sortedItems;
+        const start = (Math.max(1, page) - 1) * limit;
+        return sortedItems.slice(start, start + limit);
+    }, [sortedItems, page, limit, total]);
 
     useEffect(() => {
-        if (expandedSection === 'categories') {
-            fetchCategories();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [expandedSection]);
+        // no-op: categories are now fetched via React Query
+    }, []);
 
     useEffect(() => {
         if (expandedSection !== 'ledger') return;
         const ids = new Set();
-        for (const e of expenses || []) {
+        for (const e of sortedItems || []) {
             const text = `${e?.title || ''}\n${e?.description || ''}`;
             const matches = text.matchAll(/staff\s*ID\s*:\s*([a-f0-9]{24})/gi);
             for (const m of matches) {
@@ -141,7 +284,7 @@ export default function ExpenseManagement() {
         return () => {
             cancelled = true;
         };
-    }, [expandedSection, expenses, staffNameById]);
+    }, [expandedSection, sortedItems, staffNameById]);
 
     const renderDescription = (desc) => {
         const text = String(desc || '');
@@ -154,239 +297,463 @@ export default function ExpenseManagement() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure?')) return;
+        if (!window.confirm(t('finance.expenses.confirms.delete', { defaultValue: 'Are you sure? This cannot be undone.' }))) return;
         try {
-            await financeService.deleteExpense(id);
-            toast.success('Expense Deleted');
-            fetchExpenses();
+            await deleteExpenseMutation.mutateAsync(id);
         } catch {
-            toast.error('Delete Failed');
+            // onError already shows a toast; prevent unhandled promise rejection noise
         }
     };
+
+    const openEditExpense = (row) => {
+        if (!row?._id) return;
+        setEditingExpense(row);
+        setShowEditExpenseModal(true);
+    };
+
+    const onSort = (field) => {
+        if (sortBy === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+        else {
+            setSortBy(field);
+            setSortDir('asc');
+        }
+    };
+
+    const isLoading = Boolean(expensesQuery.isLoading && expensesQuery.data == null);
+    const canExport = Boolean(!isLoading && Array.isArray(sortedItems) && sortedItems.length > 0);
+    const buildExportPayload = useCallback(async () => {
+        if (!canExport) return null;
+
+        const STORAGE_KEY = 'finance:expenses:columns:v1';
+        let visible = {};
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') visible = parsed;
+            }
+        } catch { /* ignore */ }
+        const isVisible = (key) => visible?.[String(key)] !== false;
+
+        const dtf = new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+        const cols = [
+            { key: 'date', label: t('finance.expenses.columns.date', { defaultValue: 'Date' }), get: (e) => (e?.date ? dtf.format(new Date(e.date)) : '') },
+            { key: 'category', label: t('finance.expenses.columns.category', { defaultValue: 'Category' }), get: (e) => String(e?.category || '') },
+            { key: 'title', label: t('finance.expenses.columns.title', { defaultValue: 'Title' }), get: (e) => String(e?.title || '') },
+            { key: 'description', label: t('finance.expenses.columns.description', { defaultValue: 'Description' }), get: (e) => String(renderDescription(e?.description || '')) },
+            { key: 'amount', label: t('finance.expenses.columns.amount', { defaultValue: 'Amount' }), get: (e) => Number(e?.amount || 0) },
+            {
+                key: 'auditor',
+                label: t('finance.expenses.columns.auditor', { defaultValue: 'Auditor' }),
+                get: (e) => String(e?.approvedBy?.fullName || e?.approvedBy?.name || ''),
+            },
+        ].filter((c) => isVisible(c.key));
+
+        const headers = cols.map((c) => c.label);
+        const rows = (sortedItems || []).map((e) => cols.map((c) => c.get(e)));
+
+        const subtitleParts = [
+            selectedMonth ? t('finance.expenses.export.month', { defaultValue: 'Month: {{month}}', month: selectedMonth }) : null,
+        ].filter(Boolean);
+
+        return {
+            filename: `expenses-${selectedMonth || 'all'}`,
+            sheetName: 'Expenses',
+            title: t('finance.expenses.export.title', { defaultValue: 'Expenses' }),
+            subtitle: subtitleParts.join(' • '),
+            headerImageSrc: headerImg,
+            headers,
+            rows,
+        };
+    }, [canExport, sortedItems, selectedMonth, renderDescription, t]);
 
     const handleCreateCategory = async () => {
         const trimmed = String(newCategoryName || '').trim();
         if (!trimmed) {
-            toast.error('Category name is required');
+            toast.error(t('finance.expenses.toasts.categoryNameRequired', { defaultValue: 'Category name is required' }));
+            return;
+        }
+        const budgetNum = newCategoryBudget === '' ? undefined : Number(newCategoryBudget);
+        if (budgetNum !== undefined && (!Number.isFinite(budgetNum) || budgetNum < 0)) {
+            toast.error(t('finance.expenses.toasts.budgetInvalid', { defaultValue: 'Budget must be a valid number' }));
             return;
         }
 
-        setCreatingCategory(true);
         try {
-            await financeService.createFinanceCategory({ name: trimmed, type: 'expense' });
-            toast.success('Category created');
-            setNewCategoryName('');
-            fetchCategories();
-        } catch (error) {
-            toast.error(error?.response?.data?.message || 'Failed to create category');
-        } finally {
-            setCreatingCategory(false);
+            await createCategoryMutation.mutateAsync({ name: trimmed, type: 'expense', budget: budgetNum });
+        } catch {
+            // onError already shows a toast
         }
     };
 
-    const tabs = [
-        { id: 'ledger', label: 'Expense Ledger', icon: FileText },
-        { id: 'categories', label: 'Expense Categories', icon: Tags },
-    ];
+    const handleDeleteCategory = async (cat) => {
+        if (!cat?._id) return;
+        const catName = String(cat?.name || '').trim();
+        const usedCount = (expenses || []).reduce((sum, e) => sum + (String(e?.category || '').trim() === catName ? 1 : 0), 0);
+        if (usedCount > 0) {
+            toast.error(t('finance.expenses.apiErrors.FIN_CATEGORY_IN_USE', { defaultValue: 'Category is already used in expenses' }));
+            return;
+        }
+        if (!window.confirm(t('finance.expenses.confirms.deleteCategory', { defaultValue: 'Archive this category? It will no longer appear in new expenses.' }))) return;
+        try {
+            await deleteCategoryMutation.mutateAsync(cat._id);
+        } catch {
+            // toast handled
+        }
+    };
+
+    const openEditCategory = (cat) => {
+        if (!cat?._id) return;
+        const catName = String(cat?.name || '').trim();
+        const inUse = (expenses || []).some((e) => String(e?.category || '').trim() === catName);
+        setEditingCategory({
+            _id: cat._id,
+            name: String(cat?.name || ''),
+            budget: cat?.budget ?? 0,
+            originalName: String(cat?.name || ''),
+            inUse,
+        });
+        setShowEditCategoryModal(true);
+    };
+
+    const handleSaveCategory = async (e) => {
+        if (e?.preventDefault) e.preventDefault();
+        if (!editingCategory?._id) return;
+        const name = String(editingCategory?.name || '').trim();
+        if (!name) {
+            toast.error(t('finance.expenses.toasts.categoryNameRequired', { defaultValue: 'Category name is required' }));
+            return;
+        }
+        if (editingCategory?.inUse && String(editingCategory?.originalName || '').trim() !== name) {
+            toast.error(t('finance.expenses.apiErrors.FIN_CATEGORY_IN_USE', { defaultValue: 'Category is already used in expenses' }));
+            return;
+        }
+        const budget = Number(editingCategory?.budget ?? 0);
+        if (!Number.isFinite(budget) || budget < 0) {
+            toast.error(t('finance.expenses.toasts.budgetInvalid', { defaultValue: 'Budget must be a valid number' }));
+            return;
+        }
+
+        try {
+            await updateCategoryMutation.mutateAsync({ id: editingCategory._id, payload: { name, budget } });
+            setShowEditCategoryModal(false);
+            setEditingCategory(null);
+        } catch {
+            // onError already shows a toast
+        }
+    };
+
+    const renderTabs = () => (
+        <div className="mb-8 no-print">
+            <Tabs
+                value={expandedSection}
+                onChange={setExpandedSection}
+                tone="blue"
+                options={[
+                    {
+                        value: 'ledger',
+                        label: (
+                            <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                                <FileText size={14} />
+                                {t('finance.expenses.tabs.ledger', { defaultValue: 'Expense Ledger' })}
+                            </span>
+                        ),
+                    },
+                    {
+                        value: 'categories',
+                        label: (
+                            <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                                <Tags size={14} />
+                                {t('finance.expenses.tabs.categories', { defaultValue: 'Expense Categories' })}
+                            </span>
+                        ),
+                    },
+                ]}
+            />
+        </div>
+    );
 
     return (
-        <div className="space-y-6">
-            <div className="inline-flex flex-wrap gap-2 mb-8 bg-slate-50 p-2 rounded-2xl border border-slate-200">
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setExpandedSection(tab.id)}
-                        className={`flex items-center gap-3 px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all
-                            ${expandedSection === tab.id
-                                ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 scale-[1.02]'
-                                : 'text-slate-500 hover:bg-white hover:text-slate-900'}`}
-                    >
-                        <tab.icon size={14} className={expandedSection === tab.id ? 'text-blue-600' : 'text-slate-400'} />
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+        <div className="space-y-6 print-no-space with-print-header with-print-footer">
+            <PrintHeader />
+            <PrintFooter left={t('common.generatedBy', { defaultValue: 'Generated by Nuuru Al-Bayaan' })} />
+            {renderTabs()}
 
-            <div className="min-h-150 bg-white rounded-4xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="min-h-150">
                 {expandedSection === 'ledger' && (
-                    <div>
-                        <div className="flex flex-wrap items-center justify-between p-8 bg-slate-50/50 border-b border-slate-100">
-                            <div className="flex items-center gap-6">
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Periodic Spend</p>
-                                    <p className="text-2xl font-black text-slate-900 tracking-tight">${Number(totalExpenses || 0).toLocaleString()}</p>
-                                </div>
-                                <div className="h-10 w-px bg-slate-200" />
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Approved Audit Records</p>
-                                    <p className="text-2xl font-black text-blue-600 tracking-tight">{expenses.length}</p>
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 flex flex-wrap items-center justify-between gap-4 no-print">
+                            <div className="min-w-0">
+                                <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter truncate">{t('finance.expenses.ledger.title', { defaultValue: 'Expense Ledger' })}</h4>
+                                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-2">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{t('finance.expenses.ledger.kpiSpend', { defaultValue: 'Periodic Spend' })}</p>
+                                        <p className="text-2xl font-black text-slate-900 tracking-tight">${Number(totalExpenses || 0).toLocaleString()}</p>
+                                    </div>
+                                    <div className="hidden sm:block h-10 w-px bg-slate-200" />
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{t('finance.expenses.ledger.kpiRecords', { defaultValue: 'Approved Audit Records' })}</p>
+                                        <p className="text-2xl font-black text-blue-600 tracking-tight">{expenses.length}</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="shrink-0 flex flex-wrap items-center gap-2">
                                 <input
                                     type="month"
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(e.target.value)}
-                                    className="h-12 px-4 bg-white border border-slate-200 rounded-xl font-black text-[11px] text-slate-900 outline-none focus:ring-4 focus:ring-blue-600/10"
-                                    aria-label="Select month"
+                                    className="h-10 px-3 bg-white border border-slate-300 rounded-(--nb-radius-md) text-sm text-slate-900 shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                    aria-label={t('finance.expenses.ledger.monthAria', { defaultValue: 'Select month' })}
                                 />
-                                <button
+
+                                <ActionButton
+                                    variant="brand"
+                                    icon={<Plus size={16} />}
                                     onClick={() => setShowModal(true)}
-                                    className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-200 flex items-center gap-2"
                                 >
-                                    <Plus size={14} /> Record New Expense
-                                </button>
-                                <button
-                                    type="button"
-                                    className="p-3 bg-white border border-slate-200 text-slate-400 hover:text-slate-900 rounded-xl transition-all"
-                                    title="Filter"
+                                    {t('finance.expenses.actions.newExpense', { defaultValue: 'Record New Expense' })}
+                                </ActionButton>
+
+                                <ActionButton
+                                    variant="neutral"
+                                    className={outlineBtn}
+                                    icon={<Printer size={16} />}
+                                    disabled={!canExport}
+                                    onClick={() => { if (canExport) setTimeout(() => window.print(), 0); }}
+                                    title={t('common.actions.print', { defaultValue: 'Print' })}
                                 >
-                                    <Filter size={18} />
-                                </button>
+                                    {t('common.actions.print', { defaultValue: 'Print' })}
+                                </ActionButton>
+
+                                <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-white border-b border-slate-100">
-                                        <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date / Category</th>
-                                        <th className="py-6 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title & Description</th>
-                                        <th className="py-6 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
-                                        <th className="py-6 px-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Auditor</th>
-                                        <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {loadingExpenses ? (
-                                        <tr>
-                                            <td colSpan="5" className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest italic">
-                                                Synchronizing with ledger...
-                                            </td>
-                                        </tr>
-                                    ) : expenses.length === 0 ? (
-                                        <tr>
-                                            <td colSpan="5" className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest">
-                                                No expense records found.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        pagedExpenses.map((e) => (
-                                            <tr key={e?._id} className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="py-6 px-8">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-black text-slate-900">
-                                                            {e?.date ? new Date(e.date).toLocaleDateString() : '—'}
-                                                        </span>
-                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                            {String(e?.category || '—')}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-6">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-black text-slate-900">{String(e?.title || '—')}</span>
-                                                        {e?.description ? (
-                                                            <span className="text-[11px] text-slate-500 mt-1 line-clamp-2">{renderDescription(e.description)}</span>
-                                                        ) : null}
-                                                    </div>
-                                                </td>
-                                                <td className="py-6 px-6">
-                                                    <span className="font-black text-slate-900">${Number(e?.amount || 0).toLocaleString()}</span>
-                                                </td>
-                                                <td className="py-6 px-6">
-                                                    <span className="text-sm font-black text-slate-900">
-                                                        {e?.approvedBy?.name || e?.createdBy?.name || '—'}
-                                                    </span>
-                                                </td>
-                                                <td className="py-6 px-8 text-right">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDelete(e._id)}
-                                                        className="inline-flex items-center justify-center p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition"
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl print-container print-fit-wide">
+                            <StandardTable
+                            isLoading={isLoading}
+                            error={expensesQuery.isError ? (expensesQuery.error?.data?.message || expensesQuery.error?.message || t('finance.expenses.toasts.loadFailed', { defaultValue: 'Failed to load expenses' })) : null}
+                            items={sortedItems}
+                            loadingMessage={t('finance.expenses.ledger.loading', { defaultValue: 'Loading expenses…' })}
+                            loadingVariant="table"
+                            loadingRows={6}
+                            loadingColumns={7}
+                            emptyTitle={t('finance.expenses.ledger.emptyTitle', { defaultValue: 'No expense records found.' })}
+                            emptyDescription=""
 
-                        <div className="flex items-center justify-between px-8 py-5 border-t border-slate-100 bg-white">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Page {page} of {totalPages}
-                            </p>
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                    disabled={page <= 1}
-                                    className="px-4 py-2 bg-white border border-slate-200 rounded-xl font-black uppercase text-[10px] tracking-widest text-slate-900 disabled:opacity-50"
-                                >
-                                    Prev
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                    disabled={page >= totalPages}
-                                    className="px-4 py-2 bg-white border border-slate-200 rounded-xl font-black uppercase text-[10px] tracking-widest text-slate-900 disabled:opacity-50"
-                                >
-                                    Next
-                                </button>
-                            </div>
+                            rows={currentRows}
+                            columns={[
+                                { key: 'date', label: t('finance.expenses.columns.date', { defaultValue: 'Date' }), sortable: true, field: 'date' },
+                                { key: 'category', label: t('finance.expenses.columns.category', { defaultValue: 'Category' }), sortable: true, field: 'category' },
+                                { key: 'title', label: t('finance.expenses.columns.title', { defaultValue: 'Title' }), sortable: true, field: 'title' },
+                                { key: 'description', label: t('finance.expenses.columns.description', { defaultValue: 'Description' }), sortable: false, field: 'description' },
+                                { key: 'amount', label: t('finance.expenses.columns.amount', { defaultValue: 'Amount' }), sortable: true, field: 'amount' },
+                                { key: 'auditor', label: t('finance.expenses.columns.auditor', { defaultValue: 'Auditor' }), sortable: false, field: 'auditor' },
+                                { key: 'actions', label: t('common.columns.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, tdClassName: 'no-print' },
+                            ]}
+                            storageKey="finance:expenses:columns:v1"
+                            controlsProps={{
+                                limit,
+                                total,
+                                onLimit: (v) => {
+                                    setLimit(v);
+                                    setPage(1);
+                                },
+                                className: 'px-8 bg-white',
+                            }}
+                            sortBy={sortBy}
+                            sortDir={sortDir}
+                            onSort={onSort}
+                            getRowKey={(row) => row?._id || row?.id}
+                            renderCell={(row, col) => {
+                                switch (col.key) {
+                                    case 'date':
+                                        return row?.date ? new Date(row.date).toLocaleDateString() : '—';
+                                    case 'category':
+                                        return String(row?.category || '—');
+                                    case 'title':
+                                        return String(row?.title || '—');
+                                    case 'description':
+                                        return row?.description ? renderDescription(row.description) : '';
+                                    case 'amount':
+                                        return `$${Number(row?.amount || 0).toLocaleString()}`;
+                                    case 'auditor':
+                                        return row?.approvedBy?.fullName || row?.approvedBy?.name || '—';
+                                    case 'actions':
+                                        return (
+                                            <RowActionButtons
+                                                actions={[
+                                                    {
+                                                        key: 'edit',
+                                                        label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                                        title: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                                        tone: 'edit',
+                                                        icon: <Pencil size={16} />,
+                                                        disabled: updateExpenseMutation.isPending,
+                                                        onClick: () => openEditExpense(row),
+                                                    },
+                                                    {
+                                                        key: 'delete',
+                                                        label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                                                        title: t('common.actions.delete', { defaultValue: 'Delete' }),
+                                                        tone: 'delete',
+                                                        icon: <Trash2 size={16} />,
+                                                        onClick: () => handleDelete(row?._id),
+                                                    },
+                                                ]}
+                                            />
+                                        );
+                                    default:
+                                        return '';
+                                }
+                            }}
+                            meta={{ page, totalPages, limit, total }}
+                            onPage={setPage}
+                            onLimit={(v) => { setLimit(v); setPage(1); }}
+                            showRowsSelector={false}
+                            paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+                            />
                         </div>
                     </div>
                 )}
 
                 {expandedSection === 'categories' && (
-                    <div>
-                        <div className="flex flex-wrap items-center justify-between p-8 bg-slate-50/50 border-b border-slate-100 gap-3">
-                            <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Expense Categories</p>
-                                <p className="text-2xl font-black text-slate-900 tracking-tight">{categories.length}</p>
+                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 flex flex-wrap items-center justify-between gap-4 no-print">
+                            <div className="min-w-0">
+                                <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter truncate">{t('finance.expenses.categories.title', { defaultValue: 'Expense Categories' })}</h4>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">
+                                    {t('finance.expenses.categories.count', { defaultValue: '{{count}} categories', count: categories.length })}
+                                </p>
                             </div>
 
-                            <div className="flex flex-wrap gap-2 items-center">
+                            <div className="shrink-0 flex flex-wrap gap-2 items-center">
                                 <input
                                     type="text"
                                     value={newCategoryName}
                                     onChange={(e) => setNewCategoryName(e.target.value)}
-                                    placeholder="New category name"
-                                    className="h-11 w-64 px-4 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-900 outline-none focus:ring-4 focus:ring-blue-600/10"
+                                    placeholder={t('finance.expenses.categories.newPlaceholder', { defaultValue: 'New category name' })}
+                                    className="h-10 w-64 px-3 bg-white border border-slate-300 rounded-(--nb-radius-md) text-sm text-slate-900 shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
                                 />
-                                <button
+                                <input
+                                    type="number"
+                                    value={newCategoryBudget}
+                                    onChange={(e) => setNewCategoryBudget(e.target.value)}
+                                    placeholder={t('finance.expenses.categories.budgetPlaceholder', { defaultValue: 'Budget (optional)' })}
+                                    className="h-10 w-44 px-3 bg-white border border-slate-300 rounded-(--nb-radius-md) text-sm text-slate-900 shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                    min="0"
+                                    step="0.01"
+                                />
+                                <ActionButton
                                     type="button"
+                                    variant="brand"
                                     onClick={handleCreateCategory}
-                                    disabled={creatingCategory}
-                                    className="h-11 px-6 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest disabled:opacity-60"
+                                    disabled={createCategoryMutation.isPending}
                                 >
-                                    {creatingCategory ? 'Creating...' : 'Create Category'}
-                                </button>
+                                    {createCategoryMutation.isPending
+                                        ? t('common.working', { defaultValue: 'WORKING…' })
+                                        : t('finance.expenses.actions.createCategory', { defaultValue: 'Create Category' })}
+                                </ActionButton>
                             </div>
                         </div>
 
-                        <div className="p-8">
-                            {loadingCategories ? (
-                                <div className="py-20 text-center text-slate-400 font-bold uppercase tracking-widest italic">
-                                    Loading categories...
+                        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6">
+                            {categoriesQuery.isLoading && categoriesQuery.data == null ? (
+                                <div className="py-16 text-center text-slate-400 font-bold uppercase tracking-widest italic">
+                                    {t('finance.expenses.categories.loading', { defaultValue: 'Loading categories…' })}
                                 </div>
                             ) : categories.length === 0 ? (
-                                <div className="py-20 text-center">
-                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">No categories yet</span>
+                                <div className="py-16 text-center">
+                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t('finance.expenses.categories.empty', { defaultValue: 'No categories yet' })}</span>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {categories.map((c) => (
-                                        <div key={c?._id} className="bg-white border border-slate-200 rounded-2xl p-5">
-                                            <p className="text-sm font-black text-slate-900">{String(c?.name || '—')}</p>
-                                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-2">Type: Expense</p>
-                                        </div>
-                                    ))}
+                                    {categories.map((c) => {
+                                        const catName = String(c?.name || '').trim();
+                                        const spent = (expenses || []).reduce((sum, e) => sum + (String(e?.category || '').trim() === catName ? Number(e?.amount || 0) : 0), 0);
+                                        const count = (expenses || []).reduce((sum, e) => sum + (String(e?.category || '').trim() === catName ? 1 : 0), 0);
+                                        const budget = Number(c?.budget || 0);
+                                        const hasBudget = Number.isFinite(budget) && budget > 0;
+                                        const over = hasBudget && spent > budget;
+                                        const remaining = hasBudget ? Math.max(0, budget - spent) : 0;
+
+                                        return (
+                                            <div
+                                                key={c?._id}
+                                                className={
+                                                    'group relative bg-white p-6 rounded-3xl border shadow-(--nb-shadow-md) ' +
+                                                    'border-slate-200 transition-all duration-200 ease-out ' +
+                                                    'hover:-translate-y-0.5 hover:border-blue-600/40 hover:shadow-xl hover:shadow-blue-600/5'
+                                                }
+                                            >
+                                                <div className="flex justify-between items-start gap-3 mb-5">
+                                                    <div className="min-w-0">
+                                                        <p className="text-lg font-black text-slate-900 truncate">{catName || '—'}</p>
+                                                        <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1 truncate">
+                                                            {selectedMonth
+                                                                ? t('finance.expenses.categories.monthTag', { defaultValue: 'Month: {{month}}', month: selectedMonth })
+                                                                : t('finance.expenses.categories.typeExpense', { defaultValue: 'Type: Expense' })}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="shrink-0 flex justify-end">
+                                                        <RowActionButtons
+                                                            actions={[
+                                                                {
+                                                                    key: 'edit',
+                                                                    label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                                                    title: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                                                    tone: 'edit',
+                                                                    icon: <Pencil size={16} />,
+                                                                    disabled: updateCategoryMutation.isPending,
+                                                                    onClick: () => openEditCategory(c),
+                                                                },
+                                                                {
+                                                                    key: 'delete',
+                                                                    label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                                                                    title: t('common.actions.delete', { defaultValue: 'Delete' }),
+                                                                    tone: 'delete',
+                                                                    icon: <Trash2 size={16} />,
+                                                                    disabled: deleteCategoryMutation.isPending || count > 0,
+                                                                    onClick: () => handleDeleteCategory(c),
+                                                                },
+                                                            ]}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 shadow-(--nb-shadow-sm)">
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('finance.expenses.categories.spent', { defaultValue: 'Spent' })}</p>
+                                                        <p className={"mt-1 text-2xl font-black tracking-tighter " + (over ? 'text-red-600' : 'text-slate-900')}>
+                                                            ${Number(spent || 0).toLocaleString()}
+                                                        </p>
+                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                                                            {t('finance.expenses.categories.records', { defaultValue: '{{count}} records', count })}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 shadow-(--nb-shadow-sm)">
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('finance.expenses.categories.budget', { defaultValue: 'Budget' })}</p>
+                                                        <p className="mt-1 text-2xl font-black text-slate-900 tracking-tighter">
+                                                            {hasBudget ? `$${Number(budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
+                                                        </p>
+                                                        {hasBudget ? (
+                                                            <p className={"text-[10px] font-bold uppercase tracking-widest mt-1 " + (over ? 'text-red-600' : 'text-slate-400')}>
+                                                                {over
+                                                                    ? t('finance.expenses.categories.overBudget', { defaultValue: 'Over budget' })
+                                                                    : t('finance.expenses.categories.remaining', { defaultValue: 'Remaining: ${{value}}', value: Number(remaining || 0).toLocaleString() })}
+                                                            </p>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -394,12 +761,81 @@ export default function ExpenseManagement() {
                 )}
             </div>
 
+            <Modal
+                isOpen={showEditCategoryModal}
+                onClose={() => { setShowEditCategoryModal(false); setEditingCategory(null); }}
+                title={t('finance.expenses.categories.editTitle', { defaultValue: 'Edit Category' })}
+                panelClassName="max-w-md"
+            >
+                <form onSubmit={handleSaveCategory} className="space-y-4">
+                    <FormField
+                        label={t('finance.expenses.categories.fields.name', { defaultValue: 'Name' })}
+                        required
+                        hint={
+                            editingCategory?.inUse
+                                ? t('finance.expenses.categories.renameLockedHint', { defaultValue: 'This category already has recorded expenses. Renaming is locked.' })
+                                : undefined
+                        }
+                    >
+                        <Input
+                            value={editingCategory?.name || ''}
+                            onChange={(e) => setEditingCategory((prev) => ({ ...(prev || {}), name: e.target.value }))}
+                            placeholder={t('finance.expenses.categories.newPlaceholder', { defaultValue: 'New category name' })}
+                            required
+                            disabled={Boolean(editingCategory?.inUse) || updateCategoryMutation.isPending}
+                        />
+                    </FormField>
+
+                    <FormField label={t('finance.expenses.categories.fields.budget', { defaultValue: 'Budget' })}>
+                        <Input
+                            type="number"
+                            value={String(editingCategory?.budget ?? '')}
+                            onChange={(e) => setEditingCategory((prev) => ({ ...(prev || {}), budget: e.target.value }))}
+                            placeholder={t('finance.expenses.categories.budgetPlaceholder', { defaultValue: 'Budget (optional)' })}
+                            min="0"
+                            step="0.01"
+                        />
+                    </FormField>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button type="button" variant="neutral" onClick={() => { setShowEditCategoryModal(false); setEditingCategory(null); }} disabled={updateCategoryMutation.isPending}>
+                            {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                        </Button>
+                        <Button type="submit" variant="brand" disabled={updateCategoryMutation.isPending}>
+                            {updateCategoryMutation.isPending ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
             {showModal && (
                 <NewExpenseModal
+                    isOpen={showModal}
                     onClose={() => setShowModal(false)}
+                    selectedMonth={selectedMonth}
+                    monthExpenses={expenses}
                     onSuccess={() => {
-                        fetchExpenses();
-                        toast.success('Expense Recorded Successfully');
+                        try {
+                            queryClient.invalidateQueries({ queryKey: expenseKeys.listBase, refetchType: 'active' });
+                        } catch { /* ignore */ }
+                        toast.success(t('finance.expenses.toasts.created', { defaultValue: 'Expense recorded successfully' }));
+                    }}
+                />
+            )}
+
+            {showEditExpenseModal && (
+                <NewExpenseModal
+                    mode="edit"
+                    initialExpense={editingExpense}
+                    isOpen={showEditExpenseModal}
+                    isSubmitting={updateExpenseMutation.isPending}
+                    onClose={() => { setShowEditExpenseModal(false); setEditingExpense(null); }}
+                    selectedMonth={selectedMonth}
+                    monthExpenses={expenses}
+                    onSubmit={(payload) => updateExpenseMutation.mutateAsync({ id: editingExpense?._id, payload })}
+                    onSuccess={() => {
+                        setShowEditExpenseModal(false);
+                        setEditingExpense(null);
                     }}
                 />
             )}

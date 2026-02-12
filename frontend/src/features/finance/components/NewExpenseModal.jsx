@@ -1,167 +1,353 @@
-import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
-import financeService from '../api/finance';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
-export default function NewExpenseModal({ onClose, onSuccess }) {
-    const [loading, setLoading] = useState(false);
-    const [categories, setCategories] = useState([]);
-    const [accounts, setAccounts] = useState([]);
+import financeService from '../api/finance';
+import { accountKeys, categoryKeys } from '../queryKeys';
+
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import FormField from '../../../shared/components/ui/FormField.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Textarea from '../../../shared/components/ui/Textarea.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
+
+export default function NewExpenseModal({
+    isOpen,
+    onClose,
+    onSuccess,
+    selectedMonth,
+    monthExpenses,
+    mode = 'create',
+    initialExpense,
+    onSubmit,
+    isSubmitting: isSubmittingProp,
+}) {
+    const { t } = useI18n();
+
+    const getDefaultDateForSelectedMonth = (ym) => {
+        const today = new Date();
+        const pad2 = (n) => String(n).padStart(2, '0');
+        const todayDay = today.getDate();
+
+        if (!ym || !/^[0-9]{4}-[0-9]{2}$/.test(String(ym))) {
+            return today.toISOString().slice(0, 10);
+        }
+
+        const [yStr, mStr] = String(ym).split('-');
+        const year = Number(yStr);
+        const monthIdx = Number(mStr) - 1;
+        if (!Number.isFinite(year) || !Number.isFinite(monthIdx) || monthIdx < 0 || monthIdx > 11) {
+            return today.toISOString().slice(0, 10);
+        }
+
+        const lastDay = new Date(year, monthIdx + 1, 0).getDate();
+        const day = Math.min(Math.max(1, todayDay), lastDay);
+        return `${year}-${pad2(monthIdx + 1)}-${pad2(day)}`;
+    };
 
     const [formData, setFormData] = useState({
         title: '',
         amount: '',
-        category: '',
+        categoryId: '',
         date: new Date().toISOString().slice(0, 10),
         description: '',
-        accountId: ''
+        accountId: '',
     });
 
     useEffect(() => {
-        const loadCats = async () => {
-            try {
-                const res = await financeService.getFinanceCategories('expense');
-                setCategories(res.data || res || []);
-            } catch (e) { console.error(e); }
-        };
-        loadCats();
-    }, []);
+        if (!isOpen) return;
+        if (mode === 'edit' && initialExpense) {
+            const exp = initialExpense;
+            const expDate = exp?.date ? new Date(exp.date) : null;
+            const isoDate = expDate && Number.isFinite(expDate.getTime()) ? expDate.toISOString().slice(0, 10) : getDefaultDateForSelectedMonth(selectedMonth);
+            const catValue = exp?.categoryRef?._id || exp?.categoryRef || exp?.categoryId || exp?.category || '';
+            const accountValue = exp?.account?._id || exp?.account || exp?.accountId || '';
 
-    useEffect(() => {
-        const loadAccounts = async () => {
-            try {
-                const res = await financeService.getAccounts();
-                setAccounts(res.data || res || []);
-            } catch (e) {
-                console.error(e);
-                toast.error('Failed to sync accounts');
-            }
-        };
-        loadAccounts();
-    }, []);
+            setFormData({
+                title: String(exp?.title || ''),
+                amount: String(exp?.amount ?? ''),
+                categoryId: String(catValue || ''),
+                date: isoDate,
+                description: String(exp?.description || ''),
+                accountId: String(accountValue || ''),
+            });
+            return;
+        }
+
+        setFormData({
+            title: '',
+            amount: '',
+            categoryId: '',
+            date: getDefaultDateForSelectedMonth(selectedMonth),
+            description: '',
+            accountId: '',
+        });
+    }, [isOpen, selectedMonth, mode, initialExpense]);
+
+    const getFinanceExpensesErrorText = (error, fallbackKey, fallbackDefaultValue) => {
+        const code = error?.response?.data?.code;
+        const serverMessage = error?.response?.data?.message;
+
+        if (code) {
+            return t(`finance.expenses.apiErrors.${code}`, {
+                defaultValue: serverMessage || fallbackDefaultValue,
+            });
+        }
+
+        if (serverMessage) return serverMessage;
+
+        return t(fallbackKey, { defaultValue: fallbackDefaultValue });
+    };
+
+    const categoriesQuery = useQuery({
+        queryKey: categoryKeys.list({ type: 'expense' }),
+        enabled: Boolean(isOpen),
+        queryFn: async ({ signal }) => {
+            void signal;
+            const res = await financeService.getFinanceCategories('expense');
+            const list = Array.isArray(res) ? res : (res?.data || []);
+            return Array.isArray(list) ? list : [];
+        },
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
+
+    const accountsQuery = useQuery({
+        queryKey: accountKeys.list({ includeInactive: false }),
+        enabled: Boolean(isOpen),
+        queryFn: async ({ signal }) => {
+            void signal;
+            const res = await financeService.getAccounts({ includeInactive: false });
+            const list = Array.isArray(res) ? res : (res?.data || []);
+            return Array.isArray(list) ? list : [];
+        },
+        staleTime: 30_000,
+        refetchOnWindowFocus: false,
+    });
+
+    const createExpenseMutation = useMutation({
+        mutationFn: (payload) => financeService.createExpense(payload),
+    });
+
+    const categoriesOptions = useMemo(() => {
+        const list = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
+        return list
+            .filter((c) => c && (c?._id || c?.name))
+            .map((c) => ({ value: String(c._id || c.name), label: String(c.name || '') }));
+    }, [categoriesQuery.data]);
+
+    const selectedCategory = useMemo(() => {
+        const list = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
+        const picked = String(formData.categoryId || '');
+        if (!picked) return null;
+        return list.find((c) => String(c?._id || c?.name || '') === picked) || null;
+    }, [categoriesQuery.data, formData.categoryId]);
+
+    const budgetInfo = useMemo(() => {
+        const budget = Number(selectedCategory?.budget || 0);
+        const hasBudget = Number.isFinite(budget) && budget > 0;
+        const catName = String(selectedCategory?.name || '').trim();
+        const list = Array.isArray(monthExpenses) ? monthExpenses : [];
+        const spent = !catName ? 0 : list.reduce((sum, e) => sum + (String(e?.category || '').trim() === catName ? Number(e?.amount || 0) : 0), 0);
+        const over = hasBudget && spent > budget;
+        const remaining = hasBudget ? Math.max(0, budget - spent) : 0;
+        return { hasBudget, budget, spent, remaining, over, catName };
+    }, [selectedCategory, monthExpenses]);
+
+    const accountsOptions = useMemo(() => {
+        const list = Array.isArray(accountsQuery.data) ? accountsQuery.data : [];
+        return list
+            .filter((a) => a && a?._id)
+            .map((a) => ({
+                value: String(a._id),
+                label: `${a.name} (${a.type})${a.accountNumber ? ` • ${a.accountNumber}` : ''}`,
+            }));
+    }, [accountsQuery.data]);
+
+    const isSubmitting = Boolean(isSubmittingProp ?? createExpenseMutation.isPending);
 
     const handleSubmit = async (e) => {
         if (e?.preventDefault) e.preventDefault();
-        setLoading(true);
+
+        const pickedCategory = String(formData.categoryId || '');
+        const looksLikeObjectId = /^[a-fA-F0-9]{24}$/.test(pickedCategory);
+
+        const payload = {
+            title: String(formData.title || '').trim(),
+            amount: formData.amount,
+            categoryId: looksLikeObjectId ? pickedCategory : undefined,
+            category: looksLikeObjectId ? undefined : pickedCategory,
+            accountId: String(formData.accountId || ''),
+            date: formData.date,
+            description: formData.description,
+        };
+
         try {
-            await financeService.createExpense(formData);
-            toast.success("Expense Recorded Successfully");
-            onSuccess();
-            onClose();
+            if (typeof onSubmit === 'function') {
+                await onSubmit(payload);
+            } else {
+                await createExpenseMutation.mutateAsync(payload);
+            }
+            onSuccess?.();
+            onClose?.();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Expense Recording Failed");
-        } finally {
-            setLoading(false);
+            toast.error(getFinanceExpensesErrorText(error, 'finance.expenses.toasts.createFailed', 'Expense recording failed'));
         }
     };
 
-
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
-                    <div>
-                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Record New Expense</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Expense voucher</p>
-                    </div>
-                    <button onClick={onClose} className="text-slate-300 hover:text-slate-900 transition-colors p-2 hover:bg-slate-100 rounded-full">
-                        <X size={24} />
-                    </button>
+        <Modal
+            isOpen={Boolean(isOpen)}
+            onClose={onClose}
+            title={
+                mode === 'edit'
+                    ? t('finance.expenses.modals.editTitle', { defaultValue: 'Edit Expense' })
+                    : t('finance.expenses.modals.createTitle', { defaultValue: 'Record New Expense' })
+            }
+            panelClassName="max-w-md"
+        >
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <FormField label={t('finance.expenses.fields.title', { defaultValue: 'Expense Title' })} required>
+                    <Input
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder={t('finance.expenses.placeholders.title', { defaultValue: 'e.g. Electricity Bill' })}
+                        required
+                        disabled={isSubmitting}
+                    />
+                </FormField>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <FormField label={t('finance.expenses.fields.amountUsd', { defaultValue: 'Amount (USD)' })} required>
+                        <Input
+                            type="number"
+                            value={formData.amount}
+                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                            placeholder={t('finance.expenses.placeholders.amount', { defaultValue: '0.00' })}
+                            required
+                            min="0"
+                            step="0.01"
+                            disabled={isSubmitting}
+                        />
+                    </FormField>
+                    <FormField label={t('finance.expenses.fields.date', { defaultValue: 'Date' })} required>
+                        <Input
+                            type="date"
+                            value={formData.date}
+                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                            required
+                            disabled={isSubmitting}
+                        />
+                    </FormField>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Expense Title</label>
-                        <input
-                            type="text"
-                            required
-                            className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-sm"
-                            placeholder="e.g. Electricity Bill"
-                            value={formData.title}
-                            onChange={e => setFormData({ ...formData, title: e.target.value })}
-                        />
-                    </div>
+                <FormField label={t('finance.expenses.fields.category', { defaultValue: 'Category' })} required>
+                    <DropdownSelect
+                        value={formData.categoryId}
+                        onChange={(v) => setFormData({ ...formData, categoryId: v })}
+                        placeholder={t('finance.expenses.placeholders.category', { defaultValue: 'Select category…' })}
+                        options={categoriesOptions}
+                        disabled={isSubmitting || categoriesQuery.isLoading}
+                        clearable={false}
+                    />
+                </FormField>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount ($)</label>
-                            <input
-                                type="number"
-                                required
-                                min="0"
-                                step="0.01"
-                                className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-sm"
-                                placeholder="0.00"
-                                value={formData.amount}
-                                onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                            />
+                {selectedCategory ? (
+                    <div className="rounded-(--nb-radius-md) border border-slate-200 bg-slate-50 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-xs font-semibold text-slate-700">
+                                {t('finance.expenses.budgetInfo.title', { defaultValue: 'Budget info' })}
+                            </div>
+                            {selectedMonth ? (
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    {t('finance.expenses.budgetInfo.month', { defaultValue: 'Month: {{month}}', month: selectedMonth })}
+                                </div>
+                            ) : null}
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date</label>
-                            <input
-                                type="date"
-                                required
-                                className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-sm"
-                                value={formData.date}
-                                onChange={e => setFormData({ ...formData, date: e.target.value })}
-                            />
+
+                        <div className="mt-2 grid grid-cols-3 gap-2">
+                            <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white px-3 py-2">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    {t('finance.expenses.budgetInfo.budget', { defaultValue: 'Budget' })}
+                                </div>
+                                <div className="text-sm font-black text-slate-900">
+                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
+                                </div>
+                            </div>
+                            <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white px-3 py-2">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    {t('finance.expenses.budgetInfo.spent', { defaultValue: 'Spent' })}
+                                </div>
+                                <div className={'text-sm font-black ' + (budgetInfo.over ? 'text-red-600' : 'text-slate-900')}>
+                                    ${Number(budgetInfo.spent || 0).toLocaleString()}
+                                </div>
+                            </div>
+                            <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white px-3 py-2">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    {t('finance.expenses.budgetInfo.remaining', { defaultValue: 'Remaining' })}
+                                </div>
+                                <div className={'text-sm font-black ' + (budgetInfo.over ? 'text-red-600' : 'text-slate-900')}>
+                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.remaining || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
+                                </div>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
-                        <select
-                            className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-sm"
-                            value={formData.category}
-                            onChange={e => setFormData({ ...formData, category: e.target.value })}
-                            required
-                        >
-                            <option value="">Select Category</option>
-                            {categories.map(c => <option key={c._id || c.name} value={c.name}>{c.name}</option>)}
-                        </select>
+                        {budgetInfo.hasBudget && budgetInfo.over ? (
+                            <div className="mt-2 text-xs font-semibold text-red-600">
+                                {t('finance.expenses.categories.overBudget', { defaultValue: 'Over budget' })}
+                            </div>
+                        ) : null}
                     </div>
+                ) : null}
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Paying Account</label>
-                        <select
-                            className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-sm"
-                            value={formData.accountId}
-                            onChange={e => setFormData({ ...formData, accountId: e.target.value })}
-                            required
-                        >
-                            <option value="">Select Account</option>
-                            {accounts.map(a => (
-                                <option key={a._id} value={a._id}>
-                                    {a.name} ({a.type}){a.accountNumber ? ` • ${a.accountNumber}` : ''}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                <FormField label={t('finance.expenses.fields.payingAccount', { defaultValue: 'Paying Account' })} required>
+                    <DropdownSelect
+                        value={formData.accountId}
+                        onChange={(v) => setFormData({ ...formData, accountId: v })}
+                        placeholder={t('finance.expenses.placeholders.account', { defaultValue: 'Select account…' })}
+                        options={accountsOptions}
+                        disabled={isSubmitting || accountsQuery.isLoading}
+                        clearable={false}
+                    />
+                </FormField>
 
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
-                        <textarea
-                            className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none resize-none h-24 font-bold text-sm"
-                            placeholder="Additional details..."
-                            value={formData.description}
-                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                        />
-                    </div>
-                </form>
+                <FormField label={t('finance.expenses.fields.description', { defaultValue: 'Description' })}>
+                    <Textarea
+                        rows={4}
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        placeholder={t('finance.expenses.placeholders.description', { defaultValue: 'Additional details…' })}
+                        disabled={isSubmitting}
+                    />
+                </FormField>
 
-                <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
-                    <button type="button" onClick={onClose} className="flex-1 py-3 text-slate-600 font-black uppercase text-xs tracking-widest hover:bg-slate-100 rounded-xl transition-all">
-                        Cancel
-                    </button>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="flex-1 bg-blue-600 hover:bg-blue-600/90 text-white py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all disabled:opacity-50 shadow-sm"
+                <div className="flex justify-end gap-2 pt-2">
+                    <Button type="button" variant="neutral" onClick={onClose} disabled={isSubmitting}>
+                        {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                    </Button>
+                    <Button
+                        type="submit"
+                        variant="brand"
+                        disabled={
+                            isSubmitting ||
+                            !String(formData.title || '').trim() ||
+                            !String(formData.amount || '') ||
+                            !String(formData.categoryId || '') ||
+                            !String(formData.accountId || '') ||
+                            !String(formData.date || '')
+                        }
                     >
-                        {loading ? 'Recording...' : 'Record Expense'}
-                    </button>
+                        {isSubmitting
+                            ? t('common.working', { defaultValue: 'WORKING…' })
+                            : mode === 'edit'
+                                ? t('common.actions.save', { defaultValue: 'Save' })
+                                : t('finance.expenses.actions.recordExpense', { defaultValue: 'Record Expense' })}
+                    </Button>
                 </div>
-            </div>
-        </div>
+            </form>
+        </Modal>
     );
 }

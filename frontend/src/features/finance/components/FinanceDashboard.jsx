@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Card from '../../../shared/components/ui/Card';
 import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, CreditCard, Activity, PieChart as PieIcon } from 'lucide-react';
 import financeService from '../api/finance';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, BarChart, Bar, Legend
@@ -178,47 +179,44 @@ export default function FinanceDashboard() {
 
             {/* Recent Transactions */}
             <Card title="Recent Transactions">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-slate-200">
-                                <th className="py-3 px-4 text-sm font-semibold text-slate-500">Student</th>
-                                <th className="py-3 px-4 text-sm font-semibold text-slate-500">Amount</th>
-                                <th className="py-3 px-4 text-sm font-semibold text-slate-500">Method</th>
-                                <th className="py-3 px-4 text-sm font-semibold text-slate-500">Date</th>
-                                <th className="py-3 px-4 text-sm font-semibold text-slate-500">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {stats.recentTransactions.map((tx) => (
-                                <tr key={tx._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                                    <td className="py-3 px-4 text-sm font-medium text-slate-900">
-                                        {tx.student?.firstName} {tx.student?.lastName}
-                                    </td>
-                                    <td className="py-3 px-4 text-sm font-medium text-slate-900">
-                                        {formatCurrency(tx.amount)}
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-slate-600">{tx.method}</td>
-                                    <td className="py-3 px-4 text-sm text-slate-600">
-                                        {new Date(tx.createdAt).toLocaleDateString()}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                            Completed
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                            {stats.recentTransactions.length === 0 && (
-                                <tr>
-                                    <td colSpan="5" className="py-8 text-center text-sm text-slate-500">
-                                        No recent transactions found.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <StandardTable
+                    isLoading={false}
+                    items={stats.recentTransactions}
+                    rows={stats.recentTransactions}
+                    columns={[
+                        { key: 'student', label: 'Student' },
+                        { key: 'amount', label: 'Amount' },
+                        { key: 'method', label: 'Method' },
+                        { key: 'date', label: 'Date' },
+                        { key: 'status', label: 'Status' },
+                    ]}
+                    storageKey="finance:dashboard:recent-transactions"
+                    getRowKey={(row) => row?._id}
+                    emptyTitle="No recent transactions found."
+                    tableProps={{
+                        shellClassName: 'ring-0 shadow-none rounded-none',
+                    }}
+                    renderCell={(row, col) => {
+                        switch (col.key) {
+                            case 'student':
+                                return `${row?.student?.firstName || ''} ${row?.student?.lastName || ''}`.trim() || '—';
+                            case 'amount':
+                                return formatCurrency(row?.amount || 0);
+                            case 'method':
+                                return row?.method || '—';
+                            case 'date':
+                                return row?.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—';
+                            case 'status':
+                                return (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                        Completed
+                                    </span>
+                                );
+                            default:
+                                return '—';
+                        }
+                    }}
+                />
             </Card>
         </div>
     );

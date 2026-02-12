@@ -55,6 +55,7 @@ export default {
 
     searchPlaceholders: {
       academicYears: 'ابحث عن السنوات الدراسية…',
+      employees: 'ابحث عن الموظفين…',
       shifts: 'ابحث عن الدوامات…',
       sections: 'ابحث عن الشعب…',
       cohorts: 'ابحث عن الدفعات…',
@@ -190,6 +191,7 @@ export default {
       print: 'طباعة',
       preview: 'معاينة',
       copy: 'نسخ',
+      copied: 'تم النسخ',
       archive: 'أرشفة',
       selectAll: 'تحديد الكل',
       transfer: 'تحويل',
@@ -1818,6 +1820,7 @@ export default {
         teacherId: 'معرف المعلم',
         email: 'البريد الإلكتروني',
         phone: 'الهاتف',
+        salary: 'الراتب',
         createdAt: 'تم الإنشاء',
         status: 'الحالة',
         actions: 'الإجراءات',
@@ -2490,6 +2493,492 @@ export default {
         title: 'طلاب جدد',
         subtitle: 'اتجاه التسجيل لأول مرة',
         yAxisLabel: 'عدد الطلاب',
+      },
+    },
+  },
+
+  finance: {
+    accounts: {
+      tabs: {
+        institutionAccounts: 'حسابات المؤسسة',
+        balanceOverview: 'نظرة عامة ومشاريع',
+        ledgerHistory: 'سجل الأستاذ العام',
+      },
+
+      sections: {
+        institutionAccounts: 'حسابات المؤسسة',
+        actions: 'إجراءات',
+        institutionAccountsSubtitle: 'إدارة السيولة بالوقت الحقيقي',
+      },
+
+      cards: {
+        availableUsd: 'المتاح (USD)',
+        refPrefix: 'مرجع',
+      },
+
+      fields: {
+        fromSource: 'من المصدر',
+        toDestination: 'إلى الوجهة',
+        transferAmountUsd: 'مبلغ التحويل (USD)',
+        accountName: 'اسم الحساب',
+        type: 'النوع',
+        branch: 'الفرع',
+        institution: 'المؤسسة',
+        accountNumber: 'رقم الحساب',
+        openingBalance: 'الرصيد الافتتاحي',
+        depositTo: 'الإيداع إلى',
+        incomeName: 'وصف الدخل / الاسم',
+        refNumber: 'مرجع #',
+        date: 'التاريخ',
+        totalReceivedAmount: 'إجمالي المبلغ المستلم',
+        status: 'الحالة',
+      },
+
+      placeholders: {
+        amount: '0.00',
+        accountNameExample: 'مثال: صندوق المصروفات',
+        institutionExample: 'مثال: بنك سلام',
+        incomeNameExample: 'مثال: تبرع من XYZ',
+        notAvailable: 'غير متوفر',
+      },
+
+      options: {
+        accountType: {
+          bank: 'بنك',
+          cash: 'نقد',
+          mobileMoney: 'أموال الهاتف',
+        },
+      },
+
+      overview: {
+        kicker: 'ملخص مالي',
+        title: 'إجمالي السيولة',
+        currency: 'USD',
+        verifiedFrom: 'تم التحقق من {{count}} حساباً مرتبطاً',
+      },
+
+      ledger: {
+        title: 'سجل الأستاذ العام',
+        subtitle: 'سجل تدقيق معاملات غير قابل للتغيير',
+        realtime: 'تتبع بالوقت الحقيقي',
+        loading: 'جارٍ تحميل السجل…',
+        loadFailed: 'فشل تحميل السجل',
+        emptyTitle: 'لا توجد سجلات في دفتر الأستاذ.',
+        columns: {
+          date: 'التاريخ / التدقيق',
+          domain: 'النطاق',
+          operation: 'نوع العملية',
+          user: 'المستخدم المصرح',
+          context: 'سياق النظام',
+        },
+        export: {
+          systemUser: 'النظام',
+          columns: {
+            date: 'التاريخ',
+            domain: 'النطاق',
+            operation: 'العملية',
+            user: 'المستخدم',
+            context: 'السياق',
+          },
+        },
+      },
+
+      actions: {
+        income: 'دخل',
+        newAccount: 'حساب جديد',
+        createAccount: 'إنشاء حساب',
+        recordIncome: 'تسجيل الدخل',
+        executeFunds: 'تنفيذ التحويل',
+        saveChanges: 'حفظ التغييرات',
+      },
+
+      modals: {
+        transferTitle: 'تحويل بين الحسابات',
+        createTitle: 'تسجيل حساب جديد',
+        incomeTitle: 'تسجيل دخل عام',
+        editTitle: 'تعديل الحساب',
+      },
+
+      transfer: {
+        sourcePlaceholder: 'حساب المصدر…',
+        targetPlaceholder: 'حساب الوجهة…',
+      },
+
+      income: {
+        depositToPlaceholder: 'اختر حساباً…',
+      },
+
+      confirms: {
+        delete: 'هل تريد حذف هذا الحساب؟ لا يمكن التراجع عن ذلك.',
+      },
+
+      toasts: {
+        incomeRecorded: 'تم تسجيل الدخل بنجاح',
+        incomeFailed: 'فشل التسجيل',
+        transferSuccess: 'تم تحويل الأموال بنجاح',
+        transferFailed: 'فشل التحويل',
+        deleteBlockedBalance: 'لا يمكن حذف حساب برصيد غير صفري',
+      },
+
+      apiErrors: {
+        FIN_ACCOUNT_NAME_REQUIRED: 'اسم الحساب مطلوب',
+        FIN_ACCOUNT_TYPE_REQUIRED: 'نوع الحساب مطلوب',
+        FIN_ACCOUNT_INSTITUTION_REQUIRED: 'المؤسسة / البنك مطلوب',
+        FIN_ACCOUNT_NUMBER_REQUIRED: 'رقم الحساب مطلوب',
+
+        FIN_ACCOUNT_NOT_FOUND: 'لم يتم العثور على الحساب',
+        FIN_INVALID_ACCOUNT_ID: 'معرّف الحساب غير صالح',
+
+        FIN_ACCOUNT_DELETE_BALANCE_NOT_ZERO: 'لا يمكن حذف حساب برصيد غير صفري',
+        FIN_AMOUNT_MUST_BE_POSITIVE: 'يجب أن يكون المبلغ رقماً موجباً',
+
+        FIN_SOURCE_ACCOUNT_INACTIVE: 'حساب المصدر غير نشط',
+        FIN_DEST_ACCOUNT_INACTIVE: 'حساب الوجهة غير نشط',
+        FIN_INSUFFICIENT_FUNDS: 'لا توجد أموال كافية',
+        FIN_ACCOUNT_INACTIVE: 'الحساب غير نشط',
+
+        FIN_ACCOUNT_DUPLICATE: 'يوجد حساب مماثل مسجل مسبقاً',
+        FIN_VALIDATION_ERROR: 'البيانات المدخلة غير صحيحة',
+        FIN_INTERNAL_ERROR: 'حدث خطأ في الخادم',
+      },
+    },
+
+    expenses: {
+      tabs: {
+        ledger: 'سجل المصروفات',
+        categories: 'فئات المصروفات',
+      },
+
+      modals: {
+        createTitle: 'تسجيل مصروف جديد',
+        editTitle: 'تعديل المصروف',
+      },
+
+      fields: {
+        title: 'عنوان المصروف',
+        amountUsd: 'المبلغ (USD)',
+        date: 'التاريخ',
+        category: 'الفئة',
+        payingAccount: 'الحساب الدافع',
+        description: 'الوصف',
+      },
+
+      placeholders: {
+        title: 'مثال: فاتورة الكهرباء',
+        amount: '0.00',
+        category: 'اختر فئة…',
+        account: 'اختر حساباً…',
+        description: 'تفاصيل إضافية…',
+      },
+
+      actions: {
+        newExpense: 'تسجيل مصروف جديد',
+        recordExpense: 'تسجيل المصروف',
+        createCategory: 'إنشاء فئة',
+      },
+
+      columns: {
+        date: 'التاريخ',
+        category: 'الفئة',
+        title: 'العنوان',
+        description: 'الوصف',
+        amount: 'المبلغ',
+        auditor: 'المدقق',
+      },
+
+      export: {
+        title: 'المصروفات',
+        month: 'الشهر: {{month}}',
+      },
+
+      ledger: {
+        title: 'سجل المصروفات',
+        kpiSpend: 'الإنفاق خلال الفترة',
+        kpiRecords: 'سجلات التدقيق المعتمدة',
+        monthAria: 'اختر الشهر',
+        loading: 'جارٍ تحميل المصروفات…',
+        emptyTitle: 'لا توجد سجلات مصروفات.',
+      },
+
+      categories: {
+        title: 'فئات المصروفات',
+        count: '{{count}} فئة',
+        newPlaceholder: 'اسم فئة جديدة',
+        budgetPlaceholder: 'الميزانية (اختياري)',
+        loading: 'جارٍ تحميل الفئات…',
+        empty: 'لا توجد فئات بعد',
+        monthTag: 'الشهر: {{month}}',
+        typeExpense: 'النوع: مصروف',
+        spent: 'المصروف',
+        records: '{{count}} سجل',
+        budget: 'الميزانية',
+        noBudget: '—',
+        overBudget: 'تجاوز الميزانية',
+        remaining: 'المتبقي: ${{value}}',
+        editTitle: 'تعديل الفئة',
+        fields: {
+          name: 'الاسم',
+          budget: 'الميزانية',
+        },
+        renameLockedHint: 'هذه الفئة لديها مصروفات مسجلة بالفعل. تغيير الاسم غير مسموح.',
+      },
+
+      budgetInfo: {
+        title: 'معلومات الميزانية',
+        month: 'الشهر: {{month}}',
+        budget: 'الميزانية',
+        spent: 'المصروف',
+        remaining: 'المتبقي',
+      },
+
+      confirms: {
+        delete: 'هل أنت متأكد؟ لا يمكن التراجع عن ذلك.',
+        deleteCategory: 'هل تريد أرشفة هذه الفئة؟ لن تظهر بعد الآن عند تسجيل مصروف جديد.',
+      },
+
+      toasts: {
+        created: 'تم تسجيل المصروف بنجاح',
+        createFailed: 'فشل تسجيل المصروف',
+        deleted: 'تم حذف المصروف',
+        deleteFailed: 'فشل الحذف',
+        loadFailed: 'فشل تحميل المصروفات',
+
+        categoryCreated: 'تم إنشاء الفئة',
+        categoryCreateFailed: 'فشل إنشاء الفئة',
+        categoryUpdated: 'تم تحديث الفئة',
+        categoryUpdateFailed: 'فشل تحديث الفئة',
+        categoryDeleted: 'تمت أرشفة الفئة',
+        categoryDeleteFailed: 'فشل أرشفة الفئة',
+        categoryNameRequired: 'اسم الفئة مطلوب',
+        budgetInvalid: 'يجب أن تكون الميزانية رقماً صحيحاً',
+      },
+
+      apiErrors: {
+        FIN_AMOUNT_MUST_BE_POSITIVE: 'يجب أن يكون المبلغ رقماً موجباً',
+        FIN_AMOUNT_INVALID: 'المبلغ المدخل غير صحيح',
+        FIN_DATE_INVALID: 'التاريخ المدخل غير صحيح',
+
+        FIN_EXPENSE_CATEGORY_REQUIRED: 'فئة المصروف مطلوبة',
+        FIN_EXPENSE_CATEGORY_NOT_FOUND: 'فئة المصروف غير موجودة',
+        FIN_EXPENSE_BUDGET_EXCEEDED: 'تم تجاوز ميزانية هذا الشهر',
+
+        FIN_ACCOUNT_NOT_FOUND: 'الحساب غير موجود',
+        FIN_INVALID_ACCOUNT_ID: 'معرّف الحساب غير صالح',
+        FIN_INSUFFICIENT_FUNDS: 'لا توجد أموال كافية',
+        FIN_EXPENSE_ACCOUNT_MISSING: 'حساب الدفع مفقود',
+
+        FIN_INVALID_EXPENSE_ID: 'معرّف المصروف غير صالح',
+        FIN_EXPENSE_NOT_FOUND: 'المصروف غير موجود',
+
+        FIN_CATEGORY_NAME_REQUIRED: 'اسم الفئة مطلوب',
+        FIN_CATEGORY_TYPE_REQUIRED: 'نوع الفئة مطلوب',
+        FIN_INVALID_CATEGORY_ID: 'معرّف الفئة غير صالح',
+        FIN_CATEGORY_NOT_FOUND: 'الفئة غير موجودة',
+        FIN_CATEGORY_DUPLICATE: 'هذه الفئة مسجلة مسبقاً',
+        FIN_CATEGORY_IN_USE: 'هذه الفئة مستخدمة بالفعل في المصروفات',
+
+        FIN_INTERNAL_ERROR: 'حدث خطأ في الخادم',
+      },
+    },
+
+    payroll: {
+      page: {
+        kicker: 'المالية',
+        title: 'الرواتب',
+      },
+
+      modals: {
+        chargeTitle: 'توليد الرواتب',
+        deleteTitle: 'حذف قيود الرواتب',
+        updateTitle: 'تحديث الرواتب',
+      },
+
+      actions: {
+        charge: 'توليد',
+        show: 'عرض',
+        viewInfo: 'عرض التفاصيل',
+      },
+
+      fields: {
+        employee: 'الموظف',
+      },
+
+      placeholders: {
+        employee: 'اختر موظفاً…',
+        account: 'اختر حساباً…',
+      },
+
+      charge: {
+        fields: {
+          scope: 'النطاق',
+          mode: 'الوضع',
+          account: 'الحساب',
+          date: 'التاريخ',
+        },
+        scope: {
+          all: 'جميع الموظفين',
+          single: 'موظف واحد',
+        },
+        mode: {
+          charge: 'توليد',
+          fullPayment: 'دفع كامل (توليد + دفع)',
+        },
+        hints: {
+          account: 'يُستخدم للدفع الكامل.',
+        },
+        success: 'تم إنشاء قيد الرواتب',
+        errors: {
+          missingSalary: 'الراتب مفقود لـ: {{names}}{{more}}',
+          failed: 'فشلت العملية',
+        },
+      },
+
+      fullPayment: {
+        success: 'تم إكمال الدفع الكامل',
+      },
+
+      filters: {
+        month: 'الشهر',
+      },
+
+      status: {
+        paid: 'مدفوع',
+        draft: 'مسودة',
+        approved: 'معتمد',
+      },
+
+      columns: {
+        date: 'التاريخ',
+        no: 'رقم',
+        employeeId: 'المعرف',
+        employeeName: 'اسم الموظف',
+        phone: 'الهاتف',
+        employeeType: 'نوع الموظف',
+        salary: 'الراتب',
+      },
+
+      table: {
+        loading: 'جارٍ تحميل الرواتب…',
+        emptyTitle: 'لا توجد سجلات رواتب.',
+        emptyDescription: '',
+      },
+
+      errors: {
+        loadFailed: 'فشل تحميل بيانات الرواتب',
+      },
+
+      validations: {
+        monthRequired: 'الشهر مطلوب',
+        academicYearRequired: 'السنة الدراسية مطلوبة',
+        employeeRequired: 'الموظف مطلوب',
+        amountRequired: 'المبلغ مطلوب',
+      },
+
+      delete: {
+        fields: {
+          deleteType: 'نوع الحذف',
+        },
+        single: 'موظف واحد',
+        confirm: 'هل أنت متأكد؟ سيتم حذف القيود (غير المدفوعة).',
+        success: 'تم الحذف',
+        errors: {
+          failed: 'فشل الحذف',
+        },
+      },
+
+      update: {
+        fields: {
+          updateType: 'نوع التحديث',
+          amount: 'المبلغ',
+        },
+        types: {
+          salaryCharge: 'توليد راتب',
+          commission: 'عمولة',
+          salaryDecrease: 'خصم من الراتب',
+        },
+        success: 'تم تحديث الرواتب',
+        errors: {
+          failed: 'فشل التحديث',
+        },
+      },
+
+      printModal: {
+        title: 'طباعة وتصدير الرواتب',
+        exportHint: 'قم بالتنزيل باستخدام نفس عوامل التصفية.',
+      },
+
+      export: {
+        title: 'الرواتب',
+        sheetName: 'الرواتب',
+        month: 'الشهر: {{month}}',
+        academicYear: 'السنة الدراسية: {{year}}',
+        status: 'الحالة: {{status}}',
+      },
+
+      print: {
+        title: 'الرواتب - {{month}} {{year}}',
+        errors: {
+          popupBlocked: 'تم حظر النافذة المنبثقة',
+          failed: 'فشلت الطباعة',
+        },
+      },
+
+      show: {
+        title: 'الرواتب غير المدفوعة',
+        hint: 'قم بتوليد الرواتب أولاً لعرض هذه القائمة.',
+        emptyTitle: 'لا توجد رواتب غير مدفوعة.',
+        columns: {
+          balance: 'الرصيد',
+          info: 'التفاصيل',
+        },
+        actions: {
+          info: 'التفاصيل',
+        },
+        errors: {
+          loadFailed: 'فشل تحميل الرواتب غير المدفوعة',
+        },
+      },
+
+      employeeInfo: {
+        title: 'معلومات الموظف',
+        fields: {
+          account: 'الحساب',
+          date: 'تاريخ التسجيل',
+        },
+        actions: {
+          show: 'عرض',
+        },
+        columns: {
+          no: 'رقم',
+          month: 'الشهر',
+          sendNumber: 'رقم الإرسال',
+          description: 'الوصف',
+          commission: 'عمولة',
+          decrease: 'خصم',
+          dr: 'مدين',
+          cr: 'دائن',
+          paid: 'مدفوع',
+          balance: 'الرصيد',
+        },
+        loading: 'جارٍ التحميل…',
+        empty: 'لا توجد بيانات',
+        toasts: {
+          saved: 'تم الحفظ',
+        },
+        errors: {
+          loadFailed: 'فشل تحميل معلومات الموظف',
+          saveFailed: 'فشل الحفظ',
+        },
+        receipt: {
+          title: 'إيصال الرواتب',
+          sendNumber: 'رقم الإرسال',
+          description: 'الوصف',
+          commission: 'عمولة',
+          decrease: 'خصم',
+          salary: 'الراتب',
+          paid: 'مدفوع',
+          balance: 'الرصيد',
+        },
       },
     },
   },

@@ -67,5 +67,8 @@ frontend/build_out.txt
 *_build_out.txt
 *_test_out.txt
 
+# Local capture artifacts (.out) (do not commit)
+frontend/*.out
+
 # Backend local test capture outputs (do not commit)
 backend/test_*.txt

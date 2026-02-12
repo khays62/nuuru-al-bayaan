@@ -148,7 +148,7 @@ export default function FinanceApportionmentTab() {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-surface-900 p-8 rounded-[2rem] text-white overflow-hidden relative shadow-2xl shadow-surface-200">
+                    <div className="bg-surface-900 p-8 rounded-4xl text-white overflow-hidden relative shadow-2xl shadow-surface-200">
                         <div className="relative z-10">
                             <Layers className="text-primary mb-6" size={40} />
                             <h4 className="text-2xl font-black uppercase tracking-tighter mb-2 leading-none">Smart Apportionment</h4>

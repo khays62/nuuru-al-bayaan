@@ -35,6 +35,7 @@ import {
   createAccount,
   getAccounts,
   updateAccount,
+  deleteAccount,
   transferFunds,
   recordIncome,
 } from '../controllers/financeControl/financeConfigController.js';
@@ -138,6 +139,7 @@ router.delete('/config/fee-types/:id', protect, authorizeRoles('admin'), deleteF
 router.post('/accounts', protect, authorizeRoles('admin', 'staff'), createAccount);
 router.get('/accounts', protect, authorizeRoles('admin', 'staff'), getAccounts);
 router.put('/accounts/:id', protect, authorizeRoles('admin', 'staff'), updateAccount);
+router.delete('/accounts/:id', protect, authorizeRoles('admin', 'staff'), deleteAccount);
 router.post('/accounts/transfer', protect, authorizeRoles('admin', 'staff'), transferFunds);
 router.post('/accounts/income', protect, authorizeRoles('admin', 'staff'), recordIncome);
 

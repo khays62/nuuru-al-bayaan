@@ -1,8 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import financeService from '../api/finance';
-import axios from '../api/axios';
+import { useUpdatePayrollByParamsMutation } from '../hooks/payrollHooks';
+import { listUsers } from '../../users/api/usersApi.js';
+import AcademicYearSelect from '../../lookups/components/AcademicYearSelect.jsx';
+
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import FormField from '../../../shared/components/ui/FormField.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 
 export default function PayrollUpdateModal({
     onClose,
@@ -14,6 +22,7 @@ export default function PayrollUpdateModal({
     initialMonth,
     initialAcademicYearId,
 }) {
+    const { t } = useI18n();
     const [loading, setLoading] = useState(false);
     const [staffList, setStaffList] = useState([]);
 
@@ -25,11 +34,13 @@ export default function PayrollUpdateModal({
         amount: '',
     });
 
+    const updateMutation = useUpdatePayrollByParamsMutation();
+
     useEffect(() => {
         const load = async () => {
             try {
-                const res = await axios.get('/users', { params: { status: 'active', includeTeachers: true } });
-                setStaffList((res.data || []).filter(u => u.status !== 'inactive'));
+                const users = await listUsers({ status: 'active', includeTeachers: true });
+                setStaffList((users || []).filter((u) => u.status !== 'inactive'));
             } catch {
                 setStaffList([]);
             }
@@ -39,125 +50,106 @@ export default function PayrollUpdateModal({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!form.employee) return toast.error('Employee is required');
-        if (!form.month) return toast.error('Month is required');
-        if (!form.academicYear) return toast.error('Academic Year is required');
-        if (form.amount === '') return toast.error('Amount is required');
+        if (!form.employee) return toast.error(t('finance.payroll.validations.employeeRequired', { defaultValue: 'Employee is required' }));
+        if (!form.month) return toast.error(t('finance.payroll.validations.monthRequired', { defaultValue: 'Month is required' }));
+        if (!form.academicYear) return toast.error(t('finance.payroll.validations.academicYearRequired', { defaultValue: 'Academic Year is required' }));
+        if (form.amount === '') return toast.error(t('finance.payroll.validations.amountRequired', { defaultValue: 'Amount is required' }));
 
         setLoading(true);
         try {
-            await financeService.updatePayrollByParams({
+            await updateMutation.mutateAsync({
                 employee: form.employee,
                 month: form.month,
                 academicYear: form.academicYear,
                 updateType: form.updateType,
                 amount: Number(form.amount),
             });
-            toast.success('Payroll updated');
+            toast.success(t('finance.payroll.update.success', { defaultValue: 'Payroll updated' }));
             onSuccess?.();
             onClose();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Update failed');
+            toast.error(error.response?.data?.message || t('finance.payroll.update.errors.failed', { defaultValue: 'Update failed' }));
         } finally {
             setLoading(false);
         }
     };
 
+    const updateTypeOptions = [
+        { value: 'salaryCharge', label: t('finance.payroll.update.types.salaryCharge', { defaultValue: 'Salary charge' }) },
+        { value: 'commission', label: t('finance.payroll.update.types.commission', { defaultValue: 'Commission' }) },
+        { value: 'salaryDecrease', label: t('finance.payroll.update.types.salaryDecrease', { defaultValue: 'Salary decrease' }) },
+    ];
+
+    const staffOptions = (staffList || []).map((u) => ({
+        value: u._id,
+        label: String(u?.fullName || u?.name || u?.username || u?.email || u._id),
+    }));
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/30">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Payroll Update</h3>
-                        <p className="text-xs text-slate-500 font-mono uppercase tracking-widest">Salary Charge / Commission / Decrease</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all shadow-sm">
-                        <X size={22} className="text-slate-400" />
-                    </button>
+        <Modal
+            isOpen
+            onClose={onClose}
+            title={t('finance.payroll.modals.updateTitle', { defaultValue: 'Update Payroll' })}
+            panelClassName="max-w-2xl"
+        >
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <FormField label={t('finance.payroll.update.fields.updateType', { defaultValue: 'Update type' })} required>
+                        <DropdownSelect
+                            value={form.updateType}
+                            onChange={(v) => setForm((prev) => ({ ...prev, updateType: v }))}
+                            options={updateTypeOptions}
+                            clearable={false}
+                        />
+                    </FormField>
+
+                    <FormField label={t('finance.payroll.fields.employee', { defaultValue: 'Employee' })} required>
+                        <SearchableSelect
+                            value={form.employee}
+                            onChange={(v) => setForm((prev) => ({ ...prev, employee: v }))}
+                            options={staffOptions}
+                            placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employee…' })}
+                            maxVisible={5}
+                            searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employees…' })}
+                        />
+                    </FormField>
+
+                    <FormField label={t('finance.payroll.filters.month', { defaultValue: 'Month' })} required>
+                        <Input
+                            type="month"
+                            value={form.month}
+                            onChange={(e) => setForm((prev) => ({ ...prev, month: e.target.value }))}
+                        />
+                    </FormField>
+
+                    <FormField label={t('common.filters.academicYear', { defaultValue: 'Academic Year' })} required>
+                        <AcademicYearSelect
+                            value={form.academicYear}
+                            onChange={(v) => setForm((prev) => ({ ...prev, academicYear: v }))}
+                            maxVisible={5}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                        />
+                    </FormField>
+
+                    <FormField label={t('finance.payroll.update.fields.amount', { defaultValue: 'Amount' })} required className="sm:col-span-2">
+                        <Input
+                            type="number"
+                            value={form.amount}
+                            onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
+                            placeholder="0"
+                        />
+                    </FormField>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Update Type</label>
-                            <select
-                                value={form.updateType}
-                                onChange={(e) => setForm(prev => ({ ...prev, updateType: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="salaryCharge">Salary Charge</option>
-                                <option value="commission">Commission</option>
-                                <option value="salaryDecrease">Salary Decrease</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</label>
-                            <input
-                                type="number"
-                                value={form.amount}
-                                onChange={(e) => setForm(prev => ({ ...prev, amount: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Month</label>
-                            <input
-                                type="month"
-                                value={form.month}
-                                onChange={(e) => setForm(prev => ({ ...prev, month: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</label>
-                            <select
-                                value={form.academicYear}
-                                onChange={(e) => setForm(prev => ({ ...prev, academicYear: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="">Select Academic Year</option>
-                                {academicYears.map(y => (
-                                    <option key={y._id} value={y._id}>{y.yearName}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</label>
-                        <select
-                            value={form.employee}
-                            onChange={(e) => setForm(prev => ({ ...prev, employee: e.target.value }))}
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                        >
-                            <option value="">Select Employee</option>
-                            {staffList.map(s => (
-                                <option key={s._id} value={s._id}>{s.fullName}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-6 py-3 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl font-black uppercase text-[10px] tracking-[0.2em]"
-                        >
-                            Close
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-8 py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black uppercase text-[10px] tracking-[0.2em] disabled:opacity-50"
-                        >
-                            {loading ? 'Saving...' : 'Save'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                <div className="flex items-center justify-end gap-2">
+                    <Button variant="neutral" onClick={onClose}>
+                        {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                    </Button>
+                    <Button type="submit" variant="brand" disabled={loading}>
+                        {loading ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.update', { defaultValue: 'Update' })}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
     );
 }

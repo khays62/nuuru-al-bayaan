@@ -3,6 +3,9 @@ import toast from 'react-hot-toast';
 import { Plus, Settings, Trash2, Edit, Check, X } from 'lucide-react';
 import financeService from '../api/finance';
 
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+
 export default function FeeTypeTab() {
   const [loading, setLoading] = useState(true);
   const [feeTypes, setFeeTypes] = useState([]);
@@ -149,64 +152,110 @@ export default function FeeTypeTab() {
         )}
 
       <div className="bg-white border border-surface-200 rounded-[2.5rem] overflow-hidden shadow-sm">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-surface-50 border-b border-surface-200">
-            <tr className="text-[10px] font-black text-surface-400 uppercase tracking-[0.2em]">
-              <th className="p-6 pl-10">Fee Type</th>
-              <th className="p-6">Status</th>
-              <th className="p-6 text-right pr-10">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-100">
-            {loading ? (
-              <tr><td colSpan="3" className="p-20 text-center text-surface-400 font-black italic tracking-[0.2em] animate-pulse">Initializing...</td></tr>
-            ) : feeTypes.length === 0 ? (
-              <tr><td colSpan="3" className="p-20 text-center text-surface-300 font-bold uppercase tracking-widest">No fee types defined.</td></tr>
-            ) : feeTypes.map((ft) => (
-              <tr key={ft._id} className="hover:bg-surface-50/50 transition-all group">
-                <td className="p-6 pl-10">
-                  {editingId === ft._id ? (
-                    <input
-                      className="w-full h-11 px-4 bg-white border border-surface-300 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20"
-                      value={formData.name}
-                      onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <span className="px-3 py-1.5 bg-surface-100 text-surface-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-surface-200">
-                        {ft.code}
-                      </span>
-                      <span className="font-bold text-surface-900 text-base">{ft.name}</span>
-                    </div>
-                  )}
-                </td>
-                <td className="p-6">
+        <StandardTable
+          isLoading={loading}
+          error={null}
+          items={feeTypes}
+          loadingMessage="Initializing..."
+          loadingVariant="table"
+          loadingRows={6}
+          loadingColumns={3}
+          emptyTitle="No fee types defined."
+          emptyDescription=""
+
+          rows={feeTypes}
+          columns={[
+            { key: 'type', label: 'Fee Type', sortable: false },
+            { key: 'status', label: 'Status', sortable: false },
+            { key: 'actions', label: 'Actions', sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
+          ]}
+          storageKey="finance:fee-types:columns:v1"
+          getRowKey={(row) => row?._id}
+          renderCell={(ft, col) => {
+            switch (col.key) {
+              case 'type':
+                return editingId === ft._id ? (
+                  <input
+                    className="w-full h-11 px-4 bg-white border border-surface-300 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    value={formData.name}
+                    onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                  />
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="px-3 py-1.5 bg-surface-100 text-surface-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-surface-200">
+                      {ft.code}
+                    </span>
+                    <span className="font-bold text-surface-900 text-base">{ft.name}</span>
+                  </div>
+                );
+              case 'status':
+                return (
                   <div className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${ft.status === 'active' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-surface-300'}`} />
                     <span className="text-[10px] font-black uppercase tracking-widest text-surface-500">{ft.status}</span>
                   </div>
-                </td>
-                <td className="p-6 text-right pr-10">
-                  {editingId === ft._id ? (
-                    <div className="flex justify-end gap-3">
-                      <button onClick={() => setEditingId(null)} className="w-10 h-10 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl flex items-center justify-center transition-all"><X size={18} /></button>
-                      <button onClick={handleSave} className="w-10 h-10 bg-green-500 text-white shadow-lg shadow-green-200 rounded-xl flex items-center justify-center transition-all scale-110"><Check size={18} strokeWidth={3} /></button>
-                    </div>
-                  ) : (
-                    <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all">
-                      <button onClick={() => startEdit(ft)} className="w-10 h-10 bg-surface-50 text-surface-400 hover:text-primary hover:bg-primary-50 rounded-xl flex items-center justify-center transition-all"><Edit size={18} /></button>
-                      {ft.status === 'active' ? (
-                        <button onClick={() => handleDeactivate(ft._id)} className="w-10 h-10 bg-surface-50 text-surface-400 hover:text-red-500 hover:bg-red-50 rounded-xl flex items-center justify-center transition-all"><Trash2 size={18} /></button>
-                      ) : (
-                        <button onClick={() => handleActivate(ft._id)} className="w-10 h-10 bg-surface-50 text-surface-400 hover:text-green-600 hover:bg-green-50 rounded-xl flex items-center justify-center transition-all"><Check size={18} /></button>
-                      )}
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                );
+              case 'actions':
+                return editingId === ft._id ? (
+                  <RowActionButtons
+                    actions={[
+                      {
+                        key: 'cancel',
+                        label: 'Cancel',
+                        title: 'Cancel',
+                        tone: 'delete',
+                        icon: <X size={18} />,
+                        onClick: () => setEditingId(null),
+                      },
+                      {
+                        key: 'save',
+                        label: 'Save',
+                        title: 'Save',
+                        tone: 'edit',
+                        icon: <Check size={18} strokeWidth={3} />,
+                        onClick: handleSave,
+                      },
+                    ]}
+                  />
+                ) : (
+                  <RowActionButtons
+                    actions={[
+                      {
+                        key: 'edit',
+                        label: 'Edit',
+                        title: 'Edit',
+                        tone: 'edit',
+                        icon: <Edit size={18} />,
+                        onClick: () => startEdit(ft),
+                      },
+                      ft.status === 'active'
+                        ? {
+                            key: 'deactivate',
+                            label: 'Deactivate',
+                            title: 'Deactivate',
+                            tone: 'delete',
+                            icon: <Trash2 size={18} />,
+                            onClick: () => handleDeactivate(ft._id),
+                          }
+                        : {
+                            key: 'activate',
+                            label: 'Activate',
+                            title: 'Activate',
+                            tone: 'edit',
+                            icon: <Check size={18} />,
+                            onClick: () => handleActivate(ft._id),
+                          },
+                    ]}
+                  />
+                );
+              default:
+                return '';
+            }
+          }}
+
+          showRowsSelector={false}
+          paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+        />
       </div>
 
       <div className="bg-surface-900 p-8 rounded-[2.5rem] flex gap-6 items-start shadow-2xl">

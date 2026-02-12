@@ -169,7 +169,7 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                     </div>
                                 </>
                             ) : (
-                                <div className="text-center py-12 space-y-6 bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-200">
+                                <div className="text-center py-12 space-y-6 bg-slate-50/50 rounded-4xl border-2 border-dashed border-slate-200">
                                     <div className="w-24 h-24 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-blue-50">
                                         <Calculator size={48} className="stroke-[1.5]" />
                                     </div>

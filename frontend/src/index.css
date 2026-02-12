@@ -70,6 +70,10 @@
 	/* Optional bottom padding to prevent footer overlap */
 	.with-print-footer { padding-bottom: 0 !important; }
 
+	/* When using Tailwind `space-y-*`, hidden `.no-print` siblings can still create gaps.
+	   Opt-in by adding `print-no-space` on the container that uses `space-y-*`. */
+	.print-no-space > :not([hidden]) ~ :not([hidden]) { margin-top: 0 !important; }
+
 	/* Avoid scrollbars in print: let tables expand */
 	.overflow-x-auto, .overflow-auto, .overflow-y-auto { overflow: visible !important; }
 	table { width: 100% !important; table-layout: auto !important; border-collapse: collapse !important; }

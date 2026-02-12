@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Info, Printer, Wallet, Users, Search, History, Calendar, Check, CreditCard } from 'lucide-react';
-import financeService from '../api/finance';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../auth/AuthContext';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
+import { useQuery } from '@tanstack/react-query';
+import { listAccounts } from '../api/accountsApi';
+import { accountKeys } from '../queryKeys';
+import {
+    useInvoicesQuery,
+    useStudentMonthHistoryQuery,
+    usePayChargedMonthMutation,
+    usePaySelectedMonthsMutation,
+    useRevertPaymentGroupMutation,
+} from '../hooks/studentFinanceHooks';
+import { getInvoices } from '../api/studentFinanceApi';
 
 export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     const { auth } = useAuth();
@@ -33,6 +43,26 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     const [processingId, setProcessingId] = useState(null);
 
     const student = row?.student;
+
+    const accountsQuery = useQuery({
+        queryKey: accountKeys.list({ includeInactive: false }),
+        queryFn: ({ signal }) => listAccounts({ includeInactive: false }, { signal }),
+        staleTime: 30 * 1000,
+    });
+
+    const invoicesQuery = useInvoicesQuery(
+        { studentId: student?._id, limit: 200 },
+        { enabled: !!student?._id }
+    );
+
+    const historyQuery = useStudentMonthHistoryQuery(
+        { studentId: student?._id },
+        { enabled: !!student?._id }
+    );
+
+    const payChargedMonthMutation = usePayChargedMonthMutation();
+    const paySelectedMonthsMutation = usePaySelectedMonthsMutation();
+    const revertPaymentGroupMutation = useRevertPaymentGroupMutation();
 
     const normalizeMonth = (value) => {
         if (!value || typeof value !== 'string') return null;
@@ -97,16 +127,11 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
             for (const g of groups) {
                 const id = g?.paymentGroupId;
                 if (!id) continue;
-                await financeService.revertPaymentGroup({ paymentGroupId: id, reason: 'Admin revert for charge deletion' });
+                await revertPaymentGroupMutation.mutateAsync({ paymentGroupId: id, reason: 'Admin revert for charge deletion' });
             }
 
             // Refresh invoices + history
-            const [invRes, histRes] = await Promise.all([
-                financeService.getInvoices({ studentId: student?._id, limit: 100 }),
-                financeService.getStudentMonthHistory({ studentId: student?._id })
-            ]);
-            setInvoices(invRes.data || invRes || []);
-            setHistory(histRes.rows || histRes.data || []);
+            await Promise.all([invoicesQuery.refetch(), historyQuery.refetch()]);
 
             toast.dismiss();
             toast.success('Payments reverted');
@@ -118,31 +143,26 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     };
 
     useEffect(() => {
-        const loadInitialData = async () => {
-            try {
-                setLoading(true);
-                const [accRes, invRes, histRes] = await Promise.all([
-                    financeService.getAccounts(),
-                    financeService.getInvoices({ studentId: student?._id, limit: 100 }),
-                    financeService.getStudentMonthHistory({ studentId: student?._id })
-                ]);
+        setLoading(Boolean(accountsQuery.isFetching || invoicesQuery.isFetching || historyQuery.isFetching));
+    }, [accountsQuery.isFetching, invoicesQuery.isFetching, historyQuery.isFetching]);
 
-                const accList = accRes.data || accRes || [];
-                setAccounts(accList);
-                if (accList.length > 0) setAccountId(accList[0]._id);
+    useEffect(() => {
+        const accList = Array.isArray(accountsQuery.data) ? accountsQuery.data : (accountsQuery.data?.data || []);
+        setAccounts(accList);
+        if (!accountId && accList.length > 0) setAccountId(accList[0]._id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [accountsQuery.data]);
 
-                const invList = invRes.data || invRes || [];
-                setInvoices((invList || []).filter(i => i?.status !== 'Cancelled'));
-                setHistory(histRes.rows || histRes.data || []);
+    useEffect(() => {
+        const invRes = invoicesQuery.data;
+        const invList = Array.isArray(invRes) ? invRes : (invRes?.data || []);
+        setInvoices((invList || []).filter(i => i?.status !== 'Cancelled'));
+    }, [invoicesQuery.data]);
 
-            } catch {
-                toast.error("Failed to load student records");
-            } finally {
-                setLoading(false);
-            }
-        };
-        if (student?._id) loadInitialData();
-    }, [student]);
+    useEffect(() => {
+        const histRes = historyQuery.data;
+        setHistory(histRes?.rows || histRes?.data || histRes || []);
+    }, [historyQuery.data]);
 
     const handlePaidChange = (id, val) => {
         setEditingPaid(prev => ({ ...prev, [id]: val }));
@@ -162,7 +182,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
 
         setProcessingId(inv._id);
         try {
-            await financeService.payChargedMonth({
+            await payChargedMonthMutation.mutateAsync({
                 studentId: student._id,
                 month: inv.billingMonth,
                 academicYearId: inv.academicYear,
@@ -176,9 +196,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
             });
 
             toast.success("Payment recorded");
-            const updated = await financeService.getInvoices({ studentId: student._id, limit: 100 });
-            const invList = updated.data || updated || [];
-            setInvoices((invList || []).filter(i => i?.status !== 'Cancelled'));
+            await Promise.all([invoicesQuery.refetch(), historyQuery.refetch()]);
             setEditingPaid(prev => {
                 const n = { ...prev };
                 delete n[inv._id];
@@ -388,7 +406,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                 return { month: m, amount: amt };
             });
 
-            const payRes = await financeService.paySelectedMonths({
+            const payRes = await paySelectedMonthsMutation.mutateAsync({
                 studentId: student?._id,
                 months: allocations,
                 accountId,
@@ -399,13 +417,10 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                 description: `Hormaris payment for ${months.join(', ')}`,
             });
 
-            const [invRes, histRes] = await Promise.all([
-                financeService.getInvoices({ studentId: student?._id, limit: 200 }),
-                financeService.getStudentMonthHistory({ studentId: student?._id })
-            ]);
-            const updatedInvoices = invRes.data || invRes || [];
-            setInvoices((updatedInvoices || []).filter(i => i?.status !== 'Cancelled'));
-            setHistory(histRes.rows || histRes.data || []);
+            const [invRefetch, histRefetch] = await Promise.all([invoicesQuery.refetch(), historyQuery.refetch()]);
+            const updatedInvoices = Array.isArray(invRefetch.data)
+                ? invRefetch.data
+                : (Array.isArray(invRefetch.data?.data) ? invRefetch.data.data : (invRefetch.data?.data || []));
 
             // Print only invoices that match selected months
             const invoicesToPrint = updatedInvoices.filter(i => months.includes(normalizeMonth(i.billingMonth) || ''));
@@ -451,7 +466,11 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
         try {
             toast.loading("Preparing statement...");
             const headerBase64 = headerImg ? await getBase64Image(headerImg) : '';
-            const inv = await financeService.getInvoices({ _id: row._id }).then(r => r.data[0]);
+            const invRes = await getInvoices({ _id: row._id });
+            const invList = Array.isArray(invRes)
+                ? invRes
+                : (Array.isArray(invRes?.data) ? invRes.data : (invRes?.data?.data || []));
+            const inv = invList[0];
 
             const isFree = !!inv?.isWaived || !!inv?.student?.isFree || !!student?.isFree;
             const hasPayment = Number(inv?.paidAmount || 0) > 0;
@@ -634,7 +653,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-6xl h-[94vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-slate-200">
 
                 {/* Header Section */}
@@ -791,7 +810,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                             {/* Table Section */}
                             <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col relative">
                                 <div className="overflow-auto flex-1 custom-scrollbar">
-                                    <table className="w-full min-w-[1200px] text-left border-collapse">
+                                    <table className="w-full min-w-300 text-left border-collapse">
                                         <thead className="sticky top-0 z-10 bg-slate-50">
                                             <tr className="border-b border-slate-200">
                                                 <th className="py-3 px-6 text-[9px] font-black text-slate-400 uppercase tracking-widest">No</th>
@@ -959,7 +978,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                         onClick={() => handlePrintRV({ ...h, title: h.description, paidAmount: h.paid, amount: h.amount, discounts: [{ amountOff: h.discount }] })}
                                                         disabled={Number(h.paid || 0) <= 0}
                                                         title={Number(h.paid || 0) <= 0 ? 'Cannot print: no payment recorded' : 'Print'}
-                                                        className="w-14 h-14 bg-white border-2 border-slate-100 rounded-[1.5rem] flex items-center justify-center text-slate-900 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 transition-all shadow-lg active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-900 disabled:hover:border-slate-100"
+                                                        className="w-14 h-14 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-center text-slate-900 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 transition-all shadow-lg active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-900 disabled:hover:border-slate-100"
                                                     >
                                                         <Printer size={24} />
                                                     </button>

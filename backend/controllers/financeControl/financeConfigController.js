@@ -2,6 +2,12 @@ import FinanceCategory from '../../models/FinanceCategory.js';
 import Account from '../../models/Account.js';
 import AuditLog from '../../models/AuditLog.js';
 import FeeType from '../../models/FeeType.js';
+import Expense from '../../models/Expense.js';
+import { publishRealtime } from '../../utils/realtimeBus.js';
+
+const sendFinanceError = (res, status, code, message, extra = {}) => {
+    return res.status(status).json({ code, message, ...extra });
+};
 
 // Helper: Audit Log
 // Helper: Audit Log
@@ -26,16 +32,31 @@ const logAction = async (user, action, description, req, target = null) => {
 
 export const createCategory = async (req, res) => {
     try {
-        const category = new FinanceCategory(req.body);
+        const payload = req.body || {};
+        const name = String(payload?.name || '').trim();
+        const type = String(payload?.type || '').trim();
+
+        if (!name) return sendFinanceError(res, 400, 'FIN_CATEGORY_NAME_REQUIRED', 'name is required');
+        if (!type) return sendFinanceError(res, 400, 'FIN_CATEGORY_TYPE_REQUIRED', 'type is required');
+
+        const category = new FinanceCategory({ ...payload, name, type });
         await category.save();
         await logAction(req.user, 'CREATE_FINANCE_CATEGORY', `Created ${category.type} category: ${category.name}`, req, {
             id: category._id,
             model: 'FinanceCategory',
             changes: { after: category.toObject() }
         });
+
+        try {
+            publishRealtime({ type: 'financeCategories:changed', id: String(category._id), categoryType: category.type, ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.status(201).json(category);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error?.code === 11000) {
+            return sendFinanceError(res, 409, 'FIN_CATEGORY_DUPLICATE', 'Category already exists');
+        }
+        res.status(500).json({ code: 'FIN_INTERNAL_ERROR', message: error.message });
     }
 };
 
@@ -76,35 +97,80 @@ export const getCategories = async (req, res) => {
 export const updateCategory = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id || !/^[0-9a-fA-F]{24}$/.test(String(id))) {
+            return sendFinanceError(res, 400, 'FIN_INVALID_CATEGORY_ID', 'Invalid category id');
+        }
         const oldCategory = await FinanceCategory.findById(id).lean();
+        if (!oldCategory) return sendFinanceError(res, 404, 'FIN_CATEGORY_NOT_FOUND', 'Category not found');
+
+        // If this is an expense category and already used in expenses, prevent renaming.
+        const incomingName = req.body?.name !== undefined ? String(req.body?.name || '').trim() : undefined;
+        if (String(oldCategory?.type || '').toLowerCase() === 'expense' && incomingName !== undefined) {
+            const oldName = String(oldCategory?.name || '').trim();
+            if (incomingName && incomingName !== oldName) {
+                const inUse = await Expense.exists({ $or: [{ categoryRef: id }, { category: oldName }] });
+                if (inUse) {
+                    return sendFinanceError(res, 400, 'FIN_CATEGORY_IN_USE', 'Category is already used in expenses and cannot be renamed');
+                }
+            }
+        }
+
         const category = await FinanceCategory.findByIdAndUpdate(id, req.body, { new: true });
 
-        if (!category) return res.status(404).json({ message: 'Category not found' });
+        if (!category) return sendFinanceError(res, 404, 'FIN_CATEGORY_NOT_FOUND', 'Category not found');
 
         await logAction(req.user, 'UPDATE_FINANCE_CATEGORY', `Updated category: ${category.name}`, req, {
             id: category._id,
             model: 'FinanceCategory',
             changes: { before: oldCategory, after: category.toObject() }
         });
+
+        try {
+            publishRealtime({ type: 'financeCategories:changed', id: String(category._id), categoryType: category.type, ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json(category);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error?.code === 11000) {
+            return sendFinanceError(res, 409, 'FIN_CATEGORY_DUPLICATE', 'Category already exists');
+        }
+        res.status(500).json({ code: 'FIN_INTERNAL_ERROR', message: error.message });
     }
 };
 
 export const deleteCategory = async (req, res) => {
     try {
         const { id } = req.params;
+        if (!id || !/^[0-9a-fA-F]{24}$/.test(String(id))) {
+            return sendFinanceError(res, 400, 'FIN_INVALID_CATEGORY_ID', 'Invalid category id');
+        }
+        const existing = await FinanceCategory.findById(id).lean();
+        if (!existing) return sendFinanceError(res, 404, 'FIN_CATEGORY_NOT_FOUND', 'Category not found');
+
+        // Do not allow archiving expense categories that have recorded expenses.
+        if (String(existing?.type || '').toLowerCase() === 'expense') {
+            const oldName = String(existing?.name || '').trim();
+            const inUse = await Expense.exists({ $or: [{ categoryRef: id }, { category: oldName }] });
+            if (inUse) {
+                return sendFinanceError(res, 400, 'FIN_CATEGORY_IN_USE', 'Category is already used in expenses and cannot be archived');
+            }
+        }
+
         const category = await FinanceCategory.findByIdAndUpdate(id, { status: 'inactive' }, { new: true });
-        if (!category) return res.status(404).json({ message: 'Category not found' });
+        if (!category) return sendFinanceError(res, 404, 'FIN_CATEGORY_NOT_FOUND', 'Category not found');
 
         await logAction(req.user, 'DELETE_FINANCE_CATEGORY', `Deactivated category: ${category.name}`, req, {
             id: category._id,
             model: 'FinanceCategory'
         });
+
+        try {
+            publishRealtime({ type: 'financeCategories:changed', id: String(category._id), categoryType: category.type, ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json({ message: 'Category deactivated successfully' });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ code: 'FIN_INTERNAL_ERROR', message: error.message });
     }
 };
 
@@ -213,17 +279,27 @@ export const deleteFeeType = async (req, res) => {
 export const createAccount = async (req, res) => {
     try {
         const { name, type, institution, accountNumber } = req.body || {};
-        if (!name || !String(name).trim()) return res.status(400).json({ message: 'Account name is required' });
-        if (!type || !String(type).trim()) return res.status(400).json({ message: 'Account type is required' });
-        if (!institution || !String(institution).trim()) return res.status(400).json({ message: 'Institution is required' });
-        if (!accountNumber || !String(accountNumber).trim()) return res.status(400).json({ message: 'Account number is required' });
+        if (!name || !String(name).trim()) return sendFinanceError(res, 400, 'FIN_ACCOUNT_NAME_REQUIRED', 'Account name is required');
+        if (!type || !String(type).trim()) return sendFinanceError(res, 400, 'FIN_ACCOUNT_TYPE_REQUIRED', 'Account type is required');
+        if (!institution || !String(institution).trim()) return sendFinanceError(res, 400, 'FIN_ACCOUNT_INSTITUTION_REQUIRED', 'Institution is required');
+        if (!accountNumber || !String(accountNumber).trim()) return sendFinanceError(res, 400, 'FIN_ACCOUNT_NUMBER_REQUIRED', 'Account number is required');
 
         const account = new Account(req.body);
         await account.save();
         await logAction(req.user, 'CREATE_ACCOUNT', `Created account: ${account.name}`, req);
+
+        try {
+            publishRealtime({ type: 'accounts:changed', id: String(account._id), ts: Date.now() });
+        } catch { /* ignore */ }
         res.status(201).json(account);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error?.code === 11000) {
+            return sendFinanceError(res, 409, 'FIN_ACCOUNT_DUPLICATE', 'An account with the same details already exists');
+        }
+        if (error?.name === 'ValidationError') {
+            return sendFinanceError(res, 400, 'FIN_VALIDATION_ERROR', 'Validation error');
+        }
+        return sendFinanceError(res, 500, 'FIN_INTERNAL_ERROR', 'Server error');
     }
 };
 
@@ -250,11 +326,58 @@ export const updateAccount = async (req, res) => {
     try {
         const { id } = req.params;
         const account = await Account.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
-        if (!account) return res.status(404).json({ message: 'Account not found' });
+        if (!account) return sendFinanceError(res, 404, 'FIN_ACCOUNT_NOT_FOUND', 'Account not found');
         await logAction(req.user, 'UPDATE_ACCOUNT', `Updated account: ${account.name}`, req);
+
+        try {
+            publishRealtime({ type: 'accounts:changed', id: String(account._id), ts: Date.now() });
+        } catch { /* ignore */ }
         res.json(account);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error?.name === 'CastError') {
+            return sendFinanceError(res, 400, 'FIN_INVALID_ACCOUNT_ID', 'Invalid account id');
+        }
+        if (error?.code === 11000) {
+            return sendFinanceError(res, 409, 'FIN_ACCOUNT_DUPLICATE', 'An account with the same details already exists');
+        }
+        if (error?.name === 'ValidationError') {
+            return sendFinanceError(res, 400, 'FIN_VALIDATION_ERROR', 'Validation error');
+        }
+        return sendFinanceError(res, 500, 'FIN_INTERNAL_ERROR', 'Server error');
+    }
+};
+
+export const deleteAccount = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const account = await Account.findById(id);
+        if (!account) return sendFinanceError(res, 404, 'FIN_ACCOUNT_NOT_FOUND', 'Account not found');
+
+        const balance = Number(account.balance || 0);
+        // Hard rule: accounts with money (or any non-zero balance) cannot be deleted.
+        if (!Number.isFinite(balance) || balance !== 0) {
+            return sendFinanceError(res, 400, 'FIN_ACCOUNT_DELETE_BALANCE_NOT_ZERO', 'Cannot delete an account with a non-zero balance');
+        }
+
+        await Account.deleteOne({ _id: account._id });
+
+        await logAction(req.user, 'DELETE_ACCOUNT', `Deleted account: ${account.name}`, req, {
+            id: account._id,
+            model: 'Account',
+            changes: { before: account.toObject(), after: null },
+        });
+
+        try {
+            publishRealtime({ type: 'accounts:changed', id: String(account._id), ts: Date.now() });
+        } catch { /* ignore */ }
+
+        res.json({ message: 'Account deleted successfully' });
+    } catch (error) {
+        if (error?.name === 'CastError') {
+            return sendFinanceError(res, 400, 'FIN_INVALID_ACCOUNT_ID', 'Invalid account id');
+        }
+        return sendFinanceError(res, 500, 'FIN_INTERNAL_ERROR', 'Server error');
     }
 };
 
@@ -263,15 +386,15 @@ export const transferFunds = async (req, res) => {
     try {
         const { fromAccountId, toAccountId, amount, description, date } = req.body;
 
-        if (amount <= 0) return res.status(400).json({ message: 'Amount must be positive' });
+        if (amount <= 0) return sendFinanceError(res, 400, 'FIN_AMOUNT_MUST_BE_POSITIVE', 'Amount must be positive');
 
         const fromAccount = await Account.findById(fromAccountId);
         const toAccount = await Account.findById(toAccountId);
 
-        if (!fromAccount || !toAccount) return res.status(404).json({ message: 'Account not found' });
-        if (fromAccount.status === 'inactive') return res.status(400).json({ message: 'Source account is inactive' });
-        if (toAccount.status === 'inactive') return res.status(400).json({ message: 'Destination account is inactive' });
-        if (fromAccount.balance < amount) return res.status(400).json({ message: 'Insufficient funds' });
+        if (!fromAccount || !toAccount) return sendFinanceError(res, 404, 'FIN_ACCOUNT_NOT_FOUND', 'Account not found');
+        if (fromAccount.status === 'inactive') return sendFinanceError(res, 400, 'FIN_SOURCE_ACCOUNT_INACTIVE', 'Source account is inactive');
+        if (toAccount.status === 'inactive') return sendFinanceError(res, 400, 'FIN_DEST_ACCOUNT_INACTIVE', 'Destination account is inactive');
+        if (fromAccount.balance < amount) return sendFinanceError(res, 400, 'FIN_INSUFFICIENT_FUNDS', 'Insufficient funds');
 
         fromAccount.balance -= Number(amount);
         toAccount.balance += Number(amount);
@@ -282,9 +405,16 @@ export const transferFunds = async (req, res) => {
         const transferDate = date ? new Date(date).toLocaleDateString() : new Date().toLocaleDateString();
         await logAction(req.user, 'TRANSFER_FUNDS', `Transferred ${amount} from ${fromAccount.name} to ${toAccount.name} on ${transferDate}. Desc: ${description}`, req);
 
+        try {
+            publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json({ message: 'Transfer successful', from: fromAccount, to: toAccount });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error?.name === 'CastError') {
+            return sendFinanceError(res, 400, 'FIN_INVALID_ACCOUNT_ID', 'Invalid account id');
+        }
+        return sendFinanceError(res, 500, 'FIN_INTERNAL_ERROR', 'Server error');
     }
 };
 
@@ -294,10 +424,10 @@ export const recordIncome = async (req, res) => {
         const { accountId, amount, incomeName, comment, receivedNumber, date } = req.body;
 
         const account = await Account.findById(accountId);
-        if (!account) return res.status(404).json({ message: 'Account not found' });
-        if (account.status === 'inactive') return res.status(400).json({ message: 'Account is inactive' });
+        if (!account) return sendFinanceError(res, 404, 'FIN_ACCOUNT_NOT_FOUND', 'Account not found');
+        if (account.status === 'inactive') return sendFinanceError(res, 400, 'FIN_ACCOUNT_INACTIVE', 'Account is inactive');
 
-        if (amount <= 0) return res.status(400).json({ message: 'Amount must be positive' });
+        if (amount <= 0) return sendFinanceError(res, 400, 'FIN_AMOUNT_MUST_BE_POSITIVE', 'Amount must be positive');
 
         account.balance += Number(amount);
         await account.save();
@@ -307,8 +437,15 @@ export const recordIncome = async (req, res) => {
         // Ideally we should create a Transaction record if Ledger exists, but for now AuditLog serves as history.
         await logAction(req.user, 'RECORD_INCOME', `Income: ${incomeName} ($${amount}) added to ${account.name}. Ref: ${receivedNumber}. Date: ${incomeDate}. Comment: ${comment}`, req);
 
+        try {
+            publishRealtime({ type: 'accounts:changed', id: String(account._id), ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json({ message: 'Income recorded successfully', account });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        if (error?.name === 'CastError') {
+            return sendFinanceError(res, 400, 'FIN_INVALID_ACCOUNT_ID', 'Invalid account id');
+        }
+        return sendFinanceError(res, 500, 'FIN_INTERNAL_ERROR', 'Server error');
     }
 };

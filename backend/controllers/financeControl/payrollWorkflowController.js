@@ -5,6 +5,7 @@ import User from '../../models/User.js';
 import Teacher from '../../models/Teacher.js';
 import bcrypt from 'bcryptjs';
 import { getDefaultInitialPassword } from '../../utils/defaultPasswords.js';
+import { publishRealtime } from '../../utils/realtimeBus.js';
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 const isValidMonth = (value) => typeof value === 'string' && /^\d{4}-\d{2}$/.test(value);
@@ -147,6 +148,9 @@ export async function chargePayroll(req, res) {
     if (toCreate.length === 0) return res.status(400).json({ message: 'Payroll already generated for the selected period/staff.' });
 
     const created = await Payroll.insertMany(toCreate);
+    try {
+      publishRealtime({ type: 'payroll:changed', ts: Date.now() });
+    } catch { /* ignore */ }
     res.status(201).json({
       message: 'Payroll charge complete',
       stats: { requested: targetStaff.length, created: created.length, skipped: targetStaff.length - created.length },
@@ -256,6 +260,12 @@ export async function payrollFullPayment(req, res) {
     }
     await Promise.all(updates);
 
+    try {
+      publishRealtime({ type: 'payroll:changed', ts: Date.now() });
+      publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+      publishRealtime({ type: 'expenses:changed', ts: Date.now() });
+    } catch { /* ignore */ }
+
     res.json({ message: 'Full payment complete', month, academicYear, scope, count: payrolls.length, total });
   } catch (error) {
     console.error('payrollFullPayment Error:', error);
@@ -291,6 +301,9 @@ export async function deletePayrollCharges(req, res) {
     if (deleteType === 'single') query.staff = staffId;
 
     const result = await Payroll.deleteMany(query);
+    try {
+      publishRealtime({ type: 'payroll:changed', ts: Date.now() });
+    } catch { /* ignore */ }
     res.json({ message: 'Payroll charges deleted', deletedCount: result.deletedCount || 0 });
   } catch (error) {
     console.error('deletePayrollCharges Error:', error);

@@ -36,7 +36,7 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
     };
 
     return (
-        <div className="fixed inset-0 bg-surface-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-surface-900/60 backdrop-blur-sm z-60 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
                 <div className="p-8 border-b border-surface-100 flex justify-between items-center bg-purple-50/50">
                     <div className="flex items-center gap-4">
@@ -120,7 +120,7 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
                     <button
                         onClick={handlePay}
                         disabled={loading || !selectedInvoice}
-                        className="flex-[2] h-14 bg-purple-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-purple-200 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all flex items-center justify-center gap-3"
+                        className="flex-2 h-14 bg-purple-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-purple-200 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all flex items-center justify-center gap-3"
                     >
                         {loading ? 'Processing...' : (
                             <>

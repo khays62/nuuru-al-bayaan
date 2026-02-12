@@ -1,6 +1,7 @@
 import FeeInvoice from '../../models/FeeInvoice.js';
 import FeeTransaction from '../../models/FeeTransaction.js';
 import Payroll from '../../models/Payroll.js';
+import { publishRealtime } from '../../utils/realtimeBus.js';
 import Expense from '../../models/Expense.js';
 import FinanceCategory from '../../models/FinanceCategory.js';
 import AuditLog from '../../models/AuditLog.js';
@@ -647,6 +648,9 @@ export const generateSinglePayroll = async (req, res) => {
             model: 'Payroll'
         });
 
+        try {
+            publishRealtime({ type: 'payroll:changed', id: String(payroll._id), ts: Date.now() });
+        } catch { /* ignore */ }
         res.status(201).json(payroll);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -689,6 +693,10 @@ export const adjustPayroll = async (req, res) => {
             model: 'Payroll',
             changes: { before: oldSnapshot, after: payroll.toObject() }
         });
+
+        try {
+            publishRealtime({ type: 'payroll:changed', id: String(payroll._id), ts: Date.now() });
+        } catch { /* ignore */ }
         res.json(payroll);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -754,6 +762,14 @@ export const updatePayrollStatus = async (req, res) => {
             model: 'Payroll',
             changes: { before: oldSnapshot, after: payroll.toObject() }
         });
+
+        try {
+            publishRealtime({ type: 'payroll:changed', id: String(payroll._id), ts: Date.now() });
+            if (status === 'Paid') {
+                publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+                publishRealtime({ type: 'expenses:changed', ts: Date.now() });
+            }
+        } catch { /* ignore */ }
         res.json(payroll);
     } catch (error) {
         console.error("Update Payroll Error:", error);
@@ -776,6 +792,10 @@ export const deletePayroll = async (req, res) => {
             model: 'Payroll',
             changes: { before: payroll.toObject() }
         });
+
+        try {
+            publishRealtime({ type: 'payroll:changed', id: String(id), ts: Date.now() });
+        } catch { /* ignore */ }
         res.json({ message: "Deleted Successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -788,34 +808,55 @@ export const createExpense = async (req, res) => {
     try {
         const { accountId, amount, category, categoryId, title, description, date } = req.body;
 
+        const sendFinanceError = (status, code, message, extra = {}) => {
+            return res.status(status).json({ code, message, ...extra });
+        };
+
+        const amt = Number(amount);
+        if (!Number.isFinite(amt) || amt <= 0) {
+            return sendFinanceError(400, 'FIN_AMOUNT_MUST_BE_POSITIVE', 'amount must be a positive number');
+        }
+
         let catDoc = null;
         if (categoryId) {
             catDoc = await FinanceCategory.findOne({ _id: categoryId, type: 'expense' });
-            if (!catDoc) return res.status(404).json({ message: 'Expense category not found' });
+            if (!catDoc) return sendFinanceError(404, 'FIN_EXPENSE_CATEGORY_NOT_FOUND', 'Expense category not found');
         } else if (category) {
             catDoc = await FinanceCategory.findOne({ name: category, type: 'expense' });
         }
 
         const categoryName = catDoc ? catDoc.name : category;
-        if (!categoryName) return res.status(400).json({ message: 'category (or categoryId) is required' });
+        if (!categoryName) return sendFinanceError(400, 'FIN_EXPENSE_CATEGORY_REQUIRED', 'category (or categoryId) is required');
+
+        const expenseDate = date ? new Date(date) : new Date();
+        if (date && !Number.isFinite(expenseDate.getTime())) {
+            return sendFinanceError(400, 'FIN_DATE_INVALID', 'Invalid date');
+        }
 
         // 1. Budget Check
         if (catDoc && catDoc.budget > 0) {
-            // Calculate total expenses for this category in current month
-            const startOfMonth = new Date();
+            // Calculate total expenses for this category in the SAME month as the expense date.
+            // This lets admins record remaining budget for previous months by setting the date.
+            const startOfMonth = new Date(expenseDate);
             startOfMonth.setDate(1);
             startOfMonth.setHours(0, 0, 0, 0);
 
+            const startOfNextMonth = new Date(startOfMonth);
+            startOfNextMonth.setMonth(startOfNextMonth.getMonth() + 1);
+
             const spentThisMonth = await Expense.aggregate([
-                { $match: { category: categoryName, date: { $gte: startOfMonth } } },
+                { $match: { category: categoryName, date: { $gte: startOfMonth, $lt: startOfNextMonth } } },
                 { $group: { _id: null, total: { $sum: '$amount' } } }
             ]);
 
             const currentSpent = spentThisMonth[0]?.total || 0;
-            if (currentSpent + Number(amount) > catDoc.budget) {
-                return res.status(400).json({
-                    message: `Monthly budget exceeded for ${categoryName}. Current: $${currentSpent}, Limit: $${catDoc.budget}`
-                });
+            if (currentSpent + amt > catDoc.budget) {
+                return sendFinanceError(
+                    400,
+                    'FIN_EXPENSE_BUDGET_EXCEEDED',
+                    `Monthly budget exceeded for ${categoryName}. Current: $${currentSpent}, Limit: $${catDoc.budget}`,
+                    { category: categoryName, currentSpent, limit: catDoc.budget }
+                );
             }
         }
 
@@ -823,9 +864,9 @@ export const createExpense = async (req, res) => {
         if (accountId) {
             const Account = (await import('../../models/Account.js')).default;
             const account = await Account.findById(accountId);
-            if (!account) return res.status(404).json({ message: 'Account not found' });
-            if (account.balance < amount) return res.status(400).json({ message: 'Insufficient funds in the selected account' });
-            account.balance -= Number(amount);
+            if (!account) return sendFinanceError(404, 'FIN_ACCOUNT_NOT_FOUND', 'Account not found');
+            if (account.balance < amt) return sendFinanceError(400, 'FIN_INSUFFICIENT_FUNDS', 'Insufficient funds in the selected account');
+            account.balance -= amt;
             await account.save();
         }
 
@@ -833,8 +874,8 @@ export const createExpense = async (req, res) => {
             title,
             category: categoryName,
             categoryRef: catDoc?._id,
-            amount: Number(amount),
-            date: date ? new Date(date) : new Date(),
+            amount: amt,
+            date: expenseDate,
             description,
             account: accountId || undefined,
             approvedBy: req.user._id,
@@ -847,9 +888,15 @@ export const createExpense = async (req, res) => {
             model: 'Expense',
             changes: { after: expense.toObject() }
         });
+
+        try {
+            publishRealtime({ type: 'expenses:changed', id: String(expense._id), ts: Date.now() });
+            // Creating an expense may adjust account balances.
+            publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+        } catch { /* ignore */ }
         res.status(201).json(expense);
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ code: 'FIN_INTERNAL_ERROR', message: error.message });
     }
 };
 
@@ -1059,6 +1106,10 @@ export const updatePayrollByParams = async (req, res) => {
             changes: { before: oldSnapshot, after: payroll.toObject() }
         });
 
+        try {
+            publishRealtime({ type: 'payroll:changed', id: String(payroll._id), ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json(payroll);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -1127,6 +1178,10 @@ export const updatePayrollLedger = async (req, res) => {
                 paidAmount: payroll.paidAmount,
             },
         });
+
+        try {
+            publishRealtime({ type: 'payroll:changed', id: String(payroll._id), ts: Date.now() });
+        } catch { /* ignore */ }
 
         res.json(payroll);
     } catch (error) {

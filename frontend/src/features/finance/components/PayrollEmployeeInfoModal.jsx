@@ -1,8 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Printer, Save, X } from 'lucide-react';
+import { Printer, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import financeService from '../api/finance';
-import axios from '../api/axios';
+import { listAccounts } from '../api/accountsApi';
+import { usePayrollStaffLedgerQuery, useUpdatePayrollLedgerMutation } from '../hooks/payrollHooks';
+import { listUsers } from '../../users/api/usersApi.js';
+import AcademicYearSelect from '../../lookups/components/AcademicYearSelect.jsx';
+
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import FormField from '../../../shared/components/ui/FormField.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 
 export default function PayrollEmployeeInfoModal({
     onClose,
@@ -11,7 +22,7 @@ export default function PayrollEmployeeInfoModal({
     defaultAcademicYearId,
     initialStaffId,
 }) {
-    const [loading, setLoading] = useState(false);
+    const { t } = useI18n();
 
     const [staffList, setStaffList] = useState([]);
     const [accounts, setAccounts] = useState([]);
@@ -23,7 +34,6 @@ export default function PayrollEmployeeInfoModal({
         date: new Date().toISOString().slice(0, 10),
     });
 
-    const [ledger, setLedger] = useState([]);
     const [rowEdits, setRowEdits] = useState({});
     const [saveLoadingId, setSaveLoadingId] = useState('');
     const [editingRowId, setEditingRowId] = useState('');
@@ -38,11 +48,11 @@ export default function PayrollEmployeeInfoModal({
         const load = async () => {
             try {
                 const [accData, staffRes] = await Promise.all([
-                    financeService.getAccounts(),
-                    axios.get('/users', { params: { status: 'active', includeTeachers: true } }),
+                    listAccounts({ includeInactive: false }),
+                    listUsers({ status: 'active', includeTeachers: true }),
                 ]);
                 setAccounts(accData || []);
-                setStaffList((staffRes.data || []).filter(u => u.status !== 'inactive'));
+                setStaffList((staffRes || []).filter((u) => u.status !== 'inactive'));
             } catch {
                 setAccounts([]);
                 setStaffList([]);
@@ -56,44 +66,45 @@ export default function PayrollEmployeeInfoModal({
         setSelected(prev => (prev.accountId ? prev : { ...prev, accountId: accounts[0]._id }));
     }, [accounts]);
 
-    const loadLedger = async () => {
-        if (!selected.staffId) {
-            setLedger([]);
-            return;
-        }
-        setLoading(true);
+    const ledgerQuery = usePayrollStaffLedgerQuery(
+        { staffId: selected.staffId, academicYear: selected.academicYear || undefined },
+        { enabled: Boolean(selected.staffId) }
+    );
+
+    const ledger = useMemo(() => {
+        const data = ledgerQuery.data;
+        return Array.isArray(data) ? data : [];
+    }, [ledgerQuery.data]);
+
+    const updateLedgerMutation = useUpdatePayrollLedgerMutation();
+
+    const refetchLedger = async () => {
+        if (!selected.staffId) return;
         try {
-            const rows = await financeService.getPayrollStaffLedger({
-                staffId: selected.staffId,
-                academicYear: selected.academicYear || undefined,
-            });
-            const next = rows || [];
-            setLedger(next);
-            setRowEdits((prev) => {
-                const base = { ...prev };
-                next.forEach((p) => {
-                    if (base[p._id]) return;
-                    base[p._id] = {
-                        sendNumber: p.sendNumber || p.staff?.phone || staff?.phone || '',
-                        description: p.description || 'Salary',
-                        commission: Number(p.commission || 0),
-                        decrease: Number(p.decrease || 0),
-                        paidAmount: Number(p.paidAmount || 0),
-                    };
-                });
-                return base;
-            });
+            await ledgerQuery.refetch();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to load employee info');
-        } finally {
-            setLoading(false);
+            toast.error(error?.response?.data?.message || t('finance.payroll.employeeInfo.errors.loadFailed', { defaultValue: 'Failed to load employee info' }));
         }
     };
 
     useEffect(() => {
-        loadLedger();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selected.staffId, selected.academicYear]);
+        const next = Array.isArray(ledger) ? ledger : [];
+        setRowEdits((prev) => {
+            const base = { ...(prev || {}) };
+            next.forEach((p) => {
+                if (!p?._id) return;
+                if (base[p._id]) return;
+                base[p._id] = {
+                    sendNumber: p.sendNumber || p.staff?.phone || '',
+                    description: p.description || 'Salary',
+                    commission: Number(p.commission || 0),
+                    decrease: Number(p.decrease || 0),
+                    paidAmount: Number(p.paidAmount || 0),
+                };
+            });
+            return base;
+        });
+    }, [ledger]);
 
     const staff = useMemo(() => ledger?.[0]?.staff, [ledger]);
 
@@ -132,41 +143,66 @@ export default function PayrollEmployeeInfoModal({
     };
 
     const isRowDirty = (row) => {
+        if (!row?._id) return false;
         const edit = rowEdits[row._id] || {};
-        const current = {
-            sendNumber: row.sendNumber ?? '',
-            description: row.description ?? '',
-            commission: Number(row.commission ?? 0),
-            decrease: Number(row.decrease ?? 0),
-            paidAmount: Number(row.paidAmount ?? 0),
+
+        // Compare against persisted values (payroll doc), not computed row values.
+        const p = row.payroll || {};
+        const base = {
+            sendNumber: String(p.sendNumber || ''),
+            description: String(p.description || ''),
+            commission: Number(p.commission || 0),
+            decrease: Number(p.decrease || 0),
+            paidAmount: Number(p.paidAmount || 0),
         };
         const next = {
-            sendNumber: edit.sendNumber ?? current.sendNumber,
-            description: edit.description ?? current.description,
-            commission: Number(edit.commission ?? current.commission),
-            decrease: Number(edit.decrease ?? current.decrease),
-            paidAmount: Number(edit.paidAmount ?? current.paidAmount),
+            sendNumber: String(edit.sendNumber ?? base.sendNumber ?? ''),
+            description: String(edit.description ?? base.description ?? ''),
+            commission: Number(edit.commission ?? base.commission ?? 0),
+            decrease: Number(edit.decrease ?? base.decrease ?? 0),
+            paidAmount: Number(edit.paidAmount ?? base.paidAmount ?? 0),
         };
-        return JSON.stringify(current) !== JSON.stringify(next);
+
+        return (
+            base.sendNumber !== next.sendNumber ||
+            base.description !== next.description ||
+            base.commission !== next.commission ||
+            base.decrease !== next.decrease ||
+            base.paidAmount !== next.paidAmount
+        );
+    };
+
+    const getPaidStatus = (row) => {
+        const dr = Number(row?.dr || 0);
+        const paid = Number(row?.paid || 0);
+        if (!Number.isFinite(dr) || !Number.isFinite(paid)) return { kind: 'unknown', delta: 0, remaining: 0 };
+        const delta = paid - dr;
+        const remaining = dr - paid;
+        if (delta > 0) return { kind: 'over', delta, remaining: 0 };
+        if (delta === 0) return { kind: 'exact', delta: 0, remaining: 0 };
+        return { kind: 'under', delta, remaining };
     };
 
     const doSave = async (row) => {
         setSaveLoadingId(row._id);
         try {
             const edit = rowEdits[row._id] || {};
-            await financeService.updatePayrollLedger(row._id, {
-                sendNumber: edit.sendNumber ?? row.sendNumber,
-                description: edit.description ?? row.description,
-                commission: Number(edit.commission ?? row.commission ?? 0),
-                decrease: Number(edit.decrease ?? row.decrease ?? 0),
-                paidAmount: Number(edit.paidAmount ?? row.paidAmount ?? 0),
+            await updateLedgerMutation.mutateAsync({
+                id: row._id,
+                payload: {
+                    sendNumber: edit.sendNumber ?? row.sendNumber,
+                    description: edit.description ?? row.description,
+                    commission: Number(edit.commission ?? row.commission ?? 0),
+                    decrease: Number(edit.decrease ?? row.decrease ?? 0),
+                    paidAmount: Number(edit.paidAmount ?? row.paidAmount ?? 0),
+                },
             });
-            toast.success('Saved');
+            toast.success(t('finance.payroll.employeeInfo.toasts.saved', { defaultValue: 'Saved' }));
             setEditingRowId('');
-            await loadLedger();
+            await refetchLedger();
             onRefresh?.();
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Save failed');
+            toast.error(error.response?.data?.message || t('finance.payroll.employeeInfo.errors.saveFailed', { defaultValue: 'Save failed' }));
         } finally {
             setSaveLoadingId('');
         }
@@ -176,10 +212,20 @@ export default function PayrollEmployeeInfoModal({
         const w = window.open('', '_blank', 'width=900,height=700');
         if (!w) return;
         const safe = (v) => String(v ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const receiptTitle = t('finance.payroll.employeeInfo.receipt.title', { defaultValue: 'Payroll Receipt' });
+        const labelSendNumber = t('finance.payroll.employeeInfo.receipt.sendNumber', { defaultValue: 'Send Number' });
+        const labelDescription = t('finance.payroll.employeeInfo.receipt.description', { defaultValue: 'Description' });
+        const labelCommission = t('finance.payroll.employeeInfo.receipt.commission', { defaultValue: 'Commission' });
+        const labelDecrease = t('finance.payroll.employeeInfo.receipt.decrease', { defaultValue: 'Decrease' });
+        const labelSalary = t('finance.payroll.employeeInfo.receipt.salary', { defaultValue: 'Salary' });
+        const labelPaid = t('finance.payroll.employeeInfo.receipt.paid', { defaultValue: 'Paid' });
+        const labelBalance = t('finance.payroll.employeeInfo.receipt.balance', { defaultValue: 'Balance' });
+
         w.document.write(`
             <html>
             <head>
-                <title>Payroll Receipt</title>
+                <title>${safe(receiptTitle)}</title>
                 <style>
                     body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
                     h1 { font-size: 20px; margin: 0 0 8px; }
@@ -190,16 +236,16 @@ export default function PayrollEmployeeInfoModal({
                 </style>
             </head>
             <body>
-                <h1>Payroll Receipt</h1>
+                <h1>${safe(receiptTitle)}</h1>
                 <div class="sub">${safe(row.month)} · ${safe(staff?.fullName || '')}</div>
                 <table>
-                    <tr><th>Send Number</th><td>${safe(row.sendNumber)}</td></tr>
-                    <tr><th>Description</th><td>${safe(row.description)}</td></tr>
-                    <tr><th>Commission</th><td>${safe(row.commission)}</td></tr>
-                    <tr><th>Decrease</th><td>${safe(row.decrease)}</td></tr>
-                    <tr><th>Salary</th><td>${safe(row.dr)}</td></tr>
-                    <tr><th>Paid</th><td>${safe(row.paid)}</td></tr>
-                    <tr><th>Balance</th><td>${safe(row.balance)}</td></tr>
+                    <tr><th>${safe(labelSendNumber)}</th><td>${safe(row.sendNumber)}</td></tr>
+                    <tr><th>${safe(labelDescription)}</th><td>${safe(row.description)}</td></tr>
+                    <tr><th>${safe(labelCommission)}</th><td>${safe(row.commission)}</td></tr>
+                    <tr><th>${safe(labelDecrease)}</th><td>${safe(row.decrease)}</td></tr>
+                    <tr><th>${safe(labelSalary)}</th><td>${safe(row.dr)}</td></tr>
+                    <tr><th>${safe(labelPaid)}</th><td>${safe(row.paid)}</td></tr>
+                    <tr><th>${safe(labelBalance)}</th><td>${safe(row.balance)}</td></tr>
                 </table>
                 <script>window.print();</script>
             </body>
@@ -208,237 +254,274 @@ export default function PayrollEmployeeInfoModal({
         w.document.close();
     };
 
+    const staffOptions = (staffList || []).map((s) => ({ value: s._id, label: String(s?.fullName || s?.username || s?._id) }));
+    const accountOptions = (accounts || []).map((acc) => ({
+        value: acc._id,
+        label: `${acc.name}${acc.accountNumber ? ` (${acc.accountNumber})` : ''}`,
+    }));
+
+    const isTableLoading = Boolean(selected.staffId && ledgerQuery.isLoading && ledgerQuery.data == null);
+    const tableError = ledgerQuery.isError
+        ? (ledgerQuery.error?.response?.data?.message || ledgerQuery.error?.message || t('finance.payroll.employeeInfo.errors.loadFailed', { defaultValue: 'Failed to load employee info' }))
+        : null;
+
+    const canEditRow = (r) => r?.payroll?.status !== 'Paid';
+    const requestEdit = (r) => {
+        if (!r?._id) return;
+        if (!canEditRow(r)) return;
+        setEditingRowId(r._id);
+    };
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-7xl rounded-xl shadow-2xl overflow-hidden border border-slate-200">
-                <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50/30">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">Employee Info</h3>
-                        <p className="text-xs text-slate-500 font-mono uppercase tracking-widest">Paid / Edit / Show</p>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all shadow-sm">
-                        <X size={22} className="text-slate-400" />
-                    </button>
+        <Modal
+            isOpen
+            onClose={onClose}
+            title={t('finance.payroll.employeeInfo.title', { defaultValue: 'Employee Info' })}
+            panelClassName="max-w-7xl"
+        >
+            <div className="space-y-5 max-h-[75vh] overflow-y-auto overflow-x-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <FormField label={t('finance.payroll.fields.employee', { defaultValue: 'Employee' })} required className="md:col-span-2">
+                        <SearchableSelect
+                            value={selected.staffId}
+                            onChange={(v) => setSelected((prev) => ({ ...prev, staffId: v }))}
+                            options={staffOptions}
+                            placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employee…' })}
+                            maxVisible={5}
+                            searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employees…' })}
+                        />
+                    </FormField>
+
+                    <FormField label={t('common.filters.academicYear', { defaultValue: 'Academic Year' })} className="md:col-span-1">
+                        <AcademicYearSelect
+                            value={selected.academicYear}
+                            onChange={(v) => setSelected((prev) => ({ ...prev, academicYear: v }))}
+                            placeholder={t('common.select', { defaultValue: 'Select…' })}
+                            maxVisible={5}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                        />
+                    </FormField>
+
+                    <FormField label={t('finance.payroll.employeeInfo.fields.account', { defaultValue: 'Account' })} className="md:col-span-1">
+                        <DropdownSelect
+                            value={selected.accountId}
+                            onChange={(v) => setSelected((prev) => ({ ...prev, accountId: v }))}
+                            options={accountOptions}
+                            placeholder={t('finance.payroll.placeholders.account', { defaultValue: 'Select account…' })}
+                        />
+                    </FormField>
                 </div>
 
-                <div className="p-4 space-y-5 max-h-[75vh] overflow-y-auto overflow-x-hidden">
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="col-span-2 space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</label>
-                            <select
-                                value={selected.staffId}
-                                onChange={(e) => setSelected(prev => ({ ...prev, staffId: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="">Select Employee</option>
-                                {staffList.map(s => (
-                                    <option key={s._id} value={s._id}>{s.fullName}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</label>
-                            <select
-                                value={selected.academicYear}
-                                onChange={(e) => setSelected(prev => ({ ...prev, academicYear: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="">Select Academic Year</option>
-                                {academicYears.map(y => (
-                                    <option key={y._id} value={y._id}>{y.yearName}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Account</label>
-                            <select
-                                value={selected.accountId}
-                                onChange={(e) => setSelected(prev => ({ ...prev, accountId: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            >
-                                <option value="">Select Account</option>
-                                {accounts.map(acc => (
-                                    <option key={acc._id} value={acc._id}>
-                                        {acc.name}{acc.accountNumber ? ` (${acc.accountNumber})` : ''}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="md:col-span-2">
+                        <div className="text-sm font-semibold text-slate-900">{staff?.fullName || ''}</div>
+                        <div className="text-xs text-slate-500">{formatEmployeeType(staff?.employeeType, staff?.role)}</div>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-4 items-end">
-                        <div className="col-span-2">
-                            <div className="text-sm font-bold text-slate-900">{staff?.fullName || ''}</div>
-                            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-400">
-                                {formatEmployeeType(staff?.employeeType, staff?.role)}
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Register Date</label>
-                            <input
-                                type="date"
-                                value={selected.date}
-                                onChange={(e) => setSelected(prev => ({ ...prev, date: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
-                            />
-                        </div>
-                        <div>
-                            <button
-                                type="button"
-                                onClick={loadLedger}
-                                className="w-full px-6 py-3 bg-white border border-slate-200 text-slate-700 hover:text-slate-900 rounded-xl font-black uppercase text-[10px] tracking-[0.2em]"
-                            >
-                                Show
-                            </button>
-                        </div>
-                    </div>
+                    <FormField label={t('finance.payroll.employeeInfo.fields.date', { defaultValue: 'Register date' })} className="md:col-span-1">
+                        <Input
+                            type="date"
+                            value={selected.date}
+                            onChange={(e) => setSelected((prev) => ({ ...prev, date: e.target.value }))}
+                        />
+                    </FormField>
 
-                    <div className="border border-slate-100 rounded-xl max-h-[45vh] overflow-auto">
-                        <table className="w-full min-w-[980px] text-left border-collapse">
-                            <thead>
-                                <tr className="bg-white border-b border-slate-100">
-                                    {[
-                                        'No',
-                                        'Month',
-                                        'Send Number',
-                                        'Description',
-                                        'Commission',
-                                        'Decrease',
-                                        'Dr',
-                                        'Cr',
-                                        'Paid',
-                                        'Balance',
-                                        'Actions',
-                                    ].map(h => (
-                                        <th key={h} className="py-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {loading ? (
-                                    <tr><td colSpan={11} className="py-10 text-center text-slate-400 font-bold uppercase tracking-widest">Loading...</td></tr>
-                                ) : computedRows.length === 0 ? (
-                                    <tr><td colSpan={11} className="py-10 text-center text-slate-400 font-bold uppercase tracking-widest">No data</td></tr>
-                                ) : (
-                                    computedRows.map(r => (
-                                        <React.Fragment key={r._id}>
-                                            <tr
-                                                className="hover:bg-slate-50 cursor-pointer"
-                                                onClick={() => {
-                                                    if (r.payroll.status !== 'Paid') {
-                                                        setEditingRowId(r._id);
-                                                    }
-                                                }}
-                                            >
-                                                <td className="py-3 px-4 font-mono text-sm">{r.no}</td>
-                                                <td className="py-3 px-4 font-mono text-sm">{r.month}</td>
-                                                <td className="py-3 px-4">
-                                                    {editingRowId === r._id && r.payroll.status !== 'Paid' ? (
-                                                        <input
-                                                            value={r.sendNumber}
-                                                            onChange={(e) => onRowChange(r._id, 'sendNumber', e.target.value)}
-                                                            className="w-40 px-2 py-1 border border-slate-200 rounded-lg text-sm"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-left text-sm text-slate-700">{r.sendNumber || '-'}</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    {editingRowId === r._id && r.payroll.status !== 'Paid' ? (
-                                                        <input
-                                                            value={r.description}
-                                                            onChange={(e) => onRowChange(r._id, 'description', e.target.value)}
-                                                            className="w-40 px-2 py-1 border border-slate-200 rounded-lg text-sm"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-left text-sm text-slate-700">{r.description || '-'}</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    {editingRowId === r._id && r.payroll.status !== 'Paid' ? (
-                                                        <input
-                                                            type="number"
-                                                            value={r.commission}
-                                                            onChange={(e) => onRowChange(r._id, 'commission', e.target.value)}
-                                                            className="w-24 px-2 py-1 border border-slate-200 rounded-lg text-sm text-green-700"
-                                                            min="0"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-left text-sm text-green-700">{r.commission}</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3 px-4">
-                                                    {editingRowId === r._id && r.payroll.status !== 'Paid' ? (
-                                                        <input
-                                                            type="number"
-                                                            value={r.decrease}
-                                                            onChange={(e) => onRowChange(r._id, 'decrease', e.target.value)}
-                                                            className="w-24 px-2 py-1 border border-slate-200 rounded-lg text-sm text-red-700"
-                                                            min="0"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-left text-sm text-red-700">{r.decrease}</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3 px-4 font-mono text-sm">{r.dr}</td>
-                                                <td className="py-3 px-4 font-mono text-sm">{r.cr}</td>
-                                                <td className="py-3 px-4">
-                                                    {editingRowId === r._id && r.payroll.status !== 'Paid' ? (
-                                                        <input
-                                                            type="number"
-                                                            value={r.paid}
-                                                            onChange={(e) => onRowChange(r._id, 'paidAmount', e.target.value)}
-                                                            className="w-24 px-2 py-1 border border-slate-200 rounded-lg text-sm"
-                                                            min="0"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-left text-sm text-slate-700">{r.paid}</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3 px-4 font-mono text-sm">{r.balance}</td>
-                                                <td className="py-3 px-4">
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            type="button"
-                                                            disabled={saveLoadingId === r._id || r.payroll.status === 'Paid' || !isRowDirty(r)}
-                                                            onClick={() => doSave(r)}
-                                                            className="p-2 bg-slate-900 hover:bg-black text-white rounded-lg disabled:opacity-50"
-                                                            title="Save"
-                                                        >
-                                                            <Save size={16} />
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => doPrint(r)}
-                                                            disabled={isRowDirty(r) || editingRowId === r._id}
-                                                            className="p-2 bg-white border border-slate-200 text-slate-700 hover:text-slate-900 rounded-lg"
-                                                            title="Print"
-                                                        >
-                                                            <Printer size={16} />
-                                                        </button>
+                    <div className="md:col-span-1">
+                        <Button variant="neutral" className="w-full" onClick={refetchLedger} disabled={!selected.staffId || ledgerQuery.isFetching}>
+                            {t('finance.payroll.employeeInfo.actions.show', { defaultValue: 'Show' })}
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                    <StandardTable
+                        isLoading={isTableLoading}
+                        error={tableError}
+                        items={computedRows}
+                        rows={computedRows}
+                        loadingMessage={t('finance.payroll.employeeInfo.loading', { defaultValue: 'Loading…' })}
+                        loadingVariant="table"
+                        loadingRows={6}
+                        loadingColumns={11}
+                        emptyTitle={t('finance.payroll.employeeInfo.empty', { defaultValue: 'No data' })}
+                        emptyDescription=""
+                        storageKey="finance:payroll:employeeInfo:columns:v1"
+                        getRowKey={(row) => row?._id}
+                        columns={[
+                            { key: 'no', label: t('finance.payroll.employeeInfo.columns.no', { defaultValue: 'No' }) },
+                            { key: 'month', label: t('finance.payroll.employeeInfo.columns.month', { defaultValue: 'Month' }) },
+                            { key: 'sendNumber', label: t('finance.payroll.employeeInfo.columns.sendNumber', { defaultValue: 'Send number' }) },
+                            { key: 'description', label: t('finance.payroll.employeeInfo.columns.description', { defaultValue: 'Description' }) },
+                            { key: 'commission', label: t('finance.payroll.employeeInfo.columns.commission', { defaultValue: 'Commission' }) },
+                            { key: 'decrease', label: t('finance.payroll.employeeInfo.columns.decrease', { defaultValue: 'Decrease' }) },
+                            { key: 'dr', label: t('finance.payroll.employeeInfo.columns.dr', { defaultValue: 'Dr' }) },
+                            { key: 'cr', label: t('finance.payroll.employeeInfo.columns.cr', { defaultValue: 'Cr' }) },
+                            { key: 'paid', label: t('finance.payroll.employeeInfo.columns.paid', { defaultValue: 'Paid' }) },
+                            { key: 'balance', label: t('finance.payroll.employeeInfo.columns.balance', { defaultValue: 'Balance' }) },
+                            { key: 'actions', label: t('common.columns.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, tdClassName: 'no-print' },
+                        ]}
+                        tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
+                        renderCell={(r, col) => {
+                            switch (col.key) {
+                                case 'no':
+                                    return <span className="font-mono">{r.no}</span>;
+                                case 'month':
+                                    return <span className="font-mono">{r.month}</span>;
+                                case 'sendNumber':
+                                    return editingRowId === r._id && canEditRow(r) ? (
+                                        <Input
+                                            value={r.sendNumber}
+                                            onChange={(e) => onRowChange(r._id, 'sendNumber', e.target.value)}
+                                            className="w-40"
+                                        />
+                                    ) : (
+                                        <div
+                                            className={canEditRow(r) ? 'cursor-pointer' : ''}
+                                            onClick={() => requestEdit(r)}
+                                        >
+                                            <span className="text-sm text-slate-700">{r.sendNumber || '-'}</span>
+                                        </div>
+                                    );
+                                case 'description':
+                                    return editingRowId === r._id && canEditRow(r) ? (
+                                        <Input
+                                            value={r.description}
+                                            onChange={(e) => onRowChange(r._id, 'description', e.target.value)}
+                                            className="w-40"
+                                        />
+                                    ) : (
+                                        <div
+                                            className={canEditRow(r) ? 'cursor-pointer' : ''}
+                                            onClick={() => requestEdit(r)}
+                                        >
+                                            <span className="text-sm text-slate-700">{r.description || '-'}</span>
+                                        </div>
+                                    );
+                                case 'commission':
+                                    return editingRowId === r._id && canEditRow(r) ? (
+                                        <Input
+                                            type="number"
+                                            value={r.commission}
+                                            onChange={(e) => onRowChange(r._id, 'commission', e.target.value)}
+                                            className="w-24 text-green-700"
+                                            min="0"
+                                        />
+                                    ) : (
+                                        <div
+                                            className={canEditRow(r) ? 'cursor-pointer' : ''}
+                                            onClick={() => requestEdit(r)}
+                                        >
+                                            <span className="text-sm text-green-700">{r.commission}</span>
+                                        </div>
+                                    );
+                                case 'decrease':
+                                    return editingRowId === r._id && canEditRow(r) ? (
+                                        <Input
+                                            type="number"
+                                            value={r.decrease}
+                                            onChange={(e) => onRowChange(r._id, 'decrease', e.target.value)}
+                                            className="w-24 text-red-700"
+                                            min="0"
+                                        />
+                                    ) : (
+                                        <div
+                                            className={canEditRow(r) ? 'cursor-pointer' : ''}
+                                            onClick={() => requestEdit(r)}
+                                        >
+                                            <span className="text-sm text-red-700">{r.decrease}</span>
+                                        </div>
+                                    );
+                                case 'dr':
+                                    return <span className="font-mono">{r.dr}</span>;
+                                case 'cr':
+                                    return <span className="font-mono">{r.cr}</span>;
+                                case 'paid':
+                                    {
+                                        const status = getPaidStatus(r);
+                                        const paidInputClass = status.kind === 'over'
+                                            ? 'w-24 !border-red-300 !text-red-700'
+                                            : status.kind === 'exact'
+                                                ? 'w-24 !border-green-300 !text-green-700'
+                                                : status.kind === 'under'
+                                                    ? 'w-24 !border-yellow-300 !text-yellow-700'
+                                                    : 'w-24';
+
+                                        const indicator = status.kind === 'under'
+                                            ? { label: t('finance.payroll.employeeInfo.remaining', { defaultValue: 'Remaining' }), value: status.remaining }
+                                            : status.kind === 'over'
+                                                ? { label: t('finance.payroll.employeeInfo.overpaid', { defaultValue: 'Overpaid' }), value: status.delta }
+                                                : null;
+
+                                        return (
+                                            <div className="relative" onClick={() => requestEdit(r)}>
+                                                {editingRowId === r._id && canEditRow(r) ? (
+                                                    <Input
+                                                        type="number"
+                                                        value={r.paid}
+                                                        onChange={(e) => onRowChange(r._id, 'paidAmount', e.target.value)}
+                                                        className={paidInputClass}
+                                                        min="0"
+                                                    />
+                                                ) : (
+                                                    <span className="text-sm text-slate-700">{r.paid}</span>
+                                                )}
+
+                                                {indicator ? (
+                                                    <div className="absolute -top-4 right-0 text-[10px] font-black text-red-700 uppercase tracking-widest">
+                                                        {indicator.label}: {Number(indicator.value || 0).toLocaleString()}
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        </React.Fragment>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                                ) : null}
+                                            </div>
+                                        );
+                                    }
+                                case 'balance':
+                                    return <span className="font-mono">{r.balance}</span>;
+                                case 'actions':
+                                    {
+                                        const status = getPaidStatus(r);
+                                        const saveColorClass = status.kind === 'over'
+                                            ? '!bg-red-600 hover:!bg-red-700'
+                                            : status.kind === 'exact'
+                                                ? '!bg-green-600 hover:!bg-green-700'
+                                                : status.kind === 'under'
+                                                    ? '!bg-yellow-500 hover:!bg-yellow-600 !text-slate-900'
+                                                    : '';
 
-                    <div className="flex items-center justify-end">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-6 py-3 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 rounded-xl font-black uppercase text-[10px] tracking-[0.2em]"
-                        >
-                            Close
-                        </button>
-                    </div>
+                                        return (
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="brand"
+                                                    className={saveColorClass}
+                                                    disabled={saveLoadingId === r._id || r.payroll.status === 'Paid' || !isRowDirty(r)}
+                                                    onClick={() => doSave(r)}
+                                                    title={t('common.actions.save', { defaultValue: 'Save' })}
+                                                    icon={<Save size={16} />}
+                                                />
+                                                <Button
+                                                    size="sm"
+                                                    variant="neutral"
+                                                    disabled={isRowDirty(r) || editingRowId === r._id}
+                                                    onClick={() => doPrint(r)}
+                                                    title={t('common.actions.print', { defaultValue: 'Print' })}
+                                                    icon={<Printer size={16} />}
+                                                />
+                                            </div>
+                                        );
+                                    }
+                                default:
+                                    return '—';
+                            }
+                        }}
+                    />
+                </div>
+
+                <div className="flex items-center justify-end">
+                    <Button variant="neutral" onClick={onClose}>
+                        {t('common.actions.close', { defaultValue: 'Close' })}
+                    </Button>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 }

@@ -2,8 +2,13 @@ import Expense from '../../models/Expense.js';
 import Account from '../../models/Account.js';
 import FinanceCategory from '../../models/FinanceCategory.js';
 import AuditLog from '../../models/AuditLog.js';
+import { publishRealtime } from '../../utils/realtimeBus.js';
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+
+const sendFinanceError = (res, status, code, message, extra = {}) => {
+  return res.status(status).json({ code, message, ...extra });
+};
 
 async function logAction(user, action, description, req, target = null) {
   try {
@@ -49,6 +54,7 @@ export async function getExpenseLedger(req, res) {
 
     const rows = await Expense.find(query)
       .populate('account', 'name type')
+      .populate('approvedBy', 'fullName username')
       .populate('createdBy', 'fullName username')
       .sort({ date: -1, createdAt: -1 });
 
@@ -83,6 +89,7 @@ export async function getExpenseChargesByDate(req, res) {
 
     const rows = await Expense.find({ date: { $gte: range.start, $lte: range.end } })
       .populate('account', 'name type')
+      .populate('approvedBy', 'fullName username')
       .populate('createdBy', 'fullName username')
       .sort({ date: -1 });
 
@@ -108,26 +115,26 @@ export async function getExpenseChargesByDate(req, res) {
 export async function updateExpenseCharge(req, res) {
   try {
     const { id } = req.params;
-    if (!isValidObjectId(id)) return res.status(400).json({ message: 'Invalid expense id' });
+    if (!isValidObjectId(id)) return sendFinanceError(res, 400, 'FIN_INVALID_EXPENSE_ID', 'Invalid expense id');
 
     const expense = await Expense.findById(id);
-    if (!expense) return res.status(404).json({ message: 'Expense not found' });
+    if (!expense) return sendFinanceError(res, 404, 'FIN_EXPENSE_NOT_FOUND', 'Expense not found');
 
     const oldSnapshot = expense.toObject();
 
     const nextAmount = req.body.amount !== undefined ? Number(req.body.amount) : Number(expense.amount);
-    if (!Number.isFinite(nextAmount) || nextAmount < 0) return res.status(400).json({ message: 'Invalid amount' });
+    if (!Number.isFinite(nextAmount) || nextAmount < 0) return sendFinanceError(res, 400, 'FIN_AMOUNT_INVALID', 'Invalid amount');
 
     const nextAccountId = req.body.accountId !== undefined ? req.body.accountId : (expense.account ? String(expense.account) : null);
-    if (nextAccountId && !isValidObjectId(nextAccountId)) return res.status(400).json({ message: 'Invalid accountId' });
+    if (nextAccountId && !isValidObjectId(nextAccountId)) return sendFinanceError(res, 400, 'FIN_INVALID_ACCOUNT_ID', 'Invalid accountId');
 
     // Category mapping
     let nextCategoryName = req.body.category !== undefined ? req.body.category : expense.category;
     let nextCategoryRef = expense.categoryRef;
     if (req.body.categoryId) {
-      if (!isValidObjectId(req.body.categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
+      if (!isValidObjectId(req.body.categoryId)) return sendFinanceError(res, 400, 'FIN_INVALID_CATEGORY_ID', 'Invalid categoryId');
       const cat = await FinanceCategory.findOne({ _id: req.body.categoryId, type: 'expense' });
-      if (!cat) return res.status(404).json({ message: 'Expense category not found' });
+      if (!cat) return sendFinanceError(res, 404, 'FIN_EXPENSE_CATEGORY_NOT_FOUND', 'Expense category not found');
       nextCategoryName = cat.name;
       nextCategoryRef = cat._id;
     }
@@ -138,14 +145,14 @@ export async function updateExpenseCharge(req, res) {
 
     const oldAccount = oldAccountId ? await Account.findById(oldAccountId) : null;
     const newAccount = nextAccountId ? await Account.findById(nextAccountId) : null;
-    if (nextAccountId && !newAccount) return res.status(404).json({ message: 'New account not found' });
+    if (nextAccountId && !newAccount) return sendFinanceError(res, 404, 'FIN_ACCOUNT_NOT_FOUND', 'New account not found');
 
     if (oldAccountId === nextAccountId) {
       // same account, adjust by delta
       const delta = nextAmount - oldAmount;
       if (delta > 0) {
-        if (!oldAccount) return res.status(400).json({ message: 'Old account missing on this expense; cannot increase amount' });
-        if (oldAccount.balance < delta) return res.status(400).json({ message: 'Insufficient funds in selected account for increase' });
+        if (!oldAccount) return sendFinanceError(res, 400, 'FIN_EXPENSE_ACCOUNT_MISSING', 'Old account missing on this expense; cannot increase amount');
+        if (oldAccount.balance < delta) return sendFinanceError(res, 400, 'FIN_INSUFFICIENT_FUNDS', 'Insufficient funds in selected account for increase');
         oldAccount.balance -= delta;
         await oldAccount.save();
       } else if (delta < 0) {
@@ -161,7 +168,7 @@ export async function updateExpenseCharge(req, res) {
         await oldAccount.save();
       }
       if (newAccount) {
-        if (newAccount.balance < nextAmount) return res.status(400).json({ message: 'Insufficient funds in new account' });
+        if (newAccount.balance < nextAmount) return sendFinanceError(res, 400, 'FIN_INSUFFICIENT_FUNDS', 'Insufficient funds in new account');
         newAccount.balance -= nextAmount;
         await newAccount.save();
       }
@@ -176,7 +183,7 @@ export async function updateExpenseCharge(req, res) {
     if (req.body.description !== undefined) expense.description = req.body.description;
     if (req.body.date !== undefined) {
       const nextDate = new Date(req.body.date);
-      if (Number.isNaN(nextDate.getTime())) return res.status(400).json({ message: 'Invalid date' });
+      if (Number.isNaN(nextDate.getTime())) return sendFinanceError(res, 400, 'FIN_DATE_INVALID', 'Invalid date');
       expense.date = nextDate;
     }
 
@@ -188,10 +195,15 @@ export async function updateExpenseCharge(req, res) {
       changes: { before: oldSnapshot, after: expense.toObject() },
     });
 
+    try {
+      publishRealtime({ type: 'expenses:changed', id: String(id), ts: Date.now() });
+      publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+    } catch { /* ignore */ }
+
     res.json({ message: 'Expense updated', expense });
   } catch (error) {
     console.error('updateExpenseCharge Error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ code: 'FIN_INTERNAL_ERROR', message: error.message });
   }
 }
 
@@ -201,9 +213,9 @@ export async function updateExpenseCharge(req, res) {
 export async function deleteExpenseCharge(req, res) {
   try {
     const { id } = req.params;
-    if (!isValidObjectId(id)) return res.status(400).json({ message: 'Invalid expense id' });
+    if (!isValidObjectId(id)) return sendFinanceError(res, 400, 'FIN_INVALID_EXPENSE_ID', 'Invalid expense id');
     const expense = await Expense.findById(id);
-    if (!expense) return res.status(404).json({ message: 'Expense not found' });
+    if (!expense) return sendFinanceError(res, 404, 'FIN_EXPENSE_NOT_FOUND', 'Expense not found');
 
     const oldSnapshot = expense.toObject();
 
@@ -223,9 +235,14 @@ export async function deleteExpenseCharge(req, res) {
       changes: { before: oldSnapshot },
     });
 
+    try {
+      publishRealtime({ type: 'expenses:changed', id: String(id), ts: Date.now() });
+      publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+    } catch { /* ignore */ }
+
     res.json({ message: 'Expense deleted' });
   } catch (error) {
     console.error('deleteExpenseCharge Error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ code: 'FIN_INTERNAL_ERROR', message: error.message });
   }
 }

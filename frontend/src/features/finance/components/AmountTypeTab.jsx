@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import financeService from '../api/finance';
 import { Plus, Edit, Trash2, Check, X, Shield, Settings, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 
 export default function AmountTypeTab() {
     const [categories, setCategories] = useState([]);
@@ -21,9 +24,40 @@ export default function AmountTypeTab() {
     const [isCustomFeeType, setIsCustomFeeType] = useState(false);
     const [customFeeType, setCustomFeeType] = useState('');
 
+    const [sortBy, setSortBy] = useState('name');
+    const [sortDir, setSortDir] = useState('asc');
+
     useEffect(() => {
         loadCategories();
     }, []);
+
+    const onSort = (field) => {
+        const f = String(field || '').trim();
+        if (!f) return;
+        setSortBy((prev) => {
+            if (prev === f) {
+                setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                return prev;
+            }
+            setSortDir('asc');
+            return f;
+        });
+    };
+
+    const tableRows = useMemo(() => {
+        const list = Array.isArray(categories) ? categories.slice() : [];
+        const dir = sortDir === 'desc' ? -1 : 1;
+        const field = String(sortBy || '').trim();
+        if (!field) return list;
+
+        list.sort((a, b) => {
+            const av = a?.[field];
+            const bv = b?.[field];
+            if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+            return String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true, sensitivity: 'base' }) * dir;
+        });
+        return list;
+    }, [categories, sortBy, sortDir]);
 
     const loadCategories = async () => {
         try {
@@ -185,106 +219,157 @@ export default function AmountTypeTab() {
             )}
 
             <div className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            <th className="p-6 pl-10">Fee Identity</th>
-                            <th className="p-6">Default Amount</th>
-                            <th className="p-6">Category Type</th>
-                            <th className="p-6">Status</th>
-                            <th className="p-6 text-right pr-10">System Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {loading ? (
-                            <tr><td colSpan="5" className="p-20 text-center text-slate-400 font-black italic tracking-[0.2em] animate-pulse">Initializing Data Stream...</td></tr>
-                        ) : categories.length === 0 ? (
-                            <tr><td colSpan="5" className="p-20 text-center text-slate-300 font-bold uppercase tracking-widest">No configurations detected.</td></tr>
-                        ) : categories.map(cat => (
-                            <tr key={cat._id} className="hover:bg-slate-50/50 transition-all group">
-                                <td className="p-6 pl-10">
-                                    {editingId === cat._id ? (
-                                        <input className="w-full h-11 px-4 bg-white border border-slate-300 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                                    ) : (
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2 h-10 bg-blue-600/20 rounded-full" />
-                                            <span className="font-bold text-slate-900 text-base">{cat.name}</span>
-                                        </div>
-                                    )}
-                                </td>
-                                <td className="p-6">
-                                    {editingId === cat._id ? (
-                                        <input type="number" className="w-32 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={formData.defaultAmount} onChange={e => setFormData({ ...formData, defaultAmount: e.target.value })} />
-                                    ) : (
-                                        <span className="font-black text-slate-900 text-lg tabular-nums">${Number(cat.defaultAmount).toLocaleString()}</span>
-                                    )}
-                                </td>
-                                <td className="p-6">
-                                    {editingId === cat._id ? (
-                                        <div className="flex gap-2">
-                                            {isCustomFeeType ? (
-                                                <input
-                                                    className="flex-1 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-[10px] uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
-                                                    value={customFeeType}
-                                                    onChange={e => setCustomFeeType(e.target.value)}
-                                                />
-                                            ) : (
-                                                <select
-                                                    className="flex-1 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-[10px] uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
-                                                    value={formData.feeType}
-                                                    onChange={e => beginFeeTypeEdit(e.target.value)}
-                                                >
-                                                    {DEFAULT_FEE_TYPES.map(t => (
-                                                        <option key={t} value={t}>{t}</option>
-                                                    ))}
-                                                </select>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (isCustomFeeType) {
-                                                        setIsCustomFeeType(false);
-                                                        setCustomFeeType('');
-                                                        setFormData(prev => ({ ...prev, feeType: 'Standard' }));
-                                                    } else {
-                                                        setIsCustomFeeType(true);
-                                                        setCustomFeeType(formData.feeType === 'Standard' ? '' : formData.feeType);
-                                                    }
-                                                }}
-                                                className="h-11 px-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+                <StandardTable
+                    isLoading={loading}
+                    error={null}
+                    items={tableRows}
+                    loadingMessage="Initializing Data Stream..."
+                    loadingVariant="table"
+                    loadingRows={6}
+                    loadingColumns={5}
+                    emptyTitle="No configurations detected."
+                    emptyDescription=""
+
+                    rows={tableRows}
+                    columns={[
+                        { key: 'name', label: 'Fee Identity', sortable: true, field: 'name' },
+                        { key: 'defaultAmount', label: 'Default Amount', sortable: true, field: 'defaultAmount' },
+                        { key: 'feeType', label: 'Category Type', sortable: true, field: 'feeType' },
+                        { key: 'status', label: 'Status', sortable: true, field: 'status' },
+                        { key: 'actions', label: 'System Actions', sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
+                    ]}
+                    storageKey="finance:amount-types:columns:v1"
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={onSort}
+                    getRowKey={(row) => row?._id}
+                    renderCell={(cat, col) => {
+                        switch (col.key) {
+                            case 'name':
+                                return editingId === cat._id ? (
+                                    <input
+                                        className="w-full h-11 px-4 bg-white border border-slate-300 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20"
+                                        value={formData.name}
+                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                    />
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-10 bg-blue-600/20 rounded-full" />
+                                        <span className="font-bold text-slate-900 text-base">{cat.name}</span>
+                                    </div>
+                                );
+                            case 'defaultAmount':
+                                return editingId === cat._id ? (
+                                    <input
+                                        type="number"
+                                        className="w-32 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-sm outline-none focus:ring-2 focus:ring-blue-600/20"
+                                        value={formData.defaultAmount}
+                                        onChange={e => setFormData({ ...formData, defaultAmount: e.target.value })}
+                                    />
+                                ) : (
+                                    <span className="font-black text-slate-900 text-lg tabular-nums">${Number(cat.defaultAmount).toLocaleString()}</span>
+                                );
+                            case 'feeType':
+                                return editingId === cat._id ? (
+                                    <div className="flex gap-2">
+                                        {isCustomFeeType ? (
+                                            <input
+                                                className="flex-1 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-[10px] uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
+                                                value={customFeeType}
+                                                onChange={e => setCustomFeeType(e.target.value)}
+                                            />
+                                        ) : (
+                                            <select
+                                                className="flex-1 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-[10px] uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
+                                                value={formData.feeType}
+                                                onChange={e => beginFeeTypeEdit(e.target.value)}
                                             >
-                                                {isCustomFeeType ? 'List' : 'Create'}
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <span className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200">
-                                            {cat.feeType || 'Standard'}
-                                        </span>
-                                    )}
-                                </td>
-                                <td className="p-6">
+                                                {DEFAULT_FEE_TYPES.map(t => (
+                                                    <option key={t} value={t}>{t}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (isCustomFeeType) {
+                                                    setIsCustomFeeType(false);
+                                                    setCustomFeeType('');
+                                                    setFormData(prev => ({ ...prev, feeType: 'Standard' }));
+                                                } else {
+                                                    setIsCustomFeeType(true);
+                                                    setCustomFeeType(formData.feeType === 'Standard' ? '' : formData.feeType);
+                                                }
+                                            }}
+                                            className="h-11 px-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+                                        >
+                                            {isCustomFeeType ? 'List' : 'Create'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <span className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200">
+                                        {cat.feeType || 'Standard'}
+                                    </span>
+                                );
+                            case 'status':
+                                return (
                                     <div className="flex items-center gap-2">
                                         <div className={`w-2 h-2 rounded-full ${cat.status === 'active' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-slate-300'}`} />
                                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{cat.status}</span>
                                     </div>
-                                </td>
-                                <td className="p-6 text-right pr-10">
-                                    {editingId === cat._id ? (
-                                        <div className="flex justify-end gap-3">
-                                            <button onClick={() => setEditingId(null)} className="w-10 h-10 border border-red-200 text-red-500 hover:bg-red-50 rounded-xl flex items-center justify-center transition-all"><X size={18} /></button>
-                                            <button onClick={handleSave} className="w-10 h-10 bg-green-500 text-white shadow-lg shadow-green-200 rounded-xl flex items-center justify-center transition-all scale-110"><Check size={18} strokeWidth={3} /></button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all">
-                                            <button onClick={() => startEdit(cat)} className="w-10 h-10 bg-slate-50 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl flex items-center justify-center transition-all"><Edit size={18} /></button>
-                                            <button onClick={() => handleDelete(cat._id)} className="w-10 h-10 bg-slate-50 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl flex items-center justify-center transition-all"><Trash2 size={18} /></button>
-                                        </div>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                );
+                            case 'actions':
+                                return editingId === cat._id ? (
+                                    <RowActionButtons
+                                        actions={[
+                                            {
+                                                key: 'cancel',
+                                                label: 'Cancel',
+                                                title: 'Cancel',
+                                                tone: 'delete',
+                                                icon: <X size={18} />,
+                                                onClick: () => setEditingId(null),
+                                            },
+                                            {
+                                                key: 'save',
+                                                label: 'Save',
+                                                title: 'Save',
+                                                tone: 'edit',
+                                                icon: <Check size={18} strokeWidth={3} />,
+                                                onClick: handleSave,
+                                            },
+                                        ]}
+                                    />
+                                ) : (
+                                    <RowActionButtons
+                                        actions={[
+                                            {
+                                                key: 'edit',
+                                                label: 'Edit',
+                                                title: 'Edit',
+                                                tone: 'edit',
+                                                icon: <Edit size={18} />,
+                                                onClick: () => startEdit(cat),
+                                            },
+                                            {
+                                                key: 'delete',
+                                                label: 'Delete',
+                                                title: 'Delete',
+                                                tone: 'delete',
+                                                icon: <Trash2 size={18} />,
+                                                onClick: () => handleDelete(cat._id),
+                                            },
+                                        ]}
+                                    />
+                                );
+                            default:
+                                return '';
+                        }
+                    }}
+
+                    showRowsSelector={false}
+                    paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+                />
             </div>
 
             <div className="bg-slate-900 p-8 rounded-[2.5rem] flex gap-6 items-start shadow-2xl">

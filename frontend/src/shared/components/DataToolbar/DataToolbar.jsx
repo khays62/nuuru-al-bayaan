@@ -36,9 +36,9 @@ export default function DataToolbar({
   return (
     <Card className={`p-4 rounded-lg ${className}`.trim()}>
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-4">
-        <div className={`flex flex-row flex-wrap items-center gap-3 flex-1 ${searchSlot ? 'min-w-[240px]' : ''}`}>
-          {searchSlot && <div className="w-full md:max-w-xs flex-grow">{searchSlot}</div>}
-          {filtersSlot && <div className="flex items-center gap-2 flex-wrap flex-grow">{filtersSlot}</div>}
+        <div className={`flex flex-row flex-wrap items-center gap-3 flex-1 ${searchSlot ? 'min-w-60' : ''}`}>
+          {searchSlot && <div className="w-full md:max-w-xs grow">{searchSlot}</div>}
+          {filtersSlot && <div className="flex items-center gap-2 flex-wrap grow">{filtersSlot}</div>}
           {sortSlot && <div className="flex items-center gap-2">{sortSlot}</div>}
         </div>
         {(filtersSlot || searchSlot || actionsSlot) && (

@@ -4,6 +4,8 @@ import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import toast from 'react-hot-toast';
 import UpdateChargeModal from './UpdateChargeModal';
+import { useInvoicesQuery } from '../hooks/studentFinanceHooks';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 export default function StudentFinanceEditTab() {
     const [search, setSearch] = useState('');
@@ -11,6 +13,7 @@ export default function StudentFinanceEditTab() {
     const [classes, setClasses] = useState([]);
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [submittedParams, setSubmittedParams] = useState({});
     const [selectedStudentRow, setSelectedStudentRow] = useState(null);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
 
@@ -38,36 +41,111 @@ export default function StudentFinanceEditTab() {
         fetchClasses();
     }, []);
 
+    const invoicesQuery = useInvoicesQuery(submittedParams, { enabled: true });
+
+    useEffect(() => {
+        setLoading(Boolean(invoicesQuery.isFetching));
+    }, [invoicesQuery.isFetching]);
+
+    useEffect(() => {
+        if (!invoicesQuery.isError) return;
+        toast.error('Failed to fetch student records');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [invoicesQuery.isError]);
+
+    useEffect(() => {
+        const response = invoicesQuery.data;
+        const data = Array.isArray(response)
+            ? response
+            : (Array.isArray(response?.data) ? response.data : (response?.data?.data || []));
+
+        const studentMap = {};
+        (data || []).forEach(inv => {
+            const sid = inv?.student?._id;
+            if (!sid) return;
+            if (!studentMap[sid]) {
+                studentMap[sid] = {
+                    student: inv.student,
+                    totalBalance: 0,
+                    invoices: []
+                };
+            }
+            studentMap[sid].totalBalance += (Number(inv.amount || 0) - Number(inv.paidAmount || 0));
+            studentMap[sid].invoices.push(inv);
+        });
+
+        setStudents(Object.values(studentMap));
+    }, [invoicesQuery.data]);
+
     const handleSearch = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
-        setLoading(true);
-        try {
-            const params = { search, classId };
-            const response = await financeService.getInvoices(params);
-            const data = response.data || [];
-
-            // Group by student for the list view
-            const studentMap = {};
-            data.forEach(inv => {
-                const sid = inv.student._id;
-                if (!studentMap[sid]) {
-                    studentMap[sid] = {
-                        student: inv.student,
-                        totalBalance: 0,
-                        invoices: []
-                    };
-                }
-                studentMap[sid].totalBalance += (inv.amount - inv.paidAmount);
-                studentMap[sid].invoices.push(inv);
-            });
-
-            setStudents(Object.values(studentMap));
-        } catch {
-            toast.error("Failed to fetch student records");
-        } finally {
-            setLoading(false);
-        }
+        const params = {};
+        if (search) params.search = search;
+        if (classId) params.classId = classId;
+        setSubmittedParams(params);
     };
+
+    const columns = [
+        {
+            key: 'id',
+            label: 'ID',
+            render: (row) => (
+                <span className="font-mono text-xs font-bold text-slate-500">{row.student?.studentId || '—'}</span>
+            ),
+        },
+        {
+            key: 'name',
+            label: 'Student Name',
+            render: (row) => (
+                <div className="flex flex-col">
+                    <span className="font-bold text-slate-900">{row.student?.fullName || '—'}</span>
+                    {row.student?.admissionDate ? (
+                        <span className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">
+                            Reg: {new Date(row.student.admissionDate).toLocaleDateString()}
+                        </span>
+                    ) : null}
+                </div>
+            ),
+        },
+        {
+            key: 'contact',
+            label: 'Contact',
+            render: (row) => row.student?.phoneNumber || row.student?.contactNumber || '—',
+        },
+        {
+            key: 'class',
+            label: 'Class',
+            render: (row) => (
+                <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
+                    {row.student?.currentClass || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'balance',
+            label: 'Balance',
+            align: 'right',
+            render: (row) => (
+                <span className={`font-black text-sm ${Number(row.totalBalance || 0) > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                    ${Number(row.totalBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+            ),
+        },
+        {
+            key: 'info',
+            label: 'Info',
+            align: 'center',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200 text-center',
+            render: (row) => (
+                <button
+                    onClick={() => { setSelectedStudentRow(row); setShowUpdateModal(true); }}
+                    className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all hover:shadow-lg active:scale-95"
+                >
+                    View Info
+                </button>
+            ),
+        },
+    ];
 
     return (
         <div className="p-6 space-y-6">
@@ -85,7 +163,7 @@ export default function StudentFinanceEditTab() {
                     </div>
                 </form>
                 <select
-                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-[200px] font-bold text-sm"
+                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-50 font-bold text-sm"
                     value={classId}
                     onChange={e => setClassId(e.target.value)}
                 >
@@ -103,56 +181,18 @@ export default function StudentFinanceEditTab() {
             </div>
 
             <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            <th className="p-4 pl-6">ID</th>
-                            <th className="p-4">Student Name</th>
-                            <th className="p-4">Contact</th>
-                            <th className="p-4">Class</th>
-                            <th className="p-4 text-right">Balance</th>
-                            <th className="p-4 text-center">Info</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {loading ? (
-                            <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-bold italic tracking-widest uppercase">Fetching Profiles...</td></tr>
-                        ) : students.length === 0 ? (
-                            <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-medium">No records found for this selection.</td></tr>
-                        ) : (
-                            students.map(row => (
-                                <tr key={row.student._id} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="p-4 pl-6 font-mono text-xs font-bold text-slate-500">{row.student.studentId}</td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-slate-900">{row.student.fullName}</span>
-                                            <span className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">Reg: {new Date(row.student.admissionDate).toLocaleDateString()}</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-slate-600 text-sm font-medium">{row.student.phoneNumber || row.student.contactNumber || '—'}</td>
-                                    <td className="p-4">
-                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
-                                            {row.student.currentClass || '—'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        <span className={`font-black text-sm ${row.totalBalance > 0 ? 'text-red-500' : 'text-green-600'}`}>
-                                            ${Number(row.totalBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <button
-                                            onClick={() => { setSelectedStudentRow(row); setShowUpdateModal(true); }}
-                                            className="bg-amber-500 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all hover:shadow-lg active:scale-95"
-                                        >
-                                            View Info
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                <StandardTable
+                    isLoading={loading}
+                    loadingMessage="Fetching Profiles..."
+                    items={students}
+                    rows={students}
+                    columns={columns}
+                    storageKey="finance:student-finance:edit"
+                    getRowKey={(row) => row.student?._id}
+                    emptyTitle="No records found"
+                    emptyDescription="No records found for this selection."
+                    tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
+                />
             </div>
 
             {showUpdateModal && (

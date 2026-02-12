@@ -4,6 +4,7 @@ import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import toast from 'react-hot-toast';
 import GraduationPaymentModal from './GraduationPaymentModal';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 export default function GraduationReceiptTab() {
     const [search, setSearch] = useState('');
@@ -73,6 +74,68 @@ export default function GraduationReceiptTab() {
         }
     };
 
+    const columns = [
+        {
+            key: 'id',
+            label: 'ID',
+            render: (row) => (
+                <span className="font-mono text-xs font-bold text-surface-500">{row.student?.studentId || '—'}</span>
+            ),
+        },
+        {
+            key: 'name',
+            label: 'Student Name',
+            render: (row) => (
+                <div className="flex flex-col">
+                    <span className="font-bold text-surface-900">{row.student?.fullName || '—'}</span>
+                    {row.student?.studentId ? (
+                        <span className="text-[10px] text-purple-600 font-black uppercase tracking-widest">
+                            Candidate #{String(row.student.studentId).slice(-4)}
+                        </span>
+                    ) : null}
+                </div>
+            ),
+        },
+        {
+            key: 'contact',
+            label: 'Contact',
+            render: (row) => row.student?.phoneNumber || '—',
+        },
+        {
+            key: 'class',
+            label: 'Class',
+            render: (row) => (
+                <span className="px-2 py-1 bg-purple-50 text-purple-600 rounded text-[10px] font-black uppercase tracking-tight border border-purple-100 italic">
+                    {row.student?.currentClass || 'GRADUATE'}
+                </span>
+            ),
+        },
+        {
+            key: 'balance',
+            label: 'Grad Balance',
+            align: 'right',
+            render: (row) => (
+                <span className={`font-black text-sm ${Number(row.gradBalance || 0) > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                    ${Number(row.gradBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+            ),
+        },
+        {
+            key: 'info',
+            label: 'Info',
+            align: 'center',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200 text-center',
+            render: (row) => (
+                <button
+                    onClick={() => { setSelectedStudentRow(row); setShowGradModal(true); }}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all hover:shadow-lg active:scale-95"
+                >
+                    View Info
+                </button>
+            ),
+        },
+    ];
+
     return (
         <div className="p-6 space-y-6">
             <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -89,7 +152,7 @@ export default function GraduationReceiptTab() {
                     </div>
                 </form>
                 <select
-                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-primary/10 bg-white min-w-[200px] font-bold text-sm"
+                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-primary/10 bg-white min-w-50 font-bold text-sm"
                     value={classId}
                     onChange={e => setClassId(e.target.value)}
                 >
@@ -107,56 +170,18 @@ export default function GraduationReceiptTab() {
             </div>
 
             <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-surface-50 border-b border-surface-200">
-                        <tr className="text-[10px] font-black text-surface-400 uppercase tracking-[0.2em]">
-                            <th className="p-4 pl-6">ID</th>
-                            <th className="p-4">Student Name</th>
-                            <th className="p-4">Contact</th>
-                            <th className="p-4">Class</th>
-                            <th className="p-4 text-right">Grad Balance</th>
-                            <th className="p-4 text-center">Info</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-surface-100">
-                        {loading ? (
-                            <tr><td colSpan="6" className="p-12 text-center text-surface-400 font-bold italic tracking-widest uppercase text-purple-600">Syncing Clearance Registry...</td></tr>
-                        ) : students.length === 0 ? (
-                            <tr><td colSpan="6" className="p-12 text-center text-surface-400 font-medium">No graduation records detected for this selection.</td></tr>
-                        ) : (
-                            students.map(row => (
-                                <tr key={row.student._id} className="hover:bg-purple-50/30 transition-colors">
-                                    <td className="p-4 pl-6 font-mono text-xs font-bold text-surface-500">{row.student.studentId}</td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-surface-900">{row.student.fullName}</span>
-                                            <span className="text-[10px] text-purple-600 font-black uppercase tracking-widest">Candidate #{row.student.studentId.slice(-4)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-surface-600 text-sm font-medium">{row.student.phoneNumber || '—'}</td>
-                                    <td className="p-4">
-                                        <span className="px-2 py-1 bg-purple-50 text-purple-600 rounded text-[10px] font-black uppercase tracking-tight border border-purple-100 italic">
-                                            {row.student.currentClass || 'GRADUATE'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        <span className={`font-black text-sm ${row.gradBalance > 0 ? 'text-red-500' : 'text-green-600'}`}>
-                                            ${Number(row.gradBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <button
-                                            onClick={() => { setSelectedStudentRow(row); setShowGradModal(true); }}
-                                            className="bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all hover:shadow-lg active:scale-95"
-                                        >
-                                            View Info
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                <StandardTable
+                    isLoading={loading}
+                    loadingMessage="Syncing Clearance Registry..."
+                    items={students}
+                    rows={students}
+                    columns={columns}
+                    storageKey="finance:graduation:students"
+                    getRowKey={(row) => row.student?._id}
+                    emptyTitle="No graduation records detected"
+                    emptyDescription="No graduation records detected for this selection."
+                    tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
+                />
             </div>
 
             {showGradModal && (

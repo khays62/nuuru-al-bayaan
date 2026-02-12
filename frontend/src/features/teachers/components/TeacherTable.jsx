@@ -44,6 +44,7 @@ export default function TeacherTable({
     { key: 'teacherId', label: t('teachers.table.columns.teacherId'), sortable: true, field: 'teacherId' },
     { key: 'email', label: t('teachers.table.columns.email'), sortable: true, field: 'email' },
     { key: 'phone', label: t('teachers.table.columns.phone'), sortable: true, field: 'phone' },
+    { key: 'salary', label: t('teachers.table.columns.salary'), sortable: false, field: 'salary' },
     { key: 'createdAt', label: t('teachers.table.columns.createdAt'), sortable: true, field: 'createdAt' },
     { key: 'status', label: t('teachers.table.columns.status'), sortable: true, field: 'status', tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
     { key: 'actions', label: t('teachers.table.columns.actions'), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
@@ -57,7 +58,7 @@ export default function TeacherTable({
       loadingMessage={t('teachers.table.loading')}
       loadingVariant="table"
       loadingRows={6}
-      loadingColumns={7}
+      loadingColumns={8}
       emptyTitle={t('teachers.table.emptyTitle')}
       emptyDescription={t('teachers.table.emptyDescription')}
 
@@ -88,6 +89,8 @@ export default function TeacherTable({
             return row.email || '-';
           case 'phone':
             return row.phone || '-';
+          case 'salary':
+            return Number(row?.salary || 0);
           case 'createdAt':
             return row.createdAt
               ? new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(row.createdAt))

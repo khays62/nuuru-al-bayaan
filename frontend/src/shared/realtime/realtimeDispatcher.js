@@ -2,6 +2,10 @@ import {
   emitStudentsChanged,
   emitTeachersChanged,
   emitUsersChanged,
+  emitExpensesChanged,
+  emitAccountsChanged,
+  emitFinanceCategoriesChanged,
+  emitPayrollChanged,
   emitSubjectsChanged,
   emitTimetableChanged,
   emitGradeSectionsChanged,
@@ -77,6 +81,22 @@ export function createRealtimeDispatcher({ queryClient, debounceMs = 250 } = {})
     }
     if (type === 'users:changed') {
       debouncer.debounce('users:changed', () => emitUsersChanged({ source: 'realtime', ...payload }));
+      return;
+    }
+    if (type === 'expenses:changed') {
+      debouncer.debounce('expenses:changed', () => emitExpensesChanged({ source: 'realtime', ...payload }));
+      return;
+    }
+    if (type === 'accounts:changed') {
+      debouncer.debounce('accounts:changed', () => emitAccountsChanged({ source: 'realtime', ...payload }));
+      return;
+    }
+    if (type === 'financeCategories:changed') {
+      debouncer.debounce('financeCategories:changed', () => emitFinanceCategoriesChanged({ source: 'realtime', ...payload }));
+      return;
+    }
+    if (type === 'payroll:changed') {
+      debouncer.debounce('payroll:changed', () => emitPayrollChanged({ source: 'realtime', ...payload }));
       return;
     }
     if (type === 'subjects:changed') {

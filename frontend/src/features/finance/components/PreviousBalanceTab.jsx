@@ -4,6 +4,10 @@ import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
 import toast from 'react-hot-toast';
 import StudentFinancePaymentModal from './StudentFinancePaymentModal';
+import { useFinanceStudentsSummaryQuery, usePreviousBalanceSummaryQuery } from '../hooks/studentFinanceHooks';
+
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 
 export default function PreviousBalanceTab() {
     const [search, setSearch] = useState('');
@@ -12,12 +16,18 @@ export default function PreviousBalanceTab() {
     const [classes, setClasses] = useState([]);
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [submittedParams, setSubmittedParams] = useState({});
     const [addMode, setAddMode] = useState(false);
     const [selectedStudentRow, setSelectedStudentRow] = useState(null);
     const [showInfoModal, setShowInfoModal] = useState(false);
 
     const [feeCategories, setFeeCategories] = useState([]);
     const [editingPrevBalance, setEditingPrevBalance] = useState({});
+
+    const [sortBy, setSortBy] = useState('fullName');
+    const [sortDir, setSortDir] = useState('asc');
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
 
     useEffect(() => {
         const fetchClasses = async () => {
@@ -42,6 +52,10 @@ export default function PreviousBalanceTab() {
         };
         fetchClasses();
     }, []);
+
+    useEffect(() => {
+        setPage(1);
+    }, [search, classId, showMode]);
 
     useEffect(() => {
         const loadFeeCategories = async () => {
@@ -73,64 +87,62 @@ export default function PreviousBalanceTab() {
 
     const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
 
+    const summaryQuery = useFinanceStudentsSummaryQuery(submittedParams, { enabled: true });
+    const prevCurrentQuery = usePreviousBalanceSummaryQuery({ ...submittedParams, month: currentMonth }, { enabled: true });
+    const prevAnyQuery = usePreviousBalanceSummaryQuery(submittedParams, { enabled: showMode === 'withPrev' });
+
+    useEffect(() => {
+        setLoading(Boolean(summaryQuery.isFetching || prevCurrentQuery.isFetching || prevAnyQuery.isFetching));
+    }, [summaryQuery.isFetching, prevCurrentQuery.isFetching, prevAnyQuery.isFetching]);
+
+    useEffect(() => {
+        if (!summaryQuery.isError && !prevCurrentQuery.isError && !prevAnyQuery.isError) return;
+        toast.error('Failed to fetch student balance data');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [summaryQuery.isError, prevCurrentQuery.isError, prevAnyQuery.isError]);
+
+    useEffect(() => {
+        const baseRows = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
+        const currentRows = Array.isArray(prevCurrentQuery.data?.rows) ? prevCurrentQuery.data.rows : [];
+        const anyRows = Array.isArray(prevAnyQuery.data?.rows) ? prevAnyQuery.data.rows : [];
+
+        const currentByStudent = new Map(currentRows.map(r => [String(r.studentObjectId), r]));
+        const anyByStudent = new Map(anyRows.map(r => [String(r.studentObjectId), r]));
+
+        let merged = baseRows.map(r => {
+            const pCurrent = currentByStudent.get(String(r._id));
+            const pAny = anyByStudent.get(String(r._id));
+
+            return {
+                ...r,
+                prevInvoiceId: pCurrent?.invoiceId || null,
+                prevAmount: Number(pCurrent?.amount || 0),
+                prevPaidAmount: Number(pCurrent?.paidAmount || 0),
+                prevBalance: Number(pCurrent?.balance || 0),
+                anyPrevInvoiceId: pAny?.invoiceId || null,
+                anyPrevBillingMonth: pAny?.billingMonth || null,
+            };
+        });
+
+        if (showMode === 'withPrev') {
+            if (anyRows.length === 0) merged = [];
+            else merged = merged.filter(r => !!r.anyPrevInvoiceId);
+        }
+
+        setStudents(merged);
+    }, [summaryQuery.data, prevCurrentQuery.data, prevAnyQuery.data, showMode]);
+
     const handleSearch = async (e, overrides = {}) => {
         if (e && e.preventDefault) e.preventDefault();
-        setLoading(true);
-        try {
-            const effectiveSearch = typeof overrides.search === 'string' ? overrides.search : search;
-            const effectiveClassId = typeof overrides.classId === 'string' ? overrides.classId : classId;
-            const effectiveShowMode = (overrides.showMode ?? showMode);
 
-            const params = {};
-            if (effectiveSearch) params.search = effectiveSearch;
-            if (effectiveClassId) params.classId = effectiveClassId;
+        const effectiveSearch = typeof overrides.search === 'string' ? overrides.search : search;
+        const effectiveClassId = typeof overrides.classId === 'string' ? overrides.classId : classId;
 
-            const requests = [
-                financeService.getStudentSummary(params),
-                // current-month Previous Balance (used for SAVE/upsert + current display)
-                financeService.getPreviousBalanceSummary({ ...params, month: currentMonth }),
-            ];
+        const params = {};
+        if (effectiveSearch) params.search = effectiveSearch;
+        if (effectiveClassId) params.classId = effectiveClassId;
 
-            // any-month Previous Balance (used only for the filter)
-            if (effectiveShowMode === 'withPrev') {
-                requests.push(financeService.getPreviousBalanceSummary(params));
-            }
-
-            const [summary, prevCurrent, prevAny] = await Promise.all(requests);
-
-            const baseRows = Array.isArray(summary) ? summary : [];
-            const currentRows = Array.isArray(prevCurrent?.rows) ? prevCurrent.rows : [];
-            const anyRows = Array.isArray(prevAny?.rows) ? prevAny.rows : [];
-
-            const currentByStudent = new Map(currentRows.map(r => [String(r.studentObjectId), r]));
-            const anyByStudent = new Map(anyRows.map(r => [String(r.studentObjectId), r]));
-
-            let merged = baseRows.map(r => {
-                const pCurrent = currentByStudent.get(String(r._id));
-                const pAny = anyByStudent.get(String(r._id));
-
-                return {
-                    ...r,
-                    prevInvoiceId: pCurrent?.invoiceId || null,
-                    prevAmount: Number(pCurrent?.amount || 0),
-                    prevPaidAmount: Number(pCurrent?.paidAmount || 0),
-                    prevBalance: Number(pCurrent?.balance || 0),
-                    anyPrevInvoiceId: pAny?.invoiceId || null,
-                    anyPrevBillingMonth: pAny?.billingMonth || null,
-                };
-            });
-
-            if (effectiveShowMode === 'withPrev') {
-                if (anyRows.length === 0) merged = [];
-                else merged = merged.filter(r => !!r.anyPrevInvoiceId);
-            }
-
-            setStudents(merged);
-        } catch {
-            toast.error('Failed to fetch student balance data');
-        } finally {
-            setLoading(false);
-        }
+        setSubmittedParams(params);
     };
 
     const handlePrevBalanceChange = (studentObjectId, val) => {
@@ -219,6 +231,52 @@ export default function PreviousBalanceTab() {
         return '';
     };
 
+    const tableItems = useMemo(() => {
+        const list = Array.isArray(students) ? students : [];
+        return list.map((s) => ({
+            _id: s._id,
+            studentId: s.studentId || '—',
+            fullName: s.fullName || '—',
+            contact: s.phone || '—',
+            className: s.className || '—',
+            prevBalance: Number(s.prevBalance || 0),
+            raw: s,
+        }));
+    }, [students]);
+
+    const onSort = (field) => {
+        const f = String(field || '').trim();
+        if (!f) return;
+        setSortBy((prev) => {
+            if (prev === f) {
+                setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+                return prev;
+            }
+            setSortDir('asc');
+            return f;
+        });
+    };
+
+    const sortedItems = useMemo(() => {
+        const list = Array.isArray(tableItems) ? tableItems.slice() : [];
+        const dir = sortDir === 'desc' ? -1 : 1;
+        const field = String(sortBy || '').trim();
+        if (!field) return list;
+        list.sort((a, b) => {
+            const av = a?.[field];
+            const bv = b?.[field];
+            if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+            return String(av ?? '').localeCompare(String(bv ?? ''), undefined, { numeric: true, sensitivity: 'base' }) * dir;
+        });
+        return list;
+    }, [tableItems, sortBy, sortDir]);
+
+    const total = sortedItems.length;
+    const totalPages = Math.max(1, Math.ceil(total / Math.max(1, limit)));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+    const currentRows = sortedItems.slice(start, start + limit);
+
     return (
         <div className="p-6 space-y-6">
             <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -236,7 +294,7 @@ export default function PreviousBalanceTab() {
                 </form>
 
                 <select
-                    className="h-11 px-4 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-[200px] font-bold text-sm"
+                    className="h-11 px-4 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-50 font-bold text-sm"
                     value={classId}
                     onChange={(e) => {
                         const next = e.target.value;
@@ -257,7 +315,7 @@ export default function PreviousBalanceTab() {
                 </select>
 
                 <select
-                    className="h-11 px-4 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-[200px] font-bold text-sm"
+                    className="h-11 px-4 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-50 font-bold text-sm"
                     value={showMode}
                     onChange={(e) => {
                         const next = e.target.value;
@@ -285,75 +343,113 @@ export default function PreviousBalanceTab() {
             </div>
 
             <div className="bg-white border text-center rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                            <th className="p-4 pl-6">ID</th>
-                            <th className="p-4">Student Name</th>
-                            <th className="p-4">Contact</th>
-                            <th className="p-4">Class</th>
-                            <th className="p-4 text-right">Balance</th>
-                            <th className="p-4 text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {loading ? (
-                            <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-bold italic tracking-widest uppercase">Opening Archives...</td></tr>
-                        ) : students.length === 0 ? (
-                            <tr><td colSpan="6" className="p-12 text-center text-slate-400 font-medium">No records found for this selection.</td></tr>
-                        ) : (
-                            students.map(row => (
-                                <tr key={row._id} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="p-4 pl-6 font-mono text-xs font-bold text-slate-500">{row.studentId}</td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-slate-900">{row.fullName}</span>
-                                            <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">B/F ACCOUNT</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-slate-600 text-sm font-medium">{row.phone || '—'}</td>
-                                    <td className="p-4">
-                                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
-                                            {row.className || '—'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-right">
-                                        <div className="flex flex-col items-end gap-2">
-                                            <input
-                                                type="text"
-                                                inputMode="decimal"
-                                                placeholder="0.00"
-                                                value={getInputValue(row)}
-                                                onChange={(e) => handlePrevBalanceChange(row._id, e.target.value)}
-                                                disabled={!addMode}
-                                                readOnly={!addMode}
-                                                className={`h-9 w-32 px-3 border border-slate-200 rounded-lg font-black text-xs text-slate-900 outline-none text-right ${addMode ? 'bg-slate-50' : 'bg-slate-100 cursor-not-allowed opacity-75'}`}
-                                            />
-                                            <span className="text-[10px] font-bold text-slate-400">Current: ${Number(row.prevBalance || 0).toFixed(2)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button
-                                                onClick={() => { setSelectedStudentRow({ student: row, totalBalance: Number(row.balance || 0) }); setShowInfoModal(true); }}
-                                                className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all hover:shadow-lg active:scale-95"
-                                            >
-                                                View Info
-                                            </button>
-                                            <button
-                                                onClick={() => handleEditRow(row)}
-                                                className="bg-amber-500 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all hover:shadow-lg active:scale-95 flex items-center gap-2"
-                                                title="Edit"
-                                            >
-                                                <Pencil size={14} /> Edit
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                <StandardTable
+                    isLoading={loading}
+                    error={null}
+                    items={sortedItems}
+                    loadingMessage="Opening Archives..."
+                    loadingVariant="table"
+                    loadingRows={8}
+                    loadingColumns={6}
+                    emptyTitle="No records found for this selection."
+                    emptyDescription=""
+
+                    rows={currentRows}
+                    columns={[
+                        { key: 'studentId', label: 'ID', sortable: true, field: 'studentId' },
+                        { key: 'fullName', label: 'Student Name', sortable: true, field: 'fullName' },
+                        { key: 'contact', label: 'Contact', sortable: true, field: 'contact' },
+                        { key: 'className', label: 'Class', sortable: true, field: 'className' },
+                        { key: 'prevBalance', label: 'Balance', sortable: true, field: 'prevBalance', align: 'right' },
+                        { key: 'actions', label: 'Actions', sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
+                    ]}
+                    storageKey="finance:previous-balance:columns:v1"
+                    controlsProps={{
+                        limit,
+                        total,
+                        onLimit: (v) => {
+                            setLimit(v);
+                            setPage(1);
+                        },
+                    }}
+                    sortBy={sortBy}
+                    sortDir={sortDir}
+                    onSort={onSort}
+                    getRowKey={(row) => row?._id || row?.id}
+                    renderCell={(row, col) => {
+                        const raw = row?.raw;
+                        switch (col.key) {
+                            case 'studentId':
+                                return <span className="p-0 font-mono text-xs font-bold text-slate-500">{row?.studentId || '—'}</span>;
+                            case 'fullName':
+                                return (
+                                    <div className="flex flex-col items-start">
+                                        <span className="font-bold text-slate-900">{row?.fullName || '—'}</span>
+                                        <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">B/F ACCOUNT</span>
+                                    </div>
+                                );
+                            case 'contact':
+                                return <span className="text-slate-600 text-sm font-medium">{row?.contact || '—'}</span>;
+                            case 'className':
+                                return (
+                                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
+                                        {row?.className || '—'}
+                                    </span>
+                                );
+                            case 'prevBalance':
+                                return (
+                                    <div className="flex flex-col items-end gap-2">
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            placeholder="0.00"
+                                            value={getInputValue(raw)}
+                                            onChange={(e) => handlePrevBalanceChange(raw?._id, e.target.value)}
+                                            disabled={!addMode}
+                                            readOnly={!addMode}
+                                            className={`h-9 w-32 px-3 border border-slate-200 rounded-lg font-black text-xs text-slate-900 outline-none text-right ${addMode ? 'bg-slate-50' : 'bg-slate-100 cursor-not-allowed opacity-75'}`}
+                                        />
+                                        <span className="text-[10px] font-bold text-slate-400">Current: ${Number(raw?.prevBalance || 0).toFixed(2)}</span>
+                                    </div>
+                                );
+                            case 'actions':
+                                return (
+                                    <RowActionButtons
+                                        actions={[
+                                            {
+                                                key: 'info',
+                                                label: 'View Info',
+                                                title: 'View Info',
+                                                tone: 'view',
+                                                showLabel: true,
+                                                icon: null,
+                                                onClick: () => {
+                                                    setSelectedStudentRow({ student: raw, totalBalance: Number(raw?.balance || 0) });
+                                                    setShowInfoModal(true);
+                                                },
+                                            },
+                                            {
+                                                key: 'edit',
+                                                label: 'Edit',
+                                                title: 'Edit',
+                                                tone: 'edit',
+                                                showLabel: true,
+                                                icon: <Pencil size={16} />,
+                                                onClick: () => handleEditRow(raw),
+                                            },
+                                        ]}
+                                    />
+                                );
+                            default:
+                                return '';
+                        }
+                    }}
+                    meta={{ page: safePage, totalPages, limit, total }}
+                    onPage={setPage}
+                    onLimit={(v) => { setLimit(v); setPage(1); }}
+                    showRowsSelector={false}
+                    paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+                />
             </div>
 
             {showInfoModal && (
