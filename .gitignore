@@ -63,6 +63,8 @@ backend/build_log_backend_latest.txt
 frontend/build_err.txt
 frontend/build_out.txt
 frontend/_vite_build_out*.txt
+frontend/_vite_build_err*.txt
+frontend/_vite_build_*.txt
 
 # Local build/test capture outputs (do not commit)
 *_build_out.txt
