@@ -2959,6 +2959,7 @@ export default {
           cr: 'دائن',
           paid: 'مدفوع',
           balance: 'الرصيد',
+          remaining: 'المتبقي',
         },
         loading: 'جارٍ التحميل…',
         empty: 'لا توجد بيانات',
@@ -2967,6 +2968,7 @@ export default {
         },
         errors: {
           loadFailed: 'فشل تحميل معلومات الموظف',
+          sendNumberRequired: 'رقم الإرسال مطلوب',
           saveFailed: 'فشل الحفظ',
         },
         receipt: {
@@ -2979,6 +2981,11 @@ export default {
           paid: 'مدفوع',
           balance: 'الرصيد',
         },
+      },
+
+      apiErrors: {
+        PAYROLL_DELETE_NO_MATCH_UNPAID: 'لا توجد سجلات غير مدفوعة/مسودة للحذف',
+        PAYROLL_DELETE_NO_MATCH_PAID: 'هذا الموظف ليس مدفوعاً بعد لهذا الشهر/السنة',
       },
     },
   },

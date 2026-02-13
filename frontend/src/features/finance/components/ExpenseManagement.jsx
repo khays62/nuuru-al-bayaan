@@ -82,6 +82,7 @@ export default function ExpenseManagement() {
         },
         placeholderData: (prev) => prev,
         staleTime: 30_000,
+        refetchOnMount: 'always',
         refetchOnWindowFocus: false,
     });
 
@@ -98,6 +99,7 @@ export default function ExpenseManagement() {
         },
         placeholderData: (prev) => prev,
         staleTime: 30_000,
+        refetchOnMount: 'always',
         refetchOnWindowFocus: false,
     });
 

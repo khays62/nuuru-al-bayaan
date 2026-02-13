@@ -88,6 +88,7 @@ import {
   chargePayroll,
   payrollFullPayment,
   deletePayrollCharges,
+  deletePaidPayrolls,
 } from '../controllers/financeControl/payrollWorkflowController.js';
 
 import { printPayrollList } from '../controllers/financeControl/payrollPrintingController.js';
@@ -240,8 +241,9 @@ router.patch('/payroll/:id/ledger', protect, authorizeRoles('admin'), updatePayr
 router.post('/payroll/charge', protect, authorizeRoles('admin'), chargePayroll);
 router.post('/payroll/full-payment', protect, authorizeRoles('admin'), payrollFullPayment);
 router.delete('/payroll/charges', protect, authorizeRoles('admin'), deletePayrollCharges);
+router.delete('/payroll/paid', protect, authorizeRoles('admin'), deletePaidPayrolls);
 
-// IMPORTANT: keep this AFTER /payroll/charges so Express doesn't treat "charges" as :id
+// IMPORTANT: keep this AFTER /payroll/charges and /payroll/paid so Express doesn't treat them as :id
 router.delete('/payroll/:id', protect, authorizeRoles('admin'), deletePayroll);
 
 // Payroll Printing

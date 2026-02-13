@@ -64,6 +64,11 @@ export async function deletePayrollCharges(payload, { signal } = {}) {
   return res.data;
 }
 
+export async function deletePaidPayrolls(payload, { signal } = {}) {
+  const res = await axios.delete('/finance/payroll/paid', { data: payload, signal });
+  return res.data;
+}
+
 export async function printPayrollList(params = {}, { signal } = {}) {
   const res = await axios.get('/finance/payroll/print', { params, signal });
   return res.data;

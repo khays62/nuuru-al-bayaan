@@ -25,6 +25,9 @@ export default function PayrollUpdateModal({
     const { t } = useI18n();
     const [loading, setLoading] = useState(false);
     const [staffList, setStaffList] = useState([]);
+    const [showPaidConfirm, setShowPaidConfirm] = useState(false);
+    const [paidConfirmText, setPaidConfirmText] = useState('');
+    const [pendingPayload, setPendingPayload] = useState(null);
 
     const [form, setForm] = useState({
         updateType: 'salaryCharge', // salaryCharge | commission | salaryDecrease
@@ -55,16 +58,48 @@ export default function PayrollUpdateModal({
         if (!form.academicYear) return toast.error(t('finance.payroll.validations.academicYearRequired', { defaultValue: 'Academic Year is required' }));
         if (form.amount === '') return toast.error(t('finance.payroll.validations.amountRequired', { defaultValue: 'Amount is required' }));
 
+        const payload = {
+            employee: form.employee,
+            month: form.month,
+            academicYear: form.academicYear,
+            updateType: form.updateType,
+            amount: Number(form.amount),
+        };
+
         setLoading(true);
         try {
-            await updateMutation.mutateAsync({
-                employee: form.employee,
-                month: form.month,
-                academicYear: form.academicYear,
-                updateType: form.updateType,
-                amount: Number(form.amount),
-            });
+            await updateMutation.mutateAsync(payload);
             toast.success(t('finance.payroll.update.success', { defaultValue: 'Payroll updated' }));
+            onSuccess?.();
+            onClose();
+        } catch (error) {
+            const code = error?.response?.data?.code;
+            if (code === 'PAYROLL_PAID_CONFIRM_REQUIRED') {
+                setPendingPayload(payload);
+                setPaidConfirmText('');
+                setShowPaidConfirm(true);
+            } else {
+                toast.error(error.response?.data?.message || t('finance.payroll.update.errors.failed', { defaultValue: 'Update failed' }));
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const confirmUpdatePaid = async () => {
+        const expected = 'UPDATE PAID';
+        if (String(paidConfirmText || '').trim().toUpperCase() !== expected) {
+            toast.error(t('finance.payroll.updatePaid.confirmTextRequired', { defaultValue: `Type "${expected}" to confirm` }));
+            return;
+        }
+        if (!pendingPayload) return;
+
+        setLoading(true);
+        try {
+            await updateMutation.mutateAsync({ ...pendingPayload, confirm: 'UPDATE_PAID' });
+            toast.success(t('finance.payroll.update.success', { defaultValue: 'Payroll updated' }));
+            setShowPaidConfirm(false);
+            setPendingPayload(null);
             onSuccess?.();
             onClose();
         } catch (error) {
@@ -86,12 +121,13 @@ export default function PayrollUpdateModal({
     }));
 
     return (
-        <Modal
-            isOpen
-            onClose={onClose}
-            title={t('finance.payroll.modals.updateTitle', { defaultValue: 'Update Payroll' })}
-            panelClassName="max-w-2xl"
-        >
+        <>
+            <Modal
+                isOpen
+                onClose={onClose}
+                title={t('finance.payroll.modals.updateTitle', { defaultValue: 'Update Payroll' })}
+                panelClassName="max-w-2xl"
+            >
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField label={t('finance.payroll.update.fields.updateType', { defaultValue: 'Update type' })} required>
@@ -150,6 +186,49 @@ export default function PayrollUpdateModal({
                     </Button>
                 </div>
             </form>
-        </Modal>
+            </Modal>
+
+            {showPaidConfirm ? (
+                <Modal
+                    isOpen
+                    onClose={() => setShowPaidConfirm(false)}
+                    title={t('finance.payroll.updatePaid.title', { defaultValue: 'Confirm update Paid payroll' })}
+                    panelClassName="max-w-xl"
+                >
+                    <div className="space-y-4">
+                        <div className="text-sm text-slate-700">
+                            {t('finance.payroll.updatePaid.warning', {
+                                defaultValue: 'You are updating a Paid payroll record. This may affect financial history. Continue only if you understand the impact.',
+                            })}
+                        </div>
+
+                        <FormField
+                            label={t('finance.payroll.updatePaid.confirmLabel', { defaultValue: 'Type UPDATE PAID to confirm' })}
+                            required
+                        >
+                            <Input
+                                value={paidConfirmText}
+                                onChange={(e) => setPaidConfirmText(e.target.value)}
+                                placeholder="UPDATE PAID"
+                                autoFocus
+                            />
+                        </FormField>
+
+                        <div className="flex items-center justify-end gap-2">
+                            <Button variant="neutral" onClick={() => setShowPaidConfirm(false)}>
+                                {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                            </Button>
+                            <Button
+                                variant="danger"
+                                disabled={loading || String(paidConfirmText || '').trim().toUpperCase() !== 'UPDATE PAID'}
+                                onClick={confirmUpdatePaid}
+                            >
+                                {loading ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.update', { defaultValue: 'Update' })}
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            ) : null}
+        </>
     );
 }

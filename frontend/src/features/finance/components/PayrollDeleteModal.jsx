@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { useDeletePayrollChargesMutation } from '../hooks/payrollHooks';
+import { useDeletePaidPayrollsMutation, useDeletePayrollChargesMutation } from '../hooks/payrollHooks';
 import { listUsers } from '../../users/api/usersApi.js';
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect.jsx';
 
@@ -26,15 +26,42 @@ export default function PayrollDeleteModal({
     const { t } = useI18n();
     const [loading, setLoading] = useState(false);
     const [staffList, setStaffList] = useState([]);
+    const [showPaidConfirm, setShowPaidConfirm] = useState(false);
+    const [paidConfirmText, setPaidConfirmText] = useState('');
+
+    const normalizedInitialDeleteType =
+        initialDeleteType === 'single'
+            ? 'unpaid_single'
+            : initialDeleteType === 'all'
+                ? 'unpaid_all'
+                : initialDeleteType;
 
     const [form, setForm] = useState({
-        deleteType: initialDeleteType || 'all', // all | single
+        deleteType: normalizedInitialDeleteType || (initialStaffId ? 'unpaid_single' : 'unpaid_all'), // unpaid_all | unpaid_single | paid_all | paid_single
         staffId: initialStaffId || '',
         month: initialMonth || defaultMonth,
         academicYear: initialAcademicYearId || defaultAcademicYearId || '',
     });
 
     const deleteChargesMutation = useDeletePayrollChargesMutation();
+    const deletePaidMutation = useDeletePaidPayrollsMutation();
+
+    const getFinanceErrorText = (error, fallbackKey, fallbackDefaultValue) => {
+        const code = error?.response?.data?.code;
+        const serverMessage = error?.response?.data?.message;
+        if (code) {
+            const payrollKey = `finance.payroll.apiErrors.${code}`;
+            const translatedPayroll = t(payrollKey, { defaultValue: '' });
+            if (translatedPayroll && translatedPayroll !== payrollKey) return translatedPayroll;
+
+            const accountsKey = `finance.accounts.apiErrors.${code}`;
+            const translatedAccounts = t(accountsKey, { defaultValue: '' });
+            if (translatedAccounts && translatedAccounts !== accountsKey) return translatedAccounts;
+
+            return serverMessage || fallbackDefaultValue;
+        }
+        return serverMessage || t(fallbackKey, { defaultValue: fallbackDefaultValue });
+    };
 
     useEffect(() => {
         const load = async () => {
@@ -54,8 +81,14 @@ export default function PayrollDeleteModal({
         if (!form.academicYear) {
             return toast.error(t('finance.payroll.validations.academicYearRequired', { defaultValue: 'Academic Year is required' }));
         }
-        if (form.deleteType === 'single' && !form.staffId) {
+        if ((form.deleteType === 'unpaid_single' || form.deleteType === 'paid_single') && !form.staffId) {
             return toast.error(t('finance.payroll.validations.employeeRequired', { defaultValue: 'Employee is required' }));
+        }
+
+        if (form.deleteType === 'paid_all' || form.deleteType === 'paid_single') {
+            setPaidConfirmText('');
+            setShowPaidConfirm(true);
+            return;
         }
 
         if (!window.confirm(t('finance.payroll.delete.confirm', { defaultValue: 'Are you sure? This will delete charges (not Paid).' }))) {
@@ -65,24 +98,53 @@ export default function PayrollDeleteModal({
         setLoading(true);
         try {
             await deleteChargesMutation.mutateAsync({
-                deleteType: form.deleteType,
+                deleteType: form.deleteType === 'unpaid_single' ? 'single' : 'all',
                 month: form.month,
                 academicYear: form.academicYear,
-                staffId: form.deleteType === 'single' ? form.staffId : undefined,
+                staffId: form.deleteType === 'unpaid_single' ? form.staffId : undefined,
             });
             toast.success(t('finance.payroll.delete.success', { defaultValue: 'Deleted' }));
             onSuccess?.();
             onClose();
         } catch (error) {
-            toast.error(error.response?.data?.message || t('finance.payroll.delete.errors.failed', { defaultValue: 'Delete failed' }));
+            toast.error(getFinanceErrorText(error, 'finance.payroll.delete.errors.failed', 'Delete failed'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const confirmDeletePaid = async () => {
+        const expected = 'DELETE PAID';
+        if (String(paidConfirmText || '').trim().toUpperCase() !== expected) {
+            toast.error(t('finance.payroll.deletePaid.confirmTextRequired', { defaultValue: `Type "${expected}" to confirm` }));
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await deletePaidMutation.mutateAsync({
+                scope: form.deleteType === 'paid_single' ? 'single' : 'all',
+                month: form.month,
+                academicYear: form.academicYear,
+                staffId: form.deleteType === 'paid_single' ? form.staffId : undefined,
+                confirm: 'DELETE_PAID',
+            });
+            toast.success(t('finance.payroll.deletePaid.success', { defaultValue: 'Paid payroll deleted' }));
+            setShowPaidConfirm(false);
+            onSuccess?.();
+            onClose();
+        } catch (error) {
+            toast.error(getFinanceErrorText(error, 'finance.payroll.deletePaid.errors.failed', 'Delete failed'));
         } finally {
             setLoading(false);
         }
     };
 
     const deleteTypeOptions = [
-        { value: 'all', label: t('common.all', { defaultValue: 'All' }) },
-        { value: 'single', label: t('finance.payroll.delete.single', { defaultValue: 'Single employee' }) },
+        { value: 'unpaid_all', label: t('finance.payroll.delete.types.unpaidAll', { defaultValue: 'Unpaid (All)' }) },
+        { value: 'unpaid_single', label: t('finance.payroll.delete.types.unpaidSingle', { defaultValue: 'Unpaid (Single employee)' }) },
+        { value: 'paid_all', label: t('finance.payroll.delete.types.paidAll', { defaultValue: 'Paid (All)' }) },
+        { value: 'paid_single', label: t('finance.payroll.delete.types.paidSingle', { defaultValue: 'Paid (Single employee)' }) },
     ];
 
     const staffOptions = (staffList || []).map((u) => ({
@@ -91,12 +153,13 @@ export default function PayrollDeleteModal({
     }));
 
     return (
-        <Modal
-            isOpen
-            onClose={onClose}
-            title={t('finance.payroll.modals.deleteTitle', { defaultValue: 'Delete Payroll Charges' })}
-            panelClassName="max-w-2xl"
-        >
+        <>
+            <Modal
+                isOpen
+                onClose={onClose}
+                title={t('finance.payroll.modals.deleteTitle', { defaultValue: 'Delete Payroll' })}
+                panelClassName="max-w-2xl"
+            >
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField label={t('finance.payroll.delete.fields.deleteType', { defaultValue: 'Delete type' })} required>
@@ -108,7 +171,7 @@ export default function PayrollDeleteModal({
                         />
                     </FormField>
 
-                    {form.deleteType === 'single' ? (
+                    {form.deleteType === 'unpaid_single' || form.deleteType === 'paid_single' ? (
                         <FormField label={t('finance.payroll.fields.employee', { defaultValue: 'Employee' })} required>
                             <SearchableSelect
                                 value={form.staffId}
@@ -144,6 +207,49 @@ export default function PayrollDeleteModal({
                     </Button>
                 </div>
             </form>
-        </Modal>
+            </Modal>
+
+            {showPaidConfirm ? (
+                <Modal
+                    isOpen
+                    onClose={() => setShowPaidConfirm(false)}
+                    title={t('finance.payroll.deletePaid.title', { defaultValue: 'Confirm delete Paid payroll' })}
+                    panelClassName="max-w-xl"
+                >
+                    <div className="space-y-4">
+                        <div className="text-sm text-slate-700">
+                            {t('finance.payroll.deletePaid.warning', {
+                                defaultValue: 'This will permanently delete Paid payroll records for the selected month/year. This action is risky and may affect financial history.',
+                            })}
+                        </div>
+
+                        <FormField
+                            label={t('finance.payroll.deletePaid.confirmLabel', { defaultValue: 'Type DELETE PAID to confirm' })}
+                            required
+                        >
+                            <Input
+                                value={paidConfirmText}
+                                onChange={(e) => setPaidConfirmText(e.target.value)}
+                                placeholder="DELETE PAID"
+                                autoFocus
+                            />
+                        </FormField>
+
+                        <div className="flex items-center justify-end gap-2">
+                            <Button variant="neutral" onClick={() => setShowPaidConfirm(false)}>
+                                {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                            </Button>
+                            <Button
+                                variant="danger"
+                                disabled={loading || String(paidConfirmText || '').trim().toUpperCase() !== 'DELETE PAID'}
+                                onClick={confirmDeletePaid}
+                            >
+                                {loading ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.delete', { defaultValue: 'Delete' })}
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            ) : null}
+        </>
     );
 }

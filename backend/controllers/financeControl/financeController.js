@@ -3,6 +3,7 @@ import FeeTransaction from '../../models/FeeTransaction.js';
 import Payroll from '../../models/Payroll.js';
 import { publishRealtime } from '../../utils/realtimeBus.js';
 import Expense from '../../models/Expense.js';
+import Account from '../../models/Account.js';
 import FinanceCategory from '../../models/FinanceCategory.js';
 import AuditLog from '../../models/AuditLog.js';
 import Student from '../../models/Student.js';
@@ -730,6 +731,7 @@ export const updatePayrollStatus = async (req, res) => {
             payroll.reference = reference;
             payroll.status = 'Paid';
             payroll.account = accountId;
+            payroll.paidAmount = Number(payroll.netSalary || 0);
 
             account.balance -= payroll.netSalary;
             await account.save();
@@ -1060,7 +1062,7 @@ export const getPayrollStaffLedger = async (req, res) => {
 
 export const updatePayrollByParams = async (req, res) => {
     try {
-        const { employee, month, academicYear, updateType, amount } = req.body;
+        const { employee, month, academicYear, updateType, amount, confirm } = req.body;
 
         if (!employee || !mongoose.Types.ObjectId.isValid(String(employee))) {
             return res.status(400).json({ message: 'Employee is required' });
@@ -1080,7 +1082,12 @@ export const updatePayrollByParams = async (req, res) => {
 
         const payroll = await Payroll.findOne({ staff: employee, month, academicYear });
         if (!payroll) return res.status(404).json({ message: 'Payroll charge not found for selected employee/month/year' });
-        if (payroll.status === 'Paid') return res.status(400).json({ message: 'Cannot update a Paid payroll record' });
+        if (payroll.status === 'Paid' && confirm !== 'UPDATE_PAID') {
+            return res.status(400).json({
+                code: 'PAYROLL_PAID_CONFIRM_REQUIRED',
+                message: 'Confirmation required to update Paid payroll record',
+            });
+        }
 
         const oldSnapshot = payroll.toObject();
 
@@ -1129,11 +1136,15 @@ export const updatePayrollLedger = async (req, res) => {
             commission,
             decrease,
             paidAmount,
+            accountId,
+            date,
         } = req.body || {};
 
         const payroll = await Payroll.findById(id);
         if (!payroll) return res.status(404).json({ message: 'Payroll record not found' });
         if (payroll.status === 'Paid') return res.status(400).json({ message: 'Cannot update a Paid payroll record' });
+
+        const oldPaid = Number(payroll.paidAmount || 0);
 
         const numericCommission = commission !== undefined ? Number(commission) : undefined;
         const numericDecrease = decrease !== undefined ? Number(decrease) : undefined;
@@ -1165,6 +1176,73 @@ export const updatePayrollLedger = async (req, res) => {
             Number(payroll.decrease || 0) -
             Number(deductionTotal || 0);
 
+        // If paidAmount increased and an accountId is provided, treat it as an actual payment:
+        // - debit account
+        // - create an expense for the delta
+        // - mark payroll Paid when fully covered
+        const newPaid = Number(payroll.paidAmount || 0);
+        const delta = newPaid - oldPaid;
+
+        if (numericPaid !== undefined && delta < 0) {
+            return res.status(400).json({ message: 'Cannot decrease paid amount once recorded. Use an adjustment workflow.' });
+        }
+
+        let debitedAccount = null;
+        let paymentDate = null;
+        if (numericPaid !== undefined && delta > 0 && accountId !== undefined && accountId !== null && String(accountId).trim() !== '') {
+            if (!mongoose.Types.ObjectId.isValid(String(accountId))) {
+                return res.status(400).json({ message: 'Invalid accountId' });
+            }
+
+            debitedAccount = await Account.findById(accountId);
+            if (!debitedAccount) return res.status(404).json({ message: 'Account not found' });
+            if (Number(debitedAccount.balance || 0) < delta) {
+                return res.status(400).json({
+                    code: 'FIN_INSUFFICIENT_FUNDS',
+                    message: "The account you selected doesn't have enough balance",
+                    required: delta,
+                    available: debitedAccount.balance,
+                });
+            }
+
+            paymentDate = date ? new Date(date) : new Date();
+            if (Number.isNaN(paymentDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid date' });
+            }
+
+            debitedAccount.balance = Number(debitedAccount.balance || 0) - delta;
+            await debitedAccount.save();
+
+            const staffUser = await User.findById(payroll.staff).select('name fullName username email');
+            const staffLabel = String(staffUser?.name || staffUser?.fullName || staffUser?.username || staffUser?.email || payroll.staff);
+
+            await Expense.create({
+                title: `Salary Payment - ${payroll.month}`,
+                category: 'Salary',
+                amount: delta,
+                date: paymentDate,
+                description: `Payroll payment for staff: ${staffLabel}`,
+                account: accountId,
+                approvedBy: req.user._id,
+                status: 'Approved',
+            });
+
+            payroll.account = accountId;
+            payroll.paymentDate = paymentDate;
+
+            if (!Array.isArray(payroll.paymentSplits)) payroll.paymentSplits = [];
+            payroll.paymentSplits.push({
+                account: accountId,
+                amount: delta,
+                date: paymentDate,
+            });
+        }
+
+        if (Number(payroll.paidAmount || 0) >= Number(payroll.netSalary || 0) && Number(payroll.netSalary || 0) > 0) {
+            payroll.status = 'Paid';
+            if (!payroll.paymentDate) payroll.paymentDate = paymentDate || new Date();
+        }
+
         await payroll.save();
 
         await logAction(req.user, 'UPDATE_PAYROLL_LEDGER', `Updated payroll ledger ${id}`, req, {
@@ -1181,6 +1259,10 @@ export const updatePayrollLedger = async (req, res) => {
 
         try {
             publishRealtime({ type: 'payroll:changed', id: String(payroll._id), ts: Date.now() });
+            if (debitedAccount) {
+                publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+                publishRealtime({ type: 'expenses:changed', ts: Date.now() });
+            }
         } catch { /* ignore */ }
 
         res.json(payroll);

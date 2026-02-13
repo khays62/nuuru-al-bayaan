@@ -5,6 +5,7 @@ import {
   chargePayroll,
   deletePayroll,
   deletePayrollCharges,
+  deletePaidPayrolls,
   generatePayroll,
   generateSinglePayroll,
   getPayrollStaffLedger,
@@ -15,7 +16,7 @@ import {
   updatePayrollStatus,
 } from '../api/payrollApi';
 
-import { payrollKeys } from '../queryKeys';
+import { accountKeys, expenseKeys, payrollKeys } from '../queryKeys';
 
 export function usePayrollsQuery({ month, academicYear } = {}, options = {}) {
   return useQuery({
@@ -23,6 +24,9 @@ export function usePayrollsQuery({ month, academicYear } = {}, options = {}) {
     queryFn: ({ signal }) => listPayrolls({ month, academicYear }, { signal }),
     placeholderData: (prev) => prev,
     staleTime: 15 * 1000,
+    // App default is refetchOnMount: false. Finance needs mount refetch so
+    // switching pages/tabs shows fresh balances without browser refresh.
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     ...options,
   });
@@ -35,6 +39,7 @@ export function usePayrollStaffLedgerQuery({ month, academicYear, staffId } = {}
     enabled: Boolean(staffId) && (options.enabled ?? true),
     placeholderData: (prev) => prev,
     staleTime: 15 * 1000,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     ...options,
   });
@@ -47,6 +52,15 @@ function invalidatePayroll(queryClient) {
   } catch {
     // ignore
   }
+}
+
+function invalidateFinanceSideEffects(queryClient) {
+  try {
+    queryClient.invalidateQueries({ queryKey: accountKeys.listBase, refetchType: 'active' });
+  } catch { /* ignore */ }
+  try {
+    queryClient.invalidateQueries({ queryKey: expenseKeys.listBase, refetchType: 'active' });
+  } catch { /* ignore */ }
 }
 
 export function useGeneratePayrollMutation() {
@@ -77,7 +91,10 @@ export function useUpdatePayrollStatusMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, payload }) => updatePayrollStatus(id, payload),
-    onSuccess: () => invalidatePayroll(queryClient),
+    onSuccess: () => {
+      invalidatePayroll(queryClient);
+      invalidateFinanceSideEffects(queryClient);
+    },
   });
 }
 
@@ -93,7 +110,10 @@ export function useUpdatePayrollLedgerMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, payload }) => updatePayrollLedger(id, payload),
-    onSuccess: () => invalidatePayroll(queryClient),
+    onSuccess: () => {
+      invalidatePayroll(queryClient);
+      invalidateFinanceSideEffects(queryClient);
+    },
   });
 }
 
@@ -117,7 +137,10 @@ export function usePayrollFullPaymentMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload) => payrollFullPayment(payload),
-    onSuccess: () => invalidatePayroll(queryClient),
+    onSuccess: () => {
+      invalidatePayroll(queryClient);
+      invalidateFinanceSideEffects(queryClient);
+    },
   });
 }
 
@@ -125,6 +148,20 @@ export function useDeletePayrollChargesMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload) => deletePayrollCharges(payload),
-    onSuccess: () => invalidatePayroll(queryClient),
+    onSuccess: () => {
+      invalidatePayroll(queryClient);
+      invalidateFinanceSideEffects(queryClient);
+    },
+  });
+}
+
+export function useDeletePaidPayrollsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => deletePaidPayrolls(payload),
+    onSuccess: () => {
+      invalidatePayroll(queryClient);
+      invalidateFinanceSideEffects(queryClient);
+    },
   });
 }

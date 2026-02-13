@@ -70,6 +70,9 @@ export default function AccountManagement() {
         },
         placeholderData: (prev) => prev,
         staleTime: 30_000,
+        // App default is refetchOnMount: false; finance wants a mount refetch so
+        // moving from Payroll -> Accounts shows latest balances without reload.
+        refetchOnMount: 'always',
         refetchOnWindowFocus: false,
     });
 
@@ -725,7 +728,8 @@ export default function AccountManagement() {
                             value={transferData.amount}
                             onChange={(e) => setTransferData({ ...transferData, amount: e.target.value })}
                             required
-                            min="1"
+                            min="0.01"
+                            step="0.01"
                         />
                     </FormField>
 

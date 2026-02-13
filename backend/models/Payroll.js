@@ -31,6 +31,13 @@ const PayrollSchema = new mongoose.Schema({
     sendNumber: { type: String, trim: true, default: '' },
     description: { type: String, trim: true, default: '' },
     paidAmount: { type: Number, default: 0 },
+    // Tracks how much was actually paid from which account(s).
+    // Used for accurate refunds when deleting payroll records.
+    paymentSplits: [{
+        account: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
+        amount: { type: Number, default: 0, min: 0 },
+        date: { type: Date },
+    }],
     netSalary: { type: Number, required: true },
     paymentDate: { type: Date },
     status: {

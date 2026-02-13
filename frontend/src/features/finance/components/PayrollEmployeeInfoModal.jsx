@@ -78,12 +78,38 @@ export default function PayrollEmployeeInfoModal({
 
     const updateLedgerMutation = useUpdatePayrollLedgerMutation();
 
+    const getFinanceErrorText = (error, fallbackKey, fallbackDefaultValue) => {
+        const code = error?.response?.data?.code;
+        const serverMessage = error?.response?.data?.message;
+
+        if (code) {
+            // Prefer shared finance apiErrors (accounts/expenses) first.
+            const accountsKey = `finance.accounts.apiErrors.${code}`;
+            const expensesKey = `finance.expenses.apiErrors.${code}`;
+            const payrollKey = `finance.payroll.apiErrors.${code}`;
+
+            const translatedAccounts = t(accountsKey, { defaultValue: '' });
+            if (translatedAccounts && translatedAccounts !== accountsKey) return translatedAccounts;
+
+            const translatedExpenses = t(expensesKey, { defaultValue: '' });
+            if (translatedExpenses && translatedExpenses !== expensesKey) return translatedExpenses;
+
+            const translatedPayroll = t(payrollKey, { defaultValue: '' });
+            if (translatedPayroll && translatedPayroll !== payrollKey) return translatedPayroll;
+
+            return serverMessage || fallbackDefaultValue;
+        }
+
+        if (serverMessage) return serverMessage;
+        return t(fallbackKey, { defaultValue: fallbackDefaultValue });
+    };
+
     const refetchLedger = async () => {
         if (!selected.staffId) return;
         try {
             await ledgerQuery.refetch();
         } catch (error) {
-            toast.error(error?.response?.data?.message || t('finance.payroll.employeeInfo.errors.loadFailed', { defaultValue: 'Failed to load employee info' }));
+            toast.error(getFinanceErrorText(error, 'finance.payroll.employeeInfo.errors.loadFailed', 'Failed to load employee info'));
         }
     };
 
@@ -94,12 +120,14 @@ export default function PayrollEmployeeInfoModal({
             next.forEach((p) => {
                 if (!p?._id) return;
                 if (base[p._id]) return;
+                const dr = Number(p.netSalary || 0);
                 base[p._id] = {
-                    sendNumber: p.sendNumber || p.staff?.phone || '',
-                    description: p.description || 'Salary',
+                    // Use the same defaults the UI shows so we don't mark rows "dirty" by default.
+                    sendNumber: p.sendNumber ?? p.staff?.phone ?? '',
+                    description: p.description ?? 'Salary',
                     commission: Number(p.commission || 0),
                     decrease: Number(p.decrease || 0),
-                    paidAmount: Number(p.paidAmount || 0),
+                    paidAmount: Number(p.paidAmount ?? (p.status === 'Paid' ? dr : 0) ?? 0),
                 };
             });
             return base;
@@ -148,12 +176,14 @@ export default function PayrollEmployeeInfoModal({
 
         // Compare against persisted values (payroll doc), not computed row values.
         const p = row.payroll || {};
+        const dr = Number(row?.dr || p.netSalary || 0);
         const base = {
-            sendNumber: String(p.sendNumber || ''),
-            description: String(p.description || ''),
+            // Normalize with same defaults used in UI
+            sendNumber: String(p.sendNumber ?? p.staff?.phone ?? ''),
+            description: String(p.description ?? 'Salary'),
             commission: Number(p.commission || 0),
             decrease: Number(p.decrease || 0),
-            paidAmount: Number(p.paidAmount || 0),
+            paidAmount: Number(p.paidAmount ?? (p.status === 'Paid' ? dr : 0) ?? 0),
         };
         const next = {
             sendNumber: String(edit.sendNumber ?? base.sendNumber ?? ''),
@@ -183,18 +213,36 @@ export default function PayrollEmployeeInfoModal({
         return { kind: 'under', delta, remaining };
     };
 
+    const isPaidEdited = (row) => {
+        if (!row?._id) return false;
+        const p = row.payroll || {};
+        const edit = rowEdits[row._id] || {};
+        const dr = Number(row?.dr || p.netSalary || 0);
+        const basePaid = Number(p.paidAmount ?? (p.status === 'Paid' ? dr : 0) ?? 0);
+        const nextPaid = Number(edit.paidAmount ?? basePaid ?? 0);
+        return basePaid !== nextPaid;
+    };
+
     const doSave = async (row) => {
+        const edit = rowEdits[row._id] || {};
+        const sendNumberValue = String(edit.sendNumber ?? row.sendNumber ?? '').trim();
+        if (!sendNumberValue) {
+            toast.error(t('finance.payroll.employeeInfo.errors.sendNumberRequired', { defaultValue: 'Send number is required' }));
+            return;
+        }
+
         setSaveLoadingId(row._id);
         try {
-            const edit = rowEdits[row._id] || {};
             await updateLedgerMutation.mutateAsync({
                 id: row._id,
                 payload: {
-                    sendNumber: edit.sendNumber ?? row.sendNumber,
-                    description: edit.description ?? row.description,
+                    sendNumber: sendNumberValue,
+                    description: String((edit.description ?? row.description ?? 'Salary') || 'Salary').trim() || 'Salary',
                     commission: Number(edit.commission ?? row.commission ?? 0),
                     decrease: Number(edit.decrease ?? row.decrease ?? 0),
                     paidAmount: Number(edit.paidAmount ?? row.paidAmount ?? 0),
+                    accountId: selected.accountId || undefined,
+                    date: selected.date || undefined,
                 },
             });
             toast.success(t('finance.payroll.employeeInfo.toasts.saved', { defaultValue: 'Saved' }));
@@ -202,7 +250,7 @@ export default function PayrollEmployeeInfoModal({
             await refetchLedger();
             onRefresh?.();
         } catch (error) {
-            toast.error(error.response?.data?.message || t('finance.payroll.employeeInfo.errors.saveFailed', { defaultValue: 'Save failed' }));
+            toast.error(getFinanceErrorText(error, 'finance.payroll.employeeInfo.errors.saveFailed', 'Save failed'));
         } finally {
             setSaveLoadingId('');
         }
@@ -269,6 +317,22 @@ export default function PayrollEmployeeInfoModal({
     const requestEdit = (r) => {
         if (!r?._id) return;
         if (!canEditRow(r)) return;
+
+        // Ensure edit state exists so inputs always render a visible value.
+        setRowEdits((prev) => {
+            const next = { ...(prev || {}) };
+            const current = next[r._id] || {};
+            const dr = Number(r?.dr || r?.payroll?.netSalary || 0);
+
+            if (current.sendNumber === undefined) current.sendNumber = r.sendNumber ?? r?.payroll?.sendNumber ?? r?.payroll?.staff?.phone ?? '';
+            if (current.description === undefined) current.description = r.description ?? r?.payroll?.description ?? 'Salary';
+            if (current.commission === undefined) current.commission = Number(r.commission ?? r?.payroll?.commission ?? 0);
+            if (current.decrease === undefined) current.decrease = Number(r.decrease ?? r?.payroll?.decrease ?? 0);
+            if (current.paidAmount === undefined) current.paidAmount = String(r.paidAmount ?? r?.payroll?.paidAmount ?? (r?.payroll?.status === 'Paid' ? dr : 0) ?? 0);
+
+            next[r._id] = { ...current };
+            return next;
+        });
         setEditingRowId(r._id);
     };
 
@@ -342,7 +406,7 @@ export default function PayrollEmployeeInfoModal({
                         loadingMessage={t('finance.payroll.employeeInfo.loading', { defaultValue: 'Loading…' })}
                         loadingVariant="table"
                         loadingRows={6}
-                        loadingColumns={11}
+                        loadingColumns={12}
                         emptyTitle={t('finance.payroll.employeeInfo.empty', { defaultValue: 'No data' })}
                         emptyDescription=""
                         storageKey="finance:payroll:employeeInfo:columns:v1"
@@ -356,9 +420,10 @@ export default function PayrollEmployeeInfoModal({
                             { key: 'decrease', label: t('finance.payroll.employeeInfo.columns.decrease', { defaultValue: 'Decrease' }) },
                             { key: 'dr', label: t('finance.payroll.employeeInfo.columns.dr', { defaultValue: 'Dr' }) },
                             { key: 'cr', label: t('finance.payroll.employeeInfo.columns.cr', { defaultValue: 'Cr' }) },
-                            { key: 'paid', label: t('finance.payroll.employeeInfo.columns.paid', { defaultValue: 'Paid' }) },
+                            { key: 'paid', label: t('finance.payroll.employeeInfo.columns.paid', { defaultValue: 'Paid' }), tdClassName: 'min-w-[160px]' },
                             { key: 'balance', label: t('finance.payroll.employeeInfo.columns.balance', { defaultValue: 'Balance' }) },
                             { key: 'actions', label: t('common.columns.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, tdClassName: 'no-print' },
+                            { key: 'remaining', label: t('finance.payroll.employeeInfo.columns.remaining', { defaultValue: 'Remaining' }), align: 'right', tdClassName: 'w-16' },
                         ]}
                         tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
                         renderCell={(r, col) => {
@@ -439,38 +504,34 @@ export default function PayrollEmployeeInfoModal({
                                     {
                                         const status = getPaidStatus(r);
                                         const paidInputClass = status.kind === 'over'
-                                            ? 'w-24 !border-red-300 !text-red-700'
+                                            ? '!w-40 !px-2 !border-red-300 !text-red-700 text-right'
                                             : status.kind === 'exact'
-                                                ? 'w-24 !border-green-300 !text-green-700'
+                                                ? '!w-40 !px-2 !border-green-300 !text-green-700 text-right'
                                                 : status.kind === 'under'
-                                                    ? 'w-24 !border-yellow-300 !text-yellow-700'
-                                                    : 'w-24';
-
-                                        const indicator = status.kind === 'under'
-                                            ? { label: t('finance.payroll.employeeInfo.remaining', { defaultValue: 'Remaining' }), value: status.remaining }
-                                            : status.kind === 'over'
-                                                ? { label: t('finance.payroll.employeeInfo.overpaid', { defaultValue: 'Overpaid' }), value: status.delta }
-                                                : null;
+                                                    ? '!w-40 !px-2 !border-yellow-300 !text-yellow-700 text-right'
+                                                    : '!w-40 !px-2 text-right';
 
                                         return (
-                                            <div className="relative" onClick={() => requestEdit(r)}>
+                                            <div
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    requestEdit(r);
+                                                }}
+                                            >
                                                 {editingRowId === r._id && canEditRow(r) ? (
                                                     <Input
                                                         type="number"
-                                                        value={r.paid}
+                                                        value={rowEdits?.[r._id]?.paidAmount ?? ''}
+                                                        onClick={(e) => e.stopPropagation()}
                                                         onChange={(e) => onRowChange(r._id, 'paidAmount', e.target.value)}
                                                         className={paidInputClass}
                                                         min="0"
+                                                        inputMode="decimal"
+                                                        autoFocus
                                                     />
                                                 ) : (
                                                     <span className="text-sm text-slate-700">{r.paid}</span>
                                                 )}
-
-                                                {indicator ? (
-                                                    <div className="absolute -top-4 right-0 text-[10px] font-black text-red-700 uppercase tracking-widest">
-                                                        {indicator.label}: {Number(indicator.value || 0).toLocaleString()}
-                                                    </div>
-                                                ) : null}
                                             </div>
                                         );
                                     }
@@ -507,6 +568,17 @@ export default function PayrollEmployeeInfoModal({
                                                     icon={<Printer size={16} />}
                                                 />
                                             </div>
+                                        );
+                                    }
+                                case 'remaining':
+                                    {
+                                        const status = getPaidStatus(r);
+                                        const show = status.kind === 'under' && Number(status.remaining || 0) > 0;
+                                        if (!show) return '';
+                                        return (
+                                            <span className="text-sm font-bold text-red-700">
+                                                {Number(status.remaining || 0).toLocaleString()}
+                                            </span>
                                         );
                                     }
                                 default:

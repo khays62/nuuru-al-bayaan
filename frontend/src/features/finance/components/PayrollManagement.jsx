@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pencil, Printer, RotateCcw, Trash2 } from 'lucide-react';
+import { Pencil, Printer, RotateCcw, Trash2, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import financeService from '../api/finance';
 import { usePayrollsQuery } from '../hooks/payrollHooks';
@@ -60,7 +60,9 @@ export default function PayrollManagement() {
 
     const payrollQuery = usePayrollsQuery(
         { month, academicYear: academicYear || undefined },
-        { enabled: Boolean(month) }
+        // Avoid double/triple skeleton on mount:
+        // we only fetch once academicYear is known.
+        { enabled: Boolean(month) && Boolean(academicYear) }
     );
 
     const payrolls = Array.isArray(payrollQuery.data) ? payrollQuery.data : [];
@@ -190,7 +192,7 @@ export default function PayrollManagement() {
                                 <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
                             </div>
                         </FilterItem>
-                        <FilterItem grow minWidthClass="sm:min-w-60">
+                        <FilterItem minWidthClass="sm:min-w-56" className="sm:max-w-xs">
                             <div className="space-y-1">
                                 <div className="text-xs text-slate-600">{t('common.filters.academicYear', { defaultValue: 'Academic Year' })}</div>
                                 <AcademicYearSelect
@@ -205,11 +207,6 @@ export default function PayrollManagement() {
 
                         <FilterItem className="sm:ml-auto">
                             <div className="flex items-center justify-end gap-3 flex-wrap">
-                                <div className="text-right">
-                                    <div className="text-xs text-slate-600">{t('common.total', { defaultValue: 'Total' })}</div>
-                                    <div className="text-sm font-black font-mono text-slate-900">{totalSalary.toLocaleString()}</div>
-                                </div>
-
                                 <div className="flex items-center justify-end gap-2 flex-wrap">
                                     <Button variant="brand" size="lg" onClick={() => setShowCharge(true)} className="w-full sm:w-auto justify-center">
                                         {t('finance.payroll.actions.charge', { defaultValue: 'Charge' })}
@@ -226,6 +223,32 @@ export default function PayrollManagement() {
                                     >
                                         {t('common.actions.print', { defaultValue: 'Print' })}
                                     </ActionButton>
+
+                                    <ActionButton
+                                        variant="neutral"
+                                        className={outlineBtn}
+                                        icon={<Pencil size={16} />}
+                                        onClick={() => {
+                                            setUpdateContext(null);
+                                            setShowUpdate(true);
+                                        }}
+                                        title={t('common.actions.update', { defaultValue: 'Update' })}
+                                    >
+                                        {t('common.actions.update', { defaultValue: 'Update' })}
+                                    </ActionButton>
+
+                                    <ActionButton
+                                        variant="danger"
+                                        icon={<Trash2 size={16} />}
+                                        onClick={() => {
+                                            setUpdateContext(null);
+                                            setShowDelete(true);
+                                        }}
+                                        title={t('common.actions.delete', { defaultValue: 'Delete' })}
+                                    >
+                                        {t('common.actions.delete', { defaultValue: 'Delete' })}
+                                    </ActionButton>
+
                                     <ActionButton
                                         variant="neutral"
                                         className={outlineBtn}
@@ -235,6 +258,16 @@ export default function PayrollManagement() {
                                     >
                                         {t('common.actions.reset', { defaultValue: 'Reset' })}
                                     </ActionButton>
+
+                                    <div className="text-right">
+                                        <div className="text-xs text-slate-600">{t('common.total', { defaultValue: 'Total' })}</div>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-700">
+                                                <DollarSign size={16} />
+                                            </span>
+                                            <span className="text-sm font-black font-mono text-green-700">{totalSalary.toLocaleString()}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </FilterItem>
@@ -311,36 +344,6 @@ export default function PayrollManagement() {
                                                 onClick: () => {
                                                     setInfoStaffId(row?.raw?.staff?._id || '');
                                                     setShowEmployeeInfo(true);
-                                                },
-                                            },
-                                            {
-                                                key: 'edit',
-                                                label: t('common.actions.update', { defaultValue: 'Update' }),
-                                                title: t('common.actions.update', { defaultValue: 'Update' }),
-                                                tone: 'edit',
-                                                icon: <Pencil size={16} />,
-                                                onClick: () => {
-                                                    setUpdateContext({
-                                                        employee: row?.raw?.staff?._id || '',
-                                                        month,
-                                                        academicYear,
-                                                    });
-                                                    setShowUpdate(true);
-                                                },
-                                            },
-                                            {
-                                                key: 'delete',
-                                                label: t('common.actions.delete', { defaultValue: 'Delete' }),
-                                                title: t('common.actions.delete', { defaultValue: 'Delete' }),
-                                                tone: 'delete',
-                                                icon: <Trash2 size={16} />,
-                                                onClick: () => {
-                                                    setUpdateContext({
-                                                        employee: row?.raw?.staff?._id || '',
-                                                        month,
-                                                        academicYear,
-                                                    });
-                                                    setShowDelete(true);
                                                 },
                                             },
                                         ]}

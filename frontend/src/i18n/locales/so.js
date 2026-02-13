@@ -2603,7 +2603,7 @@ export default {
 
         FIN_SOURCE_ACCOUNT_INACTIVE: 'Xisaabta laga wareejinayo waa xiran tahay',
         FIN_DEST_ACCOUNT_INACTIVE: 'Xisaabta loo wareejinayo waa xiran tahay',
-        FIN_INSUFFICIENT_FUNDS: 'Lacag ku filan ma jirto',
+        FIN_INSUFFICIENT_FUNDS: 'Xisaabta aad dooratay kuma jirto lacag ku filan',
         FIN_ACCOUNT_INACTIVE: 'Xisaabtu waa xiran tahay',
 
         FIN_ACCOUNT_DUPLICATE: 'Xisaabkan hore ayuu u diiwaangashan yahay',
@@ -2732,7 +2732,7 @@ export default {
 
         FIN_ACCOUNT_NOT_FOUND: 'Xisaabta lama helin',
         FIN_INVALID_ACCOUNT_ID: 'ID-ga xisaabta sax ma aha',
-        FIN_INSUFFICIENT_FUNDS: 'Lacag ku filan ma jirto',
+        FIN_INSUFFICIENT_FUNDS: 'Xisaabta aad dooratay kuma jirto lacag ku filan',
         FIN_EXPENSE_ACCOUNT_MISSING: 'Xisaab bixineed ayaa ka maqan',
 
         FIN_INVALID_EXPENSE_ID: 'ID-ga kharashka sax ma aha',
@@ -2927,6 +2927,7 @@ export default {
           cr: 'Cr',
           paid: 'La bixiyay',
           balance: 'Haraaga',
+          remaining: 'Hadhay',
         },
         loading: 'Waa la rarayaa…',
         empty: 'Xog ma jirto',
@@ -2935,6 +2936,7 @@ export default {
         },
         errors: {
           loadFailed: 'Lama soo dejin faahfaahinta shaqaalaha',
+          sendNumberRequired: 'Lambarka dirista waa qasab',
           saveFailed: 'Kaydintu way fashilantay',
         },
         receipt: {
@@ -2947,6 +2949,11 @@ export default {
           paid: 'La bixiyay',
           balance: 'Haraaga',
         },
+      },
+
+      apiErrors: {
+        PAYROLL_DELETE_NO_MATCH_UNPAID: 'Wax Unpaid/Draft ah lama helin si loo tirtiro',
+        PAYROLL_DELETE_NO_MATCH_PAID: 'Shaqaalahan weli Paid ma aha bisha/sanadkaas',
       },
     },
   },

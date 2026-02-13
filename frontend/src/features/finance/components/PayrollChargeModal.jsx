@@ -84,8 +84,15 @@ export default function PayrollChargeModal({
         if (missingSalary.length > 0) {
             const names = missingSalary.slice(0, 3).map(s => s.fullName || s.username || s._id).join(', ');
             const more = missingSalary.length > 3 ? ` (+${missingSalary.length - 3} more)` : '';
-            toast.error(t('finance.payroll.charge.errors.missingSalary', { defaultValue: 'Missing salary amount for: {{names}}{{more}}', names, more }));
-            return;
+
+            // For single employee: block to avoid creating a 0-salary payroll.
+            if (form.scope === 'single') {
+                toast.error(t('finance.payroll.charge.errors.missingSalary', { defaultValue: 'Missing salary amount for: {{names}}{{more}}', names, more }));
+                return;
+            }
+
+            // For all employees: proceed, but warn the admin.
+            toast(t('finance.payroll.charge.warnings.missingSalary', { defaultValue: 'Some employees have no salary and may be charged as 0: {{names}}{{more}}', names, more }));
         }
 
         setLoading(true);

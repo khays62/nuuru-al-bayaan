@@ -114,14 +114,21 @@ export async function chargePayroll(req, res) {
     if (chargeType === 'single' && (!staffId || !isValidObjectId(staffId))) return res.status(400).json({ message: 'staffId is required for single charge' });
 
     await ensureTeacherUsers();
-    const targetStaff =
+    const allTargets =
       chargeType === 'single'
         ? await User.find({ _id: staffId, status: 'active' })
         : await User.find({ status: 'active', role: { $in: ['admin', 'staff', 'teacher'] } });
 
-    if (!targetStaff.length) return res.status(404).json({ message: 'No active staff found for payroll charge' });
+    if (!allTargets.length) return res.status(404).json({ message: 'No active staff found for payroll charge' });
 
-    // Allow missing salary values; they will be charged as 0 unless an amount is provided.
+    // When charging ALL staff without an explicit amount override, skip staff with missing/zero salary.
+    const shouldSkipNoSalary = chargeType === 'all' && (amount === undefined || amount === null);
+    const skippedNoSalary = shouldSkipNoSalary ? allTargets.filter((s) => !hasValidSalary(s)) : [];
+    const targetStaff = shouldSkipNoSalary ? allTargets.filter(hasValidSalary) : allTargets;
+
+    if (!targetStaff.length) {
+      return res.status(400).json({ message: 'No staff with a valid salary found for payroll charge' });
+    }
 
     const existingPayrolls = await Payroll.find({ month, academicYear, staff: { $in: targetStaff.map(s => s._id) } }).select('staff');
     const existingStaffIds = new Set(existingPayrolls.map(p => String(p.staff)));
@@ -153,7 +160,13 @@ export async function chargePayroll(req, res) {
     } catch { /* ignore */ }
     res.status(201).json({
       message: 'Payroll charge complete',
-      stats: { requested: targetStaff.length, created: created.length, skipped: targetStaff.length - created.length },
+      stats: {
+        requested: allTargets.length,
+        eligible: targetStaff.length,
+        skippedNoSalary: skippedNoSalary.length,
+        created: created.length,
+        skippedExisting: targetStaff.length - created.length,
+      },
       academicYear,
       created,
     });
@@ -215,7 +228,12 @@ export async function payrollFullPayment(req, res) {
 
     const total = payrolls.reduce((sum, p) => sum + Number(p.netSalary || 0), 0);
     if (account.balance < total) {
-      return res.status(400).json({ message: 'Insufficient funds in the selected account', required: total, available: account.balance });
+      return res.status(400).json({
+        code: 'FIN_INSUFFICIENT_FUNDS',
+        message: "The account you selected doesn't have enough balance",
+        required: total,
+        available: account.balance,
+      });
     }
 
     const paymentDate = date ? new Date(date) : new Date();
@@ -237,10 +255,12 @@ export async function payrollFullPayment(req, res) {
 
     for (const payroll of payrolls) {
       payroll.status = 'Paid';
+      payroll.paidAmount = Number(payroll.netSalary || 0);
       payroll.paymentDate = paymentDate;
       payroll.paymentMethod = paymentMethod;
       payroll.reference = reference;
       payroll.account = accountId;
+      payroll.paymentSplits = [{ account: accountId, amount: Number(payroll.netSalary || 0), date: paymentDate }];
       updates.push(payroll.save());
 
       const staffLabel = staffNameById.get(String(payroll.staff)) || String(payroll.staff);
@@ -300,13 +320,155 @@ export async function deletePayrollCharges(req, res) {
     }
     if (deleteType === 'single') query.staff = staffId;
 
+    // Refund any recorded payments on non-paid payrolls (Draft/Approved) before deleting.
+    const payrollsToDelete = await Payroll.find(query).select('account paidAmount netSalary status paymentSplits');
+    if (!payrollsToDelete.length) {
+      return res.status(404).json({
+        code: 'PAYROLL_DELETE_NO_MATCH_UNPAID',
+        message: 'No unpaid payroll charges found for the selected delete type/month/year',
+      });
+    }
+    const refundsByAccount = new Map();
+    let refundedTotal = 0;
+
+    for (const p of payrollsToDelete) {
+      const splits = Array.isArray(p.paymentSplits) ? p.paymentSplits : [];
+      if (splits.length) {
+        for (const s of splits) {
+          const acc = s?.account?._id ? String(s.account._id) : (s?.account ? String(s.account) : null);
+          const amt = Number(s?.amount || 0);
+          if (!acc || amt <= 0) continue;
+          refundsByAccount.set(acc, (refundsByAccount.get(acc) || 0) + amt);
+          refundedTotal += amt;
+        }
+        continue;
+      }
+
+      // Legacy fallback: single account + paidAmount
+      const paid = Number(p.paidAmount || 0);
+      const refund = paid > 0 ? paid : 0;
+      const acc = p.account ? String(p.account) : null;
+      if (!acc || refund <= 0) continue;
+      refundsByAccount.set(acc, (refundsByAccount.get(acc) || 0) + refund);
+      refundedTotal += refund;
+    }
+
+    if (refundsByAccount.size) {
+      const ops = Array.from(refundsByAccount.entries())
+        .filter(([, v]) => Number(v) > 0)
+        .map(([id, v]) => ({
+          updateOne: {
+            filter: { _id: id },
+            update: { $inc: { balance: Number(v) } },
+          },
+        }));
+      if (ops.length) await Account.bulkWrite(ops, { ordered: false });
+    }
+
     const result = await Payroll.deleteMany(query);
     try {
       publishRealtime({ type: 'payroll:changed', ts: Date.now() });
+      if (refundsByAccount.size) publishRealtime({ type: 'accounts:changed', ts: Date.now() });
     } catch { /* ignore */ }
-    res.json({ message: 'Payroll charges deleted', deletedCount: result.deletedCount || 0 });
+    res.json({
+      message: 'Payroll charges deleted',
+      deletedCount: result.deletedCount || 0,
+      refundedTotal,
+      refundedAccounts: refundsByAccount.size,
+    });
   } catch (error) {
     console.error('deletePayrollCharges Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
+/**
+ * Delete PAID payroll records (high risk / destructive)
+ * Body:
+ * - scope: all|single
+ * - month: YYYY-MM
+ * - academicYear: AcademicYear ObjectId
+ * - staffId: required for single
+ * - confirm: must equal 'DELETE_PAID'
+ */
+export async function deletePaidPayrolls(req, res) {
+  try {
+    const { scope, month, academicYear, staffId, confirm } = req.body || {};
+
+    if (confirm !== 'DELETE_PAID') {
+      return res.status(400).json({ message: 'Confirmation required to delete Paid payroll records' });
+    }
+
+    if (!month || !isValidMonth(month)) return res.status(400).json({ message: 'month is required (YYYY-MM)' });
+    if (!academicYear || !isValidObjectId(academicYear)) return res.status(400).json({ message: 'academicYear is required' });
+    if (!scope || !['all', 'single'].includes(scope)) return res.status(400).json({ message: 'scope must be all or single' });
+    if (scope === 'single' && (!staffId || !isValidObjectId(staffId))) {
+      return res.status(400).json({ message: 'staffId is required for single scope' });
+    }
+
+    const query = { month, academicYear, status: 'Paid' };
+    if (scope === 'single') query.staff = staffId;
+
+    const payrollsToDelete = await Payroll.find(query).select('account paidAmount netSalary status paymentSplits');
+    if (!payrollsToDelete.length) {
+      return res.status(404).json({
+        code: 'PAYROLL_DELETE_NO_MATCH_PAID',
+        message: 'No Paid payroll records found for the selected scope/month/year',
+      });
+    }
+    const refundsByAccount = new Map();
+    let refundedTotal = 0;
+
+    for (const p of payrollsToDelete) {
+      const splits = Array.isArray(p.paymentSplits) ? p.paymentSplits : [];
+      if (splits.length) {
+        for (const s of splits) {
+          const acc = s?.account?._id ? String(s.account._id) : (s?.account ? String(s.account) : null);
+          const amt = Number(s?.amount || 0);
+          if (!acc || amt <= 0) continue;
+          refundsByAccount.set(acc, (refundsByAccount.get(acc) || 0) + amt);
+          refundedTotal += amt;
+        }
+        continue;
+      }
+
+      // Legacy fallback: single account + paidAmount/netSalary
+      const paid = Number(p.paidAmount || 0);
+      const net = Number(p.netSalary || 0);
+      const refund = paid > 0 ? paid : (net > 0 ? net : 0);
+      const acc = p.account ? String(p.account) : null;
+      if (!acc || refund <= 0) continue;
+      refundsByAccount.set(acc, (refundsByAccount.get(acc) || 0) + refund);
+      refundedTotal += refund;
+    }
+
+    if (refundsByAccount.size) {
+      const ops = Array.from(refundsByAccount.entries())
+        .filter(([, v]) => Number(v) > 0)
+        .map(([id, v]) => ({
+          updateOne: {
+            filter: { _id: id },
+            update: { $inc: { balance: Number(v) } },
+          },
+        }));
+      if (ops.length) await Account.bulkWrite(ops, { ordered: false });
+    }
+
+    const result = await Payroll.deleteMany(query);
+
+    try {
+      publishRealtime({ type: 'payroll:changed', ts: Date.now() });
+      if (refundsByAccount.size) publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+    } catch { /* ignore */ }
+
+    res.json({
+      message: 'Paid payroll records deleted',
+      deletedCount: result.deletedCount || 0,
+      refundedTotal,
+      refundedAccounts: refundsByAccount.size,
+    });
+  } catch (error) {
+    console.error('deletePaidPayrolls Error:', error);
     res.status(500).json({ message: error.message });
   }
 }
