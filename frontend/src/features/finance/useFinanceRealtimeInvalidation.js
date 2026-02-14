@@ -3,8 +3,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRealtimeInvalidation } from '../../shared/realtime/useRealtimeInvalidation';
 import { EVENTS } from '../../utils/events';
 
-import { expenseKeys, accountKeys, categoryKeys } from './queryKeys';
+import { expenseKeys, accountKeys, categoryKeys, feeTypeKeys } from './queryKeys';
 import { payrollKeys } from './queryKeys';
+import { studentFinanceKeys } from './queryKeys';
 
 export function useFinanceRealtimeInvalidation() {
   const queryClient = useQueryClient();
@@ -32,12 +33,33 @@ export function useFinanceRealtimeInvalidation() {
     } catch { /* ignore */ }
   });
 
+  useRealtimeInvalidation(EVENTS.FEE_TYPES_CHANGED, () => {
+    try {
+      queryClient.invalidateQueries({ queryKey: feeTypeKeys.listBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+  });
+
   useRealtimeInvalidation(EVENTS.PAYROLL_CHANGED, () => {
     try {
       queryClient.invalidateQueries({ queryKey: payrollKeys.listBase, refetchType: 'active' });
     } catch { /* ignore */ }
     try {
       queryClient.invalidateQueries({ queryKey: payrollKeys.staffLedgerBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+  });
+
+  useRealtimeInvalidation(EVENTS.STUDENT_FINANCE_CHANGED, () => {
+    try {
+      queryClient.invalidateQueries({ queryKey: studentFinanceKeys.studentsSummaryBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+    try {
+      queryClient.invalidateQueries({ queryKey: studentFinanceKeys.previousBalanceSummaryBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+    try {
+      queryClient.invalidateQueries({ queryKey: studentFinanceKeys.invoicesBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+    try {
+      queryClient.invalidateQueries({ queryKey: studentFinanceKeys.monthHistoryBase, refetchType: 'active' });
     } catch { /* ignore */ }
   });
 }

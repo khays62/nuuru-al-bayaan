@@ -5,6 +5,13 @@ import toast from 'react-hot-toast';
 import { useFinanceStudentsSummaryQuery, usePreviousBalanceSummaryQuery } from '../hooks/studentFinanceHooks';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import Tabs from '../../attendance/components/Tabs.jsx';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 import StudentChargeModal from './StudentChargeModal';
 import UpdateChargeModal from './UpdateChargeModal';
 import DeleteChargeModal from './DeleteChargeModal';
@@ -21,11 +28,12 @@ import { listGradeSections } from '../../grades/api/gradeSections';
 // --- SUB-COMPONENTS ---
 
 const ReceiptTab = () => {
+    const { t } = useI18n();
+
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
     const [filterType, setFilterType] = useState('');
     const [classes, setClasses] = useState([]);
-    const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const [submittedParams, setSubmittedParams] = useState({});
@@ -49,31 +57,35 @@ const ReceiptTab = () => {
 
     const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
 
-    const summaryQuery = useFinanceStudentsSummaryQuery(submittedParams, { enabled: true });
-    const prevQuery = usePreviousBalanceSummaryQuery({ ...submittedParams, month: currentMonth }, { enabled: true });
+    const queryUX = {
+        enabled: true,
+        staleTime: 60_000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+    };
+
+    const summaryQuery = useFinanceStudentsSummaryQuery(submittedParams, queryUX);
+    const prevQuery = usePreviousBalanceSummaryQuery({ ...submittedParams, month: currentMonth }, queryUX);
 
     useEffect(() => {
-        // initial load
-        setSubmittedParams({});
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        setLoading(Boolean(summaryQuery.isFetching || prevQuery.isFetching));
-    }, [summaryQuery.isFetching, prevQuery.isFetching]);
+        // Only show skeleton on first load. Background refetches (isFetching)
+        // should keep the current rows visible to avoid tab-switch flicker.
+        setLoading(Boolean(summaryQuery.isLoading || prevQuery.isLoading));
+    }, [summaryQuery.isLoading, prevQuery.isLoading]);
 
     useEffect(() => {
         if (!summaryQuery.isError && !prevQuery.isError) return;
-        toast.error('Search failed');
+        toast.error(t('finance.studentFinance.receiptTab.toasts.searchFailed', { defaultValue: 'Search failed' }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [summaryQuery.isError, prevQuery.isError]);
 
-    useEffect(() => {
+    const students = useMemo(() => {
         const baseRows = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
         const prevRows = Array.isArray(prevQuery.data?.rows) ? prevQuery.data.rows : [];
         const prevByStudent = new Map(prevRows.map(r => [String(r.studentObjectId), r]));
 
-        const merged = baseRows.map(r => {
+        return baseRows.map(r => {
             const p = prevByStudent.get(String(r._id));
             const prevOutstanding = Number(p?.balance || 0);
             const baseBalance = Number(r?.balance || 0);
@@ -83,7 +95,6 @@ const ReceiptTab = () => {
                 balanceWithPrevious: baseBalance + prevOutstanding,
             };
         });
-        setStudents(merged);
     }, [summaryQuery.data, prevQuery.data]);
 
     // Removal of broken fetchStats - stats should be handled at parent level if needed
@@ -143,7 +154,7 @@ const ReceiptTab = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success("Exporting to Excel...");
+        toast.success(t('finance.studentFinance.receiptTab.toasts.exporting', { defaultValue: 'Exporting to Excel…' }));
     };
 
     useEffect(() => {
@@ -235,118 +246,171 @@ const ReceiptTab = () => {
     const currentRows = sortedItems.slice(start, start + limit);
 
     return (
-        <div className="p-6">
-            {/* Top Action Buttons */}
-            <div className="flex flex-wrap gap-2 mb-6 bg-slate-50 p-4 rounded-xl border border-gray-300 shadow-sm">
-                <button onClick={() => setShowChargeModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700 transition-all shadow-sm hover:shadow-md active:scale-95">
-                    <PlusCircle size={18} /> Charge
-                </button>
-                <button onClick={() => setShowUpdateModal(true)} className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-amber-600 transition-all shadow-sm hover:shadow-md active:scale-95">
-                    <Edit size={18} /> Update Charge
-                </button>
-                <button onClick={() => setShowDeleteModal(true)} className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-red-600 transition-all shadow-sm hover:shadow-md active:scale-95">
-                    <Trash2 size={18} /> Delete Charge
-                </button>
+        <div className="space-y-4">
+            {/* Toolbar (actions + filters) */}
+            <Card className="p-6 rounded-3xl shadow-xl no-print">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                        onClick={() => setShowChargeModal(true)}
+                        variant="brand"
+                        size="lg"
+                        icon={<PlusCircle size={18} />}
+                        className="rounded-lg font-bold"
+                    >
+                        {t('finance.studentFinance.receiptTab.actions.charge', { defaultValue: 'Charge' })}
+                    </Button>
+                    <Button
+                        onClick={() => setShowUpdateModal(true)}
+                        variant="primary"
+                        size="lg"
+                        icon={<Edit size={18} />}
+                        className="rounded-lg font-bold"
+                    >
+                        {t('finance.studentFinance.receiptTab.actions.updateCharge', { defaultValue: 'Update Charge' })}
+                    </Button>
+                    <Button
+                        onClick={() => setShowDeleteModal(true)}
+                        variant="danger"
+                        size="lg"
+                        icon={<Trash2 size={18} />}
+                        className="rounded-lg font-bold"
+                    >
+                        {t('finance.studentFinance.receiptTab.actions.deleteCharge', { defaultValue: 'Delete Charge' })}
+                    </Button>
 
-                {/* Print Group */}
-                <div className="flex gap-2 ml-auto mr-auto lg:mx-2 border-l border-gray-300 pl-2">
-                    <button onClick={() => setShowMonthlyPrint(true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-black transition-all text-xs">
-                        <Printer size={16} /> Monthly
-                    </button>
-                    <button onClick={() => setShowDailyPrint(true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-black transition-all text-xs">
-                        <Printer size={16} /> Daily
-                    </button>
-                    <button onClick={() => setShowPassCardPrint(true)} className="bg-slate-800 text-white px-3 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-black transition-all text-xs">
-                        <GraduationCap size={16} /> Passcard
-                    </button>
-                </div>
-
-                {/* Export Group */}
-                <div className="flex gap-2 ml-auto">
-                    <button onClick={exportToCSV} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-green-700 transition-all shadow-sm hover:shadow-md active:scale-95">
-                        <FileText size={18} /> Excel Export
-                    </button>
-                </div>
-            </div>
-
-            {/* Search & Filter */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
-                        <input
-                            type="text"
-                            className="w-full h-11 pl-10 pr-4 py-2 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 transition-all font-medium"
-                            placeholder="Search ID, Name or Phone..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
+                    {/* Print Group */}
+                        <div className="flex gap-2 lg:mx-2 border-l border-slate-200 pl-2">
+                        <Button
+                            onClick={() => setShowMonthlyPrint(true)}
+                            variant="neutral"
+                            size="md"
+                            icon={<Printer size={16} />}
+                            className="rounded-lg font-bold text-xs"
+                        >
+                            {t('finance.studentFinance.receiptTab.actions.printMonthly', { defaultValue: 'Monthly' })}
+                        </Button>
+                        <Button
+                            onClick={() => setShowDailyPrint(true)}
+                            variant="neutral"
+                            size="md"
+                            icon={<Printer size={16} />}
+                            className="rounded-lg font-bold text-xs"
+                        >
+                            {t('finance.studentFinance.receiptTab.actions.printDaily', { defaultValue: 'Daily' })}
+                        </Button>
+                        <Button
+                            onClick={() => setShowPassCardPrint(true)}
+                            variant="neutral"
+                            size="md"
+                            icon={<GraduationCap size={16} />}
+                            className="rounded-lg font-bold text-xs"
+                        >
+                            {t('finance.studentFinance.receiptTab.actions.printPasscard', { defaultValue: 'Passcard' })}
+                        </Button>
+                        </div>
                     </div>
-                </form>
-                <select
-                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-50 font-bold text-sm"
-                    value={classId}
-                    onChange={e => {
-                        const val = e.target.value;
-                        setClassId(val);
-                        handleSearch({ classId: val });
-                    }}
-                >
-                    <option value="">By Class Level</option>
-                    {classes.map(cls => {
-                        const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
-                        const sectionLabel = cls.section || cls.name || '';
-                        const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                        return (
-                            <option key={cls._id} value={cls._id}>{label || '—'}</option>
-                        );
-                    })}
-                </select>
 
-                <select
-                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-55 font-bold text-sm"
-                    value={filterType}
-                    onChange={e => {
-                        const val = e.target.value;
-                        setFilterType(val);
-                        handleSearch({ type: val || null });
-                    }}
-                >
-                    <option value="">Filter (This Month)</option>
-                    <option value="charged">Charged This Month</option>
-                    <option value="paid">Paid This Month</option>
-                    <option value="unpaid">Unpaid This Month</option>
-                    <option value="uncharged">Not Charged This Month</option>
-                    <option value="hormaris">Hormaris</option>
-                </select>
-                <div className="flex gap-2">
-                    <button onClick={handleSearch} className="h-11 bg-blue-600 text-white px-8 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-95">Go</button>
+                    {/* Export Group */}
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={exportToCSV}
+                            variant="neutral"
+                            size="lg"
+                            icon={<FileText size={18} />}
+                            className="rounded-lg font-bold"
+                        >
+                            {t('finance.studentFinance.receiptTab.actions.excelExport', { defaultValue: 'Excel Export' })}
+                        </Button>
+                    </div>
                 </div>
-            </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col md:flex-row items-stretch gap-4">
+                    <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-2.5 text-slate-400" size={20} />
+                            <Input
+                                type="text"
+                                className="h-11 pl-10 pr-4 font-medium"
+                                placeholder={t('finance.studentFinance.receiptTab.placeholders.search', { defaultValue: 'Search ID, Name or Phone…' })}
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
+                        </div>
+                    </form>
+
+                    <SearchableSelect
+                        value={classId}
+                        onChange={(v) => {
+                            setClassId(v);
+                            handleSearch({ classId: v });
+                        }}
+                        options={classes.map((cls) => {
+                            const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
+                            const sectionLabel = cls.section || cls.name || '';
+                            const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
+                            return { value: cls._id, label: label || '—' };
+                        })}
+                        placeholder={t('finance.studentFinance.receiptTab.filters.byClassLevel', { defaultValue: 'By Class Level' })}
+                        searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
+                        maxVisible={6}
+                        className="h-11 min-w-50 font-bold text-sm"
+                    />
+
+                    <DropdownSelect
+                        value={filterType}
+                        onChange={(v) => {
+                            setFilterType(v);
+                            handleSearch({ type: v || null });
+                        }}
+                        options={[
+                            { value: '', label: t('finance.studentFinance.receiptTab.filters.thisMonth.title', { defaultValue: 'Filter (This Month)' }) },
+                            { value: 'charged', label: t('finance.studentFinance.receiptTab.filters.thisMonth.charged', { defaultValue: 'Charged This Month' }) },
+                            { value: 'paid', label: t('finance.studentFinance.receiptTab.filters.thisMonth.paid', { defaultValue: 'Paid This Month' }) },
+                            { value: 'unpaid', label: t('finance.studentFinance.receiptTab.filters.thisMonth.unpaid', { defaultValue: 'Unpaid This Month' }) },
+                            { value: 'uncharged', label: t('finance.studentFinance.receiptTab.filters.thisMonth.uncharged', { defaultValue: 'Not Charged This Month' }) },
+                            { value: 'hormaris', label: t('finance.studentFinance.receiptTab.filters.thisMonth.hormaris', { defaultValue: 'Hormaris' }) },
+                        ]}
+                        clearable={false}
+                        className="h-11 min-w-55 font-bold text-sm"
+                    />
+
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={handleSearch}
+                            variant="brand"
+                            size="lg"
+                            className="h-11 px-8 font-black text-sm uppercase tracking-widest"
+                        >
+                            {t('finance.studentFinance.receiptTab.actions.go', { defaultValue: 'Go' })}
+                        </Button>
+                    </div>
+                </div>
+            </Card>
 
             {/* Student Table */}
-            <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+            <Card className="rounded-3xl shadow-xl">
                 <StandardTable
                     isLoading={loading}
                     error={null}
                     items={sortedItems}
-                    loadingMessage="Syncing Ledger..."
+                    loadingMessage={t('finance.studentFinance.receiptTab.loading.syncingLedger', { defaultValue: 'Syncing Ledger…' })}
                     loadingVariant="table"
                     loadingRows={8}
                     loadingColumns={6}
-                    emptyTitle="No records found for this selection."
+                    emptyTitle={t('finance.studentFinance.receiptTab.empty.title', { defaultValue: 'No records found for this selection.' })}
                     emptyDescription=""
 
                     rows={currentRows}
                     columns={[
-                        { key: 'studentId', label: 'ID', sortable: true, field: 'studentId' },
-                        { key: 'fullName', label: 'Student Name', sortable: true, field: 'fullName' },
-                        { key: 'contact', label: 'Contact', sortable: true, field: 'contact' },
-                        { key: 'className', label: 'Class', sortable: true, field: 'className' },
-                        { key: 'balance', label: 'Balance', sortable: true, field: 'balance', align: 'right' },
-                        { key: 'actions', label: 'Info', sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
+                        { key: 'studentId', label: t('finance.studentFinance.receiptTab.columns.id', { defaultValue: 'ID' }), sortable: true, field: 'studentId' },
+                        { key: 'fullName', label: t('finance.studentFinance.receiptTab.columns.studentName', { defaultValue: 'Student Name' }), sortable: true, field: 'fullName' },
+                        { key: 'contact', label: t('finance.studentFinance.receiptTab.columns.contact', { defaultValue: 'Contact' }), sortable: true, field: 'contact' },
+                        { key: 'className', label: t('finance.studentFinance.receiptTab.columns.class', { defaultValue: 'Class' }), sortable: true, field: 'className' },
+                        { key: 'balance', label: t('finance.studentFinance.receiptTab.columns.balance', { defaultValue: 'Balance' }), sortable: true, field: 'balance', align: 'right' },
+                        { key: 'actions', label: t('finance.studentFinance.receiptTab.columns.info', { defaultValue: 'Info' }), sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
                     ]}
-                    storageKey="finance:students:columns:v1"
+                    storageKey="finance:studentFinance:receipt:columns:v1"
                     controlsProps={{
                         limit,
                         total,
@@ -354,6 +418,7 @@ const ReceiptTab = () => {
                             setLimit(v);
                             setPage(1);
                         },
+                        className: 'px-6 bg-white',
                     }}
                     sortBy={sortBy}
                     sortDir={sortDir}
@@ -380,7 +445,9 @@ const ReceiptTab = () => {
                                             ${Number(row?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </span>
                                         {row?.hasHormaris ? (
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-red-600">Hormaris</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-red-600">
+                                                {t('finance.studentFinance.receiptTab.labels.hormaris', { defaultValue: 'Hormaris' })}
+                                            </span>
                                         ) : null}
                                     </div>
                                 );
@@ -390,8 +457,8 @@ const ReceiptTab = () => {
                                         actions={[
                                             {
                                                 key: 'info',
-                                                label: 'View Info',
-                                                title: 'View Info',
+                                                label: t('finance.studentFinance.receiptTab.actions.viewInfo', { defaultValue: 'View Info' }),
+                                                title: t('finance.studentFinance.receiptTab.actions.viewInfo', { defaultValue: 'View Info' }),
                                                 tone: 'view',
                                                 showLabel: true,
                                                 icon: null,
@@ -412,8 +479,11 @@ const ReceiptTab = () => {
                     onLimit={(v) => { setLimit(v); setPage(1); }}
                     showRowsSelector={false}
                     paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+                    tableProps={{
+                        shellClassName: 'rounded-none border-0 shadow-none ring-0',
+                    }}
                 />
-            </div>
+            </Card>
 
             {/* Modal Components */}
             {
@@ -464,41 +534,56 @@ const ReceiptTab = () => {
 
 
 export default function StudentFees() {
+    const { t } = useI18n();
+
     const [activeTab, setActiveTab] = useState('receipt');
 
     const tabs = [
-        { id: 'receipt', label: 'Receipt', icon: Receipt },
-        { id: 'previousBalance', label: 'Previous Balance', icon: Wallet },
-        { id: 'amountType', label: 'Amount Type', icon: Settings },
-        { id: 'feeType', label: 'Fee Type', icon: Settings },
+        { id: 'receipt', label: t('finance.studentFinance.tabs.receipt', { defaultValue: 'Receipt' }), icon: Receipt },
+        { id: 'previousBalance', label: t('finance.studentFinance.tabs.previousBalance', { defaultValue: 'Previous Balance' }), icon: Wallet },
+        { id: 'amountType', label: t('finance.studentFinance.tabs.amountType', { defaultValue: 'Amount Type' }), icon: Settings },
+        { id: 'feeType', label: t('finance.studentFinance.tabs.feeType', { defaultValue: 'Fee Type' }), icon: Settings },
     ];
 
     return (
         <div className="space-y-6">
-            <div className="bg-white border rounded-xl overflow-hidden p-2 flex gap-2">
-                {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === tab.id
-                                ? 'bg-blue-600 text-white shadow-md'
-                                : 'text-gray-600 hover:bg-gray-100'
-                                }`}
-                        >
-                            <Icon size={18} />
-                            {tab.label}
-                        </button>
-                    );
-                })}
+            <div className="no-print">
+                <div className="w-full overflow-x-auto">
+                    <div className="min-w-max">
+                        <Tabs
+                            value={activeTab}
+                            onChange={setActiveTab}
+                            tone="blue"
+                            options={tabs.map((tab) => {
+                                const Icon = tab.icon;
+                                return {
+                                    value: tab.id,
+                                    label: (
+                                        <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                                            <Icon size={14} />
+                                            <span>{tab.label}</span>
+                                        </span>
+                                    ),
+                                };
+                            })}
+                        />
+                    </div>
+                </div>
             </div>
 
-            <div className="bg-white border rounded-xl min-h-125">
-                {activeTab === 'receipt' && <ReceiptTab />}
-                {activeTab === 'previousBalance' && <PreviousBalanceTab />}
-                {activeTab === 'amountType' && <AmountTypeTab />}
-                {activeTab === 'feeType' && <FeeTypeTab />}
+            <div className="min-h-125">
+                <div className={activeTab === 'receipt' ? 'block' : 'hidden'}>
+                    <ReceiptTab />
+                </div>
+                <div className={activeTab === 'previousBalance' ? 'block' : 'hidden'}>
+                    <PreviousBalanceTab />
+                </div>
+                <div className={activeTab === 'amountType' ? 'block' : 'hidden'}>
+                    <AmountTypeTab />
+                </div>
+                <div className={activeTab === 'feeType' ? 'block' : 'hidden'}>
+                    <FeeTypeTab />
+                </div>
             </div>
         </div>
     );

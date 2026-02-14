@@ -13,6 +13,25 @@ Macnaha:
 
 Tani waxay ka dhigan tahay: **Realtime → Events → Invalidate Queries → UI updated**.
 
+Tarjumid (si fudud):
+- **Realtime (SSE)** → xog beddel dhacdo realtime ah
+- **Events** → app‑ka gudaha ayuu u rogaa “dhacdooyin” (EVENTS.*)
+- **Invalidate Queries** → React Query cache‑ka “waa la kiciyaa/waa la buriyaa” si uu u **refetch** gareeyo
+- **UI updated** → UI‑ga si otomaatig ah ayuu u cusboonaysiiyaa (data cusub ayuu muujinayaa)
+
+Fiiro muhiim ah:
+- Realtime payload‑ka badanaa **laguma buufiyo state/UI** (ha ku samayn setState data‑ga), realtime‑ku waa **trigger** kaliya.
+- **Invalidate** macnaheedu ma aha “tirtir data”; waa “u sheeg React Query in data‑gu dhacay (stale) oo dib loo soo qaato”.
+
+Eray‑bixin (Glossary / Translation cheat‑sheet):
+- **SSE (Server‑Sent Events)**: kanaal server‑ku si joogto ah ugu soo diro events.
+- **Dispatcher**: meesha SSE payload laga dhigo app events.
+- **Event bus**: nidaamka feature‑yada ku dhageystaan dhacdooyinka (EVENTS.*).
+- **Query key**: magaca/aqoonsiga query‑ga (si granular invalidation loo sameeyo).
+- **Granular**: si faahfaahsan (key‑yo gaar gaar ah), ma aha “invalidate everything”.
+- **Invalidate**: kicin/burin cache si refetch loo sameeyo.
+- **Refetch**: dib u soo qaadasho data (server fetch).
+
 ## 2) Sababta aan u dooranay
 
 - React Query wuxuu noqdaa “single source of truth” ee data fetching/caching.
@@ -68,6 +87,11 @@ Tani waxay ka hortagtaa data leakage (student ma arko events aan isaga quseyn).
 4. **Mutations**: isticmaal `useMutation` + `onSuccess` invalidation.
 5. **Realtime**: ha “setState” ku buufin data realtime payload; realtime‑ku waa trigger.
 6. **Backend**: publish event kasta oo muhiim ah; haddii aan publish jirin, realtime waa “qolof”.
+
+Tusaale kooban (maskax‑qaab):
+- Backend: `publishRealtime({ type: 'students:changed', studentId, ts })`
+- Frontend: dispatcher → `emit(EVENTS.STUDENTS_CHANGED, payload)`
+- Feature hook: `queryClient.invalidateQueries({ queryKey: studentsKeys.list(...) })`
 
 ## 7) Students pilot — waxa la standard‑gareeyay
 

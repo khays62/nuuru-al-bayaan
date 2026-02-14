@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Search, Printer, FileText, UserCheck, ShieldCheck, Download } from 'lucide-react';
 import financeService from '../api/finance';
 import { listGradeSections } from '../../grades/api/gradeSections';
@@ -6,13 +6,18 @@ import { openMonthlyInvoicesPreview, openDailyAuditPreview, openPasscardsPreview
 import toast from 'react-hot-toast';
 import { useInvoicesQuery } from '../hooks/studentFinanceHooks';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 
 export default function StudentFinancePrintTab() {
+    const { t } = useI18n();
+
     const [classId, setClassId] = useState('');
     const [classes, setClasses] = useState([]);
-    const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(false);
     const [selectedStudents, setSelectedStudents] = useState([]);
+    const [hasUserSelection, setHasUserSelection] = useState(false);
+    const [limit, setLimit] = useState(20);
     const [submittedParams, setSubmittedParams] = useState({});
 
     useEffect(() => {
@@ -40,21 +45,29 @@ export default function StudentFinancePrintTab() {
             }
         };
         fetchClasses();
-    }, [classId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    const invoicesQuery = useInvoicesQuery(submittedParams, { enabled: true });
+    const queryUX = {
+        enabled: true,
+        staleTime: 60_000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+    };
 
-    useEffect(() => {
-        setLoading(Boolean(invoicesQuery.isFetching));
-    }, [invoicesQuery.isFetching]);
+    const invoicesQuery = useInvoicesQuery(submittedParams, queryUX);
+
+    // Only show skeleton on first load; keep rows visible on background refetch.
+    const loading = Boolean(invoicesQuery.isLoading);
 
     useEffect(() => {
         if (!invoicesQuery.isError) return;
-        toast.error('Failed to fetch students for this class');
+        toast.error(t('finance.studentFinance.printTab.toasts.fetchFailed', { defaultValue: 'Failed to fetch students for this class' }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [invoicesQuery.isError]);
 
-    useEffect(() => {
+    const students = useMemo(() => {
         const response = invoicesQuery.data;
         const data = Array.isArray(response)
             ? response
@@ -76,9 +89,14 @@ export default function StudentFinancePrintTab() {
         });
 
         const studentList = Object.values(studentMap);
-        setStudents(studentList);
-        setSelectedStudents(studentList.map(s => s.student._id));
+        return studentList;
     }, [invoicesQuery.data]);
+
+    useEffect(() => {
+        // Reset selection when the query target changes; default behavior is "select all".
+        setHasUserSelection(false);
+        setSelectedStudents([]);
+    }, [submittedParams?.classId]);
 
     const fetchStudentsByClass = async () => {
         if (!classId) return;
@@ -86,27 +104,67 @@ export default function StudentFinancePrintTab() {
     };
 
     const toggleStudent = (id) => {
-        setSelectedStudents(prev =>
-            prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-        );
+        const allIds = (students || []).map((s) => s?.student?._id).filter(Boolean);
+        setHasUserSelection(true);
+        setSelectedStudents((prev) => {
+            const base = hasUserSelection ? prev : allIds;
+            const set = new Set(base);
+            if (set.has(id)) set.delete(id);
+            else set.add(id);
+            return Array.from(set);
+        });
     };
 
+    const selectedStudentIds = useMemo(() => {
+        if (!hasUserSelection) {
+            return (students || []).map((s) => s?.student?._id).filter(Boolean);
+        }
+        return selectedStudents;
+    }, [hasUserSelection, selectedStudents, students]);
+
     const handlePrintDailyAudit = () => {
-        const selectedData = students.filter(s => selectedStudents.includes(s.student._id));
-        if (selectedData.length === 0) return toast.error("Select at least one student");
+        const selectedData = students.filter(s => selectedStudentIds.includes(s.student._id));
+        if (selectedData.length === 0) return toast.error(t('finance.studentFinance.printTab.toasts.selectAtLeastOne', { defaultValue: 'Select at least one student' }));
         openDailyAuditPreview({ students: selectedData });
     };
 
     const handlePrintMonthlyInvoices = () => {
-        const selectedData = students.filter(s => selectedStudents.includes(s.student._id));
-        if (selectedData.length === 0) return toast.error("Select at least one student");
+        const selectedData = students.filter(s => selectedStudentIds.includes(s.student._id));
+        if (selectedData.length === 0) return toast.error(t('finance.studentFinance.printTab.toasts.selectAtLeastOne', { defaultValue: 'Select at least one student' }));
         openMonthlyInvoicesPreview({ students: selectedData });
     };
 
     const handlePrintPasscards = () => {
-        const selectedData = students.filter(s => selectedStudents.includes(s.student._id));
-        if (selectedData.length === 0) return toast.error("Select at least one student");
+        const selectedData = students.filter(s => selectedStudentIds.includes(s.student._id));
+        if (selectedData.length === 0) return toast.error(t('finance.studentFinance.printTab.toasts.selectAtLeastOne', { defaultValue: 'Select at least one student' }));
         openPasscardsPreview({ students: selectedData });
+    };
+
+    const renderPrintCell = (row, col) => {
+        const id = row?.student?._id;
+        const selected = Boolean(id && selectedStudentIds.includes(id));
+        const balance = Number(row?.totalBalance || 0);
+
+        switch (col.key) {
+            case 'selection':
+                return (
+                    <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${selected ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-600/20' : 'border-slate-200 bg-white'}`}>
+                        {selected ? <UserCheck size={14} className="text-white" /> : null}
+                    </div>
+                );
+            case 'studentId':
+                return row?.student?.studentId || '—';
+            case 'fullName':
+                return row?.student?.fullName || '—';
+            case 'balance':
+                return (
+                    <span className={balance > 0 ? 'text-red-500' : 'text-green-600'}>
+                        ${balance.toLocaleString()}
+                    </span>
+                );
+            default:
+                return '';
+        }
     };
 
     return (
@@ -117,8 +175,12 @@ export default function StudentFinancePrintTab() {
                         <Printer size={24} />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Finance Reporting Hub</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Bulk Invoice & Audit Processing</p>
+                        <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+                            {t('finance.studentFinance.printTab.title', { defaultValue: 'Finance Reporting Hub' })}
+                        </h3>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">
+                            {t('finance.studentFinance.printTab.subtitle', { defaultValue: 'Bulk Invoice & Audit Processing' })}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -127,86 +189,137 @@ export default function StudentFinancePrintTab() {
                 <div className="md:col-span-3 space-y-6">
                     <div className="bg-white p-6 rounded-4xl border border-slate-200 shadow-sm flex items-end gap-6">
                         <div className="flex-1 space-y-3">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Academic Tier / Class</label>
-                            <select
-                                className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-xs uppercase outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                {t('finance.studentFinance.printTab.labels.selectClass', { defaultValue: 'Select Academic Tier / Class' })}
+                            </label>
+                            <SearchableSelect
                                 value={classId}
-                                onChange={e => setClassId(e.target.value)}
-                            >
-                                <option value="">Target Class Level</option>
-                                {classes.map(cls => {
+                                onChange={(v) => setClassId(v)}
+                                options={classes.map((cls) => {
                                     const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
                                     const sectionLabel = cls.section || cls.name || '';
                                     const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                                    return (
-                                        <option key={cls._id} value={cls._id}>{label || '—'}</option>
-                                    );
+                                    return { value: cls._id, label: label || '—' };
                                 })}
-                            </select>
+                                placeholder={t('finance.studentFinance.printTab.placeholders.targetClassLevel', { defaultValue: 'Target Class Level' })}
+                                searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
+                                maxVisible={7}
+                                className="h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-xs uppercase"
+                            />
                         </div>
-                        <button
+                        <Button
                             onClick={fetchStudentsByClass}
-                            className="h-14 px-10 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 hover:scale-[1.02] active:scale-95 transition-all"
+                            variant="brand"
+                            size="lg"
+                            className="h-14 px-10 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 hover:scale-[1.02] active:scale-95 transition-all"
                         >
-                            Fetch Register
-                        </button>
+                            {t('finance.studentFinance.printTab.actions.fetchRegister', { defaultValue: 'Fetch Register' })}
+                        </Button>
                     </div>
 
-                    <div className="bg-white border border-slate-200 rounded-4xl overflow-hidden shadow-sm">
+                    <div className="bg-white border border-slate-200 rounded-4xl shadow-sm">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class Census: {students.length} Students</h4>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                {t('finance.studentFinance.printTab.labels.classCensus', { defaultValue: 'Class Census:' })}{' '}
+                                {students.length}{' '}
+                                {t('finance.studentFinance.printTab.labels.studentsCountSuffix', { defaultValue: 'Students' })}
+                            </h4>
                             <div className="flex gap-4">
-                                <button onClick={() => setSelectedStudents(students.map(s => s.student._id))} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Select All</button>
-                                <button onClick={() => setSelectedStudents([])} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:underline">Clear Selection</button>
+                                <Button
+                                    onClick={() => {
+                                        setHasUserSelection(true);
+                                        setSelectedStudents(students.map(s => s.student._id));
+                                    }}
+                                    variant="primary"
+                                    size="sm"
+                                    className="text-[10px] font-black uppercase tracking-widest shadow-none border-0"
+                                >
+                                    {t('common.actions.selectAll', { defaultValue: 'Select All' })}
+                                </Button>
+                                <Button
+                                    onClick={() => {
+                                        setHasUserSelection(true);
+                                        setSelectedStudents([]);
+                                    }}
+                                    variant="neutral"
+                                    size="sm"
+                                    className="text-[10px] font-black uppercase tracking-widest shadow-none border-0"
+                                >
+                                    {t('common.actions.clear', { defaultValue: 'Clear' })}
+                                </Button>
                             </div>
                         </div>
                         <div className="max-h-150 overflow-y-auto">
                             <StandardTable
                                 isLoading={loading}
-                                loadingMessage="Streaming Registry Data..."
+                                loadingMessage={t('finance.studentFinance.printTab.loading.streamingRegistry', { defaultValue: 'Streaming Registry Data…' })}
                                 items={students}
-                                rows={students}
+                                rows={(students || []).slice(0, Math.max(1, Number(limit) || 20))}
                                 columns={[
-                                    { key: 'selection', label: 'Selection', noPrint: true, tdClassName: 'no-print' },
-                                    { key: 'studentId', label: 'Student ID' },
-                                    { key: 'fullName', label: 'Full Name' },
-                                    { key: 'balance', label: 'Balance Status', align: 'right' },
+                                    {
+                                        key: 'selection',
+                                        label: t('finance.studentFinance.printTab.columns.selection', { defaultValue: 'Selection' }),
+                                        locked: true,
+                                        noPrint: true,
+                                        thClassName: 'p-4 pl-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]',
+                                        tdClassName: 'p-4 pl-8 no-print',
+                                    },
+                                    {
+                                        key: 'studentId',
+                                        label: t('finance.studentFinance.printTab.columns.studentId', { defaultValue: 'Student ID' }),
+                                        thClassName: 'p-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]',
+                                        tdClassName: 'p-4 font-mono text-xs font-bold text-slate-500',
+                                    },
+                                    {
+                                        key: 'fullName',
+                                        label: t('finance.studentFinance.printTab.columns.fullName', { defaultValue: 'Full Name' }),
+                                        thClassName: 'p-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]',
+                                        tdClassName: 'p-4 font-bold text-slate-900 group-hover:text-blue-600 transition-colors',
+                                    },
+                                    {
+                                        key: 'balance',
+                                        label: t('finance.studentFinance.printTab.columns.balanceStatus', { defaultValue: 'Balance Status' }),
+                                        align: 'right',
+                                        thClassName: 'p-4 text-right pr-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]',
+                                        tdClassName: 'p-4 text-right pr-8 font-black tabular-nums',
+                                    },
                                 ]}
+                                storageKey="finance:printTab:students:columns:v1"
+                                controlsProps={{
+                                    limit,
+                                    total: students.length,
+                                    onLimit: (v) => setLimit(v),
+                                    limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
+                                }}
                                 getRowKey={(row) => row.student?._id}
-                                emptyTitle="Target a class to begin reporting."
+                                emptyTitle={t('finance.studentFinance.printTab.empty.title', { defaultValue: 'Target a class to begin reporting.' })}
+                                renderCell={renderPrintCell}
                                 tableProps={{
                                     shellClassName: 'ring-0 shadow-none rounded-none',
-                                    theadClassName: 'bg-slate-50 border-b border-slate-200 sticky top-0 z-10',
+                                    theadClassName: 'bg-slate-50 border-b border-slate-200',
                                     useDefaultHeaderStyles: false,
-                                    renderHeader: () => (
-                                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                                            <th className="p-4 pl-8">Selection</th>
-                                            <th className="p-4">Student ID</th>
-                                            <th className="p-4">Full Name</th>
-                                            <th className="p-4 text-right pr-8">Balance Status</th>
-                                        </tr>
-                                    ),
-                                    renderBody: ({ rows }) => (
+                                    tbodyClassName: '',
+                                    renderBody: ({ rows, columns }) => (
                                         <>
-                                            {(rows || []).map((row) => {
+                                            {(rows || []).map((row, idx) => {
                                                 const id = row?.student?._id;
-                                                const selected = Boolean(id && selectedStudents.includes(id));
-                                                const balance = Number(row?.totalBalance || 0);
-
                                                 return (
                                                     <tr
-                                                        key={String(id)}
+                                                        key={String(id || idx)}
                                                         onClick={() => id && toggleStudent(id)}
-                                                        className="border-t border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-blue-50/30 cursor-pointer transition-colors group"
+                                                        className={
+                                                            'border-t border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-blue-50/30 cursor-pointer transition-colors group'
+                                                        }
                                                     >
-                                                        <td className="p-4 pl-8 no-print">
-                                                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${selected ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-600/20' : 'border-slate-200 bg-white'}`}>
-                                                                {selected ? <UserCheck size={14} className="text-white" /> : null}
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-4 font-mono text-xs font-bold text-slate-500">{row?.student?.studentId || '—'}</td>
-                                                        <td className="p-4 font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{row?.student?.fullName || '—'}</td>
-                                                        <td className={`p-4 text-right pr-8 font-black tabular-nums ${balance > 0 ? 'text-red-500' : 'text-green-600'}`}>${balance.toLocaleString()}</td>
+                                                        {(columns || []).map((col) => {
+                                                            const noPrint = col?.noPrint ? 'no-print' : '';
+                                                            const tdClassName = col?.tdClassName || '';
+                                                            return (
+                                                                <td key={String(col.key)} className={`${tdClassName} ${noPrint}`.trim()}>
+                                                                    {renderPrintCell(row, col)}
+                                                                </td>
+                                                            );
+                                                        })}
                                                     </tr>
                                                 );
                                             })}
@@ -220,38 +333,54 @@ export default function StudentFinancePrintTab() {
 
                 <div className="space-y-6">
                     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-xl space-y-6">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center border-b border-slate-100 pb-4">Report Generation Tools</h4>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center border-b border-slate-100 pb-4">
+                            {t('finance.studentFinance.printTab.sections.reportTools', { defaultValue: 'Report Generation Tools' })}
+                        </h4>
 
-                        <button
+                        <Button
                             onClick={handlePrintMonthlyInvoices}
-                            className="w-full group mt-4 h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-blue-600 rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
+                            variant="neutral"
+                            size="lg"
+                            className="w-full group mt-4 h-24 border-2 border-transparent rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
                         >
                             <FileText className="text-blue-600 group-hover:scale-110 transition-transform" size={24} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Monthly Invoices</span>
-                        </button>
+                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                {t('finance.studentFinance.printTab.actions.monthlyInvoices', { defaultValue: 'Monthly Invoices' })}
+                            </span>
+                        </Button>
 
-                        <button
+                        <Button
                             onClick={handlePrintDailyAudit}
-                            className="w-full group h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-amber-500 rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
+                            variant="neutral"
+                            size="lg"
+                            className="w-full group h-24 border-2 border-transparent rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
                         >
                             <ShieldCheck className="text-amber-500 group-hover:scale-110 transition-transform" size={24} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Daily Audit Ledger</span>
-                        </button>
+                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                {t('finance.studentFinance.printTab.actions.dailyAuditLedger', { defaultValue: 'Daily Audit Ledger' })}
+                            </span>
+                        </Button>
 
-                        <button
+                        <Button
                             onClick={handlePrintPasscards}
-                            className="w-full group h-24 bg-slate-50 hover:bg-white border-2 border-transparent hover:border-purple-600 rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
+                            variant="neutral"
+                            size="lg"
+                            className="w-full group h-24 border-2 border-transparent rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-2xl hover:-translate-y-1"
                         >
                             <Download className="text-purple-600 group-hover:scale-110 transition-transform" size={24} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Enrollment Passcards</span>
-                        </button>
+                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                {t('finance.studentFinance.printTab.actions.enrollmentPasscards', { defaultValue: 'Enrollment Passcards' })}
+                            </span>
+                        </Button>
                     </div>
 
                     <div className="bg-blue-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
                         <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
-                        <h5 className="font-black uppercase tracking-[0.2em] text-[10px] text-blue-300 mb-4">Print Queue Advice</h5>
+                        <h5 className="font-black uppercase tracking-[0.2em] text-[10px] text-blue-300 mb-4">
+                            {t('finance.studentFinance.printTab.sections.printQueueAdvice', { defaultValue: 'Print Queue Advice' })}
+                        </h5>
                         <p className="text-xs text-blue-100 leading-relaxed opacity-80">
-                            Bulk printing multiple invoices may take up to 30 seconds to render high-resolution institutional watermarks.
+                            {t('finance.studentFinance.printTab.hints.bulkPrinting', { defaultValue: 'Bulk printing multiple invoices may take up to 30 seconds to render high-resolution institutional watermarks.' })}
                         </p>
                     </div>
                 </div>

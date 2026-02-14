@@ -9,10 +9,12 @@ const Modal = ({
     onClose,
     title,
     children,
+    overlayClassName = '',
     panelClassName = '',
     headerClassName = '',
     titleClassName = '',
     closeButtonClassName = '',
+    bodyClassName = '',
     closeOnBackdrop = true,
     showCloseButton = true,
 }) => {
@@ -29,7 +31,10 @@ const Modal = ({
         // It now uses a semi-transparent background with a backdrop blur effect.
         // `transition-opacity` and `duration-300` create a smooth fade-in effect.
         <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4 transition-opacity duration-300"
+            className={cn(
+                'fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4 transition-opacity duration-300',
+                overlayClassName
+            )}
             onClick={handleBackdropClick}
         >
             {/* Modal Panel. 
@@ -57,7 +62,7 @@ const Modal = ({
                     ) : null}
                 </div>
                 {/* Modal Body */}
-                <div className="p-6 modal-body">
+                <div className={cn('p-6 modal-body', bodyClassName)}>
                     {children}
                 </div>
             </div>

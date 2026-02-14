@@ -702,6 +702,245 @@ const en = {
     announcements: 'Announcements',
   },
 
+  finance: {
+    expenses: {
+      apiErrors: {
+        FIN_EXPENSE_LOCKED_PAYROLL: "Payroll-generated expenses can't be edited/deleted from Expenses",
+      },
+    },
+
+    studentFinance: {
+      tabs: {
+        receipt: 'Receipt',
+        previousBalance: 'Previous Balance',
+        amountType: 'Amount Type',
+        feeType: 'Fee Type',
+      },
+
+      paymentModal: {
+        title: 'Student Finance',
+        tabs: {
+          ledger: 'Ledger',
+          history: 'History',
+        },
+        controls: {
+          selectLedgerAccount: 'Select Ledger Account',
+          paymentMode: 'Payment Mode',
+          byLevel: 'By Level',
+          byReceipt: 'By Receipt',
+          paymentDate: 'Payment Date',
+        },
+        labels: {
+          total: 'Total',
+        },
+        hormaris: {
+          selectMonths: 'Select Hormaris Months',
+        },
+        actions: {
+          paySelected: 'Pay Selected',
+          save: 'Save',
+          print: 'Print',
+        },
+        placeholders: {
+          chooseAccount: '-- Choose Account --',
+          phoneRef: 'Phone/Ref',
+          defaultPhone: 'Default: {{phone}}',
+          full: 'FULL',
+          amountZero: '0.00',
+        },
+        columns: {
+          no: 'No',
+          month: 'Month',
+          phoneRef: 'Phone/Ref',
+          description: 'Description',
+          drFees: 'Dr (Fees)',
+          crPaid: 'Cr (Paid)',
+          discount: 'Discount',
+          payAmount: 'Pay Amount',
+          actions: 'Actions',
+          balance: 'Balance',
+        },
+        loading: {
+          analysing: 'Analysing...',
+        },
+        empty: {
+          noRecords: 'No records found.',
+        },
+        invoice: {
+          titleFallback: 'Tuition Fee',
+        },
+        history: {
+          title: 'Payment History & Receipts',
+          actions: {
+            printAll: 'Print All History',
+            revert: 'Revert',
+          },
+          status: {
+            cleared: 'Cleared',
+          },
+          descFallback: 'Standard Tuition',
+          labels: {
+            totalPaid: 'Total Paid',
+          },
+        },
+        errors: {
+          cannotPrintNoPayment: 'Cannot print: no payment recorded',
+        },
+        confirms: {
+          revertMonth: 'This will REVERT payments for this month. Continue?',
+        },
+        validation: {
+          selectAccount: 'Please select an account',
+          selectAccountShort: 'Select account',
+          enterValidAmount: 'Enter a valid amount',
+          phoneRefRequired: 'Phone/Ref is required',
+          selectHormarisMonths: 'Select Hormaris months',
+          invalidAmountForMonth: 'Invalid amount for {{month}}',
+          amountExceedsBalanceForMonth: 'Amount exceeds balance for {{month}}',
+        },
+        toasts: {
+          noPaymentGroupsToRevert: 'No payment groups found to revert',
+          revertingPayments: 'Reverting payments...',
+          paymentsReverted: 'Payments reverted',
+          failedRevertPayments: 'Failed to revert payments',
+          paymentRecorded: 'Payment recorded',
+          paymentFailed: 'Payment failed',
+          processingHormaris: 'Processing Hormaris payment...',
+          hormarisRecorded: 'Hormaris payment recorded',
+          hormarisFailed: 'Hormaris payment failed',
+          preparingStatement: 'Preparing statement...',
+          printFailed: 'Print failed',
+        },
+      },
+
+      receiptTab: {
+        toasts: {
+          searchFailed: 'Search failed',
+          exporting: 'Exporting to Excel…',
+        },
+        placeholders: {
+          search: 'Search ID, Name or Phone…',
+        },
+        filters: {
+          byClassLevel: 'By Class Level',
+          thisMonth: {
+            title: 'Filter (This Month)',
+            charged: 'Charged This Month',
+            paid: 'Paid This Month',
+            unpaid: 'Unpaid This Month',
+            uncharged: 'Not Charged This Month',
+            hormaris: 'Hormaris',
+          },
+        },
+        actions: {
+          charge: 'Charge',
+          updateCharge: 'Update Charge',
+          deleteCharge: 'Delete Charge',
+          printMonthly: 'Monthly',
+          printDaily: 'Daily',
+          printPasscard: 'Passcard',
+          excelExport: 'Excel Export',
+          go: 'Go',
+          viewInfo: 'View Info',
+        },
+        labels: {
+          hormaris: 'Hormaris',
+        },
+        loading: {
+          syncingLedger: 'Syncing Ledger…',
+        },
+        empty: {
+          title: 'No records found for this selection.',
+        },
+        columns: {
+          id: 'ID',
+          studentName: 'Student Name',
+          contact: 'Contact',
+          class: 'Class',
+          balance: 'Balance',
+          info: 'Info',
+        },
+      },
+
+      editTab: {
+        toasts: {
+          fetchFailed: 'Failed to fetch student records',
+        },
+        placeholders: {
+          search: 'Search Student ID, Name or Phone…',
+        },
+        filters: {
+          byClassLevel: 'By Class Level',
+        },
+        actions: {
+          go: 'Go',
+          viewInfo: 'View Info',
+        },
+        labels: {
+          regPrefix: 'Reg:',
+        },
+        columns: {
+          id: 'ID',
+          studentName: 'Student Name',
+          contact: 'Contact',
+          class: 'Class',
+          balance: 'Balance',
+          info: 'Info',
+        },
+        loading: {
+          fetchingProfiles: 'Fetching Profiles…',
+        },
+        empty: {
+          title: 'No records found',
+          description: 'No records found for this selection.',
+        },
+      },
+
+      printTab: {
+        toasts: {
+          fetchFailed: 'Failed to fetch students for this class',
+          selectAtLeastOne: 'Select at least one student',
+        },
+        title: 'Finance Reporting Hub',
+        subtitle: 'Bulk Invoice & Audit Processing',
+        labels: {
+          selectClass: 'Select Academic Tier / Class',
+          classCensus: 'Class Census:',
+          studentsCountSuffix: 'Students',
+        },
+        placeholders: {
+          targetClassLevel: 'Target Class Level',
+        },
+        actions: {
+          fetchRegister: 'Fetch Register',
+          monthlyInvoices: 'Monthly Invoices',
+          dailyAuditLedger: 'Daily Audit Ledger',
+          enrollmentPasscards: 'Enrollment Passcards',
+        },
+        loading: {
+          streamingRegistry: 'Streaming Registry Data…',
+        },
+        columns: {
+          selection: 'Selection',
+          studentId: 'Student ID',
+          fullName: 'Full Name',
+          balanceStatus: 'Balance Status',
+        },
+        empty: {
+          title: 'Target a class to begin reporting.',
+        },
+        sections: {
+          reportTools: 'Report Generation Tools',
+          printQueueAdvice: 'Print Queue Advice',
+        },
+        hints: {
+          bulkPrinting:
+            'Bulk printing multiple invoices may take up to 30 seconds to render high-resolution institutional watermarks.',
+        },
+      },
+    },
+  },
+
   modules: {
     students: 'Students',
     teachers: 'Teachers',

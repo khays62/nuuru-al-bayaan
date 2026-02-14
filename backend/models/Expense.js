@@ -11,6 +11,11 @@ const ExpenseSchema = new mongoose.Schema({
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     account: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
+
+    // Provenance: keep system-generated entries distinguishable from manual ones.
+    source: { type: String, enum: ['manual', 'payroll', 'system'], default: 'manual', index: true },
+    payrollRef: { type: mongoose.Schema.Types.ObjectId, ref: 'Payroll' },
+
     overBudget: { type: Boolean, default: false },
     status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Approved' }
 }, { timestamps: true });

@@ -10,6 +10,16 @@ const sendFinanceError = (res, status, code, message, extra = {}) => {
   return res.status(status).json({ code, message, ...extra });
 };
 
+const isPayrollExpense = (expense) => {
+  if (!expense) return false;
+  if (String(expense.source || '') === 'payroll') return true;
+  const title = String(expense.title || '');
+  const description = String(expense.description || '');
+  if (/^Salary Payment\s*-/i.test(title)) return true;
+  if (/^Payroll( full)? payment for staff:/i.test(description)) return true;
+  return false;
+};
+
 async function logAction(user, action, description, req, target = null) {
   try {
     await AuditLog.create({
@@ -44,6 +54,7 @@ function parseDateRange(from, to) {
 export async function getExpenseLedger(req, res) {
   try {
     const { categoryId, category } = req.query;
+    const excludePayroll = String(req.query.excludePayroll || '') === '1' || String(req.query.excludePayroll || '').toLowerCase() === 'true';
 
     const query = {};
     if (categoryId) {
@@ -51,6 +62,14 @@ export async function getExpenseLedger(req, res) {
       query.categoryRef = categoryId;
     }
     if (category) query.category = category;
+
+    if (excludePayroll) {
+      query.$nor = [
+        { source: 'payroll' },
+        { title: { $regex: /^Salary Payment\s*-/i } },
+        { description: { $regex: /^Payroll( full)? payment for staff:/i } },
+      ];
+    }
 
     const rows = await Expense.find(query)
       .populate('account', 'name type')
@@ -83,11 +102,21 @@ export async function getExpenseLedger(req, res) {
 export async function getExpenseChargesByDate(req, res) {
   try {
     const { from, to } = req.query;
+    const excludePayroll = String(req.query.excludePayroll || '') === '1' || String(req.query.excludePayroll || '').toLowerCase() === 'true';
     if (!from || !to) return res.status(400).json({ message: 'from and to are required' });
     const range = parseDateRange(from, to);
     if (!range) return res.status(400).json({ message: 'Invalid from/to date range' });
 
-    const rows = await Expense.find({ date: { $gte: range.start, $lte: range.end } })
+    const query = { date: { $gte: range.start, $lte: range.end } };
+    if (excludePayroll) {
+      query.$nor = [
+        { source: 'payroll' },
+        { title: { $regex: /^Salary Payment\s*-/i } },
+        { description: { $regex: /^Payroll( full)? payment for staff:/i } },
+      ];
+    }
+
+    const rows = await Expense.find(query)
       .populate('account', 'name type')
       .populate('approvedBy', 'fullName username')
       .populate('createdBy', 'fullName username')
@@ -119,6 +148,10 @@ export async function updateExpenseCharge(req, res) {
 
     const expense = await Expense.findById(id);
     if (!expense) return sendFinanceError(res, 404, 'FIN_EXPENSE_NOT_FOUND', 'Expense not found');
+
+    if (isPayrollExpense(expense)) {
+      return sendFinanceError(res, 403, 'FIN_EXPENSE_LOCKED_PAYROLL', 'Payroll-generated expenses cannot be edited from Expenses');
+    }
 
     const oldSnapshot = expense.toObject();
 
@@ -216,6 +249,10 @@ export async function deleteExpenseCharge(req, res) {
     if (!isValidObjectId(id)) return sendFinanceError(res, 400, 'FIN_INVALID_EXPENSE_ID', 'Invalid expense id');
     const expense = await Expense.findById(id);
     if (!expense) return sendFinanceError(res, 404, 'FIN_EXPENSE_NOT_FOUND', 'Expense not found');
+
+    if (isPayrollExpense(expense)) {
+      return sendFinanceError(res, 403, 'FIN_EXPENSE_LOCKED_PAYROLL', 'Payroll-generated expenses cannot be deleted from Expenses');
+    }
 
     const oldSnapshot = expense.toObject();
 

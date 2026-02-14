@@ -5,23 +5,27 @@ import { listGradeSections } from '../../grades/api/gradeSections';
 import toast from 'react-hot-toast';
 import StudentFinancePaymentModal from './StudentFinancePaymentModal';
 import { useFinanceStudentsSummaryQuery, usePreviousBalanceSummaryQuery } from '../hooks/studentFinanceHooks';
+import { useFinanceCategoriesQuery } from '../hooks/financeConfigHooks';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 
 export default function PreviousBalanceTab() {
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
     const [showMode, setShowMode] = useState('all'); // 'all' | 'withPrev'
     const [classes, setClasses] = useState([]);
-    const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [submittedParams, setSubmittedParams] = useState({});
     const [addMode, setAddMode] = useState(false);
     const [selectedStudentRow, setSelectedStudentRow] = useState(null);
     const [showInfoModal, setShowInfoModal] = useState(false);
 
-    const [feeCategories, setFeeCategories] = useState([]);
     const [editingPrevBalance, setEditingPrevBalance] = useState({});
 
     const [sortBy, setSortBy] = useState('fullName');
@@ -57,17 +61,8 @@ export default function PreviousBalanceTab() {
         setPage(1);
     }, [search, classId, showMode]);
 
-    useEffect(() => {
-        const loadFeeCategories = async () => {
-            try {
-                const res = await financeService.getFinanceCategories('fee', { includePreviousBalance: true });
-                setFeeCategories(res?.data || res || []);
-            } catch {
-                setFeeCategories([]);
-            }
-        };
-        loadFeeCategories();
-    }, []);
+    const feeCategoriesQuery = useFinanceCategoriesQuery({ type: 'fee', includePreviousBalance: true }, { staleTime: 30_000 });
+    const feeCategories = Array.isArray(feeCategoriesQuery.data) ? feeCategoriesQuery.data : [];
 
     const previousBalanceCategoryId = useMemo(() => {
         const list = Array.isArray(feeCategories) ? feeCategories : [];
@@ -87,13 +82,25 @@ export default function PreviousBalanceTab() {
 
     const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
 
-    const summaryQuery = useFinanceStudentsSummaryQuery(submittedParams, { enabled: true });
-    const prevCurrentQuery = usePreviousBalanceSummaryQuery({ ...submittedParams, month: currentMonth }, { enabled: true });
-    const prevAnyQuery = usePreviousBalanceSummaryQuery(submittedParams, { enabled: showMode === 'withPrev' });
+    const queryUX = {
+        enabled: true,
+        staleTime: 60_000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+    };
+
+    const summaryQuery = useFinanceStudentsSummaryQuery(submittedParams, queryUX);
+    const prevCurrentQuery = usePreviousBalanceSummaryQuery({ ...submittedParams, month: currentMonth }, queryUX);
+    const prevAnyQuery = usePreviousBalanceSummaryQuery(submittedParams, {
+        ...queryUX,
+        enabled: showMode === 'withPrev',
+    });
 
     useEffect(() => {
-        setLoading(Boolean(summaryQuery.isFetching || prevCurrentQuery.isFetching || prevAnyQuery.isFetching));
-    }, [summaryQuery.isFetching, prevCurrentQuery.isFetching, prevAnyQuery.isFetching]);
+        // Only show skeleton on first load. Background refetches should keep data visible.
+        setLoading(Boolean(summaryQuery.isLoading || prevCurrentQuery.isLoading || prevAnyQuery.isLoading));
+    }, [summaryQuery.isLoading, prevCurrentQuery.isLoading, prevAnyQuery.isLoading]);
 
     useEffect(() => {
         if (!summaryQuery.isError && !prevCurrentQuery.isError && !prevAnyQuery.isError) return;
@@ -101,7 +108,7 @@ export default function PreviousBalanceTab() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [summaryQuery.isError, prevCurrentQuery.isError, prevAnyQuery.isError]);
 
-    useEffect(() => {
+    const students = useMemo(() => {
         const baseRows = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
         const currentRows = Array.isArray(prevCurrentQuery.data?.rows) ? prevCurrentQuery.data.rows : [];
         const anyRows = Array.isArray(prevAnyQuery.data?.rows) ? prevAnyQuery.data.rows : [];
@@ -129,7 +136,7 @@ export default function PreviousBalanceTab() {
             else merged = merged.filter(r => !!r.anyPrevInvoiceId);
         }
 
-        setStudents(merged);
+        return merged;
     }, [summaryQuery.data, prevCurrentQuery.data, prevAnyQuery.data, showMode]);
 
     const handleSearch = async (e, overrides = {}) => {
@@ -277,72 +284,83 @@ export default function PreviousBalanceTab() {
     const start = (safePage - 1) * limit;
     const currentRows = sortedItems.slice(start, start + limit);
 
+    const classOptions = useMemo(() => (classes || []).map((cls) => {
+        const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
+        const sectionLabel = cls.section || cls.name || '';
+        const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
+        return { value: cls._id, label: label || '—' };
+    }), [classes]);
+
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
-                        <input
-                            type="text"
-                            className="w-full h-11 pl-10 pr-4 py-2 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 transition-all font-medium"
-                            placeholder="Search Student ID, Name or Phone..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                        />
-                    </div>
-                </form>
+        <div className="space-y-4">
+            <Card className="p-6 rounded-3xl shadow-xl no-print">
+                <div className="flex flex-col md:flex-row items-stretch gap-4">
+                    <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-2.5 text-slate-400" size={20} />
+                            <Input
+                                type="text"
+                                className="h-11 pl-10 pr-4 font-medium"
+                                placeholder="Search Student ID, Name or Phone..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
+                        </div>
+                    </form>
 
-                <select
-                    className="h-11 px-4 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-50 font-bold text-sm"
-                    value={classId}
-                    onChange={(e) => {
-                        const next = e.target.value;
-                        setClassId(next);
-                        setAddMode(false);
-                        handleSearch(null, { classId: next });
-                    }}
-                >
-                    <option value="">By Class Level</option>
-                    {classes.map(cls => {
-                        const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
-                        const sectionLabel = cls.section || cls.name || '';
-                        const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                        return (
-                            <option key={cls._id} value={cls._id}>{label || '—'}</option>
-                        );
-                    })}
-                </select>
-
-                <select
-                    className="h-11 px-4 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-50 font-bold text-sm"
-                    value={showMode}
-                    onChange={(e) => {
-                        const next = e.target.value;
-                        setShowMode(next);
-                        setAddMode(false);
-                        handleSearch(null, { showMode: next });
-                    }}
-                >
-                    <option value="all">Show All</option>
-                    <option value="withPrev">Show Previous Balance</option>
-                </select>
-
-                <div className="flex gap-2">
-                    <button onClick={handleSavePreviousBalances} className="h-11 bg-slate-900 text-white px-8 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-slate-900/10 transition-all active:scale-95">Save</button>
-                    <button
-                        onClick={() => {
-                            setAddMode(true);
-                            handleSearch();
+                    <SearchableSelect
+                        value={classId}
+                        onChange={(v) => {
+                            setClassId(v);
+                            setAddMode(false);
+                            handleSearch(null, { classId: v });
                         }}
-                        className="h-11 bg-blue-600 text-white px-8 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-95"
-                    >
-                        Add
-                    </button>
-                </div>
-            </div>
+                        options={classOptions}
+                        placeholder="By Class Level"
+                        searchPlaceholder="Search classes…"
+                        maxVisible={6}
+                        className="h-11 min-w-50 font-bold text-sm"
+                    />
 
-            <div className="bg-white border text-center rounded-xl overflow-hidden shadow-sm">
+                    <DropdownSelect
+                        value={showMode}
+                        onChange={(v) => {
+                            setShowMode(v);
+                            setAddMode(false);
+                        }}
+                        options={[
+                            { value: 'all', label: 'Show All' },
+                            { value: 'withPrev', label: 'Show Previous Balance' },
+                        ]}
+                        clearable={false}
+                        className="h-11 min-w-50 font-bold text-sm"
+                    />
+
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={handleSavePreviousBalances}
+                            variant="primary"
+                            size="lg"
+                            className="h-11 px-8 font-black text-sm uppercase tracking-widest"
+                        >
+                            Save
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setAddMode(true);
+                                handleSearch();
+                            }}
+                            variant="brand"
+                            size="lg"
+                            className="h-11 px-8 font-black text-sm uppercase tracking-widest"
+                        >
+                            Add
+                        </Button>
+                    </div>
+                </div>
+            </Card>
+
+            <Card className="rounded-3xl shadow-xl">
                 <StandardTable
                     isLoading={loading}
                     error={null}
@@ -371,6 +389,7 @@ export default function PreviousBalanceTab() {
                             setLimit(v);
                             setPage(1);
                         },
+                        className: 'px-6 bg-white',
                     }}
                     sortBy={sortBy}
                     sortDir={sortDir}
@@ -399,7 +418,7 @@ export default function PreviousBalanceTab() {
                             case 'prevBalance':
                                 return (
                                     <div className="flex flex-col items-end gap-2">
-                                        <input
+                                        <Input
                                             type="text"
                                             inputMode="decimal"
                                             placeholder="0.00"
@@ -407,7 +426,7 @@ export default function PreviousBalanceTab() {
                                             onChange={(e) => handlePrevBalanceChange(raw?._id, e.target.value)}
                                             disabled={!addMode}
                                             readOnly={!addMode}
-                                            className={`h-9 w-32 px-3 border border-slate-200 rounded-lg font-black text-xs text-slate-900 outline-none text-right ${addMode ? 'bg-slate-50' : 'bg-slate-100 cursor-not-allowed opacity-75'}`}
+                                            className={`h-9 w-32 font-black text-xs text-right ${addMode ? 'bg-slate-50' : 'bg-slate-100 cursor-not-allowed opacity-75'}`}
                                         />
                                         <span className="text-[10px] font-bold text-slate-400">Current: ${Number(raw?.prevBalance || 0).toFixed(2)}</span>
                                     </div>
@@ -449,8 +468,11 @@ export default function PreviousBalanceTab() {
                     onLimit={(v) => { setLimit(v); setPage(1); }}
                     showRowsSelector={false}
                     paginationProps={{ className: 'no-print', infoVariant: 'page' }}
+                    tableProps={{
+                        shellClassName: 'rounded-none border-0 shadow-none ring-0',
+                    }}
                 />
-            </div>
+            </Card>
 
             {showInfoModal && (
                 <StudentFinancePaymentModal

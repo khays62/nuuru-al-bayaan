@@ -751,6 +751,8 @@ export const updatePayrollStatus = async (req, res) => {
                 date: paymentDate,
                 description: `Payroll payment for staff: ${staffLabel}`,
                 account: accountId,
+                source: 'payroll',
+                payrollRef: payroll._id,
                 approvedBy: req.user._id,
                 status: 'Approved'
             });
@@ -1014,7 +1016,19 @@ export const getInvoices = async (req, res) => {
 
 export const getExpenses = async (req, res) => {
     try {
-        const expenses = await Expense.find().sort({ date: -1 });
+        const excludePayroll = String(req.query.excludePayroll || '') === '1' || String(req.query.excludePayroll || '').toLowerCase() === 'true';
+
+        const query = excludePayroll
+            ? {
+                $nor: [
+                    { source: 'payroll' },
+                    { title: { $regex: /^Salary Payment\s*-/i } },
+                    { description: { $regex: /^Payroll( full)? payment for staff:/i } },
+                ],
+            }
+            : {};
+
+        const expenses = await Expense.find(query).sort({ date: -1 });
         res.json(expenses);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -1223,6 +1237,8 @@ export const updatePayrollLedger = async (req, res) => {
                 date: paymentDate,
                 description: `Payroll payment for staff: ${staffLabel}`,
                 account: accountId,
+                source: 'payroll',
+                payrollRef: payroll._id,
                 approvedBy: req.user._id,
                 status: 'Approved',
             });

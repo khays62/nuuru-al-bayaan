@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import FeeInvoice from '../../models/FeeInvoice.js';
 import FeeTransaction from '../../models/FeeTransaction.js';
 import Student from '../../models/Student.js';
+import { publishRealtime } from '../../utils/realtimeBus.js';
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 
@@ -279,6 +280,13 @@ export async function payChargedMonth(req, res) {
     account.balance += amt;
     await account.save();
 
+    try {
+      publishRealtime({ type: 'studentFinance:changed', studentId: String(finalStudentId), ts: Date.now() });
+      publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     res.status(201).json({
       paymentGroupId: groupId,
       totals: { amount: amt, method, account: { _id: account._id, name: account.name, type: account.type } },
@@ -445,6 +453,13 @@ export async function paySelectedMonths(req, res) {
 
     account.balance += totalPaid;
     await account.save();
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', studentId: String(finalStudentId), ts: Date.now() });
+      publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
 
     res.status(201).json({
       paymentGroupId: groupId,
@@ -647,6 +662,12 @@ export async function discountChargedMonth(req, res) {
       await inv.save();
     }
 
+    try {
+      publishRealtime({ type: 'studentFinance:changed', studentId: String(finalStudentId), ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     res.json({ message: 'Discount applied', totals: { discountApplied: round2(amt - remaining) } });
   } catch (error) {
     console.error('discountChargedMonth Error:', error);
@@ -746,6 +767,14 @@ export async function editPaymentGroup(req, res) {
     await newAccount.save({ session });
 
     await session.commitTransaction();
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+      publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     res.status(200).json({ message: 'Payment group updated', paymentGroupId: newGroupId });
   } catch (error) {
     try { await session.abortTransaction(); } catch { /* ignore */ }
@@ -821,6 +850,14 @@ export async function revertPaymentGroup(req, res) {
     }
 
     await session.commitTransaction();
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+      publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     res.status(200).json({ message: 'Payment reverted', reversedTotal });
   } catch (error) {
     try { await session.abortTransaction(); } catch { /* ignore */ }

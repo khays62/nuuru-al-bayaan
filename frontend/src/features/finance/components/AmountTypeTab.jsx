@@ -1,14 +1,31 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import financeService from '../api/finance';
-import { Plus, Edit, Trash2, Check, X, Shield, Settings, Info } from 'lucide-react';
+import { Plus, Edit, Trash2, Shield, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+import {
+    useCreateFinanceCategoryMutation,
+    useDeleteFinanceCategoryMutation,
+    useFinanceCategoriesQuery,
+    useUpdateFinanceCategoryMutation,
+} from '../hooks/financeConfigHooks';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 
 export default function AmountTypeTab() {
-    const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const categoriesQuery = useFinanceCategoriesQuery({ type: 'fee', includePreviousBalance: true }, { staleTime: 30_000 });
+    const createMutation = useCreateFinanceCategoryMutation();
+    const updateMutation = useUpdateFinanceCategoryMutation();
+    const deleteMutation = useDeleteFinanceCategoryMutation();
+
+    const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
+    // Only show skeleton on the initial load; keep rows visible on background refetch.
+    const loading = Boolean(categoriesQuery.isLoading);
 
     const DEFAULT_FEE_TYPES = ['Standard', 'Mandatory', 'Registration', 'Graduation', 'Optional'];
 
@@ -27,9 +44,13 @@ export default function AmountTypeTab() {
     const [sortBy, setSortBy] = useState('name');
     const [sortDir, setSortDir] = useState('asc');
 
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+
     useEffect(() => {
-        loadCategories();
-    }, []);
+        if (!categoriesQuery.isError) return;
+        toast.error('Failed to load fee configurations');
+    }, [categoriesQuery.isError]);
 
     const onSort = (field) => {
         const f = String(field || '').trim();
@@ -59,16 +80,15 @@ export default function AmountTypeTab() {
         return list;
     }, [categories, sortBy, sortDir]);
 
-    const loadCategories = async () => {
-        try {
-            const res = await financeService.getFinanceCategories();
-            setCategories(res.data ? res.data.filter(c => c.type === 'fee') : (Array.isArray(res) ? res.filter(c => c.type === 'fee') : []));
-        } catch {
-            toast.error("Failed to load fee configurations");
-        } finally {
-            setLoading(false);
-        }
-    };
+    useEffect(() => {
+        setPage(1);
+    }, [sortBy, sortDir, categories.length]);
+
+    const total = tableRows.length;
+    const totalPages = Math.max(1, Math.ceil(total / Math.max(1, limit)));
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * limit;
+    const currentRows = tableRows.slice(start, start + limit);
 
     const normalizeFeeType = (value) => String(value || '').trim();
 
@@ -81,10 +101,16 @@ export default function AmountTypeTab() {
     };
 
     const handleSave = async () => {
-        if (!formData.name) return toast.error("Name is required");
+        if (!formData.name) {
+            toast.error("Name is required");
+            return false;
+        }
 
         const finalFeeType = isCustomFeeType ? normalizeFeeType(customFeeType) : normalizeFeeType(formData.feeType);
-        if (!finalFeeType) return toast.error("Fee Type is required");
+        if (!finalFeeType) {
+            toast.error("Fee Type is required");
+            return false;
+        }
 
         const payload = {
             ...formData,
@@ -93,19 +119,33 @@ export default function AmountTypeTab() {
 
         try {
             if (editingId === 'new') {
-                await financeService.createFinanceCategory(payload);
+                await createMutation.mutateAsync(payload);
                 toast.success("Fee structure defined successfully");
             } else {
-                await financeService.updateFinanceCategory(editingId, payload);
+                await updateMutation.mutateAsync({ id: editingId, payload });
                 toast.success("Configuration synchronized");
             }
             setEditingId(null);
             setIsCustomFeeType(false);
             setCustomFeeType('');
-            loadCategories();
+            return true;
         } catch {
             toast.error("Process interrupted by server");
+            return false;
         }
+    };
+
+    const closeFormModal = () => {
+        setEditingId(null);
+        setIsCustomFeeType(false);
+        setCustomFeeType('');
+    };
+
+    const startNew = () => {
+        setEditingId('new');
+        setFormData({ name: '', type: 'fee', defaultAmount: 0, feeType: 'Standard' });
+        setIsCustomFeeType(false);
+        setCustomFeeType('');
     };
 
     const startEdit = (cat) => {
@@ -124,101 +164,135 @@ export default function AmountTypeTab() {
     const handleDelete = async (id) => {
         if (!window.confirm("Archiving this configuration will prevent new charges from using it. Proceed?")) return;
         try {
-            await financeService.deleteFinanceCategory(id);
+            await deleteMutation.mutateAsync(id);
             toast.success("Configuration Archived");
-            loadCategories();
         } catch {
             toast.error("Operation failed");
         }
     };
 
     return (
-        <div className="p-8 space-y-8 bg-slate-50/50 min-h-screen">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-600/20">
-                        <Settings size={24} />
+        <div className="space-y-4">
+            <Card className="p-6 rounded-3xl shadow-xl no-print">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-600/20">
+                            <Settings size={24} />
+                        </div>
+                        <div className="min-w-0">
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter truncate">Amount Configuration</h3>
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mt-1 truncate">Global Fee Definition Matrix</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Amount Configuration</h3>
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Global Fee Definition Matrix</p>
-                    </div>
-                </div>
-                <button
-                    onClick={() => {
-                        setEditingId('new');
-                        setFormData({ name: '', type: 'fee', defaultAmount: 0, feeType: 'Standard' });
-                        setIsCustomFeeType(false);
-                        setCustomFeeType('');
-                    }}
-                    className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
-                >
-                    <Plus size={18} strokeWidth={3} /> Define New Amount Type
-                </button>
-            </div>
 
-            {/* Editing Form Row (if new) */}
-            {editingId === 'new' && (
-                <div className="bg-white border-2 border-blue-600/20 p-8 rounded-[2.5rem] shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-end">
-                        <div className="space-y-3">
+                    <Button
+                        onClick={startNew}
+                        variant="brand"
+                        size="lg"
+                        icon={<Plus size={18} strokeWidth={3} />}
+                        className="font-black text-xs uppercase tracking-widest"
+                    >
+                        Define New Amount Type
+                    </Button>
+                </div>
+            </Card>
+
+            <Modal
+                isOpen={editingId === 'new' || (typeof editingId === 'string' && editingId !== 'new')}
+                onClose={closeFormModal}
+                title={editingId === 'new' ? 'Define New Amount Type' : 'Edit Amount Type'}
+            >
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fee Label / Identity</label>
-                            <input type="text" className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all" placeholder="e.g. Monthly Tuition" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} autoFocus />
+                            <Input
+                                type="text"
+                                className="h-11 font-bold"
+                                placeholder="e.g. Monthly Tuition"
+                                value={formData.name}
+                                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                                autoFocus
+                            />
                         </div>
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Multiplier ($)</label>
-                            <input type="number" className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:ring-4 focus:ring-blue-600/10 transition-all" placeholder="0.00" value={formData.defaultAmount} onChange={e => setFormData({ ...formData, defaultAmount: e.target.value })} />
-                        </div>
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Transaction Category</label>
-                            <div className="flex gap-2">
-                                {isCustomFeeType ? (
-                                    <input
-                                        type="text"
-                                        className="flex-1 h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-xs uppercase outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
-                                        placeholder="Enter Fee Type"
-                                        value={customFeeType}
-                                        onChange={e => setCustomFeeType(e.target.value)}
-                                    />
-                                ) : (
-                                    <select
-                                        className="flex-1 h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-xs uppercase outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
-                                        value={formData.feeType}
-                                        onChange={e => beginFeeTypeEdit(e.target.value)}
-                                    >
-                                        {DEFAULT_FEE_TYPES.map(t => (
-                                            <option key={t} value={t}>{t}</option>
-                                        ))}
-                                    </select>
-                                )}
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        if (isCustomFeeType) {
-                                            setIsCustomFeeType(false);
-                                            setCustomFeeType('');
-                                            setFormData(prev => ({ ...prev, feeType: 'Standard' }));
-                                        } else {
-                                            setIsCustomFeeType(true);
-                                            setCustomFeeType('');
-                                        }
-                                    }}
-                                    className="h-14 px-5 bg-white border border-slate-200 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
-                                >
-                                    {isCustomFeeType ? 'Use List' : 'Create'}
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-3">
-                            <button onClick={() => setEditingId(null)} className="h-14 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Discard</button>
-                            <button onClick={handleSave} className="h-14 px-10 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all">Synchronize</button>
+                            <Input
+                                type="number"
+                                className="h-11 font-black"
+                                placeholder="0.00"
+                                value={formData.defaultAmount}
+                                onChange={(e) => setFormData((p) => ({ ...p, defaultAmount: e.target.value }))}
+                            />
                         </div>
                     </div>
-                </div>
-            )}
 
-            <div className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Transaction Category</label>
+                        <div className="flex gap-2">
+                            {isCustomFeeType ? (
+                                <Input
+                                    type="text"
+                                    className="flex-1 h-11 font-black text-xs uppercase"
+                                    placeholder="Enter Fee Type"
+                                    value={customFeeType}
+                                    onChange={(e) => setCustomFeeType(e.target.value)}
+                                />
+                            ) : (
+                                <DropdownSelect
+                                    value={formData.feeType}
+                                    onChange={(v) => beginFeeTypeEdit(v)}
+                                    options={DEFAULT_FEE_TYPES.map((t) => ({ value: t, label: t }))}
+                                    clearable={false}
+                                    className="flex-1 h-11 font-black text-xs uppercase"
+                                />
+                            )}
+
+                            <Button
+                                onClick={() => {
+                                    if (isCustomFeeType) {
+                                        setIsCustomFeeType(false);
+                                        setCustomFeeType('');
+                                        setFormData((p) => ({ ...p, feeType: 'Standard' }));
+                                    } else {
+                                        setIsCustomFeeType(true);
+                                        setCustomFeeType('');
+                                    }
+                                }}
+                                variant="neutral"
+                                size="lg"
+                                className="h-11 font-black text-[10px] uppercase tracking-widest"
+                            >
+                                {isCustomFeeType ? 'Use List' : 'Create'}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                        <Button
+                            onClick={closeFormModal}
+                            variant="neutral"
+                            size="lg"
+                            className="h-11 font-black text-[10px] uppercase tracking-widest"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={async () => {
+                                const ok = await handleSave();
+                                if (ok) closeFormModal();
+                            }}
+                            variant="primary"
+                            size="lg"
+                            className="h-11 font-black text-[10px] uppercase tracking-[0.2em]"
+                        >
+                            Save
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Card className="rounded-3xl shadow-xl">
                 <StandardTable
                     isLoading={loading}
                     error={null}
@@ -230,7 +304,7 @@ export default function AmountTypeTab() {
                     emptyTitle="No configurations detected."
                     emptyDescription=""
 
-                    rows={tableRows}
+                    rows={currentRows}
                     columns={[
                         { key: 'name', label: 'Fee Identity', sortable: true, field: 'name' },
                         { key: 'defaultAmount', label: 'Default Amount', sortable: true, field: 'defaultAmount' },
@@ -243,70 +317,31 @@ export default function AmountTypeTab() {
                     sortDir={sortDir}
                     onSort={onSort}
                     getRowKey={(row) => row?._id}
+                    controlsProps={{
+                        limit,
+                        total,
+                        onLimit: (v) => {
+                            setLimit(v);
+                            setPage(1);
+                        },
+                        className: 'px-6 bg-white',
+                    }}
+                    tableProps={{ shellClassName: 'rounded-none border-0 shadow-none ring-0' }}
                     renderCell={(cat, col) => {
                         switch (col.key) {
                             case 'name':
-                                return editingId === cat._id ? (
-                                    <input
-                                        className="w-full h-11 px-4 bg-white border border-slate-300 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20"
-                                        value={formData.name}
-                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    />
-                                ) : (
+                                return (
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-10 bg-blue-600/20 rounded-full" />
                                         <span className="font-bold text-slate-900 text-base">{cat.name}</span>
                                     </div>
                                 );
                             case 'defaultAmount':
-                                return editingId === cat._id ? (
-                                    <input
-                                        type="number"
-                                        className="w-32 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-sm outline-none focus:ring-2 focus:ring-blue-600/20"
-                                        value={formData.defaultAmount}
-                                        onChange={e => setFormData({ ...formData, defaultAmount: e.target.value })}
-                                    />
-                                ) : (
+                                return (
                                     <span className="font-black text-slate-900 text-lg tabular-nums">${Number(cat.defaultAmount).toLocaleString()}</span>
                                 );
                             case 'feeType':
-                                return editingId === cat._id ? (
-                                    <div className="flex gap-2">
-                                        {isCustomFeeType ? (
-                                            <input
-                                                className="flex-1 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-[10px] uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
-                                                value={customFeeType}
-                                                onChange={e => setCustomFeeType(e.target.value)}
-                                            />
-                                        ) : (
-                                            <select
-                                                className="flex-1 h-11 px-4 bg-white border border-slate-300 rounded-xl font-black text-[10px] uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
-                                                value={formData.feeType}
-                                                onChange={e => beginFeeTypeEdit(e.target.value)}
-                                            >
-                                                {DEFAULT_FEE_TYPES.map(t => (
-                                                    <option key={t} value={t}>{t}</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (isCustomFeeType) {
-                                                    setIsCustomFeeType(false);
-                                                    setCustomFeeType('');
-                                                    setFormData(prev => ({ ...prev, feeType: 'Standard' }));
-                                                } else {
-                                                    setIsCustomFeeType(true);
-                                                    setCustomFeeType(formData.feeType === 'Standard' ? '' : formData.feeType);
-                                                }
-                                            }}
-                                            className="h-11 px-3 bg-white border border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
-                                        >
-                                            {isCustomFeeType ? 'List' : 'Create'}
-                                        </button>
-                                    </div>
-                                ) : (
+                                return (
                                     <span className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200">
                                         {cat.feeType || 'Standard'}
                                     </span>
@@ -319,28 +354,7 @@ export default function AmountTypeTab() {
                                     </div>
                                 );
                             case 'actions':
-                                return editingId === cat._id ? (
-                                    <RowActionButtons
-                                        actions={[
-                                            {
-                                                key: 'cancel',
-                                                label: 'Cancel',
-                                                title: 'Cancel',
-                                                tone: 'delete',
-                                                icon: <X size={18} />,
-                                                onClick: () => setEditingId(null),
-                                            },
-                                            {
-                                                key: 'save',
-                                                label: 'Save',
-                                                title: 'Save',
-                                                tone: 'edit',
-                                                icon: <Check size={18} strokeWidth={3} />,
-                                                onClick: handleSave,
-                                            },
-                                        ]}
-                                    />
-                                ) : (
+                                return (
                                     <RowActionButtons
                                         actions={[
                                             {
@@ -366,11 +380,13 @@ export default function AmountTypeTab() {
                                 return '';
                         }
                     }}
-
+                    meta={{ page: safePage, totalPages, limit, total }}
+                    onPage={setPage}
+                    onLimit={(v) => { setLimit(v); setPage(1); }}
                     showRowsSelector={false}
                     paginationProps={{ className: 'no-print', infoVariant: 'page' }}
                 />
-            </div>
+            </Card>
 
             <div className="bg-slate-900 p-8 rounded-[2.5rem] flex gap-6 items-start shadow-2xl">
                 <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-blue-400 shrink-0 border border-white/5">

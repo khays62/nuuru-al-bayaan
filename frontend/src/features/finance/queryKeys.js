@@ -3,6 +3,7 @@ import { makeQueryKeys, qkStr } from '../../shared/queryKeys/makeQueryKeys';
 const financeExpenses = makeQueryKeys('financeExpenses');
 const financeAccounts = makeQueryKeys('financeAccounts');
 const financeCategories = makeQueryKeys('financeCategories');
+const financeFeeTypes = makeQueryKeys('financeFeeTypes');
 const financePayroll = makeQueryKeys('financePayroll');
 const financeStudentFinance = makeQueryKeys('financeStudentFinance');
 
@@ -21,7 +22,14 @@ export const accountKeys = {
 export const categoryKeys = {
   base: financeCategories.base,
   listBase: financeCategories.key('list'),
-  list: ({ type } = {}) => financeCategories.key('list', qkStr(type || '')),
+  list: ({ type, includePreviousBalance } = {}) =>
+    financeCategories.key('list', qkStr(type || ''), qkStr(includePreviousBalance ? '1' : '0')),
+};
+
+export const feeTypeKeys = {
+  base: financeFeeTypes.base,
+  listBase: financeFeeTypes.key('list'),
+  list: ({ includeInactive } = {}) => financeFeeTypes.key('list', qkStr(includeInactive ? '1' : '0')),
 };
 
 export const payrollKeys = {

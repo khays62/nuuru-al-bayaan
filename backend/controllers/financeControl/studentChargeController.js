@@ -2,6 +2,7 @@ import FeeInvoice from '../../models/FeeInvoice.js';
 import FinanceCategory from '../../models/FinanceCategory.js';
 import Student from '../../models/Student.js';
 import AuditLog from '../../models/AuditLog.js';
+import { publishRealtime } from '../../utils/realtimeBus.js';
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 
@@ -266,6 +267,12 @@ export async function chargeStudentFees(req, res) {
       });
     }
 
+    try {
+      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     res.status(201).json({
       message: 'Charge process complete',
       stats: {
@@ -346,6 +353,13 @@ export async function applyMonthlyDiscount(req, res) {
     }
 
     if (updated.length === 0) return res.status(404).json({ message: 'Invoice not found', missingMonths });
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     return res.json({
       message: 'Discount applied',
       updatedCount: updated.length,
@@ -397,6 +411,12 @@ export async function applyBulkDiscount(req, res) {
       await inv.save();
     }
 
+    try {
+      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     res.json({ message: `Bulk discount applied to ${invoices.length} invoices` });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -439,6 +459,12 @@ export async function recordCorrection(req, res) {
     else invoice.status = 'Unpaid';
 
     await invoice.save();
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
 
     res.json({ message: 'Correction recorded', invoice });
   } catch (error) {
@@ -519,6 +545,12 @@ export async function deleteMonthlyCharges(req, res) {
       },
       description: `Charges cancelled: ${reason || 'Manual undo'}`,
     });
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
 
     res.json({ message: 'Charges Cancelled (Soft Deleted)', cancelledCount: result.modifiedCount || 0 });
   } catch (error) {
@@ -613,6 +645,13 @@ export async function updateChargeAmount(req, res) {
     }
 
     if (updated.length === 0) return res.status(404).json({ message: 'No active charge found for this criteria', missingMonths });
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
+
     return res.json({
       message: 'Charge corrected and balance updated',
       updatedCount: updated.length,
@@ -667,6 +706,12 @@ export async function applyOverallDiscount(req, res) {
       },
       description: `Permanent discount updated: ${reason || 'Scholarship/Grant'}`
     });
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', studentId: String(student._id), ts: Date.now() });
+    } catch {
+      // ignore
+    }
 
     res.json({ message: 'Overall discount updated', student });
   } catch (error) {

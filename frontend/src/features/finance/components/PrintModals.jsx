@@ -5,50 +5,36 @@ import { listGradeSections } from '../../grades/api/gradeSections';
 import financeService from '../api/finance';
 import toast from 'react-hot-toast';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 
-// Reusable Print Modal Wrapper with Enterprise Aesthetics
+// Reusable Print Modal Wrapper (DS-aligned)
 const PrintModalWrapper = ({ title, subtitle, onClose, onPrint, children, loading }) => (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-        <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 animate-in zoom-in-95 duration-300">
+    <Modal isOpen onClose={onClose} title={title}>
+        {subtitle ? (
+            <p className="text-sm text-slate-500 -mt-1 mb-4">{subtitle}</p>
+        ) : null}
 
-            {/* Enterprise Header */}
-            <div className="flex justify-between items-center p-8 bg-slate-900 text-white shadow-xl shrink-0">
-                <div className="flex items-center gap-5">
-                    <div className="bg-blue-600/20 p-4 rounded-3xl backdrop-blur-xl border border-white/10">
-                        <Printer className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                        <h3 className="text-2xl font-black uppercase tracking-tighter leading-none">{title}</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">{subtitle}</p>
-                    </div>
-                </div>
-                <button onClick={onClose} className="text-white/30 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-2xl">
-                    <X size={32} />
-                </button>
-            </div>
+        {children}
 
-            <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-8 bg-white text-slate-900">
-                {children}
-            </div>
-
-            {/* Premium Footer */}
-            <div className="p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
-                <button
-                    onClick={onClose}
-                    className="text-slate-500 font-black uppercase text-xs tracking-widest hover:text-slate-900 transition-colors"
-                >
-                    Dismiss
-                </button>
-                <button
-                    onClick={onPrint}
-                    disabled={loading}
-                    className="bg-slate-900 text-white px-10 py-5 rounded-3xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-slate-400 hover:bg-black transition-all flex items-center gap-4 disabled:opacity-50"
-                >
-                    {loading ? 'Generating...' : <><Printer size={18} strokeWidth={3} /> Initializing Print</>}
-                </button>
-            </div>
+        <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+            <Button onClick={onClose} variant="neutral" size="md">
+                Close
+            </Button>
+            <Button
+                onClick={onPrint}
+                disabled={loading}
+                variant="primary"
+                size="md"
+                icon={<Printer size={16} />}
+            >
+                {loading ? 'Generating…' : 'Print'}
+            </Button>
         </div>
-    </div>
+    </Modal>
 );
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -879,25 +865,35 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Academic Year</label>
-                        <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
-                            <option value="">-- Choose Year --</option>
-                            {years.map(y => <option key={y._id} value={y._id}>{y.yearName}</option>)}
-                        </select>
+                        <DropdownSelect
+                            value={selectedYear}
+                            onChange={setSelectedYear}
+                            options={(years || []).map((y) => ({ value: y?._id, label: y?.yearName }))}
+                            placeholder="Choose Year"
+                        />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Billing Month</label>
-                        <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={month} onChange={e => setMonth(e.target.value)}>
-                            {months.map(m => <option key={m} value={m}>{m}</option>)}
-                        </select>
+                        <DropdownSelect
+                            value={month}
+                            onChange={setMonth}
+                            options={months.map((m) => ({ value: m, label: m }))}
+                            placeholder="Choose Month"
+                            clearable={false}
+                        />
                     </div>
                 </div>
 
                 <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Fee Category / Amount Type</label>
-                    <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
-                        <option value="">-- All Fee Types --</option>
-                        {amountTypes.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                    </select>
+                    <SearchableSelect
+                        value={selectedCategory}
+                        onChange={setSelectedCategory}
+                        options={(amountTypes || []).map((t) => ({ value: t?._id, label: t?.name }))}
+                        placeholder="All Fee Types"
+                        searchPlaceholder="Search…"
+                        maxVisible={7}
+                    />
                 </div>
 
                 <div className="space-y-1.5 pt-2 border-t border-slate-100">
@@ -905,17 +901,19 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                         <Users size={12} className="text-slate-400" />
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Class Filtering (Optional)</span>
                     </div>
-                    <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}>
-                        <option value="">-- Campus Wide (Default) --</option>
-                        {classes.map(c => {
-                            const gradeLabel = c.grade?.gradeName || c.grade?.name || c.gradeName || '';
-                            const sectionLabel = c.section || c.name || '';
+                    <SearchableSelect
+                        value={selectedClass}
+                        onChange={setSelectedClass}
+                        options={(classes || []).map((c) => {
+                            const gradeLabel = c?.grade?.gradeName || c?.grade?.name || c?.gradeName || '';
+                            const sectionLabel = c?.section || c?.name || '';
                             const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                            return (
-                                <option key={c._id} value={c._id}>{label || '—'}</option>
-                            );
+                            return { value: c?._id, label: label || '—' };
                         })}
-                    </select>
+                        placeholder="Campus Wide (Default)"
+                        searchPlaceholder="Search…"
+                        maxVisible={7}
+                    />
                 </div>
             </div>
         </PrintModalWrapper>
@@ -948,11 +946,11 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">From Date</label>
-                        <input type="date" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+                        <Input type="date" className="h-11 font-bold" value={fromDate} onChange={e => setFromDate(e.target.value)} />
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">To Date</label>
-                        <input type="date" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={toDate} onChange={e => setToDate(e.target.value)} />
+                        <Input type="date" className="h-11 font-bold" value={toDate} onChange={e => setToDate(e.target.value)} />
                     </div>
                 </div>
 
@@ -1068,41 +1066,59 @@ export const PrintPassCardModal = ({ onClose }) => {
             <div className="space-y-5">
                 <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Academic Year</label>
-                    <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
-                        <option value="">-- Choose Year --</option>
-                        {years.map(y => <option key={y._id} value={y._id}>{y.yearName}</option>)}
-                    </select>
+                    <DropdownSelect
+                        value={selectedYear}
+                        onChange={setSelectedYear}
+                        options={(years || []).map((y) => ({ value: y?._id, label: y?.yearName }))}
+                        placeholder="Choose Year"
+                    />
                 </div>
 
                 <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Choose Class</label>
-                    <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={selectedClass} onChange={e => setSelectedClass(e.target.value)}>
-                        <option value="">-- All Classes --</option>
-                        {classes.map(c => {
-                            const gradeLabel = c.grade?.gradeName || c.grade?.name || c.gradeName || '';
-                            const sectionLabel = c.section || c.name || '';
+                    <SearchableSelect
+                        value={selectedClass}
+                        onChange={setSelectedClass}
+                        options={(classes || []).map((c) => {
+                            const gradeLabel = c?.grade?.gradeName || c?.grade?.name || c?.gradeName || '';
+                            const sectionLabel = c?.section || c?.name || '';
                             const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                            return (
-                                <option key={c._id} value={c._id}>{label || '—'}</option>
-                            );
+                            return { value: c?._id, label: label || '—' };
                         })}
-                    </select>
+                        placeholder="All Classes"
+                        searchPlaceholder="Search…"
+                        maxVisible={7}
+                    />
                 </div>
 
                 <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Examination Type</label>
-                    <select className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-blue-600/20" value={examType} onChange={e => setExamType(e.target.value)}>
-                        {examTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
+                    <DropdownSelect
+                        value={examType}
+                        onChange={setExamType}
+                        options={examTypes.map((t) => ({ value: t, label: t }))}
+                        placeholder="Choose Exam"
+                        clearable={false}
+                    />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-                    <button onClick={() => setLayout('portrait')} className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'portrait' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 text-slate-400'}`}>
+                    <Button
+                        onClick={() => setLayout('portrait')}
+                        variant="neutral"
+                        size="md"
+                        className={`w-full justify-center gap-2 p-3! rounded-xl border-2 shadow-none font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'portrait' ? 'border-blue-600! bg-blue-50! text-blue-600!' : 'border-slate-100! text-slate-400! bg-white!'}`}
+                    >
                         Portrait
-                    </button>
-                    <button onClick={() => setLayout('landscape')} className={`flex items-center justify-center gap-2 p-3 rounded-xl border-2 font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'landscape' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 text-slate-400'}`}>
+                    </Button>
+                    <Button
+                        onClick={() => setLayout('landscape')}
+                        variant="neutral"
+                        size="md"
+                        className={`w-full justify-center gap-2 p-3! rounded-xl border-2 shadow-none font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'landscape' ? 'border-blue-600! bg-blue-50! text-blue-600!' : 'border-slate-100! text-slate-400! bg-white!'}`}
+                    >
                         Landscape
-                    </button>
+                    </Button>
                 </div>
             </div>
         </PrintModalWrapper>

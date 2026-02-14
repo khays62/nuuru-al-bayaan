@@ -2746,6 +2746,7 @@ export default {
         FIN_CATEGORY_IN_USE: 'Qaybtan hore ayaa kharashaad loogu diiwaangeliyay',
 
         FIN_INTERNAL_ERROR: 'Server-ka ayaa khalad galay',
+        FIN_EXPENSE_LOCKED_PAYROLL: 'Kharashyada mushaharka (Payroll) lama tafatiri karo/lamana tirtiri karo gudaha Expenses',
       },
     },
 
@@ -2954,6 +2955,237 @@ export default {
       apiErrors: {
         PAYROLL_DELETE_NO_MATCH_UNPAID: 'Wax Unpaid/Draft ah lama helin si loo tirtiro',
         PAYROLL_DELETE_NO_MATCH_PAID: 'Shaqaalahan weli Paid ma aha bisha/sanadkaas',
+      },
+    },
+
+    studentFinance: {
+      tabs: {
+        receipt: 'Rasiid',
+        previousBalance: 'Haraagii Hore',
+        amountType: 'Nooca Lacagta',
+        feeType: 'Nooca Fee-ga',
+      },
+
+      paymentModal: {
+        title: 'Maaliyadda Ardayga',
+        tabs: {
+          ledger: 'Ledger',
+          history: 'Taariikh',
+        },
+        controls: {
+          selectLedgerAccount: 'Dooro Account-ka Ledger-ka',
+          paymentMode: 'Habka Bixinta',
+          byLevel: 'Sida Heerka',
+          byReceipt: 'Sida Rasiidka',
+          paymentDate: 'Taariikhda Bixinta',
+        },
+        labels: {
+          total: 'Wadar',
+        },
+        hormaris: {
+          selectMonths: 'Dooro Bilaha Hormaris',
+        },
+        actions: {
+          paySelected: 'Bixi Kuwa La Doortay',
+          save: 'Kaydi',
+          print: 'Daabac',
+        },
+        placeholders: {
+          chooseAccount: '-- Dooro Account --',
+          phoneRef: 'Telefoon/Tixraac',
+          defaultPhone: 'Default: {{phone}}',
+          full: 'FULL',
+          amountZero: '0.00',
+        },
+        columns: {
+          no: 'Lr',
+          month: 'Bisha',
+          phoneRef: 'Telefoon/Tixraac',
+          description: 'Sharaxaad',
+          drFees: 'Dr (Fee)',
+          crPaid: 'Cr (La bixiyay)',
+          discount: 'Dhimmis',
+          payAmount: 'Lacag Bixin',
+          actions: 'Ficillo',
+          balance: 'Haraag',
+        },
+        loading: {
+          analysing: 'Falanqaynaya...',
+        },
+        empty: {
+          noRecords: 'Wax diiwaan ah lama helin.',
+        },
+        invoice: {
+          titleFallback: 'Fee Waxbarasho',
+        },
+        history: {
+          title: 'Taariikhda Bixinta & Rasiidhada',
+          actions: {
+            printAll: 'Daabac Dhamaan Taariikhda',
+            revert: 'Celi',
+          },
+          status: {
+            cleared: 'La bixiyay',
+          },
+          descFallback: 'Waxbarasho Caadi ah',
+          labels: {
+            totalPaid: 'Wadar La Bixiyay',
+          },
+        },
+        errors: {
+          cannotPrintNoPayment: 'Lama daabici karo: wax bixin ah lama diiwaangelin',
+        },
+        confirms: {
+          revertMonth: 'Tani waxay CELINAYSAA bixinta bishan. Sii wad?',
+        },
+        validation: {
+          selectAccount: 'Fadlan dooro account',
+          selectAccountShort: 'Dooro account',
+          enterValidAmount: 'Geli lacag sax ah',
+          phoneRefRequired: 'Telefoon/Tixraac waa qasab',
+          selectHormarisMonths: 'Dooro bilaha Hormaris',
+          invalidAmountForMonth: 'Lacag aan sax ahayn: {{month}}',
+          amountExceedsBalanceForMonth: 'Lacagtu waxay ka badan tahay haraaga: {{month}}',
+        },
+        toasts: {
+          noPaymentGroupsToRevert: 'Kooxo bixin ah lama helin si loo celiyo',
+          revertingPayments: 'Celinaya bixinta...',
+          paymentsReverted: 'Bixinta waa la celiyay',
+          failedRevertPayments: 'Celin bixinta waa fashilantay',
+          paymentRecorded: 'Bixinta waa la diiwaangeliyay',
+          paymentFailed: 'Bixintu waa fashilantay',
+          processingHormaris: 'Waa la shaqaynayaa bixinta Hormaris...',
+          hormarisRecorded: 'Bixinta Hormaris waa la diiwaangeliyay',
+          hormarisFailed: 'Bixinta Hormaris waa fashilantay',
+          preparingStatement: 'Diyaarinaya statement...',
+          printFailed: 'Daabacaaddu waa fashilantay',
+        },
+      },
+
+      receiptTab: {
+        toasts: {
+          searchFailed: 'Raadintu waa fashilantay',
+          exporting: 'Excel ayaa loo dhoofinayaa…',
+        },
+        placeholders: {
+          search: 'Raadi ID, Magac ama Telefoon…',
+        },
+        filters: {
+          byClassLevel: 'Sida Fasalka',
+          thisMonth: {
+            title: 'Shaandhayn (Bishan)',
+            charged: 'Bishan waa la charge-gareeyay',
+            paid: 'Bishan waa la bixiyay',
+            unpaid: 'Bishan lama bixin',
+            uncharged: 'Bishan lama charge-gareyn',
+            hormaris: 'Hormaris',
+          },
+        },
+        actions: {
+          charge: 'Charge',
+          updateCharge: 'Cusboonaysii Charge',
+          deleteCharge: 'Tirtir Charge',
+          printMonthly: 'Bille',
+          printDaily: 'Maalinle',
+          printPasscard: 'Passcard',
+          excelExport: 'Dhoofin Excel',
+          go: 'Raadi',
+          viewInfo: 'Eeg Macluumaad',
+        },
+        labels: {
+          hormaris: 'Hormaris',
+        },
+        loading: {
+          syncingLedger: 'Isku xidhaya ledger…',
+        },
+        empty: {
+          title: 'Wax diiwaan ah looma helin xulashadan.',
+        },
+        columns: {
+          id: 'ID',
+          studentName: 'Magaca Ardayga',
+          contact: 'Xiriir',
+          class: 'Fasalka',
+          balance: 'Haraaga',
+          info: 'Macluumaad',
+        },
+      },
+
+      editTab: {
+        toasts: {
+          fetchFailed: 'Soo qaadista diiwaannada ardayda waa fashilantay',
+        },
+        placeholders: {
+          search: 'Raadi ID Arday, Magac ama Telefoon…',
+        },
+        filters: {
+          byClassLevel: 'Sida Fasalka',
+        },
+        actions: {
+          go: 'Raadi',
+          viewInfo: 'Eeg Macluumaad',
+        },
+        labels: {
+          regPrefix: 'Diiwaan:',
+        },
+        columns: {
+          id: 'ID',
+          studentName: 'Magaca Ardayga',
+          contact: 'Xiriir',
+          class: 'Fasalka',
+          balance: 'Haraaga',
+          info: 'Macluumaad',
+        },
+        loading: {
+          fetchingProfiles: 'Soo dejinaya profiles…',
+        },
+        empty: {
+          title: 'Diiwaan ma jiro',
+          description: 'Wax diiwaan ah looma helin xulashadan.',
+        },
+      },
+
+      printTab: {
+        toasts: {
+          fetchFailed: 'Soo qaadista ardayda fasalkan waa fashilantay',
+          selectAtLeastOne: 'Dooro ugu yaraan hal arday',
+        },
+        title: 'Xarunta Warbixinta Maaliyadda',
+        subtitle: 'Daabacaadda Invoice & Audit badan',
+        labels: {
+          selectClass: 'Dooro Heerka / Fasalka',
+          classCensus: 'Tirada Fasalka:',
+          studentsCountSuffix: 'Arday',
+        },
+        placeholders: {
+          targetClassLevel: 'Heerka fasalka',
+        },
+        actions: {
+          fetchRegister: 'Soo qaad Liiska',
+          monthlyInvoices: 'Invoice Bille',
+          dailyAuditLedger: 'Audit Maalinle',
+          enrollmentPasscards: 'Kaadhadhka Diiwaangelinta',
+        },
+        loading: {
+          streamingRegistry: 'Soo dejinaya liiska…',
+        },
+        columns: {
+          selection: 'Xulasho',
+          studentId: 'ID Arday',
+          fullName: 'Magaca oo dhan',
+          balanceStatus: 'Xaaladda Haraaga',
+        },
+        empty: {
+          title: 'Dooro fasal si aad u bilowdo warbixinta.',
+        },
+        sections: {
+          reportTools: 'Qalabka Warbixinta',
+          printQueueAdvice: 'Talo Daabacaad',
+        },
+        hints: {
+          bulkPrinting:
+            'Daabacaadda invoice-yo badan waxay qaadan kartaa ilaa 30 ilbiriqsi si ay u soo saarto watermark tayo-sare leh.',
+        },
       },
     },
   },

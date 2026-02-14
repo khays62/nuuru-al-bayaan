@@ -202,6 +202,11 @@ export const createFeeType = async (req, res) => {
             model: 'FeeType',
             changes: { after: feeType.toObject() }
         });
+
+        try {
+            publishRealtime({ type: 'feeTypes:changed', id: String(feeType._id), code: feeType.code, ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.status(201).json(feeType);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -252,6 +257,11 @@ export const updateFeeType = async (req, res) => {
             model: 'FeeType',
             changes: { before: oldDoc, after: feeType.toObject() }
         });
+
+        try {
+            publishRealtime({ type: 'feeTypes:changed', id: String(feeType._id), code: feeType.code, ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json(feeType);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -268,6 +278,11 @@ export const deleteFeeType = async (req, res) => {
             id: feeType._id,
             model: 'FeeType'
         });
+
+        try {
+            publishRealtime({ type: 'feeTypes:changed', id: String(feeType._id), code: feeType.code, ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json({ message: 'Fee type deactivated successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });

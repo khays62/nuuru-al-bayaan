@@ -68,7 +68,7 @@ export default function PayrollEmployeeInfoModal({
 
     const ledgerQuery = usePayrollStaffLedgerQuery(
         { staffId: selected.staffId, academicYear: selected.academicYear || undefined },
-        { enabled: Boolean(selected.staffId) }
+        { enabled: Boolean(selected.staffId) && Boolean(selected.academicYear) }
     );
 
     const ledger = useMemo(() => {
@@ -336,6 +336,18 @@ export default function PayrollEmployeeInfoModal({
         setEditingRowId(r._id);
     };
 
+    const shouldShowRemainingColumn = useMemo(() => {
+        // Only show the whole column after the user interacts (editing)
+        // OR when a partial payment exists (paid > 0 but still remaining).
+        if (editingRowId) return true;
+        return (computedRows || []).some((r) => {
+            const status = getPaidStatus(r);
+            const paid = Number(r?.paid || 0);
+            return status.kind === 'under' && Number(status.remaining || 0) > 0 && paid > 0;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editingRowId, computedRows]);
+
     return (
         <Modal
             isOpen
@@ -414,16 +426,18 @@ export default function PayrollEmployeeInfoModal({
                         columns={[
                             { key: 'no', label: t('finance.payroll.employeeInfo.columns.no', { defaultValue: 'No' }) },
                             { key: 'month', label: t('finance.payroll.employeeInfo.columns.month', { defaultValue: 'Month' }) },
-                            { key: 'sendNumber', label: t('finance.payroll.employeeInfo.columns.sendNumber', { defaultValue: 'Send number' }) },
+                            { key: 'sendNumber', label: t('finance.payroll.employeeInfo.columns.sendNumber', { defaultValue: 'Send number' }), tdClassName: 'min-w-[180px]' },
                             { key: 'description', label: t('finance.payroll.employeeInfo.columns.description', { defaultValue: 'Description' }) },
                             { key: 'commission', label: t('finance.payroll.employeeInfo.columns.commission', { defaultValue: 'Commission' }) },
                             { key: 'decrease', label: t('finance.payroll.employeeInfo.columns.decrease', { defaultValue: 'Decrease' }) },
                             { key: 'dr', label: t('finance.payroll.employeeInfo.columns.dr', { defaultValue: 'Dr' }) },
                             { key: 'cr', label: t('finance.payroll.employeeInfo.columns.cr', { defaultValue: 'Cr' }) },
-                            { key: 'paid', label: t('finance.payroll.employeeInfo.columns.paid', { defaultValue: 'Paid' }), tdClassName: 'min-w-[160px]' },
+                            { key: 'paid', label: t('finance.payroll.employeeInfo.columns.paid', { defaultValue: 'Paid' }), tdClassName: 'min-w-[130px] text-center' },
                             { key: 'balance', label: t('finance.payroll.employeeInfo.columns.balance', { defaultValue: 'Balance' }) },
                             { key: 'actions', label: t('common.columns.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, tdClassName: 'no-print' },
-                            { key: 'remaining', label: t('finance.payroll.employeeInfo.columns.remaining', { defaultValue: 'Remaining' }), align: 'right', tdClassName: 'w-16' },
+                            ...(shouldShowRemainingColumn
+                                ? [{ key: 'remaining', label: t('finance.payroll.employeeInfo.columns.remaining', { defaultValue: 'Remaining' }), tdClassName: 'w-20 text-center' }]
+                                : []),
                         ]}
                         tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
                         renderCell={(r, col) => {
@@ -437,7 +451,7 @@ export default function PayrollEmployeeInfoModal({
                                         <Input
                                             value={r.sendNumber}
                                             onChange={(e) => onRowChange(r._id, 'sendNumber', e.target.value)}
-                                            className="w-40"
+                                            className="w-52"
                                         />
                                     ) : (
                                         <div
@@ -504,15 +518,16 @@ export default function PayrollEmployeeInfoModal({
                                     {
                                         const status = getPaidStatus(r);
                                         const paidInputClass = status.kind === 'over'
-                                            ? '!w-40 !px-2 !border-red-300 !text-red-700 text-right'
+                                            ? '!w-28 !px-2 !border-red-300 !text-red-700 text-center'
                                             : status.kind === 'exact'
-                                                ? '!w-40 !px-2 !border-green-300 !text-green-700 text-right'
+                                                ? '!w-28 !px-2 !border-green-300 !text-green-700 text-center'
                                                 : status.kind === 'under'
-                                                    ? '!w-40 !px-2 !border-yellow-300 !text-yellow-700 text-right'
-                                                    : '!w-40 !px-2 text-right';
+                                                    ? '!w-28 !px-2 !border-yellow-300 !text-yellow-700 text-center'
+                                                    : '!w-28 !px-2 text-center';
 
                                         return (
                                             <div
+                                                className="flex justify-center"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     requestEdit(r);
@@ -530,7 +545,7 @@ export default function PayrollEmployeeInfoModal({
                                                         autoFocus
                                                     />
                                                 ) : (
-                                                    <span className="text-sm text-slate-700">{r.paid}</span>
+                                                    <span className="text-sm text-slate-700 text-center">{r.paid}</span>
                                                 )}
                                             </div>
                                         );
@@ -573,10 +588,11 @@ export default function PayrollEmployeeInfoModal({
                                 case 'remaining':
                                     {
                                         const status = getPaidStatus(r);
-                                        const show = status.kind === 'under' && Number(status.remaining || 0) > 0;
+                                        const paid = Number(r?.paid || 0);
+                                        const show = (editingRowId === r._id || isRowDirty(r) || isPaidEdited(r) || paid > 0) && status.kind === 'under' && Number(status.remaining || 0) > 0;
                                         if (!show) return '';
                                         return (
-                                            <span className="text-sm font-bold text-red-700">
+                                            <span className="text-sm font-bold text-red-700 text-center block">
                                                 {Number(status.remaining || 0).toLocaleString()}
                                             </span>
                                         );

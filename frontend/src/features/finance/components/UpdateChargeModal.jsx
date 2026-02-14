@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import financeService from '../api/finance';
-import { X, RefreshCcw, Percent, DollarSign, Calendar, Hash, ShieldCheck, AlertCircle, Trash2 } from 'lucide-react';
+import { RefreshCcw, Percent, DollarSign, Calendar, Hash, ShieldCheck, AlertCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
     useUpdateChargeAmountMutation,
@@ -8,6 +8,14 @@ import {
     useApplyOverallDiscountMutation,
     useDeleteMonthlyChargesMutation,
 } from '../hooks/studentFinanceHooks';
+
+import Input from '../../../shared/components/ui/Input.jsx';
+import Textarea from '../../../shared/components/ui/Textarea.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
+import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 
 export default function UpdateChargeModal({ onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
@@ -156,209 +164,198 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
         { id: 'overall_discount', title: 'Apply Overall Discount', desc: 'Permanent scholarship for all future charges', icon: ShieldCheck, color: 'green' }
     ];
 
+    const amountTypeOptions = amountTypes.map((t) => ({ value: t._id, label: t.name }));
+    const discountTypeOptions = [
+        { value: 'fixed', label: 'Fixed Amount ($)' },
+        { value: 'percentage', label: 'Percentage (%)' },
+    ];
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-xl rounded-xl shadow-2xl overflow-hidden flex flex-col border border-slate-200">
-                {/* Header */}
-                <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-amber-100 text-amber-700 rounded-lg">
-                            <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter">Finance Update Workflow</h3>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-0.5">
-                                ERP Audit-Tracked Correction System
+        <Modal isOpen onClose={onClose} closeOnBackdrop={false} title="Finance Update Workflow">
+            <div className="space-y-6">
+                {step === 1 ? (
+                    <div className="space-y-4">
+                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex gap-3 mb-6">
+                            <AlertCircle className="text-blue-600 shrink-0" size={20} />
+                            <p className="text-xs font-medium text-blue-800 leading-relaxed">
+                                Every update made here is recorded in the permanent audit logs with before/after values.
+                                Balance recalculations happen automatically.
                             </p>
                         </div>
-                    </div>
-                    <button onClick={onClose} className="text-slate-300 hover:text-slate-900 transition-colors p-2 hover:bg-slate-100 rounded-full">
-                        <X size={20} />
-                    </button>
-                </div>
 
-                <div className="p-6">
-                    {step === 1 ? (
-                        <div className="space-y-4">
-                            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex gap-3 mb-6">
-                                <AlertCircle className="text-blue-600 shrink-0" size={20} />
-                                <p className="text-xs font-medium text-blue-800 leading-relaxed">
-                                    Every update made here is recorded in the permanent audit logs with before/after values.
-                                    Balance recalculations happen automatically.
-                                </p>
-                            </div>
-
-                            <div className="grid gap-3">
-                                {workflowTypes.map((t) => (
-                                    <button
-                                        key={t.id}
-                                        onClick={() => { setUpdateType(t.id); setStep(2); }}
-                                        className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${updateType === t.id ? 'border-amber-500 bg-amber-50/50' : 'border-slate-100 hover:border-slate-300 bg-white'
-                                            }`}
-                                    >
-                                        <div className={`p-3 rounded-xl bg-${t.color}-100 text-${t.color}-700`}>
-                                            <t.icon size={24} />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-black text-slate-900 text-sm uppercase tracking-tight">{t.title}</h4>
-                                            <p className="text-[11px] font-medium text-slate-500">{t.desc}</p>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="grid gap-3">
+                            {workflowTypes.map((t) => (
+                                <Button
+                                    key={t.id}
+                                    onClick={() => { setUpdateType(t.id); setStep(2); }}
+                                    variant="neutral"
+                                    size="md"
+                                    className={`w-full whitespace-normal justify-start flex items-center gap-4 p-4 rounded-xl border-2 shadow-none transition-all text-left ${updateType === t.id ? 'border-amber-500! bg-amber-50/50!' : 'border-slate-100! hover:border-slate-300! bg-white!'} `}
+                                >
+                                    <div className={`p-3 rounded-xl bg-${t.color}-100 text-${t.color}-700`}>
+                                        <t.icon size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-black text-slate-900 text-sm uppercase tracking-tight">{t.title}</h4>
+                                        <p className="text-[11px] font-medium text-slate-500">{t.desc}</p>
+                                    </div>
+                                </Button>
+                            ))}
                         </div>
-                    ) : (
-                        <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-                            {/* Form Fields */}
-                            <div className="grid grid-cols-2 gap-4">
+                    </div>
+                ) : (
+                    <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                        {/* Form Fields */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Student ID</label>
+                                <Input
+                                    type="text"
+                                    className="h-11 font-bold text-sm"
+                                    placeholder="Ex: DU1S1A62"
+                                    value={formData.studentId}
+                                    onChange={e => setFormData({ ...formData, studentId: e.target.value })}
+                                />
+                            </div>
+                            {updateType !== 'overall_discount' && (
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Student ID</label>
-                                    <input
-                                        type="text"
-                                        className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
-                                        placeholder="Ex: DU1S1A62"
-                                        value={formData.studentId}
-                                        onChange={e => setFormData({ ...formData, studentId: e.target.value })}
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fee Category</label>
+                                    <SearchableSelect
+                                        value={formData.amountTypeId}
+                                        onChange={(v) => setFormData({ ...formData, amountTypeId: v })}
+                                        options={amountTypeOptions}
+                                        placeholder="Choose Fee..."
+                                        searchPlaceholder="Search fee categories…"
+                                        maxVisible={6}
+                                        className="h-11 font-bold text-sm"
                                     />
                                 </div>
-                                {updateType !== 'overall_discount' && (
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fee Category</label>
-                                        <select
-                                            className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none"
-                                            value={formData.amountTypeId}
-                                            onChange={e => setFormData({ ...formData, amountTypeId: e.target.value })}
-                                        >
-                                            <option value="">Choose Fee...</option>
-                                            {amountTypes.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                                        </select>
-                                    </div>
-                                )}
-                                {updateType === 'overall_discount' && (
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Discount Type</label>
-                                        <select
-                                            className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none"
-                                            value={formData.discountType}
-                                            onChange={e => setFormData({ ...formData, discountType: e.target.value })}
-                                        >
-                                            <option value="fixed">Fixed Amount ($)</option>
-                                            <option value="percentage">Percentage (%)</option>
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
+                            )}
+                            {updateType === 'overall_discount' && (
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Discount Type</label>
+                                    <DropdownSelect
+                                        value={formData.discountType}
+                                        onChange={(v) => setFormData({ ...formData, discountType: v })}
+                                        options={discountTypeOptions}
+                                        clearable={false}
+                                        className="h-11 font-bold text-sm"
+                                    />
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                {updateType !== 'overall_discount' && (
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Billing Month</label>
-                                        <div className="space-y-2">
-                                            <input
-                                                type="month"
-                                                className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none"
-                                                value={formData.month}
-                                                disabled={useMultipleMonths}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setFormData({ ...formData, month: val });
-                                                    if (useMultipleMonths) {
-                                                        setSelectedMonths(new Set([val]));
+                        <div className="grid grid-cols-2 gap-4">
+                            {updateType !== 'overall_discount' && (
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Billing Month</label>
+                                    <div className="space-y-2">
+                                        <Input
+                                            type="month"
+                                            className="w-full h-11 font-bold text-sm"
+                                            value={formData.month}
+                                            disabled={useMultipleMonths}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setFormData({ ...formData, month: val });
+                                                if (useMultipleMonths) {
+                                                    setSelectedMonths(new Set([val]));
+                                                }
+                                            }}
+                                        />
+
+                                        <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 select-none">
+                                            <Checkbox
+                                                checked={useMultipleMonths}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked;
+                                                    setUseMultipleMonths(checked);
+                                                    if (!checked) {
+                                                        setSelectedMonths(new Set());
+                                                    } else {
+                                                        setSelectedMonths(new Set([formData.month]));
                                                     }
                                                 }}
                                             />
+                                            Multiple months
+                                        </label>
 
-                                            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 select-none">
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-4 w-4"
-                                                    checked={useMultipleMonths}
-                                                    onChange={(e) => {
-                                                        const checked = e.target.checked;
-                                                        setUseMultipleMonths(checked);
-                                                        if (!checked) {
-                                                            setSelectedMonths(new Set());
-                                                        } else {
-                                                            setSelectedMonths(new Set([formData.month]));
-                                                        }
-                                                    }}
-                                                />
-                                                Multiple months
-                                            </label>
-
-                                            {useMultipleMonths && /^\d{4}$/.test(currentYear) && (
-                                                <div className="grid grid-cols-3 gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
-                                                    {months.map(m => {
-                                                        const ym = toYm(m.val);
-                                                        const active = selectedMonths.has(ym);
-                                                        return (
-                                                            <button
-                                                                type="button"
-                                                                key={m.val}
-                                                                onClick={() => toggleSelectedMonth(ym)}
-                                                                className={`px-2 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border ${active ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-                                                            >
-                                                                {m.label.slice(0, 3)}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
+                                        {useMultipleMonths && /^\d{4}$/.test(currentYear) && (
+                                            <div className="grid grid-cols-3 gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                                {months.map(m => {
+                                                    const ym = toYm(m.val);
+                                                    const active = selectedMonths.has(ym);
+                                                    return (
+                                                        <Button
+                                                            type="button"
+                                                            key={m.val}
+                                                            onClick={() => toggleSelectedMonth(ym)}
+                                                            variant="neutral"
+                                                            size="sm"
+                                                            className={`px-2 py-2 shadow-none rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${active ? 'bg-slate-900! text-white! border-slate-900!' : 'bg-white! text-slate-700! border-slate-200! hover:bg-slate-100!'}`}
+                                                        >
+                                                            {m.label.slice(0, 3)}
+                                                        </Button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                                        {updateType === 'correction' ? 'New Correct Amount ($)' : (updateType === 'undo_charge' ? ' ' : 'Discount Value')}
-                                    </label>
-                                    {updateType === 'undo_charge' ? (
-                                        <div className="w-full h-11" />
-                                    ) : (
-                                        <input
-                                            type="number"
-                                            className="w-full h-11 px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none"
-                                            placeholder="0.00"
-                                            value={updateType === 'correction' ? formData.amount : formData.discountValue}
-                                            onChange={e => setFormData({ ...formData, [updateType === 'correction' ? 'amount' : 'discountValue']: e.target.value })}
-                                        />
-                                    )}
                                 </div>
-                            </div>
-
+                            )}
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reason for Adjustment</label>
-                                <textarea
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-medium text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all min-h-20"
-                                    placeholder="Explain why this adjustment is being made (Audit Required)"
-                                    value={formData.reason}
-                                    onChange={e => setFormData({ ...formData, reason: e.target.value })}
-                                />
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                    {updateType === 'correction' ? 'New Correct Amount ($)' : (updateType === 'undo_charge' ? ' ' : 'Discount Value')}
+                                </label>
+                                {updateType === 'undo_charge' ? (
+                                    <div className="w-full h-11" />
+                                ) : (
+                                    <Input
+                                        type="number"
+                                        className="w-full h-11 font-bold text-sm"
+                                        placeholder="0.00"
+                                        value={updateType === 'correction' ? formData.amount : formData.discountValue}
+                                        onChange={e => setFormData({ ...formData, [updateType === 'correction' ? 'amount' : 'discountValue']: e.target.value })}
+                                    />
+                                )}
                             </div>
                         </div>
-                    )}
-                </div>
 
-                {/* Footer */}
-                <div className="p-5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    <button
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reason for Adjustment</label>
+                            <Textarea
+                                className="min-h-20"
+                                placeholder="Explain why this adjustment is being made (Audit Required)"
+                                value={formData.reason}
+                                onChange={e => setFormData({ ...formData, reason: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200">
+                    <Button
+                        type="button"
                         onClick={step === 1 ? onClose : () => setStep(1)}
-                        className="text-slate-500 font-black uppercase text-[10px] tracking-widest hover:text-slate-900 transition-colors"
+                        variant="neutral"
+                        size="md"
                     >
-                        {step === 1 ? 'Cancel Operation' : 'Back to Selection'}
-                    </button>
+                        {step === 1 ? 'Cancel' : 'Back'}
+                    </Button>
 
-                    {step === 2 && (
-                        <button
+                    {step === 2 ? (
+                        <Button
+                            type="button"
                             onClick={handleSubmit}
                             disabled={loading || !formData.reason}
-                            className="bg-amber-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-amber-600/20 hover:bg-amber-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                            variant="brand"
+                            size="md"
                         >
-                            {loading ? 'Processing Audit...' : 'Execute Adjustment'}
-                            {!loading && <RefreshCcw size={14} />}
-                        </button>
-                    )}
+                            {loading ? 'Processing…' : 'Execute'}
+                        </Button>
+                    ) : null}
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 }

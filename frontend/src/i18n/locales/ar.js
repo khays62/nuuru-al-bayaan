@@ -2778,6 +2778,7 @@ export default {
         FIN_CATEGORY_IN_USE: 'هذه الفئة مستخدمة بالفعل في المصروفات',
 
         FIN_INTERNAL_ERROR: 'حدث خطأ في الخادم',
+        FIN_EXPENSE_LOCKED_PAYROLL: 'لا يمكن تعديل/حذف مصروفات الرواتب (Payroll) من شاشة المصروفات',
       },
     },
 
@@ -2986,6 +2987,237 @@ export default {
       apiErrors: {
         PAYROLL_DELETE_NO_MATCH_UNPAID: 'لا توجد سجلات غير مدفوعة/مسودة للحذف',
         PAYROLL_DELETE_NO_MATCH_PAID: 'هذا الموظف ليس مدفوعاً بعد لهذا الشهر/السنة',
+      },
+    },
+
+    studentFinance: {
+      tabs: {
+        receipt: 'إيصال',
+        previousBalance: 'الرصيد السابق',
+        amountType: 'نوع المبلغ',
+        feeType: 'نوع الرسوم',
+      },
+
+      paymentModal: {
+        title: 'مالية الطالب',
+        tabs: {
+          ledger: 'السجل',
+          history: 'التاريخ',
+        },
+        controls: {
+          selectLedgerAccount: 'اختر حساب السجل',
+          paymentMode: 'وضع الدفع',
+          byLevel: 'حسب المستوى',
+          byReceipt: 'حسب الإيصال',
+          paymentDate: 'تاريخ الدفع',
+        },
+        labels: {
+          total: 'الإجمالي',
+        },
+        hormaris: {
+          selectMonths: 'اختر أشهر Hormaris',
+        },
+        actions: {
+          paySelected: 'ادفع المحدد',
+          save: 'حفظ',
+          print: 'طباعة',
+        },
+        placeholders: {
+          chooseAccount: '-- اختر حسابًا --',
+          phoneRef: 'هاتف/مرجع',
+          defaultPhone: 'الافتراضي: {{phone}}',
+          full: 'كامل',
+          amountZero: '0.00',
+        },
+        columns: {
+          no: 'رقم',
+          month: 'شهر',
+          phoneRef: 'هاتف/مرجع',
+          description: 'الوصف',
+          drFees: 'مدين (الرسوم)',
+          crPaid: 'دائن (مدفوع)',
+          discount: 'خصم',
+          payAmount: 'مبلغ الدفع',
+          actions: 'إجراءات',
+          balance: 'الرصيد',
+        },
+        loading: {
+          analysing: 'جارٍ التحليل...',
+        },
+        empty: {
+          noRecords: 'لا توجد سجلات.',
+        },
+        invoice: {
+          titleFallback: 'رسوم الدراسة',
+        },
+        history: {
+          title: 'سجل المدفوعات والإيصالات',
+          actions: {
+            printAll: 'طباعة السجل بالكامل',
+            revert: 'إرجاع',
+          },
+          status: {
+            cleared: 'مُسدَّد',
+          },
+          descFallback: 'رسوم دراسية قياسية',
+          labels: {
+            totalPaid: 'إجمالي المدفوع',
+          },
+        },
+        errors: {
+          cannotPrintNoPayment: 'لا يمكن الطباعة: لا توجد عملية دفع مسجلة',
+        },
+        confirms: {
+          revertMonth: 'سيؤدي هذا إلى إرجاع مدفوعات هذا الشهر. هل تريد المتابعة؟',
+        },
+        validation: {
+          selectAccount: 'يرجى اختيار حساب',
+          selectAccountShort: 'اختر حسابًا',
+          enterValidAmount: 'أدخل مبلغًا صحيحًا',
+          phoneRefRequired: 'الهاتف/المرجع مطلوب',
+          selectHormarisMonths: 'اختر أشهر Hormaris',
+          invalidAmountForMonth: 'مبلغ غير صحيح لشهر {{month}}',
+          amountExceedsBalanceForMonth: 'المبلغ يتجاوز الرصيد لشهر {{month}}',
+        },
+        toasts: {
+          noPaymentGroupsToRevert: 'لا توجد مجموعات دفع لإرجاعها',
+          revertingPayments: 'جارٍ إرجاع المدفوعات...',
+          paymentsReverted: 'تم إرجاع المدفوعات',
+          failedRevertPayments: 'فشل إرجاع المدفوعات',
+          paymentRecorded: 'تم تسجيل الدفع',
+          paymentFailed: 'فشل الدفع',
+          processingHormaris: 'جارٍ معالجة دفع Hormaris...',
+          hormarisRecorded: 'تم تسجيل دفع Hormaris',
+          hormarisFailed: 'فشل دفع Hormaris',
+          preparingStatement: 'جارٍ تجهيز البيان...',
+          printFailed: 'فشلت الطباعة',
+        },
+      },
+
+      receiptTab: {
+        toasts: {
+          searchFailed: 'فشل البحث',
+          exporting: 'جاري التصدير إلى Excel…',
+        },
+        placeholders: {
+          search: 'ابحث بالرقم أو الاسم أو الهاتف…',
+        },
+        filters: {
+          byClassLevel: 'حسب الصف',
+          thisMonth: {
+            title: 'تصفية (هذا الشهر)',
+            charged: 'تمت الفوترة هذا الشهر',
+            paid: 'تم الدفع هذا الشهر',
+            unpaid: 'غير مدفوع هذا الشهر',
+            uncharged: 'غير مفوتر هذا الشهر',
+            hormaris: 'Hormaris',
+          },
+        },
+        actions: {
+          charge: 'فوترة',
+          updateCharge: 'تحديث الفوترة',
+          deleteCharge: 'حذف الفوترة',
+          printMonthly: 'شهري',
+          printDaily: 'يومي',
+          printPasscard: 'بطاقة',
+          excelExport: 'تصدير Excel',
+          go: 'بحث',
+          viewInfo: 'عرض المعلومات',
+        },
+        labels: {
+          hormaris: 'Hormaris',
+        },
+        loading: {
+          syncingLedger: 'جارٍ مزامنة السجل…',
+        },
+        empty: {
+          title: 'لا توجد سجلات لهذه الاختيارات.',
+        },
+        columns: {
+          id: 'المعرف',
+          studentName: 'اسم الطالب',
+          contact: 'الهاتف',
+          class: 'الصف',
+          balance: 'الرصيد',
+          info: 'معلومات',
+        },
+      },
+
+      editTab: {
+        toasts: {
+          fetchFailed: 'فشل جلب سجلات الطلاب',
+        },
+        placeholders: {
+          search: 'ابحث برقم الطالب أو الاسم أو الهاتف…',
+        },
+        filters: {
+          byClassLevel: 'حسب الصف',
+        },
+        actions: {
+          go: 'بحث',
+          viewInfo: 'عرض المعلومات',
+        },
+        labels: {
+          regPrefix: 'تسجيل:',
+        },
+        columns: {
+          id: 'المعرف',
+          studentName: 'اسم الطالب',
+          contact: 'الهاتف',
+          class: 'الصف',
+          balance: 'الرصيد',
+          info: 'معلومات',
+        },
+        loading: {
+          fetchingProfiles: 'جاري جلب البيانات…',
+        },
+        empty: {
+          title: 'لا توجد سجلات',
+          description: 'لا توجد سجلات لهذه الاختيارات.',
+        },
+      },
+
+      printTab: {
+        toasts: {
+          fetchFailed: 'فشل جلب طلاب هذا الصف',
+          selectAtLeastOne: 'اختر طالبًا واحدًا على الأقل',
+        },
+        title: 'مركز تقارير المالية',
+        subtitle: 'معالجة الفواتير والتدقيق بالجملة',
+        labels: {
+          selectClass: 'اختر المرحلة / الصف',
+          classCensus: 'إحصاء الصف:',
+          studentsCountSuffix: 'طلاب',
+        },
+        placeholders: {
+          targetClassLevel: 'المستوى المستهدف',
+        },
+        actions: {
+          fetchRegister: 'جلب القائمة',
+          monthlyInvoices: 'فواتير شهرية',
+          dailyAuditLedger: 'سجل تدقيق يومي',
+          enrollmentPasscards: 'بطاقات التسجيل',
+        },
+        loading: {
+          streamingRegistry: 'جاري تحميل السجل…',
+        },
+        columns: {
+          selection: 'تحديد',
+          studentId: 'رقم الطالب',
+          fullName: 'الاسم الكامل',
+          balanceStatus: 'حالة الرصيد',
+        },
+        empty: {
+          title: 'اختر صفًا لبدء التقارير.',
+        },
+        sections: {
+          reportTools: 'أدوات إنشاء التقارير',
+          printQueueAdvice: 'نصيحة قائمة الطباعة',
+        },
+        hints: {
+          bulkPrinting:
+            'قد تستغرق طباعة عدة فواتير حتى 30 ثانية لعرض علامات مائية عالية الدقة.',
+        },
       },
     },
   },

@@ -2,6 +2,7 @@ import FeeInvoice from '../../models/FeeInvoice.js';
 import FeeTransaction from '../../models/FeeTransaction.js';
 import Account from '../../models/Account.js';
 import AuditLog from '../../models/AuditLog.js';
+import { publishRealtime } from '../../utils/realtimeBus.js';
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 
@@ -101,6 +102,13 @@ export async function editPaymentTransaction(req, res) {
 
     await invoice.save();
     await tx.save();
+
+    try {
+      publishRealtime({ type: 'studentFinance:changed', studentId: String(invoice.student), ts: Date.now() });
+      publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+    } catch {
+      // ignore
+    }
 
     await logAction(req.user, 'EDIT_PAYMENT', `Edited payment transaction ${transactionId}`, req, {
       id: transactionId,

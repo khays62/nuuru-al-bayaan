@@ -1,33 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Settings, Trash2, Edit, Check, X } from 'lucide-react';
-import financeService from '../api/finance';
+import { Plus, Settings, Trash2, Edit, Check } from 'lucide-react';
+
+import {
+  useCreateFeeTypeMutation,
+  useDeleteFeeTypeMutation,
+  useFeeTypesQuery,
+  useUpdateFeeTypeMutation,
+} from '../hooks/financeConfigHooks';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import Input from '../../../shared/components/ui/Input.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 
 export default function FeeTypeTab() {
-  const [loading, setLoading] = useState(true);
-  const [feeTypes, setFeeTypes] = useState([]);
+  const feeTypesQuery = useFeeTypesQuery({ includeInactive: true }, { staleTime: 30_000 });
+  const createMutation = useCreateFeeTypeMutation();
+  const updateMutation = useUpdateFeeTypeMutation();
+  const deleteMutation = useDeleteFeeTypeMutation();
+
+  // Only show skeleton on the initial load; keep rows visible on background refetch.
+  const loading = Boolean(feeTypesQuery.isLoading);
+  const feeTypes = Array.isArray(feeTypesQuery.data) ? feeTypesQuery.data : [];
 
   const [editingId, setEditingId] = useState(null); // null | 'new' | id
   const [formData, setFormData] = useState({ code: 'personal', name: 'Personal' });
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const res = await financeService.getFeeTypes({ includeInactive: true });
-      setFeeTypes(Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []));
-    } catch {
-      toast.error('Failed to load fee types');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
-    load();
-  }, []);
+    setPage(1);
+  }, [feeTypes.length]);
+
+  const total = feeTypes.length;
+  const totalPages = Math.max(1, Math.ceil(total / Math.max(1, limit)));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * limit;
+  const currentRows = feeTypes.slice(start, start + limit);
+
+  useEffect(() => {
+    if (!feeTypesQuery.isError) return;
+    toast.error('Failed to load fee types');
+  }, [feeTypesQuery.isError]);
 
   const startNew = () => {
     setEditingId('new');
@@ -39,35 +58,46 @@ export default function FeeTypeTab() {
     setFormData({ code: ft.code, name: ft.name });
   };
 
+  const closeModal = () => {
+    setEditingId(null);
+    setFormData({ code: 'personal', name: 'Personal' });
+  };
+
   const handleSave = async () => {
-    if (!formData.name || !String(formData.name).trim()) return toast.error('Name is required');
+    if (!formData.name || !String(formData.name).trim()) {
+      toast.error('Name is required');
+      return false;
+    }
 
     try {
       if (editingId === 'new') {
-        await financeService.createFeeType({
+        await createMutation.mutateAsync({
           code: String(formData.code).toLowerCase(),
           name: String(formData.name).trim()
         });
         toast.success('Fee type created');
       } else {
-        await financeService.updateFeeType(editingId, {
+        await updateMutation.mutateAsync({
+          id: editingId,
+          payload: {
           name: String(formData.name).trim(),
+          },
         });
         toast.success('Fee type updated');
       }
       setEditingId(null);
-      load();
+      return true;
     } catch (e) {
       toast.error(e.response?.data?.message || 'Operation failed');
+      return false;
     }
   };
 
   const handleDeactivate = async (id) => {
     if (!window.confirm('Deactivate this fee type?')) return;
     try {
-      await financeService.deleteFeeType(id);
+      await deleteMutation.mutateAsync(id);
       toast.success('Fee type deactivated');
-      load();
     } catch (e) {
       toast.error(e.response?.data?.message || 'Operation failed');
     }
@@ -75,17 +105,17 @@ export default function FeeTypeTab() {
 
   const handleActivate = async (id) => {
     try {
-      await financeService.updateFeeType(id, { status: 'active' });
+      await updateMutation.mutateAsync({ id, payload: { status: 'active' } });
       toast.success('Fee type activated');
-      load();
     } catch (e) {
       toast.error(e.response?.data?.message || 'Operation failed');
     }
   };
 
   return (
-    <div className="p-8 space-y-8 bg-surface-50/50 min-h-screen">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4">
+      <Card className="p-6 rounded-3xl shadow-xl no-print">
+      <div className="flex flex-wrap justify-between items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary border border-primary/20">
             <Settings size={24} />
@@ -95,63 +125,82 @@ export default function FeeTypeTab() {
             <p className="text-xs font-black text-surface-400 uppercase tracking-[0.2em] mt-1">Personal vs Free</p>
           </div>
         </div>
-          <button
+          <Button
             onClick={startNew}
-            className="bg-primary text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-3"
+            variant="brand"
+            size="lg"
+            icon={<Plus size={18} strokeWidth={3} />}
+            className="font-black text-xs uppercase tracking-widest"
           >
-            <Plus size={18} strokeWidth={3} /> Create Fee Type
-          </button>
+            Create Fee Type
+          </Button>
         </div>
+      </Card>
 
-        {editingId === 'new' && (
-          <div className="bg-white border-2 border-primary/20 p-8 rounded-[2.5rem] shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-end">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">Fee Type</label>
-                <select
-                  className="w-full h-14 px-6 bg-surface-50 border border-surface-200 rounded-2xl font-black text-xs uppercase outline-none focus:ring-4 focus:ring-primary/10 transition-all"
-                  value={formData.code}
-                  onChange={(e) => {
-                    const code = e.target.value;
-                    setFormData((p) => ({
-                      ...p,
-                      code,
-                      name: code === 'free' ? 'Free' : 'Personal'
-                    }));
-                  }}
-                >
-                  <option value="personal">Personal</option>
-                  <option value="free">Free</option>
-                </select>
-              </div>
-              <div className="md:col-span-2 space-y-3">
-                <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">Display Name</label>
-                <input
-                  type="text"
-                  className="w-full h-14 px-6 bg-surface-50 border border-surface-200 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all"
-                  value={formData.name}
-                  onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                />
-              </div>
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  onClick={() => setEditingId(null)}
-                  className="h-14 px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest text-surface-400 hover:text-surface-600 transition-colors"
-                >
-                  Discard
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="h-14 px-10 bg-surface-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-black transition-all"
-                >
-                  Synchronize
-                </button>
-              </div>
+      <Modal
+        isOpen={editingId === 'new' || (typeof editingId === 'string' && editingId !== 'new')}
+        onClose={closeModal}
+        title={editingId === 'new' ? 'Create Fee Type' : 'Edit Fee Type'}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">Fee Type</label>
+              <DropdownSelect
+                value={formData.code}
+                disabled={editingId !== 'new'}
+                onChange={(code) => {
+                  setFormData((p) => ({
+                    ...p,
+                    code,
+                    name: code === 'free' ? 'Free' : 'Personal'
+                  }));
+                }}
+                options={[
+                  { value: 'personal', label: 'Personal' },
+                  { value: 'free', label: 'Free' },
+                ]}
+                clearable={false}
+                className="h-11 font-black text-xs uppercase"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">Display Name</label>
+              <Input
+                type="text"
+                className="h-11 font-bold"
+                value={formData.name}
+                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                autoFocus
+              />
             </div>
           </div>
-        )}
 
-      <div className="bg-white border border-surface-200 rounded-[2.5rem] overflow-hidden shadow-sm">
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button
+              onClick={closeModal}
+              variant="neutral"
+              size="lg"
+              className="h-11 font-black text-[10px] uppercase tracking-widest"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                const ok = await handleSave();
+                if (ok) closeModal();
+              }}
+              variant="primary"
+              size="lg"
+              className="h-11 font-black text-[10px] uppercase tracking-[0.2em]"
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Card className="rounded-3xl shadow-xl">
         <StandardTable
           isLoading={loading}
           error={null}
@@ -163,24 +212,28 @@ export default function FeeTypeTab() {
           emptyTitle="No fee types defined."
           emptyDescription=""
 
-          rows={feeTypes}
+          rows={currentRows}
           columns={[
             { key: 'type', label: 'Fee Type', sortable: false },
             { key: 'status', label: 'Status', sortable: false },
             { key: 'actions', label: 'Actions', sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
           ]}
           storageKey="finance:fee-types:columns:v1"
+          controlsProps={{
+            limit,
+            total,
+            onLimit: (v) => {
+              setLimit(v);
+              setPage(1);
+            },
+            className: 'px-6 bg-white',
+          }}
+          tableProps={{ shellClassName: 'rounded-none border-0 shadow-none ring-0' }}
           getRowKey={(row) => row?._id}
           renderCell={(ft, col) => {
             switch (col.key) {
               case 'type':
-                return editingId === ft._id ? (
-                  <input
-                    className="w-full h-11 px-4 bg-white border border-surface-300 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20"
-                    value={formData.name}
-                    onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
-                  />
-                ) : (
+                return (
                   <div className="flex items-center gap-3">
                     <span className="px-3 py-1.5 bg-surface-100 text-surface-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-surface-200">
                       {ft.code}
@@ -196,28 +249,7 @@ export default function FeeTypeTab() {
                   </div>
                 );
               case 'actions':
-                return editingId === ft._id ? (
-                  <RowActionButtons
-                    actions={[
-                      {
-                        key: 'cancel',
-                        label: 'Cancel',
-                        title: 'Cancel',
-                        tone: 'delete',
-                        icon: <X size={18} />,
-                        onClick: () => setEditingId(null),
-                      },
-                      {
-                        key: 'save',
-                        label: 'Save',
-                        title: 'Save',
-                        tone: 'edit',
-                        icon: <Check size={18} strokeWidth={3} />,
-                        onClick: handleSave,
-                      },
-                    ]}
-                  />
-                ) : (
+                return (
                   <RowActionButtons
                     actions={[
                       {
@@ -253,22 +285,13 @@ export default function FeeTypeTab() {
             }
           }}
 
+          meta={{ page: safePage, totalPages, limit, total }}
+          onPage={setPage}
+          onLimit={(v) => { setLimit(v); setPage(1); }}
           showRowsSelector={false}
           paginationProps={{ className: 'no-print', infoVariant: 'page' }}
         />
-      </div>
-
-      <div className="bg-surface-900 p-8 rounded-[2.5rem] flex gap-6 items-start shadow-2xl">
-        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-primary-400 shrink-0 border border-white/5">
-          <Settings size={24} />
-        </div>
-        <div>
-          <h4 className="text-white font-black uppercase tracking-widest text-xs mb-2">Note</h4>
-          <p className="text-surface-400 text-sm leading-relaxed max-w-4xl">
-            Fee Types are separate from Amount Types. Use Personal for normal billing, and Free to waive charges (0 balance).
-          </p>
-        </div>
-      </div>
+      </Card>
     </div>
   );
 }

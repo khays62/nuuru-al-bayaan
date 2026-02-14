@@ -271,8 +271,10 @@ export async function payrollFullPayment(req, res) {
           category: 'Salary',
           amount: payroll.netSalary,
           date: paymentDate,
-          description: `Payroll full payment for staff: ${staffLabel}`,
+          description: `Payroll payment for staff: ${staffLabel}`,
           account: accountId,
+          source: 'payroll',
+          payrollRef: payroll._id,
           approvedBy: req.user._id,
           status: 'Approved',
         })

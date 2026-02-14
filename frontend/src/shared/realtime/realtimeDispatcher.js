@@ -5,7 +5,9 @@ import {
   emitExpensesChanged,
   emitAccountsChanged,
   emitFinanceCategoriesChanged,
+  emitFeeTypesChanged,
   emitPayrollChanged,
+  emitStudentFinanceChanged,
   emitSubjectsChanged,
   emitTimetableChanged,
   emitGradeSectionsChanged,
@@ -95,8 +97,16 @@ export function createRealtimeDispatcher({ queryClient, debounceMs = 250 } = {})
       debouncer.debounce('financeCategories:changed', () => emitFinanceCategoriesChanged({ source: 'realtime', ...payload }));
       return;
     }
+    if (type === 'feeTypes:changed') {
+      debouncer.debounce('feeTypes:changed', () => emitFeeTypesChanged({ source: 'realtime', ...payload }));
+      return;
+    }
     if (type === 'payroll:changed') {
       debouncer.debounce('payroll:changed', () => emitPayrollChanged({ source: 'realtime', ...payload }));
+      return;
+    }
+    if (type === 'studentFinance:changed') {
+      debouncer.debounce('studentFinance:changed', () => emitStudentFinanceChanged({ source: 'realtime', ...payload }));
       return;
     }
     if (type === 'subjects:changed') {

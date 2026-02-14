@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Printer, RotateCcw, Trash2, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import financeService from '../api/finance';
@@ -26,9 +27,11 @@ import PayrollShowModal from './PayrollShowModal';
 export default function PayrollManagement() {
     const { t } = useI18n();
 
+    const queryClient = useQueryClient();
+    const cachedAcademicYears = queryClient.getQueryData(['academicYears']);
+
     const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-    const [academicYear, setAcademicYear] = useState('');
-    const [academicYears, setAcademicYears] = useState([]);
+    const [academicYear, setAcademicYear] = useState(() => cachedAcademicYears?.[0]?._id || '');
     const [toastKey, setToastKey] = useState(0);
 
     const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
@@ -47,16 +50,21 @@ export default function PayrollManagement() {
     const [updateContext, setUpdateContext] = useState(null);
     const [infoStaffId, setInfoStaffId] = useState('');
 
-    const fetchAcademicYears = async () => {
-        try {
-            const data = await financeService.getAcademicYears();
-            const list = data || [];
-            setAcademicYears(list);
-            setAcademicYear(prev => prev || (list[0]?._id || ''));
-        } catch {
-            setAcademicYears([]);
+    const academicYearsQuery = useQuery({
+        queryKey: ['academicYears'],
+        queryFn: () => financeService.getAcademicYears(),
+        placeholderData: (prev) => prev,
+        staleTime: 10 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
+
+    const academicYears = Array.isArray(academicYearsQuery.data) ? academicYearsQuery.data : [];
+
+    useEffect(() => {
+        if (!academicYear && academicYears?.length) {
+            setAcademicYear(academicYears[0]?._id || '');
         }
-    };
+    }, [academicYear, academicYears]);
 
     const payrollQuery = usePayrollsQuery(
         { month, academicYear: academicYear || undefined },
@@ -78,10 +86,6 @@ export default function PayrollManagement() {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [payrollQuery.isError]);
-
-    useEffect(() => {
-        fetchAcademicYears();
-    }, []);
 
     useEffect(() => {
         setToastKey(0);
@@ -259,14 +263,21 @@ export default function PayrollManagement() {
                                         {t('common.actions.reset', { defaultValue: 'Reset' })}
                                     </ActionButton>
 
-                                    <div className="text-right">
-                                        <div className="text-xs text-slate-600">{t('common.total', { defaultValue: 'Total' })}</div>
-                                        <div className="flex items-center justify-end gap-2">
-                                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-green-50 text-green-700">
-                                                <DollarSign size={16} />
-                                            </span>
-                                            <span className="text-sm font-black font-mono text-green-700">{totalSalary.toLocaleString()}</span>
-                                        </div>
+                                    <div
+                                        className="inline-flex items-center justify-end gap-2 h-10 px-3 rounded-md border border-green-200 bg-white text-green-800 whitespace-nowrap"
+                                        title={t('common.total', { defaultValue: 'Total' })}
+                                    >
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                                        </span>
+                                        <span className="text-xs font-black uppercase tracking-widest">
+                                            {t('common.total', { defaultValue: 'Total' })}
+                                        </span>
+                                        <span className="text-sm font-black font-mono inline-flex items-center gap-1 text-green-700">
+                                            <DollarSign size={14} className="shrink-0" />
+                                            <span>{totalSalary.toLocaleString()}</span>
+                                        </span>
                                     </div>
                                 </div>
                             </div>

@@ -11,7 +11,9 @@ export const EVENTS = {
   EXPENSES_CHANGED: 'expenses:changed',
   ACCOUNTS_CHANGED: 'accounts:changed',
   FINANCE_CATEGORIES_CHANGED: 'financeCategories:changed',
+  FEE_TYPES_CHANGED: 'feeTypes:changed',
   PAYROLL_CHANGED: 'payroll:changed',
+  STUDENT_FINANCE_CHANGED: 'studentFinance:changed',
   GRADE_SECTIONS_CHANGED: 'gradeSections:changed',
   COHORTS_CHANGED: 'cohorts:changed',
   TRANSFERS_CHANGED: 'transfers:changed',
@@ -55,7 +57,9 @@ export function emitUsersChanged(detail) { emit(EVENTS.USERS_CHANGED, detail); }
 export function emitExpensesChanged(detail) { emit(EVENTS.EXPENSES_CHANGED, detail); }
 export function emitAccountsChanged(detail) { emit(EVENTS.ACCOUNTS_CHANGED, detail); }
 export function emitFinanceCategoriesChanged(detail) { emit(EVENTS.FINANCE_CATEGORIES_CHANGED, detail); }
+export function emitFeeTypesChanged(detail) { emit(EVENTS.FEE_TYPES_CHANGED, detail); }
 export function emitPayrollChanged(detail) { emit(EVENTS.PAYROLL_CHANGED, detail); }
+export function emitStudentFinanceChanged(detail) { emit(EVENTS.STUDENT_FINANCE_CHANGED, detail); }
 export function emitGradeSectionsChanged(detail) { emit(EVENTS.GRADE_SECTIONS_CHANGED, detail); }
 export function emitCohortsChanged(detail) { emit(EVENTS.COHORTS_CHANGED, detail); }
 export function emitTransfersChanged(detail) { emit(EVENTS.TRANSFERS_CHANGED, detail); }
