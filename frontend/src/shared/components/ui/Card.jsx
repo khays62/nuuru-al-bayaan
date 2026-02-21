@@ -6,7 +6,7 @@ export default function Card({ className = '', children, noPadding, ...rest }) {
   return (
     <div
       className={cn(
-        'bg-white border border-slate-200 rounded-(--nb-radius-md) shadow-(--nb-shadow-md)',
+        'bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-(--nb-radius-md) shadow-(--nb-shadow-md)',
         className
       )}
       {...rest}

@@ -21,14 +21,14 @@ function formatDate(value) {
 function statusClass(status) {
   const s = (status || '').toLowerCase();
   const map = {
-    active: 'bg-emerald-100 text-emerald-700',
-    inactive: 'bg-gray-100 text-gray-700',
-    transferred: 'bg-sky-100 text-sky-700',
-    promoted: 'bg-indigo-100 text-indigo-700',
-    graduated: 'bg-amber-100 text-amber-800',
-    withdrawn: 'bg-rose-100 text-rose-700',
+    active: 'bg-(--nb-color-accent-50) text-(--nb-color-fg)',
+    inactive: 'bg-(--nb-color-bg) text-(--nb-color-muted)',
+    transferred: 'bg-(--nb-color-brand-50) text-(--nb-color-fg)',
+    promoted: 'bg-(--nb-color-brand-50) text-(--nb-color-fg)',
+    graduated: 'bg-(--nb-color-bg) text-(--nb-color-fg)',
+    withdrawn: 'bg-(--nb-color-brand-50) text-(--nb-color-fg)',
   };
-  return map[s] || 'bg-gray-100 text-gray-700';
+  return map[s] || 'bg-(--nb-color-bg) text-(--nb-color-muted)';
 }
 
 export default function EnrollmentsTab() {
@@ -112,8 +112,8 @@ export default function EnrollmentsTab() {
               { key: 'sequenceInYear', label: t('students.enrollmentsTab.columns.sequence'), field: 'sequenceInYear', sortable: true },
             ].map((c) => ({
               ...c,
-              thClassName: 'px-3 py-2 text-left text-sm font-medium text-gray-700',
-              tdClassName: 'px-3 py-2 text-sm text-gray-700',
+              thClassName: 'px-3 py-2 text-left text-sm font-medium text-(--nb-color-text)',
+              tdClassName: 'px-3 py-2 text-sm text-(--nb-color-text)',
             }))}
             getRowKey={(e) => e._id}
             renderCell={(e, col) => {
@@ -145,10 +145,10 @@ export default function EnrollmentsTab() {
               }
             }}
             tableProps={{
-              theadClassName: 'bg-gray-50',
-              headerRowClassName: 'border-b text-gray-700',
+              theadClassName: 'bg-(--nb-color-bg) text-(--nb-color-text) border-b border-(--nb-color-border)',
+              headerRowClassName: '',
               useDefaultHeaderStyles: false,
-              baseRowClassName: 'border-b last:border-0',
+              baseRowClassName: 'border-b border-(--nb-color-border) last:border-0',
             }}
           />
         )

@@ -64,8 +64,8 @@ export default function FinanceApportionmentTab() {
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="text-xl font-bold text-surface-900 tracking-tight">Finance Apportionment Engine</h3>
-                    <p className="text-sm text-surface-500">Automated fund distribution mapping between fee types and ledger accounts.</p>
+                    <h3 className="text-xl font-bold text-(--nb-color-fg) tracking-tight">Finance Apportionment Engine</h3>
+                    <p className="text-sm text-(--nb-color-muted)">Automated fund distribution mapping between fee types and ledger accounts.</p>
                 </div>
                 <button
                     onClick={() => setIsAdding(true)}
@@ -81,7 +81,7 @@ export default function FinanceApportionmentTab() {
                         <div>
                             <label className="text-[10px] font-black text-primary-700 uppercase tracking-widest block mb-2">Select Fee Type</label>
                             <select
-                                className="w-full h-11 bg-white border border-primary-100 rounded-xl px-4 outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm"
+                                className="w-full h-11 bg-(--nb-color-bg-card) border border-primary-100 rounded-xl px-4 outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm text-(--nb-color-fg)"
                                 value={newRule.categoryId}
                                 onChange={e => setNewRule({ ...newRule, categoryId: e.target.value })}
                             >
@@ -95,7 +95,7 @@ export default function FinanceApportionmentTab() {
                         <div>
                             <label className="text-[10px] font-black text-primary-700 uppercase tracking-widest block mb-2">Target Account</label>
                             <select
-                                className="w-full h-11 bg-white border border-primary-100 rounded-xl px-4 outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm"
+                                className="w-full h-11 bg-(--nb-color-bg-card) border border-primary-100 rounded-xl px-4 outline-none focus:ring-4 focus:ring-primary/10 font-bold text-sm text-(--nb-color-fg)"
                                 value={newRule.accountId}
                                 onChange={e => setNewRule({ ...newRule, accountId: e.target.value })}
                             >
@@ -104,7 +104,7 @@ export default function FinanceApportionmentTab() {
                             </select>
                         </div>
                         <div className="flex gap-2">
-                            <button onClick={() => setIsAdding(false)} className="flex-1 h-11 bg-white border border-primary-100 text-primary font-bold rounded-xl text-xs uppercase tracking-widest">Cancel</button>
+                            <button onClick={() => setIsAdding(false)} className="flex-1 h-11 bg-(--nb-color-bg-card) border border-primary-100 text-primary font-bold rounded-xl text-xs uppercase tracking-widest">Cancel</button>
                             <button onClick={handleAddRule} className="flex-1 h-11 bg-primary text-white font-bold rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-primary/20">Save Rule</button>
                         </div>
                     </div>
@@ -114,31 +114,31 @@ export default function FinanceApportionmentTab() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-4">
                     {loading ? (
-                        <div className="p-20 text-center text-surface-400 font-bold italic tracking-widest">Compiling Ledger Maps...</div>
+                        <div className="p-20 text-center text-(--nb-color-muted) font-bold italic tracking-widest">Compiling Ledger Maps...</div>
                     ) : (
                         apportionments.map(rule => (
-                            <div key={rule.id} className="bg-white border border-surface-200 p-5 rounded-2xl flex items-center justify-between group hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5">
+                            <div key={rule.id} className="bg-(--nb-color-bg-card) border border-(--nb-color-border) p-5 rounded-2xl flex items-center justify-between group hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5">
                                 <div className="flex items-center gap-6">
-                                    <div className="w-12 h-12 bg-surface-50 rounded-xl flex items-center justify-center text-primary border border-surface-100">
+                                    <div className="w-12 h-12 bg-(--nb-color-bg) rounded-xl flex items-center justify-center text-primary border border-(--nb-color-border)">
                                         <PieChart size={24} />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
-                                            <p className="font-bold text-surface-900">{rule.category}</p>
+                                            <p className="font-bold text-(--nb-color-fg)">{rule.category}</p>
                                             <span className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[8px] font-black uppercase tracking-tighter rounded border border-blue-100">{rule.status}</span>
                                         </div>
-                                        <div className="flex items-center gap-2 text-xs text-surface-500">
+                                        <div className="flex items-center gap-2 text-xs text-(--nb-color-muted)">
                                             <Landmark size={12} />
-                                            <span>Mappped to: <strong className="text-surface-700">{rule.account}</strong></span>
+                                            <span>Mappped to: <strong className="text-(--nb-color-fg)">{rule.account}</strong></span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-8">
                                     <div className="text-right">
-                                        <p className="font-black text-xl text-surface-900 tracking-tight">{rule.split}%</p>
-                                        <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest">Allocation</p>
+                                        <p className="font-black text-xl text-(--nb-color-fg) tracking-tight">{rule.split}%</p>
+                                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Allocation</p>
                                     </div>
-                                    <button className="p-2 text-surface-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                                    <button className="p-2 text-(--nb-color-muted) hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
                                         <Trash2 size={18} />
                                     </button>
                                 </div>
@@ -148,20 +148,20 @@ export default function FinanceApportionmentTab() {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-surface-900 p-8 rounded-4xl text-white overflow-hidden relative shadow-2xl shadow-surface-200">
+                    <div className="bg-(--nb-color-brand) p-8 rounded-4xl text-white overflow-hidden relative shadow-(--nb-shadow-md)">
                         <div className="relative z-10">
                             <Layers className="text-primary mb-6" size={40} />
                             <h4 className="text-2xl font-black uppercase tracking-tighter mb-2 leading-none">Smart Apportionment</h4>
-                            <p className="text-surface-400 text-sm leading-relaxed mb-6">
+                            <p className="text-white/80 text-sm leading-relaxed mb-6">
                                 Automatically divert income during reconciliation. Use this to separate Tuition from Operational funds.
                             </p>
                             <div className="space-y-3">
-                                <div className="flex justify-between items-center py-2 border-b border-surface-800">
-                                    <span className="text-xs text-surface-400 font-bold uppercase">Total Rules</span>
+                                <div className="flex justify-between items-center py-2 border-b border-white/15">
+                                    <span className="text-xs text-white/80 font-bold uppercase">Total Rules</span>
                                     <span className="font-mono font-bold">{apportionments.length}</span>
                                 </div>
-                                <div className="flex justify-between items-center py-2 border-b border-surface-800">
-                                    <span className="text-xs text-surface-400 font-bold uppercase">Active Mappings</span>
+                                <div className="flex justify-between items-center py-2 border-b border-white/15">
+                                    <span className="text-xs text-white/80 font-bold uppercase">Active Mappings</span>
                                     <span className="font-mono font-bold text-green-400">100%</span>
                                 </div>
                             </div>

@@ -7,7 +7,7 @@ const Radio = React.forwardRef(function Radio({ className = '', ...rest }, ref) 
       ref={ref}
       type="radio"
       className={cn(
-        'h-4 w-4 border-slate-300 text-(--nb-color-brand) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed',
+        'h-4 w-4 border-(--nb-color-border) text-(--nb-color-brand) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed',
         className
       )}
       {...rest}

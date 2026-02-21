@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Search, Pencil } from 'lucide-react';
+import { Search, Pencil, RotateCcw } from 'lucide-react';
 import financeService from '../api/finance';
-import { listGradeSections } from '../../grades/api/gradeSections';
 import toast from 'react-hot-toast';
 import StudentFinancePaymentModal from './StudentFinancePaymentModal';
 import { useFinanceStudentsSummaryQuery, usePreviousBalanceSummaryQuery } from '../hooks/studentFinanceHooks';
@@ -13,13 +12,16 @@ import Card from '../../../shared/components/ui/Card.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
-import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 
 export default function PreviousBalanceTab() {
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [showMode, setShowMode] = useState('all'); // 'all' | 'withPrev'
-    const [classes, setClasses] = useState([]);
     const [loading, setLoading] = useState(false);
     const [submittedParams, setSubmittedParams] = useState({});
     const [addMode, setAddMode] = useState(false);
@@ -34,32 +36,20 @@ export default function PreviousBalanceTab() {
     const [limit, setLimit] = useState(10);
 
     useEffect(() => {
-        const fetchClasses = async () => {
-            try {
-                const normalize = (payload) => Array.isArray(payload)
-                    ? payload
-                    : (payload?.data?.data || payload?.data || []);
-                const res = await listGradeSections({ limit: 100 });
-                let list = normalize(res);
-                if (list.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        list = normalize(fallback);
-                    } catch {
-                        // ignore
-                    }
-                }
-                setClasses(list);
-            } catch (error) {
-                console.error('Failed to load classes', error);
-            }
-        };
-        fetchClasses();
-    }, []);
-
-    useEffect(() => {
         setPage(1);
     }, [search, classId, showMode]);
+
+    const resetFilters = () => {
+        setSearch('');
+        setGradeId('');
+        setShiftId('');
+        setClassId('');
+        setShowMode('all');
+        setAddMode(false);
+        setSubmittedParams({});
+        setEditingPrevBalance({});
+        setPage(1);
+    };
 
     const feeCategoriesQuery = useFinanceCategoriesQuery({ type: 'fee', includePreviousBalance: true }, { staleTime: 30_000 });
     const feeCategories = Array.isArray(feeCategoriesQuery.data) ? feeCategoriesQuery.data : [];
@@ -284,20 +274,13 @@ export default function PreviousBalanceTab() {
     const start = (safePage - 1) * limit;
     const currentRows = sortedItems.slice(start, start + limit);
 
-    const classOptions = useMemo(() => (classes || []).map((cls) => {
-        const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
-        const sectionLabel = cls.section || cls.name || '';
-        const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-        return { value: cls._id, label: label || '—' };
-    }), [classes]);
-
     return (
         <div className="space-y-4">
-            <Card className="p-6 rounded-3xl shadow-xl no-print">
+            <Card className="p-6 rounded-3xl shadow-(--nb-shadow-md) no-print">
                 <div className="flex flex-col md:flex-row items-stretch gap-4">
                     <form onSubmit={handleSearch} className="flex-1 flex gap-2">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-2.5 text-slate-400" size={20} />
+                            <Search className="absolute left-3 top-2.5 text-(--nb-color-muted)" size={20} />
                             <Input
                                 type="text"
                                 className="h-11 pl-10 pr-4 font-medium"
@@ -308,17 +291,41 @@ export default function PreviousBalanceTab() {
                         </div>
                     </form>
 
-                    <SearchableSelect
+                    <GradeSelect
+                        value={gradeId}
+                        onChange={(v) => {
+                            setGradeId(v || '');
+                            setClassId('');
+                            setAddMode(false);
+                        }}
+                        placeholder="Grade"
+                        className="h-11 min-w-40 font-bold text-sm"
+                    />
+
+                    <ShiftSelect
+                        value={shiftId}
+                        onChange={(v) => {
+                            setShiftId(v || '');
+                            setClassId('');
+                            setAddMode(false);
+                        }}
+                        placeholder="Shift"
+                        className="h-11 min-w-40 font-bold text-sm"
+                    />
+
+                    <GradeSectionSelect
+                        gradeId={gradeId}
+                        shiftId={shiftId}
                         value={classId}
                         onChange={(v) => {
-                            setClassId(v);
+                            setClassId(v || '');
                             setAddMode(false);
-                            handleSearch(null, { classId: v });
+                            handleSearch(null, { classId: v || '' });
                         }}
-                        options={classOptions}
-                        placeholder="By Class Level"
-                        searchPlaceholder="Search classes…"
+                        searchable
                         maxVisible={6}
+                        placeholder="Section"
+                        searchPlaceholder="Search…"
                         className="h-11 min-w-50 font-bold text-sm"
                     />
 
@@ -356,11 +363,21 @@ export default function PreviousBalanceTab() {
                         >
                             Add
                         </Button>
+                        <Button
+                            onClick={resetFilters}
+                            variant="neutral"
+                            size="lg"
+                            icon={<RotateCcw size={16} />}
+                            className="h-11 px-6 font-black text-sm uppercase tracking-widest"
+                            title="Reset filters"
+                        >
+                            Reset
+                        </Button>
                     </div>
                 </div>
             </Card>
 
-            <Card className="rounded-3xl shadow-xl">
+            <Card className="rounded-3xl shadow-(--nb-shadow-md)">
                 <StandardTable
                     isLoading={loading}
                     error={null}
@@ -389,7 +406,7 @@ export default function PreviousBalanceTab() {
                             setLimit(v);
                             setPage(1);
                         },
-                        className: 'px-6 bg-white',
+                        className: 'px-6 bg-(--nb-color-bg-card)',
                     }}
                     sortBy={sortBy}
                     sortDir={sortDir}
@@ -399,19 +416,19 @@ export default function PreviousBalanceTab() {
                         const raw = row?.raw;
                         switch (col.key) {
                             case 'studentId':
-                                return <span className="p-0 font-mono text-xs font-bold text-slate-500">{row?.studentId || '—'}</span>;
+                                return <span className="p-0 font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || '—'}</span>;
                             case 'fullName':
                                 return (
                                     <div className="flex flex-col items-start">
-                                        <span className="font-bold text-slate-900">{row?.fullName || '—'}</span>
-                                        <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">B/F ACCOUNT</span>
+                                        <span className="font-bold text-(--nb-color-fg)">{row?.fullName || '—'}</span>
+                                        <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-widest">B/F ACCOUNT</span>
                                     </div>
                                 );
                             case 'contact':
-                                return <span className="text-slate-600 text-sm font-medium">{row?.contact || '—'}</span>;
+                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || '—'}</span>;
                             case 'className':
                                 return (
-                                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
+                                    <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
                                         {row?.className || '—'}
                                     </span>
                                 );
@@ -426,9 +443,9 @@ export default function PreviousBalanceTab() {
                                             onChange={(e) => handlePrevBalanceChange(raw?._id, e.target.value)}
                                             disabled={!addMode}
                                             readOnly={!addMode}
-                                            className={`h-9 w-32 font-black text-xs text-right ${addMode ? 'bg-slate-50' : 'bg-slate-100 cursor-not-allowed opacity-75'}`}
+                                            className={`h-9 w-32 font-black text-xs text-right ${addMode ? 'bg-(--nb-color-bg)' : 'bg-(--nb-color-bg-card) cursor-not-allowed opacity-75'}`}
                                         />
-                                        <span className="text-[10px] font-bold text-slate-400">Current: ${Number(raw?.prevBalance || 0).toFixed(2)}</span>
+                                        <span className="text-[10px] font-bold text-(--nb-color-muted)">Current: ${Number(raw?.prevBalance || 0).toFixed(2)}</span>
                                     </div>
                                 );
                             case 'actions':

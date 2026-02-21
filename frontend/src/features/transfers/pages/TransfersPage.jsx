@@ -403,17 +403,17 @@ export default function TransfersPage() {
 			{recent.length > 0 ? (
 				<Card className="p-4">
 					<div className="flex items-center justify-between mb-3">
-						<h2 className="text-lg font-semibold text-gray-800">{t('transfers.recent.title', { defaultValue: 'Recent transfers (session)' })}</h2>
-						<button type="button" className="text-xs text-gray-600 underline" onClick={() => setRecent([])}>
+						<h2 className="text-lg font-semibold text-(--nb-color-fg)">{t('transfers.recent.title', { defaultValue: 'Recent transfers (session)' })}</h2>
+						<button type="button" className="text-xs text-(--nb-color-muted) underline" onClick={() => setRecent([])}>
 							{t('common.actions.clear', { defaultValue: 'Clear' })}
 						</button>
 					</div>
 					<div className="space-y-2">
 						{recent.map((r) => (
-							<div key={r.ts} className="flex items-center justify-between gap-3 border rounded p-3">
+							<div key={r.ts} className="flex items-center justify-between gap-3 border border-(--nb-color-border) rounded p-3">
 								<div className="min-w-0">
-									<div className="text-sm font-medium text-gray-800 truncate">{r.fullName || t('transfers.labels.studentFallback', { defaultValue: 'Student' })}</div>
-									<div className="text-xs text-gray-600 truncate">
+									<div className="text-sm font-medium text-(--nb-color-fg) truncate">{r.fullName || t('transfers.labels.studentFallback', { defaultValue: 'Student' })}</div>
+									<div className="text-xs text-(--nb-color-muted) truncate">
 										{t('transfers.labels.from', { defaultValue: 'From' })}: {r.from?.label || t('transfers.labels.previousSection', { defaultValue: 'Previous section' })}
 									</div>
 								</div>
@@ -425,13 +425,13 @@ export default function TransfersPage() {
 							</div>
 						))}
 					</div>
-					<div className="mt-2 text-[11px] text-gray-500">{t('transfers.recent.note', { defaultValue: 'Recent transfers are kept only during this page session.' })}</div>
+					<div className="mt-2 text-[11px] text-(--nb-color-muted)">{t('transfers.recent.note', { defaultValue: 'Recent transfers are kept only during this page session.' })}</div>
 				</Card>
 			) : null}
 
 			<Card className="p-4">
 				<div className="flex items-center justify-between mb-3">
-					<h2 className="text-lg font-semibold text-gray-800">{t('transfers.logs.title', { defaultValue: 'All Transfers' })}</h2>
+					<h2 className="text-lg font-semibold text-(--nb-color-fg)">{t('transfers.logs.title', { defaultValue: 'All Transfers' })}</h2>
 					<div className="w-full max-w-xs">
 						<SearchInput value={logsSearch} onChange={(v) => { setLogsSearch(v); setLogsPage(1); }} placeholder={t('transfers.logs.searchPlaceholder', { defaultValue: 'Search by name or ID...' })} />
 					</div>
@@ -460,31 +460,31 @@ export default function TransfersPage() {
 			>
 				<div className="space-y-4">
 					{modalLoading ? (
-						<div className="py-6 text-sm text-gray-600 flex items-center gap-2">
+						<div className="py-6 text-sm text-(--nb-color-muted) flex items-center gap-2">
 							<Spinner size={18} />
 							<span>{t('transfers.modal.loadingEnrollment', { defaultValue: 'Loading current enrollment…' })}</span>
 						</div>
 					) : (
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 							<div>
-								<label className="block text-xs font-medium text-gray-600 mb-1">{t('common.filters.academicYear', { defaultValue: 'Academic Year' })}</label>
+								<label className="block text-xs font-medium text-(--nb-color-muted) mb-1">{t('common.filters.academicYear', { defaultValue: 'Academic Year' })}</label>
 								<AcademicYearSelect placeholder={t('transfers.modal.placeholders.selectAcademicYear', { defaultValue: '-- Select Academic Year --' })} value={selAy} onChange={(v) => { setSelAy(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
 							</div>
 							<div>
-								<label className="block text-xs font-medium text-gray-600 mb-1">{t('common.filters.grade', { defaultValue: 'Grade' })}</label>
+								<label className="block text-xs font-medium text-(--nb-color-muted) mb-1">{t('common.filters.grade', { defaultValue: 'Grade' })}</label>
 								<GradeSelect placeholder={t('transfers.modal.placeholders.selectGrade', { defaultValue: '-- Select Grade --' })} value={selGrade} onChange={(v) => { setSelGrade(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
 							</div>
 							<div>
-								<label className="block text-xs font-medium text-gray-600 mb-1">{t('common.filters.shift', { defaultValue: 'Shift' })}</label>
+								<label className="block text-xs font-medium text-(--nb-color-muted) mb-1">{t('common.filters.shift', { defaultValue: 'Shift' })}</label>
 								<ShiftSelect placeholder={t('transfers.modal.placeholders.selectShift', { defaultValue: '-- Select Shift --' })} value={selShift} onChange={(v) => { setSelShift(v); setSelSection(''); }} className="w-full" disabled={modalLoading || busy} />
 							</div>
 							<div>
-								<label className="block text-xs font-medium text-gray-600 mb-1">{t('common.filters.section', { defaultValue: 'Section' })}</label>
+								<label className="block text-xs font-medium text-(--nb-color-muted) mb-1">{t('common.filters.section', { defaultValue: 'Section' })}</label>
 								<GradeSectionSelect academicYearId={selAy} gradeId={selGrade} shiftId={selShift} value={selSection} onChange={(v) => setSelSection(v)} className="w-full" disabled={modalLoading || busy} />
 							</div>
 						</div>
 					)}
-					<div className="flex justify-between text-[11px] text-gray-500">
+					<div className="flex justify-between text-[11px] text-(--nb-color-muted)">
 						<div>{t('transfers.modal.notes.forwardRules', { defaultValue: 'Forward allowed to any future AY. Returns must match previous section.' })}</div>
 						<div>{t('transfers.modal.notes.noScoresMigrate', { defaultValue: 'No scores migrate across AY.' })}</div>
 					</div>
@@ -495,13 +495,13 @@ export default function TransfersPage() {
 						<ActionButton variant="brand" disabled={!canTransfer || busy || modalLoading || !selSection} onClick={submit} className="inline-flex items-center gap-2">
 							{busy ? (
 								<>
-									<Spinner size={16} color="#fff" />
+									<Spinner size={16} color="currentColor" />
 									<span>{t('transfers.actions.transferring', { defaultValue: 'Transferring…' })}</span>
 								</>
 							) : (
 								modalLoading ? (
 									<>
-										<Spinner size={16} color="#fff" />
+										<Spinner size={16} color="currentColor" />
 										<span>{t('common.loading', { defaultValue: 'Loading…' })}</span>
 									</>
 								) : (

@@ -72,12 +72,12 @@ export default function AuditHistoryTable({
   }, [t]);
 
   const columns = useMemo(() => ([
-    { key: 'action', label: labels.action, sortable: true, field: 'action', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+    { key: 'action', label: labels.action, sortable: true, field: 'action', tdClassName: 'px-6 py-4 text-sm font-medium text-(--nb-color-text) border-x border-(--nb-color-border)' },
     { key: 'description', label: labels.description, sortable: false, field: 'description' },
     { key: 'ip', label: labels.ip, sortable: true, field: 'ip' },
     { key: 'device', label: labels.device, sortable: true, field: 'device' },
     { key: 'timestamp', label: labels.time, sortable: true, field: 'timestamp' },
-    { key: 'view', label: '', sortable: false, field: 'view', align: 'right', noPrint: true, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
+    { key: 'view', label: '', sortable: false, field: 'view', align: 'right', noPrint: true, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-(--nb-color-border) no-print' },
   ]), [labels]);
 
   const openRow = (row) => {
@@ -192,35 +192,35 @@ export default function AuditHistoryTable({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="p-4">
-            <div className="text-xs text-slate-500 mb-1">{labels.action}</div>
+            <div className="text-xs text-(--nb-color-muted) mb-1">{labels.action}</div>
             <div className="font-medium">{selectedPrettyAction}</div>
-            <div className="mt-2 text-xs text-slate-500">{labels.raw}</div>
+            <div className="mt-2 text-xs text-(--nb-color-muted)">{labels.raw}</div>
             <div className="font-mono text-xs break-all">{String(selected?.action || '-')}</div>
           </Card>
 
           <Card className="p-4">
-            <div className="text-xs text-slate-500 mb-1">{labels.time}</div>
+            <div className="text-xs text-(--nb-color-muted) mb-1">{labels.time}</div>
             <div className="font-medium">{selectedTime}</div>
           </Card>
 
           <Card className="p-4">
-            <div className="text-xs text-slate-500 mb-1">{labels.ip}</div>
+            <div className="text-xs text-(--nb-color-muted) mb-1">{labels.ip}</div>
             <div className="font-mono text-sm break-all">{selectedPrettyIp}</div>
-            <div className="mt-2 text-xs text-slate-500">{labels.raw}</div>
+            <div className="mt-2 text-xs text-(--nb-color-muted)">{labels.raw}</div>
             <div className="font-mono text-xs break-all">{String(selected?.ip || '-')}</div>
           </Card>
 
           <Card className="p-4">
-            <div className="text-xs text-slate-500 mb-1">{labels.device}</div>
+            <div className="text-xs text-(--nb-color-muted) mb-1">{labels.device}</div>
             <div className="font-medium">{selectedPrettyDevice}</div>
-            <div className="mt-2 text-xs text-slate-500">{labels.raw}</div>
+            <div className="mt-2 text-xs text-(--nb-color-muted)">{labels.raw}</div>
             <div className="font-mono text-xs break-all">{String(selected?.device || labels.unknownDevice)}</div>
           </Card>
 
           <Card className="p-4 md:col-span-2">
-            <div className="text-xs text-slate-500 mb-1">{labels.description}</div>
+            <div className="text-xs text-(--nb-color-muted) mb-1">{labels.description}</div>
             <div className="text-sm">{selectedPrettyDesc}</div>
-            <div className="mt-2 text-xs text-slate-500">{labels.raw}</div>
+            <div className="mt-2 text-xs text-(--nb-color-muted)">{labels.raw}</div>
             <div className="font-mono text-xs break-all whitespace-pre-wrap">{String(selected?.description || '-')}</div>
           </Card>
         </div>

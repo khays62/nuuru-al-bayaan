@@ -41,7 +41,7 @@ export default function TransfersLogsTable({
 			}}
 			columns={[
 				{ key: 'date', label: t('transfers.logs.columns.date', { defaultValue: 'Date' }), sortable: true, field: 'date' },
-				{ key: 'student', label: t('transfers.logs.columns.student', { defaultValue: 'Student' }), sortable: true, field: 'student', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+				{ key: 'student', label: t('transfers.logs.columns.student', { defaultValue: 'Student' }), sortable: true, field: 'student' },
 				{ key: 'from', label: t('transfers.logs.columns.from', { defaultValue: 'From' }), sortable: true, field: 'from' },
 				{ key: 'to', label: t('transfers.logs.columns.to', { defaultValue: 'To' }), sortable: true, field: 'to' },
 				{ key: 'type', label: t('transfers.logs.columns.type', { defaultValue: 'Type' }), sortable: true, field: 'type' },
@@ -66,7 +66,8 @@ export default function TransfersLogsTable({
 					case 'student':
 						return (
 							<>
-								{l.student?.fullName || '-'} <span className="text-gray-500">({l.student?.studentId || ''})</span>
+								{l.student?.fullName || '-'}{' '}
+								<span className="text-(--nb-color-muted)">({l.student?.studentId || ''})</span>
 							</>
 						);
 					case 'from':

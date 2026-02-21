@@ -988,11 +988,6 @@ export const getAttendanceReportStudentRange = async (req, res) => {
     if (to && !toDate) return res.status(400).json({ message: 'Invalid to (use YYYY-MM-DD)' });
 
     const { start, end } = clampDateRange(fromDate, toDate);
-    // Enforce max 31 days (month) on server too.
-    const diffDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-    if (diffDays > 31) {
-      return res.status(400).json({ message: 'Max range is 1 month (31 days).' });
-    }
 
     const m = String(mode || 'daily').toLowerCase();
     if (m !== 'daily' && m !== 'lesson') {
@@ -1155,10 +1150,6 @@ export const getStudentSelfAttendance = async (req, res) => {
     if (to && !toDate) return res.status(400).json({ message: 'Invalid to (use YYYY-MM-DD)' });
 
     const { start, end } = clampDateRange(fromDate, toDate);
-    const diffDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-    if (diffDays > 31) {
-      return res.status(400).json({ message: 'Max range is 1 month (31 days).' });
-    }
 
     // Which (date, periodCode) had any attendance taken for the class?
     const anyAgg = await AttendanceRecord.aggregate([
@@ -1341,10 +1332,6 @@ export const getStudentAttendanceSelfForStudentId = async (req, res) => {
     if (to && !toDate) return res.status(400).json({ message: 'Invalid to (use YYYY-MM-DD)' });
 
     const { start, end } = clampDateRange(fromDate, toDate);
-    const diffDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-    if (diffDays > 31) {
-      return res.status(400).json({ message: 'Max range is 1 month (31 days).' });
-    }
 
     // Which (date, periodCode) had any attendance taken for the class?
     const anyAgg = await AttendanceRecord.aggregate([

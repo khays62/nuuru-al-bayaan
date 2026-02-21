@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../../../shared/components/ui/Card';
-import { Plus, Filter, Search, DollarSign, Layers, X, GraduationCap } from 'lucide-react';
+import { Plus, Filter, Search, DollarSign, Layers, X, GraduationCap, RotateCcw } from 'lucide-react';
 import StudentChargeModal from './StudentChargeModal';
 import GenerateMonthlyFeeModal from './GenerateMonthlyFeeModal';
 import RecordPaymentModal from './RecordPaymentModal';
@@ -8,8 +8,10 @@ import ClearanceModal from './ClearanceModal';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 import financeService from '../api/finance';
-import { listGradeSections } from '../../grades/api/gradeSections';
 import toast from 'react-hot-toast';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 
 export default function FeeManagement() {
     const [invoices, setInvoices] = useState([]);
@@ -17,43 +19,25 @@ export default function FeeManagement() {
     const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
 
     // Filter States
-    const [classes, setClasses] = useState([]);
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [filters, setFilters] = useState({
         classId: '',
         status: '',
         studentId: '' // Search text
     });
 
+    const handleResetClassFilters = () => {
+        setGradeId('');
+        setShiftId('');
+        setFilters(prev => ({ ...prev, classId: '' }));
+    };
+
     // Modal States
     const [showChargeModal, setShowChargeModal] = useState(false);
     const [showGenerateModal, setShowGenerateModal] = useState(false);
     const [showClearanceModal, setShowClearanceModal] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null); // For payment modal
-
-    // Fetch Classes on Mount
-    useEffect(() => {
-        const fetchClasses = async () => {
-            try {
-                const normalize = (payload) => Array.isArray(payload)
-                    ? payload
-                    : (payload?.data?.data || payload?.data || []);
-                const data = await listGradeSections({ limit: 100 });
-                let list = normalize(data);
-                if (list.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        list = normalize(fallback);
-                    } catch {
-                        // ignore
-                    }
-                }
-                setClasses(list);
-            } catch (error) {
-                console.error("Failed to load classes", error);
-            }
-        };
-        fetchClasses();
-    }, []);
 
     const fetchInvoices = async (page = 1, limit = 10) => {
         setLoading(true);
@@ -176,7 +160,7 @@ export default function FeeManagement() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div className="relative col-span-2">
+                    <div className="relative col-span-2 flex items-center gap-2">
                         <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
                         <input
                             type="text"
@@ -185,24 +169,47 @@ export default function FeeManagement() {
                             value={filters.studentId}
                             onChange={(e) => setFilters(prev => ({ ...prev, studentId: e.target.value }))}
                         />
+                        <button
+                            type="button"
+                            onClick={handleResetClassFilters}
+                            className="h-10 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-bold text-sm inline-flex items-center gap-2 hover:bg-slate-50"
+                            title="Reset class filters"
+                        >
+                            <RotateCcw size={16} />
+                            Reset
+                        </button>
                     </div>
-                    <select
-                        className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
-                        value={filters.classId}
-                        onChange={(e) => setFilters(prev => ({ ...prev, classId: e.target.value }))}
-                    >
-                        <option value="">All Classes</option>
-                        {classes.map(cls => {
-                            const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
-                            const sectionLabel = cls.section || cls.name || '';
-                            const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                            return (
-                                <option key={cls._id} value={cls._id}>
-                                    {label || '—'}
-                                </option>
-                            );
-                        })}
-                    </select>
+                    <div className="flex flex-col md:flex-row gap-2">
+                        <GradeSelect
+                            value={gradeId}
+                            onChange={(v) => {
+                                setGradeId(v || '');
+                                setFilters(prev => ({ ...prev, classId: '' }));
+                            }}
+                            placeholder="Grade"
+                            className="p-2 border rounded-lg outline-none"
+                        />
+                        <ShiftSelect
+                            value={shiftId}
+                            onChange={(v) => {
+                                setShiftId(v || '');
+                                handleResetClassFilters();
+                            }}
+                            placeholder="Shift"
+                            className="p-2 border rounded-lg outline-none"
+                        />
+                        <GradeSectionSelect
+                            gradeId={gradeId}
+                            shiftId={shiftId}
+                            value={filters.classId}
+                            onChange={(v) => setFilters(prev => ({ ...prev, classId: v || '' }))}
+                            searchable
+                            maxVisible={7}
+                            placeholder="Section"
+                            searchPlaceholder="Search…"
+                            className="p-2 border rounded-lg outline-none"
+                        />
+                    </div>
                     <select
                         className="p-2 border rounded-lg outline-none focus:ring-2 focus:ring-primary/20"
                         value={filters.status}

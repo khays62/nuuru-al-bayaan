@@ -45,7 +45,6 @@ export default function UserTable({
           label: t('users.table.columns.fullName'),
           sortable: true,
           field: 'fullName',
-          tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200',
         },
         { key: 'username', label: t('users.table.columns.username'), sortable: true, field: 'username' },
         { key: 'email', label: t('users.table.columns.email'), sortable: true, field: 'email' },
@@ -57,7 +56,6 @@ export default function UserTable({
           label: t('users.table.columns.status'),
           sortable: true,
           field: 'status',
-          tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200',
         },
         {
           key: 'actions',
@@ -65,7 +63,7 @@ export default function UserTable({
           align: 'right',
           noPrint: true,
           locked: false,
-          tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print',
+          tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-(--nb-color-border) no-print',
         },
       ]}
       storageKey="users:columns:v1"

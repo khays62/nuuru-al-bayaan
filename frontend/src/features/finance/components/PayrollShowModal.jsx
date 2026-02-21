@@ -48,13 +48,13 @@ export default function PayrollShowModal({
             panelClassName="max-w-5xl"
         >
             <div className="space-y-4">
-                {subtitle ? <div className="text-xs text-slate-500 font-mono uppercase tracking-widest">{subtitle}</div> : null}
+                {subtitle ? <div className="text-xs text-(--nb-color-muted) font-mono uppercase tracking-widest">{subtitle}</div> : null}
 
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-(--nb-color-muted)">
                     {t('finance.payroll.show.hint', { defaultValue: 'Charge salaries first to populate this list.' })}
                 </div>
 
-                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                <div className="overflow-x-auto border border-(--nb-color-border) rounded-xl">
                     <StandardTable
                         isLoading={isLoading}
                         loadingMessage={t('finance.payroll.table.loading', { defaultValue: 'Loading…' })}

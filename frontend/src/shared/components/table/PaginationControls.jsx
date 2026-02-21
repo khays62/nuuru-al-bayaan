@@ -54,7 +54,7 @@ export default function PaginationControls({
 
 	return (
 		<div className={`flex items-center gap-3 flex-wrap mt-4 ${className}`}>
-			<div className="inline-flex items-stretch rounded-md border border-slate-300 overflow-hidden shadow-sm bg-white">
+			<div className="inline-flex items-stretch rounded-md border border-(--nb-color-border) overflow-hidden shadow-sm bg-(--nb-color-bg-card)">
 				<button
 					type="button"
 					disabled={effectivePage <= 1}
@@ -63,7 +63,7 @@ export default function PaginationControls({
 						setUiPage(next);
 						onPage(next);
 					}}
-					className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed border-r border-slate-300"
+					className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-(--nb-color-brand-50) disabled:opacity-50 disabled:cursor-not-allowed border-r border-(--nb-color-border)"
 					aria-label={t('common.previous', { defaultValue: 'Previous' })}
 					title={t('common.previous', { defaultValue: 'Previous' })}
 				>
@@ -75,7 +75,7 @@ export default function PaginationControls({
 						return (
 							<span
 								key={`ellipsis-${idx}`}
-								className="px-3 py-2 text-sm text-(--nb-color-brand) select-none border-r border-slate-300 flex items-center"
+								className="px-3 py-2 text-sm text-(--nb-color-brand) select-none border-r border-(--nb-color-border) flex items-center"
 							>
 								…
 							</span>
@@ -92,10 +92,10 @@ export default function PaginationControls({
 								onPage(num);
 							}}
 							className={
-								'min-w-9 px-3 py-2 text-sm border-r border-slate-300 ' +
+								'min-w-9 px-3 py-2 text-sm border-r border-(--nb-color-border) ' +
 								(active
 									? 'bg-(--nb-color-brand) text-white'
-									: 'bg-white text-(--nb-color-brand) hover:bg-slate-50')
+									: 'bg-(--nb-color-bg-card) text-(--nb-color-brand) hover:bg-(--nb-color-brand-50)')
 							}
 							aria-current={active ? 'page' : undefined}
 						>
@@ -112,7 +112,7 @@ export default function PaginationControls({
 						setUiPage(next);
 						onPage(next);
 					}}
-					className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+					className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-(--nb-color-brand-50) disabled:opacity-50 disabled:cursor-not-allowed"
 					aria-label={t('common.next', { defaultValue: 'Next' })}
 					title={t('common.next', { defaultValue: 'Next' })}
 				>
@@ -120,35 +120,35 @@ export default function PaginationControls({
 				</button>
 			</div>
 
-			<div className="ml-auto flex items-center gap-3 text-sm text-slate-700">
-				<div className="hidden sm:block text-slate-600">
+			<div className="ml-auto flex items-center gap-3 text-sm text-(--nb-color-fg)">
+				<div className="hidden sm:block text-(--nb-color-muted)">
 					{infoVariant === 'range' ? (
 						start != null && end != null ? (
 							<span>
 								{t('common.showing', { defaultValue: 'Showing' })}{' '}
-								<span className="font-medium text-slate-800">{start}–{end}</span>{' '}
+								<span className="font-medium text-(--nb-color-fg)">{start}–{end}</span>{' '}
 								{t('common.of', { defaultValue: 'of' })}{' '}
-								<span className="font-medium text-slate-800">{tot}</span>{' '}
+								<span className="font-medium text-(--nb-color-fg)">{tot}</span>{' '}
 								{t('common.rows', { defaultValue: 'Rows' })}
 							</span>
 						) : (
 							<span>
 								{t('common.page', { defaultValue: 'Page' })}{' '}
-								<span className="font-medium text-slate-800">{effectivePage}</span>{' '}
+								<span className="font-medium text-(--nb-color-fg)">{effectivePage}</span>{' '}
 								{t('common.of', { defaultValue: 'of' })}{' '}
-								<span className="font-medium text-slate-800">{tp}</span>
+								<span className="font-medium text-(--nb-color-fg)">{tp}</span>
 							</span>
 						)
 					) : infoVariant === 'page' ? (
 						<span>
 							{t('common.page', { defaultValue: 'Page' })}{' '}
-							<span className="font-medium text-slate-800">{effectivePage}</span>{' '}
+							<span className="font-medium text-(--nb-color-fg)">{effectivePage}</span>{' '}
 							{t('common.of', { defaultValue: 'of' })}{' '}
-							<span className="font-medium text-slate-800">{tp}</span>
+							<span className="font-medium text-(--nb-color-fg)">{tp}</span>
 							{tot != null ? (
 								<>
 									{' '}
-									— <span className="font-medium text-slate-800">{tot}</span> {t('common.total', { defaultValue: 'total' })}
+									— <span className="font-medium text-(--nb-color-fg)">{tot}</span> {t('common.total', { defaultValue: 'total' })}
 								</>
 							) : null}
 						</span>
@@ -156,16 +156,16 @@ export default function PaginationControls({
 						start != null && end != null ? (
 							<span>
 								{t('common.showing', { defaultValue: 'Showing' })}{' '}
-								<span className="font-medium text-slate-800">{start}–{end}</span>{' '}
+								<span className="font-medium text-(--nb-color-fg)">{start}–{end}</span>{' '}
 								{t('common.of', { defaultValue: 'of' })}{' '}
-								<span className="font-medium text-slate-800">{tot}</span>
+								<span className="font-medium text-(--nb-color-fg)">{tot}</span>
 							</span>
 						) : (
 							<span>
 								{t('common.page', { defaultValue: 'Page' })}{' '}
-								<span className="font-medium text-slate-800">{effectivePage}</span>{' '}
+								<span className="font-medium text-(--nb-color-fg)">{effectivePage}</span>{' '}
 								{t('common.of', { defaultValue: 'of' })}{' '}
-								<span className="font-medium text-slate-800">{tp}</span>
+								<span className="font-medium text-(--nb-color-fg)">{tp}</span>
 							</span>
 						)
 					)}
@@ -173,7 +173,7 @@ export default function PaginationControls({
 
 				{showRowsSelector ? (
 					<div className="flex items-center gap-2">
-						<span className="text-slate-600">{t('common.rows', { defaultValue: 'Rows' })}</span>
+						<span className="text-(--nb-color-muted)">{t('common.rows', { defaultValue: 'Rows' })}</span>
 						<Select
 							value={selectValue}
 							onChange={(e) => {

@@ -32,36 +32,36 @@ const StackedBar = ({ label, created, updated, titleCreated, titleUpdated }) => 
 
     return (
         <div className="flex items-center gap-3">
-            <div className="w-24 text-[11px] text-gray-600 truncate">{label}</div>
+            <div className="w-24 text-[11px] text-(--nb-color-muted) truncate">{label}</div>
             <div className="flex-1">
-                <div className="h-3 w-full overflow-hidden rounded bg-gray-100 border border-gray-200">
+                <div className="h-3 w-full overflow-hidden rounded bg-(--nb-color-bg) border border-(--nb-color-border)">
                     <div className="flex h-full">
                         <div
-                            className="bg-rose-500/85"
+                            className="bg-(--nb-color-brand)/85"
                             style={{ width: `${(a / total) * 100}%` }}
                             title={titleCreated ? `${titleCreated}: ${a}` : `Created: ${a}`}
                         />
                         <div
-                            className="bg-amber-500/85"
+                            className="bg-(--nb-color-accent)/85"
                             style={{ width: `${(b / total) * 100}%` }}
                             title={titleUpdated ? `${titleUpdated}: ${b}` : `Updated: ${b}`}
                         />
                     </div>
                 </div>
             </div>
-            <div className="w-12 text-right text-[11px] text-gray-700 tabular-nums">{fmt(a + b)}</div>
+            <div className="w-12 text-right text-[11px] text-(--nb-color-text) tabular-nums">{fmt(a + b)}</div>
         </div>
     );
 };
 
 const MiniLegend = ({ createdLabel, updatedLabel }) => (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-(--nb-color-muted)">
         <div className="inline-flex items-center gap-2">
-            <span className="inline-block h-2.5 w-2.5 rounded bg-rose-500/85" />
+            <span className="inline-block h-2.5 w-2.5 rounded bg-(--nb-color-brand)/85" />
             {createdLabel || 'Created'}
         </div>
         <div className="inline-flex items-center gap-2">
-            <span className="inline-block h-2.5 w-2.5 rounded bg-amber-500/85" />
+            <span className="inline-block h-2.5 w-2.5 rounded bg-(--nb-color-accent)/85" />
             {updatedLabel || 'Updated'}
         </div>
     </div>
@@ -70,7 +70,7 @@ const MiniLegend = ({ createdLabel, updatedLabel }) => (
 const RangeTabs = ({ value, onChange, items }) => {
     const safe = Array.isArray(items) ? items : [];
     return (
-        <div className="inline-flex flex-wrap gap-2 rounded-xl border bg-white p-1 shadow-sm">
+        <div className="inline-flex flex-wrap gap-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-1 shadow-sm">
             {safe.map((it) => {
                 const active = value === it.value;
                 return (
@@ -81,8 +81,8 @@ const RangeTabs = ({ value, onChange, items }) => {
                         className={
                             `px-3 py-1.5 text-sm font-semibold rounded-lg transition ` +
                             (active
-                                ? 'bg-indigo-600 text-white shadow-sm'
-                                : 'text-gray-700 hover:bg-gray-50')
+                                ? 'bg-(--nb-color-brand) text-white shadow-sm'
+                                : 'text-(--nb-color-text) hover:bg-(--nb-color-brand-50)')
                         }
                     >
                         {it.label}
@@ -175,8 +175,8 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
     const updatedLabel = t('dashboard.cards.announcementsMix.legend.updated');
 
     return (
-        <div className="rounded-2xl border border-rose-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-            <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+            <div className="px-5 py-4 bg-(--nb-color-brand) text-white border-b border-white/10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <div className="text-lg font-semibold">{t('dashboard.cards.announcementsMix.title')}</div>
                     <div className="text-sm text-white/80 mt-1">{t('dashboard.cards.announcementsMix.subtitle')}</div>
@@ -193,18 +193,18 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
                 </div>
             </div>
 
-            <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 flex-wrap">
-                <div className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <div className="px-5 py-3 bg-(--nb-color-bg) border-b border-(--nb-color-border) flex items-center justify-between gap-3 flex-wrap">
+                <div className="inline-flex items-center gap-2 text-sm text-(--nb-color-text)">
                     <Megaphone size={16} />
                     <span className="font-semibold">{t('common.range.title')}</span>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 text-xs text-gray-600 tabular-nums">
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                            {t('common.range.today')}: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.today)}</span>
+                    <div className="flex items-center gap-2 text-xs text-(--nb-color-muted) tabular-nums">
+                        <span className="inline-flex items-center rounded-full border border-(--nb-color-border) bg-(--nb-color-bg-card) px-2.5 py-1">
+                            {t('common.range.today')}: <span className="ml-1 font-semibold text-(--nb-color-text)">{fmtOrDash(todayAndLast7.today)}</span>
                         </span>
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                            {t('common.range.last7')}: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.last7)}</span>
+                        <span className="inline-flex items-center rounded-full border border-(--nb-color-border) bg-(--nb-color-bg-card) px-2.5 py-1">
+                            {t('common.range.last7')}: <span className="ml-1 font-semibold text-(--nb-color-text)">{fmtOrDash(todayAndLast7.last7)}</span>
                         </span>
                     </div>
 
@@ -237,7 +237,7 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
                             />
                         ))
                     ) : (
-                        <div className="text-sm text-gray-500">{t('dashboard.cards.announcementsMix.empty')}</div>
+                        <div className="text-sm text-(--nb-color-muted)">{t('dashboard.cards.announcementsMix.empty')}</div>
                     )}
                 </div>
             </div>

@@ -15,7 +15,7 @@ export default function FormField({
   return (
     <div className={cn('space-y-1', className)}>
       {label ? (
-        <Label className={cn('text-xs text-slate-600', labelClassName)} htmlFor={htmlFor}>
+        <Label className={cn('text-xs text-(--nb-color-muted)', labelClassName)} htmlFor={htmlFor}>
           {label}{required ? <span className="text-red-600"> *</span> : null}
         </Label>
       ) : null}
@@ -23,7 +23,7 @@ export default function FormField({
       {children}
 
       {error ? <div className="text-xs text-red-600">{error}</div> : null}
-      {!error && hint ? <div className="text-xs text-slate-500">{hint}</div> : null}
+      {!error && hint ? <div className="text-xs text-(--nb-color-muted)">{hint}</div> : null}
     </div>
   );
 }

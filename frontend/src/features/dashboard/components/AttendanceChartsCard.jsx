@@ -31,7 +31,7 @@ const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
                 `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
                 (active
                     ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand) shadow-sm'
-                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:shadow')
+                    : 'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-brand-50) hover:shadow')
             }
         >
             {Icon ? <Icon size={16} /> : null}
@@ -49,8 +49,8 @@ const ActionButton = ({ disabled, onClick, icon: Icon, label }) => {
             className={
                 `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
                 (disabled
-                    ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
-                    : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50 hover:shadow')
+                    ? 'bg-(--nb-color-bg) text-(--nb-color-muted) border-(--nb-color-border) cursor-not-allowed'
+                    : 'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-brand-50) hover:shadow')
             }
             title={label}
         >
@@ -62,7 +62,7 @@ const ActionButton = ({ disabled, onClick, icon: Icon, label }) => {
 
 const MiniLegend = ({ items }) => {
     return (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-(--nb-color-muted)">
             {items.map((it) => (
                 <div key={it.label} className="inline-flex items-center gap-2">
                     <span className={`inline-block w-2.5 h-2.5 rounded ${it.dot}`} />
@@ -75,18 +75,18 @@ const MiniLegend = ({ items }) => {
 
 const SkeletonRow = () => (
     <div className="flex items-center gap-3 animate-pulse">
-        <div className="w-16 h-3 rounded bg-gray-200" />
-        <div className="flex-1 h-3 rounded bg-gray-200" />
-        <div className="w-12 h-3 rounded bg-gray-200" />
+        <div className="w-16 h-3 rounded bg-(--nb-color-border)" />
+        <div className="flex-1 h-3 rounded bg-(--nb-color-border)" />
+        <div className="w-12 h-3 rounded bg-(--nb-color-border)" />
     </div>
 );
 
 const TinyBadge = ({ tone = 'gray', children }) => {
     const tones = {
-        gray: 'bg-gray-100 text-gray-800 border-gray-200',
-        emerald: 'bg-emerald-100 text-emerald-900 border-emerald-200',
-        indigo: 'bg-indigo-100 text-indigo-900 border-indigo-200',
-        amber: 'bg-amber-100 text-amber-900 border-amber-200',
+        gray: 'bg-(--nb-color-bg) text-(--nb-color-text) border-(--nb-color-border)',
+        emerald: 'bg-(--nb-color-accent-100) text-(--nb-color-brand) border-(--nb-color-border)',
+        indigo: 'bg-(--nb-color-brand-100) text-(--nb-color-brand) border-(--nb-color-border)',
+        amber: 'bg-(--nb-color-accent-100) text-(--nb-color-brand) border-(--nb-color-border)',
     };
     return (
         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tones[tone] || tones.gray}`}>
@@ -95,18 +95,18 @@ const TinyBadge = ({ tone = 'gray', children }) => {
     );
 };
 
-const PercentBar = ({ label, pct, tone = 'bg-indigo-600' }) => {
+const PercentBar = ({ label, pct, tone = 'bg-(--nb-color-brand)' }) => {
     const v = Number(pct || 0);
     const clamped = Math.max(0, Math.min(100, v));
     return (
         <div className="flex items-center gap-3">
-            <div className="w-24 text-[11px] text-gray-600 truncate">{label}</div>
+            <div className="w-24 text-[11px] text-(--nb-color-muted) truncate">{label}</div>
             <div className="flex-1">
-                <div className="h-3 w-full overflow-hidden rounded bg-gray-100 border border-gray-200">
+                <div className="h-3 w-full overflow-hidden rounded bg-(--nb-color-bg) border border-(--nb-color-border)">
                     <div className={`h-full ${tone}`} style={{ width: `${Math.max(2, clamped)}%` }} />
                 </div>
             </div>
-            <div className="w-12 text-right text-[11px] text-gray-700 tabular-nums">{clamped.toFixed(1)}%</div>
+            <div className="w-12 text-right text-[11px] text-(--nb-color-text) tabular-nums">{clamped.toFixed(1)}%</div>
         </div>
     );
 };
@@ -115,9 +115,9 @@ const StackedBar = ({ label, segments }) => {
     const total = segments.reduce((sum, s) => sum + (Number(s.value) || 0), 0) || 1;
     return (
         <div className="flex items-center gap-3">
-            <div className="w-16 shrink-0 pt-0.5 text-[11px] text-gray-600 tabular-nums">{label}</div>
+            <div className="w-16 shrink-0 pt-0.5 text-[11px] text-(--nb-color-muted) tabular-nums">{label}</div>
             <div className="flex-1">
-                <div className="h-3 w-full overflow-hidden rounded bg-gray-100 border border-gray-200">
+                <div className="h-3 w-full overflow-hidden rounded bg-(--nb-color-bg) border border-(--nb-color-border)">
                     <div className="flex h-full">
                         {segments.map((s) => (
                             <div
@@ -130,7 +130,7 @@ const StackedBar = ({ label, segments }) => {
                     </div>
                 </div>
             </div>
-            <div className="w-12 text-right text-[11px] text-gray-700 tabular-nums">{total}</div>
+            <div className="w-12 text-right text-[11px] text-(--nb-color-text) tabular-nums">{total}</div>
         </div>
     );
 };
@@ -268,14 +268,14 @@ export default function AttendanceChartsCard() {
 
     const STATUSES = useMemo(
         () => [
-            { key: 'present', label: t('attendance.status.present', { defaultValue: 'Present' }), dot: 'bg-emerald-600', bar: 'bg-emerald-600' },
-            { key: 'absent', label: t('attendance.status.absent', { defaultValue: 'Absent' }), dot: 'bg-red-500', bar: 'bg-red-500' },
-            { key: 'late', label: t('attendance.status.late', { defaultValue: 'Late' }), dot: 'bg-amber-500', bar: 'bg-amber-500' },
-            { key: 'excused', label: t('attendance.status.excused', { defaultValue: 'Excused' }), dot: 'bg-violet-600', bar: 'bg-violet-600' },
-            { key: 'sick', label: t('attendance.status.sick', { defaultValue: 'Sick' }), dot: 'bg-sky-600', bar: 'bg-sky-600' },
-            { key: 'medical', label: t('attendance.status.medical', { defaultValue: 'Medical' }), dot: 'bg-teal-600', bar: 'bg-teal-600' },
-            { key: 'family', label: t('attendance.status.family', { defaultValue: 'Family' }), dot: 'bg-pink-600', bar: 'bg-pink-600' },
-            { key: 'other', label: t('attendance.status.other', { defaultValue: 'Other' }), dot: 'bg-gray-600', bar: 'bg-gray-600' },
+            { key: 'present', label: t('attendance.status.present', { defaultValue: 'Present' }), dot: 'bg-(--nb-color-accent)', bar: 'bg-(--nb-color-accent)' },
+            { key: 'absent', label: t('attendance.status.absent', { defaultValue: 'Absent' }), dot: 'bg-(--nb-color-brand)', bar: 'bg-(--nb-color-brand)' },
+            { key: 'late', label: t('attendance.status.late', { defaultValue: 'Late' }), dot: 'bg-(--nb-color-accent)/70', bar: 'bg-(--nb-color-accent)/70' },
+            { key: 'excused', label: t('attendance.status.excused', { defaultValue: 'Excused' }), dot: 'bg-(--nb-color-brand)/70', bar: 'bg-(--nb-color-brand)/70' },
+            { key: 'sick', label: t('attendance.status.sick', { defaultValue: 'Sick' }), dot: 'bg-(--nb-color-accent)/55', bar: 'bg-(--nb-color-accent)/55' },
+            { key: 'medical', label: t('attendance.status.medical', { defaultValue: 'Medical' }), dot: 'bg-(--nb-color-brand)/55', bar: 'bg-(--nb-color-brand)/55' },
+            { key: 'family', label: t('attendance.status.family', { defaultValue: 'Family' }), dot: 'bg-(--nb-color-accent)/40', bar: 'bg-(--nb-color-accent)/40' },
+            { key: 'other', label: t('attendance.status.other', { defaultValue: 'Other' }), dot: 'bg-(--nb-color-muted)', bar: 'bg-(--nb-color-muted)' },
         ],
         [t]
     );
@@ -464,8 +464,8 @@ export default function AttendanceChartsCard() {
         : 'p-4 space-y-2 max-h-[420px] overflow-y-auto pr-2';
 
     return (
-        <div className="rounded-2xl border border-emerald-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-            <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+            <div className="px-5 py-4 bg-(--nb-color-brand) text-white border-b border-white/10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <div className="text-lg font-semibold">{t('teachers.dashboard.attendance.title')}</div>
                     <div className="text-sm text-white/80 mt-1">{t('dashboard.cards.attendance.subtitle')}</div>
@@ -481,9 +481,9 @@ export default function AttendanceChartsCard() {
             </div>
 
             <div className="p-5 flex flex-col gap-4">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-4">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
+                        <div className="inline-flex items-center gap-2 text-sm font-medium text-(--nb-color-text)">
                             <SlidersHorizontal size={16} />
                             <span>{t('common.filters.title')}</span>
                         </div>
@@ -498,7 +498,7 @@ export default function AttendanceChartsCard() {
                                 setFrom(isoMinusDaysUTC(todayUTC, 6));
                                 setTo(todayUTC);
                             }}
-                            className="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            className="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-text) hover:bg-(--nb-color-brand-50)"
                             title={t('common.filters.resetTitle')}
                         >
                             <RotateCcw size={14} />
@@ -661,10 +661,10 @@ export default function AttendanceChartsCard() {
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-                                <div className="text-xs font-semibold text-emerald-900">{t('attendance.status.present')}</div>
-                                <div className="text-xl font-bold text-emerald-900 tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
-                                <div className="text-[11px] text-emerald-900/70">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
+                            <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-accent-50) p-3">
+                                <div className="text-xs font-semibold text-(--nb-color-brand)">{t('attendance.status.present')}</div>
+                                <div className="text-xl font-bold text-(--nb-color-brand) tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
+                                <div className="text-[11px] text-(--nb-color-brand)/70">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
                             </div>
                             <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                                 <div className="text-xs font-semibold text-gray-900">{t('teachers.dashboard.attendance.performance.markedDays')}</div>

@@ -17,36 +17,22 @@ import TeacherDashboardPrefetcher from '../components/dashboard/TeacherDashboard
 import { useI18n } from '../../../i18n/I18nProvider';
 
 const QuickCard = ({ title, description, to, Icon, tone = 'indigo' }) => {
-	const cardBg = {
-		indigo: 'bg-linear-to-r from-indigo-50 to-violet-50 border-indigo-100',
-		emerald: 'bg-linear-to-r from-emerald-50 to-lime-50 border-emerald-100',
-		amber: 'bg-linear-to-r from-amber-50 to-orange-50 border-amber-100',
-		sky: 'bg-linear-to-r from-sky-50 to-cyan-50 border-sky-100',
-	};
-	const accent = {
-		indigo: 'border-b-indigo-300',
-		emerald: 'border-b-emerald-300',
-		amber: 'border-b-amber-300',
-		sky: 'border-b-sky-300',
-	};
-	const toneClasses = {
-		indigo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-		emerald: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-		amber: 'bg-amber-100 text-amber-900 border-amber-200',
-		sky: 'bg-sky-100 text-sky-800 border-sky-200',
-	};
+	const base =
+		'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
+		'bg-(--nb-color-bg-card) p-5 shadow-md transition';
+	const active = 'hover:shadow-lg hover:border-(--nb-color-accent-200)';
 	return (
 		<Link
 			to={to}
-			className={`block rounded-xl border border-b-4 p-5 shadow-md hover:shadow-lg hover:border-blue-200 transition ${cardBg[tone] || cardBg.indigo} ${accent[tone] || accent.indigo}`}
+			className={`${base} ${active}`}
 		>
 			<div className="flex items-start gap-4">
-				<div className={`shrink-0 w-11 h-11 rounded-lg border flex items-center justify-center ${toneClasses[tone] || toneClasses.indigo}`}>
+				<div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand) flex items-center justify-center">
 					{Icon ? <Icon size={20} /> : null}
 				</div>
 				<div className="min-w-0">
-					<div className="text-base font-semibold text-gray-900">{title}</div>
-					<div className="text-sm text-gray-600 mt-1">{description}</div>
+					<div className="text-base font-semibold text-(--nb-color-text)">{title}</div>
+					<div className="text-sm text-(--nb-color-muted) mt-1">{description}</div>
 				</div>
 			</div>
 		</Link>
@@ -65,9 +51,9 @@ export default function TeacherDashboardPage() {
 	return (
 		<div className="space-y-4">
 			<TeacherDashboardPrefetcher />
-			<div className="rounded-xl border border-blue-200 border-b-4 border-b-blue-300 bg-linear-to-r from-blue-50 to-indigo-50 p-5 shadow-md">
-				<div className="text-xl md:text-2xl font-semibold text-blue-900">{welcomeText}</div>
-				<div className="text-sm text-blue-900/70 mt-1">{summaryLine}</div>
+			<div className="rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) bg-linear-to-r from-(--nb-color-bg-card) to-(--nb-color-accent-50) p-5 shadow-md">
+				<div className="text-xl md:text-2xl font-semibold text-(--nb-color-text)">{welcomeText}</div>
+				<div className="text-sm text-(--nb-color-muted) mt-1">{summaryLine}</div>
 			</div>
 
 			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

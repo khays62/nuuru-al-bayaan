@@ -213,7 +213,6 @@ export default function SubjectPage() {
     />
   );
 
-  const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
   const isPageLoading = Boolean(isLoading);
   const canExport = Boolean(canView && !isPageLoading && Array.isArray(sortedSubjectsForView) && sortedSubjectsForView.length > 0);
 
@@ -318,8 +317,7 @@ export default function SubjectPage() {
 
             <div className="flex items-center gap-2 flex-wrap">
               <ActionButton
-                variant="neutral"
-                className={outlineBtn}
+                variant="outline"
                 icon={<Printer size={16} />}
                 disabled={!canExport}
                 onClick={handlePrint}
@@ -327,13 +325,12 @@ export default function SubjectPage() {
               >
                 {t('common.actions.print', { defaultValue: 'Print' })}
               </ActionButton>
-              <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-              <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-              <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-              <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+              <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+              <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+              <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+              <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
               <ActionButton
-                variant="neutral"
-                className={outlineBtn}
+                variant="outline"
                 icon={<RotateCcw size={16} />}
                 onClick={() => {
                   setGradeFilter('');

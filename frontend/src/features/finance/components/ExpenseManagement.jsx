@@ -33,8 +33,6 @@ export default function ExpenseManagement() {
 
     const [expandedSection, setExpandedSection] = useState('ledger');
 
-    const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
-
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const d = new Date();
         const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -484,17 +482,17 @@ export default function ExpenseManagement() {
             <div className="min-h-150">
                 {expandedSection === 'ledger' && (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 flex flex-wrap items-center justify-between gap-4 no-print">
+                        <div className="bg-(--nb-color-bg-card) rounded-3xl border border-(--nb-color-border) shadow-(--nb-shadow-md) p-6 flex flex-wrap items-center justify-between gap-4 no-print">
                             <div className="min-w-0">
-                                <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter truncate">{t('finance.expenses.ledger.title', { defaultValue: 'Expense Ledger' })}</h4>
+                                <h4 className="text-xl font-black text-(--nb-color-fg) uppercase tracking-tighter truncate">{t('finance.expenses.ledger.title', { defaultValue: 'Expense Ledger' })}</h4>
                                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-2">
                                     <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{t('finance.expenses.ledger.kpiSpend', { defaultValue: 'Periodic Spend' })}</p>
-                                        <p className="text-2xl font-black text-slate-900 tracking-tight">${Number(totalExpenses || 0).toLocaleString()}</p>
+                                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest leading-none mb-1">{t('finance.expenses.ledger.kpiSpend', { defaultValue: 'Periodic Spend' })}</p>
+                                        <p className="text-2xl font-black text-(--nb-color-fg) tracking-tight">${Number(totalExpenses || 0).toLocaleString()}</p>
                                     </div>
-                                    <div className="hidden sm:block h-10 w-px bg-slate-200" />
+                                    <div className="hidden sm:block h-10 w-px bg-(--nb-color-border)" />
                                     <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{t('finance.expenses.ledger.kpiRecords', { defaultValue: 'Approved Audit Records' })}</p>
+                                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest leading-none mb-1">{t('finance.expenses.ledger.kpiRecords', { defaultValue: 'Approved Audit Records' })}</p>
                                         <p className="text-2xl font-black text-blue-600 tracking-tight">{expenses.length}</p>
                                     </div>
                                 </div>
@@ -505,7 +503,7 @@ export default function ExpenseManagement() {
                                     type="month"
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(e.target.value)}
-                                    className="h-10 px-3 bg-white border border-slate-300 rounded-(--nb-radius-md) text-sm text-slate-900 shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                    className="h-10 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
                                     aria-label={t('finance.expenses.ledger.monthAria', { defaultValue: 'Select month' })}
                                 />
 
@@ -518,8 +516,7 @@ export default function ExpenseManagement() {
                                 </ActionButton>
 
                                 <ActionButton
-                                    variant="neutral"
-                                    className={outlineBtn}
+                                    variant="outline"
                                     icon={<Printer size={16} />}
                                     disabled={!canExport}
                                     onClick={() => { if (canExport) setTimeout(() => window.print(), 0); }}
@@ -528,14 +525,14 @@ export default function ExpenseManagement() {
                                     {t('common.actions.print', { defaultValue: 'Print' })}
                                 </ActionButton>
 
-                                <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                                <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                                <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                                <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                                <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl print-container print-fit-wide">
+                        <div className="bg-(--nb-color-bg-card) rounded-3xl border border-(--nb-color-border) shadow-(--nb-shadow-md) print-container print-fit-wide">
                             <StandardTable
                             isLoading={isLoading}
                             error={expensesQuery.isError ? (expensesQuery.error?.data?.message || expensesQuery.error?.message || t('finance.expenses.toasts.loadFailed', { defaultValue: 'Failed to load expenses' })) : null}
@@ -558,14 +555,14 @@ export default function ExpenseManagement() {
                                 { key: 'actions', label: t('common.columns.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, tdClassName: 'no-print' },
                             ]}
                             storageKey="finance:expenses:columns:v1"
-                            controlsProps={{
+                                controlsProps={{
                                 limit,
                                 total,
                                 onLimit: (v) => {
                                     setLimit(v);
                                     setPage(1);
                                 },
-                                className: 'px-8 bg-white',
+                                    className: 'px-8 bg-(--nb-color-bg-card)',
                             }}
                             sortBy={sortBy}
                             sortDir={sortDir}
@@ -625,10 +622,10 @@ export default function ExpenseManagement() {
 
                 {expandedSection === 'categories' && (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 flex flex-wrap items-center justify-between gap-4 no-print">
+                        <div className="bg-(--nb-color-bg-card) rounded-3xl border border-(--nb-color-border) shadow-(--nb-shadow-md) p-6 flex flex-wrap items-center justify-between gap-4 no-print">
                             <div className="min-w-0">
-                                <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter truncate">{t('finance.expenses.categories.title', { defaultValue: 'Expense Categories' })}</h4>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">
+                                <h4 className="text-xl font-black text-(--nb-color-fg) uppercase tracking-tighter truncate">{t('finance.expenses.categories.title', { defaultValue: 'Expense Categories' })}</h4>
+                                <p className="text-[10px] text-(--nb-color-muted) font-bold uppercase tracking-widest mt-1 truncate">
                                     {t('finance.expenses.categories.count', { defaultValue: '{{count}} categories', count: categories.length })}
                                 </p>
                             </div>
@@ -639,14 +636,14 @@ export default function ExpenseManagement() {
                                     value={newCategoryName}
                                     onChange={(e) => setNewCategoryName(e.target.value)}
                                     placeholder={t('finance.expenses.categories.newPlaceholder', { defaultValue: 'New category name' })}
-                                    className="h-10 w-64 px-3 bg-white border border-slate-300 rounded-(--nb-radius-md) text-sm text-slate-900 shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                    className="h-10 w-64 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
                                 />
                                 <input
                                     type="number"
                                     value={newCategoryBudget}
                                     onChange={(e) => setNewCategoryBudget(e.target.value)}
                                     placeholder={t('finance.expenses.categories.budgetPlaceholder', { defaultValue: 'Budget (optional)' })}
-                                    className="h-10 w-44 px-3 bg-white border border-slate-300 rounded-(--nb-radius-md) text-sm text-slate-900 shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                    className="h-10 w-44 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
                                     min="0"
                                     step="0.01"
                                 />
@@ -663,14 +660,14 @@ export default function ExpenseManagement() {
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6">
+                        <div className="bg-(--nb-color-bg-card) rounded-3xl border border-(--nb-color-border) shadow-(--nb-shadow-md) p-6">
                             {categoriesQuery.isLoading && categoriesQuery.data == null ? (
-                                <div className="py-16 text-center text-slate-400 font-bold uppercase tracking-widest italic">
+                                <div className="py-16 text-center text-(--nb-color-muted) font-bold uppercase tracking-widest italic">
                                     {t('finance.expenses.categories.loading', { defaultValue: 'Loading categories…' })}
                                 </div>
                             ) : categories.length === 0 ? (
                                 <div className="py-16 text-center">
-                                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t('finance.expenses.categories.empty', { defaultValue: 'No categories yet' })}</span>
+                                    <span className="text-[10px] text-(--nb-color-muted) font-black uppercase tracking-widest">{t('finance.expenses.categories.empty', { defaultValue: 'No categories yet' })}</span>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -687,14 +684,14 @@ export default function ExpenseManagement() {
                                             <div
                                                 key={c?._id}
                                                 className={
-                                                    'group relative bg-white p-6 rounded-3xl border shadow-(--nb-shadow-md) ' +
-                                                    'border-slate-200 transition-all duration-200 ease-out ' +
-                                                    'hover:-translate-y-0.5 hover:border-blue-600/40 hover:shadow-xl hover:shadow-blue-600/5'
+                                                                        'group relative bg-(--nb-color-bg-card) p-6 rounded-3xl border shadow-(--nb-shadow-md) ' +
+                                                                        'border-(--nb-color-border) transition-all duration-200 ease-out ' +
+                                                                        'hover:-translate-y-0.5 hover:border-blue-600/40 hover:shadow-(--nb-shadow-md)'
                                                 }
                                             >
                                                 <div className="flex justify-between items-start gap-3 mb-5">
                                                     <div className="min-w-0">
-                                                        <p className="text-lg font-black text-slate-900 truncate">{catName || '—'}</p>
+                                                                <p className="text-lg font-black text-(--nb-color-fg) truncate">{catName || '—'}</p>
                                                         <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1 truncate">
                                                             {selectedMonth
                                                                 ? t('finance.expenses.categories.monthTag', { defaultValue: 'Month: {{month}}', month: selectedMonth })
@@ -729,23 +726,23 @@ export default function ExpenseManagement() {
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-3">
-                                                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 shadow-(--nb-shadow-sm)">
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('finance.expenses.categories.spent', { defaultValue: 'Spent' })}</p>
-                                                        <p className={"mt-1 text-2xl font-black tracking-tighter " + (over ? 'text-red-600' : 'text-slate-900')}>
+                                                            <div className="bg-(--nb-color-bg) rounded-2xl p-4 border border-(--nb-color-border) shadow-(--nb-shadow-sm)">
+                                                                <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">{t('finance.expenses.categories.spent', { defaultValue: 'Spent' })}</p>
+                                                                <p className={"mt-1 text-2xl font-black tracking-tighter " + (over ? 'text-red-600' : 'text-(--nb-color-fg)')}>
                                                             ${Number(spent || 0).toLocaleString()}
                                                         </p>
-                                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                                                                <p className="text-[10px] text-(--nb-color-muted) font-bold uppercase tracking-widest mt-1">
                                                             {t('finance.expenses.categories.records', { defaultValue: '{{count}} records', count })}
                                                         </p>
                                                     </div>
 
-                                                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 shadow-(--nb-shadow-sm)">
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('finance.expenses.categories.budget', { defaultValue: 'Budget' })}</p>
-                                                        <p className="mt-1 text-2xl font-black text-slate-900 tracking-tighter">
+                                                            <div className="bg-(--nb-color-bg) rounded-2xl p-4 border border-(--nb-color-border) shadow-(--nb-shadow-sm)">
+                                                                <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">{t('finance.expenses.categories.budget', { defaultValue: 'Budget' })}</p>
+                                                                <p className="mt-1 text-2xl font-black text-(--nb-color-fg) tracking-tighter">
                                                             {hasBudget ? `$${Number(budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
                                                         </p>
                                                         {hasBudget ? (
-                                                            <p className={"text-[10px] font-bold uppercase tracking-widest mt-1 " + (over ? 'text-red-600' : 'text-slate-400')}>
+                                                                    <p className={"text-[10px] font-bold uppercase tracking-widest mt-1 " + (over ? 'text-red-600' : 'text-(--nb-color-muted)')}>
                                                                 {over
                                                                     ? t('finance.expenses.categories.overBudget', { defaultValue: 'Over budget' })
                                                                     : t('finance.expenses.categories.remaining', { defaultValue: 'Remaining: ${{value}}', value: Number(remaining || 0).toLocaleString() })}

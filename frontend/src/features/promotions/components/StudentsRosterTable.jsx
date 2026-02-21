@@ -39,26 +39,26 @@ export default function StudentsRosterTable({
       {
         key: 'select',
         label: '',
-        thClassName: 'p-2 border-b border-gray-200 w-10',
-        tdClassName: 'p-2',
+        thClassName: 'p-2 border-b border-x border-(--nb-color-border) w-10',
+        tdClassName: 'p-2 border-x border-(--nb-color-border)',
       },
       {
         key: 'student',
         label: t('promotions.roster.columns.student', { defaultValue: 'Student' }),
-        thClassName: 'p-2 text-left border-b border-gray-200',
-        tdClassName: 'p-2 whitespace-nowrap font-medium text-gray-700',
+        thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+        tdClassName: 'p-2 border-x border-(--nb-color-border) whitespace-nowrap font-medium text-(--nb-color-fg)',
       },
       {
         key: 'current',
         label: t('promotions.roster.columns.current', { defaultValue: 'Current' }),
-        thClassName: 'p-2 text-left border-b border-gray-200',
-        tdClassName: 'p-2 text-xs text-gray-600',
+        thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+        tdClassName: 'p-2 border-x border-(--nb-color-border) text-xs text-(--nb-color-muted)',
       },
       {
         key: 'cohort',
         label: t('common.filters.cohort', { defaultValue: 'Cohort' }),
-        thClassName: 'p-2 text-left border-b border-gray-200',
-        tdClassName: 'p-2',
+        thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+        tdClassName: 'p-2 border-x border-(--nb-color-border)',
       },
     ],
     [t]
@@ -124,9 +124,9 @@ export default function StudentsRosterTable({
             }
           }}
           tableProps={{
-            theadClassName: 'bg-gray-50',
+            theadClassName: 'bg-(--nb-color-brand)',
             useDefaultHeaderStyles: false,
-            baseRowClassName: 'border-b border-gray-200 hover:bg-gray-50 transition-colors',
+            baseRowClassName: 'border-b border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg) hover:bg-(--nb-color-bg-card) transition-colors',
           }}
         />
       </div>

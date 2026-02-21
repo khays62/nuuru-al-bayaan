@@ -101,7 +101,7 @@ export default function AttendanceStatusPills({
 
   return (
     <div className="inline-flex flex-col sm:flex-row sm:items-center gap-2">
-      <div className="inline-flex rounded-md border border-gray-300 overflow-hidden bg-white flex-wrap">
+      <div className="inline-flex rounded-md border border-(--nb-color-border) overflow-hidden bg-(--nb-color-bg-card) flex-wrap">
         {opts.map((o, idx) => {
           const active = value === o.value;
           const isLast = idx === opts.length - 1;
@@ -116,10 +116,10 @@ export default function AttendanceStatusPills({
                 }}
                 className={
                   `px-2.5 py-1 text-xs font-medium ` +
-                  (!isLast ? 'border-r border-gray-300 ' : '') +
+                  (!isLast ? 'border-r border-(--nb-color-border) ' : '') +
                   (active
                     ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')
+                    : 'bg-(--nb-color-bg-card) text-(--nb-color-fg) border-(--nb-color-border) hover:bg-(--nb-color-brand-50)')
                 }
               >
                 {o.label}
@@ -140,7 +140,7 @@ export default function AttendanceStatusPills({
             `inline-flex items-center justify-center h-7 rounded-md border px-2 ` +
             (isExtraSelected
               ? 'border-(--nb-color-brand) bg-(--nb-color-brand) text-white'
-              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50') +
+              : 'border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) hover:bg-(--nb-color-brand-50)') +
             (disabled ? ' opacity-60 cursor-not-allowed' : '')
           }
         >
@@ -159,7 +159,7 @@ export default function AttendanceStatusPills({
           <div
             ref={moreMenuRef}
             style={{ position: 'fixed', top: `${menuPos.top}px`, left: `${menuPos.left}px`, width: `${menuPos.width}px`, zIndex: 9999 }}
-            className="rounded-md border border-gray-200 bg-white shadow-lg"
+            className="rounded-md border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-lg"
             role="menu"
           >
             <div className="py-1">
@@ -177,7 +177,7 @@ export default function AttendanceStatusPills({
                       `block w-full text-left px-3 py-2 text-sm ` +
                       (active
                         ? 'bg-(--nb-color-brand) text-white'
-                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900')
+                        : 'text-(--nb-color-fg) hover:bg-(--nb-color-brand-50) hover:text-(--nb-color-text)')
                     }
                     role="menuitem"
                   >
@@ -204,7 +204,7 @@ export default function AttendanceStatusPills({
         }}
         placeholder={showReasonInput ? t('attendance.marking.reasonPlaceholder', { max: reasonWordLimit }) : ''}
         className={
-          "w-full sm:w-44 border rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 " +
+          "w-full sm:w-44 border border-(--nb-color-border) bg-(--nb-color-bg-card) rounded px-2 py-1 text-xs text-(--nb-color-fg) placeholder:text-(--nb-color-muted) focus:outline-none focus:ring-2 focus:ring-(--nb-color-brand) focus:ring-offset-2 focus:border-(--nb-color-brand) " +
           (disabled ? 'opacity-60 cursor-not-allowed' : '') +
           (!showReasonInput ? ' invisible pointer-events-none' : '')
         }

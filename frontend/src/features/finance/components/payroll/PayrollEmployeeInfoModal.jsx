@@ -148,25 +148,25 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden border border-surface-200">
-                <div className="p-6 border-b border-surface-100 bg-surface-50/40 flex items-center justify-between">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-5xl rounded-2xl shadow-(--nb-shadow-md) overflow-hidden border border-(--nb-color-border)">
+                <div className="p-6 border-b border-(--nb-color-border) bg-(--nb-color-bg) flex items-center justify-between">
                     <div>
-                        <h3 className="text-lg font-black text-surface-900 uppercase tracking-tight">Employee Info</h3>
-                        <p className="text-xs text-surface-500 font-bold">Select Account • Register Date • Actions: Paid / Edit / Show</p>
+                        <h3 className="text-lg font-black text-(--nb-color-fg) uppercase tracking-tight">Employee Info</h3>
+                        <p className="text-xs text-(--nb-color-muted) font-bold">Select Account • Register Date • Actions: Paid / Edit / Show</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all">
-                        <X size={20} className="text-surface-400" />
+                    <button onClick={onClose} className="p-2 hover:bg-(--nb-color-bg-card) rounded-xl transition-all">
+                        <X size={20} className="text-(--nb-color-muted)" />
                     </button>
                 </div>
 
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-1">
-                            <div className="text-[10px] font-black text-surface-400 uppercase tracking-widest">Academic Year</div>
+                            <div className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Academic Year</div>
                             <select
                                 value={form.academicYear}
                                 onChange={(e) => setForm((p) => ({ ...p, academicYear: e.target.value }))}
-                                className="w-full px-4 py-3 bg-white border border-surface-200 rounded-xl font-bold focus:ring-4 focus:ring-primary/10 transition-all"
+                                className="w-full px-4 py-3 bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-xl font-bold focus:ring-4 focus:ring-primary/10 transition-all"
                             >
                                 <option value="">Select Academic Year</option>
                                 {academicYears.map((ay) => (
@@ -176,11 +176,11 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] font-black text-surface-400 uppercase tracking-widest">Select Account</div>
+                            <div className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Select Account</div>
                             <select
                                 value={form.accountId}
                                 onChange={(e) => setForm((p) => ({ ...p, accountId: e.target.value }))}
-                                className="w-full px-4 py-3 bg-white border border-surface-200 rounded-xl font-bold focus:ring-4 focus:ring-primary/10 transition-all"
+                                className="w-full px-4 py-3 bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-xl font-bold focus:ring-4 focus:ring-primary/10 transition-all"
                             >
                                 <option value="">Select Account</option>
                                 {accounts.map((acc) => (
@@ -190,19 +190,19 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
                         </div>
 
                         <div className="space-y-1">
-                            <div className="text-[10px] font-black text-surface-400 uppercase tracking-widest">Register Date</div>
+                            <div className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Register Date</div>
                             <input
                                 type="date"
                                 value={form.registerDate}
                                 onChange={(e) => setForm((p) => ({ ...p, registerDate: e.target.value }))}
-                                className="w-full px-4 py-3 bg-white border border-surface-200 rounded-xl font-bold focus:ring-4 focus:ring-primary/10 transition-all"
+                                className="w-full px-4 py-3 bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-xl font-bold focus:ring-4 focus:ring-primary/10 transition-all"
                             />
                         </div>
 
                         <div className="flex items-end">
                             <button
                                 onClick={fetchLedger}
-                                className="w-full px-6 py-3 bg-surface-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all"
+                                className="w-full px-6 py-3 bg-(--nb-color-brand) text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:opacity-90 transition-all"
                                 disabled={loading}
                             >
                                 {loading ? 'Loading...' : 'Show'}
@@ -211,32 +211,32 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
                     </div>
 
                     <div className="space-y-3">
-                        <div className="text-[10px] font-black text-surface-400 uppercase tracking-widest">Employee</div>
+                        <div className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Employee</div>
                         <input
                             type="text"
                             value={staffSearch}
                             onChange={(e) => setStaffSearch(e.target.value)}
                             placeholder="Search employee..."
-                            className="w-full px-4 py-3 bg-white border border-surface-200 rounded-xl font-bold focus:ring-4 focus:ring-primary/10 transition-all"
+                            className="w-full px-4 py-3 bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-xl font-bold focus:ring-4 focus:ring-primary/10 transition-all"
                         />
-                        <div className="max-h-40 overflow-y-auto border border-surface-100 rounded-2xl divide-y divide-surface-100">
+                        <div className="max-h-40 overflow-y-auto border border-(--nb-color-border) rounded-2xl divide-y divide-(--nb-color-border)">
                             {filteredStaff.map((s) => (
                                 <button
                                     key={s._id}
                                     onClick={() => setForm((p) => ({ ...p, staffId: s._id }))}
-                                    className={`w-full px-4 py-3 text-left hover:bg-surface-50 transition-all ${form.staffId === s._id ? 'bg-primary/5' : ''}`}
+                                    className={`w-full px-4 py-3 text-left hover:bg-(--nb-color-bg) transition-all ${form.staffId === s._id ? 'bg-primary/5' : ''}`}
                                 >
-                                    <div className="font-black text-surface-900">{s.fullName}</div>
-                                    <div className="text-[10px] font-black text-surface-400 uppercase tracking-widest">{s.employeeType || s.role || 'Employee'}</div>
+                                    <div className="font-black text-(--nb-color-fg)">{s.fullName}</div>
+                                    <div className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">{s.employeeType || s.role || 'Employee'}</div>
                                 </button>
                             ))}
                             {filteredStaff.length === 0 && (
-                                <div className="px-4 py-6 text-center text-surface-400 font-bold">No employees found.</div>
+                                <div className="px-4 py-6 text-center text-(--nb-color-muted) font-bold">No employees found.</div>
                             )}
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto border border-surface-100 rounded-2xl">
+                    <div className="overflow-x-auto border border-(--nb-color-border) rounded-2xl">
                         <StandardTable
                             isLoading={loading}
                             loadingMessage="Loading..."
@@ -266,21 +266,21 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     onClick={() => markPaid(row)}
-                                                    className="px-3 py-2 bg-surface-900 text-white rounded-lg font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all"
+                                                    className="px-3 py-2 bg-(--nb-color-brand) text-white rounded-lg font-black uppercase text-[10px] tracking-widest hover:opacity-90 transition-all"
                                                     disabled={loading || row.status === 'Paid'}
                                                 >
                                                     Paid
                                                 </button>
                                                 <button
                                                     onClick={() => editRow(row)}
-                                                    className="px-3 py-2 bg-white border border-surface-200 text-surface-700 rounded-lg font-black uppercase text-[10px] tracking-widest hover:border-surface-300 transition-all"
+                                                    className="px-3 py-2 bg-(--nb-color-bg-card) border border-(--nb-color-border) text-(--nb-color-fg) rounded-lg font-black uppercase text-[10px] tracking-widest hover:border-(--nb-color-focus) transition-all"
                                                     disabled={loading}
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     onClick={() => showRow(row)}
-                                                    className="px-3 py-2 bg-white border border-surface-200 text-surface-700 rounded-lg font-black uppercase text-[10px] tracking-widest hover:border-surface-300 transition-all"
+                                                    className="px-3 py-2 bg-(--nb-color-bg-card) border border-(--nb-color-border) text-(--nb-color-fg) rounded-lg font-black uppercase text-[10px] tracking-widest hover:border-(--nb-color-focus) transition-all"
                                                     disabled={loading}
                                                 >
                                                     Show
@@ -295,10 +295,10 @@ export default function PayrollEmployeeInfoModal({ onClose, onChanged, academicY
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-surface-100 bg-surface-50/40 flex items-center justify-end">
+                <div className="p-6 border-t border-(--nb-color-border) bg-(--nb-color-bg) flex items-center justify-end">
                     <button
                         onClick={onClose}
-                        className="px-5 py-3 bg-white border border-surface-200 text-surface-700 rounded-xl font-black uppercase text-[10px] tracking-widest hover:border-surface-300 transition-all"
+                        className="px-5 py-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) text-(--nb-color-fg) rounded-xl font-black uppercase text-[10px] tracking-widest hover:border-(--nb-color-focus) transition-all"
                         disabled={loading}
                     >
                         Close

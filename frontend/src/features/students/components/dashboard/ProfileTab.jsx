@@ -129,23 +129,23 @@ export default function ProfileTab() {
         </Alert>
       ) : profile ? (
         <>
-          <div className="bg-white p-10 border-b border-gray-200">
+          <div className="bg-(--nb-color-bg-card) p-10 border-b border-(--nb-color-border)">
         <div className="flex flex-col items-center text-center gap-4">
-          <div className="w-28 h-28 rounded-full bg-white flex items-center justify-center shadow-inner ring-2 ring-gray-300">
-            <UserIcon size={56} className="text-black" />
+          <div className="w-28 h-28 rounded-full bg-(--nb-color-bg-card) flex items-center justify-center shadow-inner ring-2 ring-(--nb-color-border)">
+            <UserIcon size={56} className="text-(--nb-color-text)" />
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold leading-tight text-black">{profile?.student?.fullName || t('students.common.studentFallback')}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold leading-tight text-(--nb-color-text)">{profile?.student?.fullName || t('students.common.studentFallback')}</h2>
               {/* Summary cards: ID, Status, Cohort */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl mt-3">
-                <div className="rounded-lg p-4 bg-indigo-50 text-indigo-700 border border-indigo-100">
+                <div className="rounded-lg p-4 bg-(--nb-color-brand-50) text-(--nb-color-fg) border border-(--nb-color-border)">
                   <div className="text-xs uppercase tracking-wide font-semibold">{t('students.table.columns.studentId')}</div>
                   <div className="font-mono text-xl font-bold">{profile?.student?.studentId || '-'}</div>
                 </div>
-                <div className="rounded-lg p-4 bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <div className="rounded-lg p-4 bg-(--nb-color-accent-50) text-(--nb-color-fg) border border-(--nb-color-border)">
                   <div className="text-xs uppercase tracking-wide font-semibold">{t('students.table.columns.status')}</div>
                   <div className="text-xl font-bold">{profile?.student?.status || profile?.stats?.activeStatus || '-'}</div>
                 </div>
-                <div className="rounded-lg p-4 bg-amber-50 text-amber-700 border border-amber-100">
+                <div className="rounded-lg p-4 bg-(--nb-color-bg) text-(--nb-color-fg) border border-(--nb-color-border)">
                   <div className="text-xs uppercase tracking-wide font-semibold">{t('students.form.cohort')}</div>
                   <div className="text-xl font-bold">{profile?.latestEnrollment?.cohort?.name || '-'}</div>
                 </div>
@@ -156,9 +156,9 @@ export default function ProfileTab() {
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card className="rounded-xl shadow-none">
-                <div className="px-4 py-3 border-b">
+                <div className="px-4 py-3 border-b border-(--nb-color-border)">
                   <h3 className="text-base font-semibold">{t('students.profileTab.personal.title')}</h3>
-                  <p className="text-xs text-gray-500">{t('students.profileTab.personal.subtitle')}</p>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.personal.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InfoItem label={t('students.form.fullName')} value={profile?.student?.fullName} />
@@ -172,9 +172,9 @@ export default function ProfileTab() {
               </Card>
 
               <Card className="rounded-xl shadow-none">
-                <div className="px-4 py-3 border-b">
+                <div className="px-4 py-3 border-b border-(--nb-color-border)">
                   <h3 className="text-base font-semibold">{t('students.profileTab.academic.title')}</h3>
-                  <p className="text-xs text-gray-500">{t('students.profileTab.academic.subtitle')}</p>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.academic.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InfoItem label={t('students.table.columns.academicYear')} value={profile?.latestEnrollment?.academicYear?.yearName} />
@@ -193,13 +193,13 @@ export default function ProfileTab() {
 
             {isStudentSelf ? (
               <Card className="mt-6 rounded-xl shadow-none">
-                <div className="px-4 py-3 border-b">
+                <div className="px-4 py-3 border-b border-(--nb-color-border)">
                   <h3 className="text-base font-semibold">{t('students.profileTab.password.title')}</h3>
-                  <p className="text-xs text-gray-500">{t('students.profileTab.password.subtitle')}</p>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.password.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.current')}</label>
+                    <label className="block text-sm font-medium text-(--nb-color-text) mb-1">{t('students.profileTab.password.current')}</label>
                     <div className="relative">
                       <Input
                         type={showCurrentPw ? 'text' : 'password'}
@@ -212,7 +212,7 @@ export default function ProfileTab() {
                       />
                       <button
                         type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-(--nb-color-muted) hover:text-(--nb-color-text)"
                         onMouseEnter={() => setShowCurrentPw(true)}
                         onMouseLeave={() => setShowCurrentPw(false)}
                         onMouseDown={(e) => e.preventDefault()}
@@ -224,13 +224,13 @@ export default function ProfileTab() {
                       </button>
                     </div>
                     {isForcePasswordChange ? (
-                      <div className="mt-1 text-[11px] text-gray-500">
+                      <div className="mt-1 text-[11px] text-(--nb-color-muted)">
                         {t('students.profileTab.password.defaultPasswordNote')}
                       </div>
                     ) : null}
                   </div>
                   <div className="sm:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.new')}</label>
+                    <label className="block text-sm font-medium text-(--nb-color-text) mb-1">{t('students.profileTab.password.new')}</label>
                     <div className="relative">
                       <Input
                         type={showNewPw ? 'text' : 'password'}
@@ -242,7 +242,7 @@ export default function ProfileTab() {
                       />
                       <button
                         type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-(--nb-color-muted) hover:text-(--nb-color-text)"
                         onMouseEnter={() => setShowNewPw(true)}
                         onMouseLeave={() => setShowNewPw(false)}
                         onMouseDown={(e) => e.preventDefault()}
@@ -254,7 +254,7 @@ export default function ProfileTab() {
                     </div>
                   </div>
                   <div className="sm:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.confirm')}</label>
+                    <label className="block text-sm font-medium text-(--nb-color-text) mb-1">{t('students.profileTab.password.confirm')}</label>
                     <div className="relative">
                       <Input
                         type={showConfirmPw ? 'text' : 'password'}
@@ -266,7 +266,7 @@ export default function ProfileTab() {
                       />
                       <button
                         type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-(--nb-color-muted) hover:text-(--nb-color-text)"
                         onMouseEnter={() => setShowConfirmPw(true)}
                         onMouseLeave={() => setShowConfirmPw(false)}
                         onMouseDown={(e) => e.preventDefault()}
@@ -296,7 +296,7 @@ export default function ProfileTab() {
 function InfoItem({ label, value }) {
   return (
     <div>
-      <div className="text-xs text-gray-500">{label}</div>
+      <div className="text-xs text-(--nb-color-muted)">{label}</div>
       <div className="font-medium wrap-break-word">{value ?? '-'}</div>
     </div>
   );

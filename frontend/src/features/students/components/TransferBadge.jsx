@@ -41,7 +41,9 @@ export const TransferBadge = ({ log, compact = false }) => {
 
   const base = 'inline-flex items-center rounded-full border font-medium';
   const size = compact ? 'text-[10px] px-1.5 py-0.5' : 'text-[11px] px-2 py-0.5';
-  const color = isReturn ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200';
+  const color = isReturn
+    ? 'bg-(--nb-color-accent-50) text-(--nb-color-fg) border-(--nb-color-border)'
+    : 'bg-(--nb-color-brand-50) text-(--nb-color-fg) border-(--nb-color-border)';
 
   return (
     <span className={`${base} ${size} ${color}`} title={text}>

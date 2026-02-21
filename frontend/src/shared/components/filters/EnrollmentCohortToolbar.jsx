@@ -49,11 +49,8 @@ export default function EnrollmentCohortToolbar({
   const resolvedCohortPlaceholder = cohortPlaceholder || t('students.cohortOptional', { defaultValue: 'Cohort (optional)' });
 
   return (
-    <Card className={`p-3 rounded-lg shadow-lg mt-2 ${className}`.trim()}>
+    <Card className={`p-3 mt-2 ${className}`.trim()}>
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-        {/* spacer: keeps tabs from starting at far-left on desktop only */}
-        <div className="hidden lg:block w-36 shrink-0" aria-hidden="true" />
-
         {/* Tabs: horizontally scrollable on small screens */}
         <div className="w-full lg:w-auto overflow-x-auto">
           <div className="min-w-max">
@@ -69,7 +66,7 @@ export default function EnrollmentCohortToolbar({
             value={cohortId}
             onChange={onCohortChange}
             status=""
-            className="w-full px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            className="w-full px-3 py-2 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) shadow-(--nb-shadow-sm) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2 text-sm text-(--nb-color-fg)"
             placeholder={resolvedCohortPlaceholder}
             {...(cohortSelectProps || {})}
           />

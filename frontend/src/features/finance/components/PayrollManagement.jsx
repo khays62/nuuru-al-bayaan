@@ -34,8 +34,6 @@ export default function PayrollManagement() {
     const [academicYear, setAcademicYear] = useState(() => cachedAcademicYears?.[0]?._id || '');
     const [toastKey, setToastKey] = useState(0);
 
-    const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
-
     const [sortBy, setSortBy] = useState('dateSort');
     const [sortDir, setSortDir] = useState('desc');
     const [page, setPage] = useState(1);
@@ -192,13 +190,13 @@ export default function PayrollManagement() {
                     <FilterRow>
                         <FilterItem minWidthClass="sm:min-w-44">
                             <div className="space-y-1">
-                                <div className="text-xs text-slate-600">{t('finance.payroll.filters.month', { defaultValue: 'Month' })}</div>
+                                <div className="text-xs text-(--nb-color-muted)">{t('finance.payroll.filters.month', { defaultValue: 'Month' })}</div>
                                 <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
                             </div>
                         </FilterItem>
                         <FilterItem minWidthClass="sm:min-w-56" className="sm:max-w-xs">
                             <div className="space-y-1">
-                                <div className="text-xs text-slate-600">{t('common.filters.academicYear', { defaultValue: 'Academic Year' })}</div>
+                                <div className="text-xs text-(--nb-color-muted)">{t('common.filters.academicYear', { defaultValue: 'Academic Year' })}</div>
                                 <AcademicYearSelect
                                     value={academicYear}
                                     onChange={(v) => setAcademicYear(v)}
@@ -219,8 +217,7 @@ export default function PayrollManagement() {
                                         {t('finance.payroll.actions.show', { defaultValue: 'Show' })}
                                     </Button>
                                     <ActionButton
-                                        variant="neutral"
-                                        className={outlineBtn}
+                                        variant="outline"
                                         icon={<Printer size={16} />}
                                         onClick={() => setShowPrint(true)}
                                         title={t('common.actions.print', { defaultValue: 'Print' })}
@@ -229,8 +226,7 @@ export default function PayrollManagement() {
                                     </ActionButton>
 
                                     <ActionButton
-                                        variant="neutral"
-                                        className={outlineBtn}
+                                        variant="outline"
                                         icon={<Pencil size={16} />}
                                         onClick={() => {
                                             setUpdateContext(null);
@@ -254,8 +250,7 @@ export default function PayrollManagement() {
                                     </ActionButton>
 
                                     <ActionButton
-                                        variant="neutral"
-                                        className={outlineBtn}
+                                        variant="outline"
                                         onClick={onReset}
                                         title={t('common.filters.resetTitle', { defaultValue: 'Reset filters' })}
                                         icon={<RotateCcw size={16} />}
@@ -264,7 +259,7 @@ export default function PayrollManagement() {
                                     </ActionButton>
 
                                     <div
-                                        className="inline-flex items-center justify-end gap-2 h-10 px-3 rounded-md border border-green-200 bg-white text-green-800 whitespace-nowrap"
+                                        className="inline-flex items-center justify-end gap-2 h-10 px-3 rounded-md border border-green-200 bg-(--nb-color-bg-card) text-green-800 whitespace-nowrap"
                                         title={t('common.total', { defaultValue: 'Total' })}
                                     >
                                         <span className="relative flex h-2 w-2">
@@ -330,9 +325,9 @@ export default function PayrollManagement() {
                             case 'no':
                                 return row?.no;
                             case 'employeeId':
-                                return <span className="font-mono text-slate-600">{row?.employeeId || '-'}</span>;
+                                return <span className="font-mono text-(--nb-color-muted)">{row?.employeeId || '-'}</span>;
                             case 'employeeName':
-                                return <span className="font-bold text-slate-900">{row?.employeeName || '-'}</span>;
+                                return <span className="font-bold text-(--nb-color-fg)">{row?.employeeName || '-'}</span>;
                             case 'phone':
                                 return row?.phone || '-';
                             case 'employeeType':

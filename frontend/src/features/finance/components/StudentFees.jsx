@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Receipt, Edit, Settings, GraduationCap, Search, Printer, PlusCircle, Trash2, FileText, Wallet } from 'lucide-react';
+import { Receipt, Edit, Settings, GraduationCap, Search, Printer, PlusCircle, Trash2, FileText, Wallet, RotateCcw } from 'lucide-react';
 import financeService from '../api/finance';
 import toast from 'react-hot-toast';
 import { useFinanceStudentsSummaryQuery, usePreviousBalanceSummaryQuery } from '../hooks/studentFinanceHooks';
@@ -8,10 +8,12 @@ import RowActionButtons from '../../../shared/components/table/RowActionButtons.
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
-import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Tabs from '../../attendance/components/Tabs.jsx';
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 import StudentChargeModal from './StudentChargeModal';
 import UpdateChargeModal from './UpdateChargeModal';
 import DeleteChargeModal from './DeleteChargeModal';
@@ -23,7 +25,6 @@ import StudentFinancePrintTab from './StudentFinancePrintTab';
 import { PrintMonthlyInvoiceModal, PrintDailyInvoiceModal, PrintPassCardModal } from './PrintModals';
 import StudentFinancePaymentModal from './StudentFinancePaymentModal';
 import ConfirmationModal from '../common/ConfirmationModal';
-import { listGradeSections } from '../../grades/api/gradeSections';
 
 // --- SUB-COMPONENTS ---
 
@@ -32,8 +33,9 @@ const ReceiptTab = () => {
 
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [filterType, setFilterType] = useState('');
-    const [classes, setClasses] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const [submittedParams, setSubmittedParams] = useState({});
@@ -101,30 +103,6 @@ const ReceiptTab = () => {
 
     // --- EXPORT FUNCTIONS ---
 
-    useEffect(() => {
-        const fetchClasses = async () => {
-            try {
-                const normalize = (payload) => Array.isArray(payload)
-                    ? payload
-                    : (payload?.data?.data || payload?.data || []);
-                const res = await listGradeSections({ limit: 100 });
-                let list = normalize(res);
-                if (list.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        list = normalize(fallback);
-                    } catch {
-                        // ignore
-                    }
-                }
-                setClasses(list);
-            } catch (error) {
-                console.error("Failed to load classes", error);
-            }
-        };
-        fetchClasses();
-    }, []);
-
     const exportToCSV = () => {
         const headers = ["Student ID", "Name", "Class", "Contact", "Status", "Balance"];
         const rows = students.map(s => {
@@ -179,6 +157,15 @@ const ReceiptTab = () => {
         setSubmittedParams(params);
     };
 
+    const resetFilters = () => {
+        setSearch('');
+        setGradeId('');
+        setShiftId('');
+        setClassId('');
+        setFilterType('');
+        setSubmittedParams({});
+    };
+
     const tableItems = useMemo(() => {
         const list = Array.isArray(students) ? students : [];
         return list.map((s) => {
@@ -190,7 +177,7 @@ const ReceiptTab = () => {
             let balanceColor = 'text-red-500';
             if (balance <= 0 && totalBilled > 0) balanceColor = 'text-green-600';
             else if (totalPaid > 0 && balance > 0) balanceColor = 'text-orange-500';
-            else if (totalBilled === 0) balanceColor = 'text-slate-400';
+            else if (totalBilled === 0) balanceColor = 'text-(--nb-color-muted)';
 
             const status = balance > 0
                 ? 'Unpaid'
@@ -248,7 +235,7 @@ const ReceiptTab = () => {
     return (
         <div className="space-y-4">
             {/* Toolbar (actions + filters) */}
-            <Card className="p-6 rounded-3xl shadow-xl no-print">
+            <Card className="p-6 rounded-3xl shadow-(--nb-shadow-md) no-print">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-2">
                     <Button
@@ -280,7 +267,7 @@ const ReceiptTab = () => {
                     </Button>
 
                     {/* Print Group */}
-                        <div className="flex gap-2 lg:mx-2 border-l border-slate-200 pl-2">
+                        <div className="flex gap-2 lg:mx-2 border-l border-(--nb-color-border) pl-2">
                         <Button
                             onClick={() => setShowMonthlyPrint(true)}
                             variant="neutral"
@@ -325,10 +312,10 @@ const ReceiptTab = () => {
                     </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col md:flex-row items-stretch gap-4">
+                <div className="mt-4 pt-4 border-t border-(--nb-color-border) flex flex-col md:flex-row items-stretch gap-4">
                     <form onSubmit={handleSearch} className="flex-1 flex gap-2">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-2.5 text-slate-400" size={20} />
+                            <Search className="absolute left-3 top-2.5 text-(--nb-color-muted)" size={20} />
                             <Input
                                 type="text"
                                 className="h-11 pl-10 pr-4 font-medium"
@@ -339,21 +326,38 @@ const ReceiptTab = () => {
                         </div>
                     </form>
 
-                    <SearchableSelect
+                    <GradeSelect
+                        value={gradeId}
+                        onChange={(v) => {
+                            setGradeId(v || '');
+                            setClassId('');
+                        }}
+                        placeholder={t('common.filters.grade', { defaultValue: 'Grade' })}
+                        className="h-11 min-w-40 font-bold text-sm"
+                    />
+
+                    <ShiftSelect
+                        value={shiftId}
+                        onChange={(v) => {
+                            setShiftId(v || '');
+                            setClassId('');
+                        }}
+                        placeholder={t('common.filters.shift', { defaultValue: 'Shift' })}
+                        className="h-11 min-w-40 font-bold text-sm"
+                    />
+
+                    <GradeSectionSelect
+                        gradeId={gradeId}
+                        shiftId={shiftId}
                         value={classId}
                         onChange={(v) => {
-                            setClassId(v);
-                            handleSearch({ classId: v });
+                            setClassId(v || '');
+                            handleSearch({ classId: v || '' });
                         }}
-                        options={classes.map((cls) => {
-                            const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
-                            const sectionLabel = cls.section || cls.name || '';
-                            const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                            return { value: cls._id, label: label || '—' };
-                        })}
-                        placeholder={t('finance.studentFinance.receiptTab.filters.byClassLevel', { defaultValue: 'By Class Level' })}
-                        searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
+                        searchable
                         maxVisible={6}
+                        placeholder={t('common.filters.section', { defaultValue: 'Section' })}
+                        searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
                         className="h-11 min-w-50 font-bold text-sm"
                     />
 
@@ -384,12 +388,22 @@ const ReceiptTab = () => {
                         >
                             {t('finance.studentFinance.receiptTab.actions.go', { defaultValue: 'Go' })}
                         </Button>
+                        <Button
+                            onClick={resetFilters}
+                            variant="neutral"
+                            size="lg"
+                            icon={<RotateCcw size={16} />}
+                            className="h-11 px-6 font-black text-sm uppercase tracking-widest"
+                            title={t('common.filters.resetTitle', { defaultValue: 'Reset filters' })}
+                        >
+                            {t('common.actions.reset', { defaultValue: 'Reset' })}
+                        </Button>
                     </div>
                 </div>
             </Card>
 
             {/* Student Table */}
-            <Card className="rounded-3xl shadow-xl">
+            <Card className="rounded-3xl shadow-(--nb-shadow-md)">
                 <StandardTable
                     isLoading={loading}
                     error={null}
@@ -418,7 +432,7 @@ const ReceiptTab = () => {
                             setLimit(v);
                             setPage(1);
                         },
-                        className: 'px-6 bg-white',
+                        className: 'px-6 bg-(--nb-color-bg-card)',
                     }}
                     sortBy={sortBy}
                     sortDir={sortDir}
@@ -427,21 +441,21 @@ const ReceiptTab = () => {
                     renderCell={(row, col) => {
                         switch (col.key) {
                             case 'studentId':
-                                return <span className="font-mono text-xs font-bold text-slate-500">{row?.studentId || '—'}</span>;
+                                return <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || '—'}</span>;
                             case 'fullName':
-                                return <span className="font-bold text-slate-900">{row?.fullName || '—'}</span>;
+                                return <span className="font-bold text-(--nb-color-fg)">{row?.fullName || '—'}</span>;
                             case 'contact':
-                                return <span className="text-slate-600 text-sm font-medium">{row?.contact || '—'}</span>;
+                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || '—'}</span>;
                             case 'className':
                                 return (
-                                    <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
+                                    <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
                                         {row?.className || '—'}
                                     </span>
                                 );
                             case 'balance':
                                 return (
                                     <div className="flex flex-col items-end leading-tight">
-                                        <span className={`font-black text-sm ${row?.balanceColor || 'text-slate-900'}`}>
+                                        <span className={`font-black text-sm ${row?.balanceColor || 'text-(--nb-color-fg)'}`}>
                                             ${Number(row?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </span>
                                         {row?.hasHormaris ? (

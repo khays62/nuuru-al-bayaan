@@ -119,36 +119,36 @@ export default function PayrollPrintModal({ onClose, payrolls, month, academicYe
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
-                <div className="p-6 border-b border-slate-100 bg-slate-50/40 flex items-center justify-between">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-xl rounded-2xl shadow-(--nb-shadow-md) overflow-hidden border border-(--nb-color-border)">
+                <div className="p-6 border-b border-(--nb-color-border) bg-(--nb-color-bg) flex items-center justify-between">
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Print</h3>
-                        <p className="text-xs text-slate-500 font-bold">Print (PDF / Excel)</p>
+                        <h3 className="text-lg font-black text-(--nb-color-fg) uppercase tracking-tight">Print</h3>
+                        <p className="text-xs text-(--nb-color-muted) font-bold">Print (PDF / Excel)</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all">
-                        <X size={20} className="text-slate-400" />
+                    <button onClick={onClose} className="p-2 hover:bg-(--nb-color-bg-card) rounded-xl transition-all">
+                        <X size={20} className="text-(--nb-color-muted)" />
                     </button>
                 </div>
 
                 <div className="p-6 space-y-4">
                     <button
                         onClick={handlePdf}
-                        className="w-full px-6 py-3 bg-slate-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all"
+                        className="w-full px-6 py-3 bg-(--nb-color-brand) text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:opacity-90 transition-all"
                     >
                         PDF
                     </button>
                     <button
                         onClick={handleExcel}
-                        className="w-full px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-black uppercase text-[10px] tracking-widest hover:border-slate-300 transition-all"
+                        className="w-full px-6 py-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) text-(--nb-color-fg) rounded-xl font-black uppercase text-[10px] tracking-widest hover:border-(--nb-color-focus) transition-all"
                     >
                         Excel
                     </button>
                 </div>
 
-                <div className="p-6 border-t border-slate-100 bg-slate-50/40 flex items-center justify-end">
+                <div className="p-6 border-t border-(--nb-color-border) bg-(--nb-color-bg) flex items-center justify-end">
                     <button
                         onClick={onClose}
-                        className="px-5 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-black uppercase text-[10px] tracking-widest hover:border-slate-300 transition-all"
+                        className="px-5 py-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) text-(--nb-color-fg) rounded-xl font-black uppercase text-[10px] tracking-widest hover:border-(--nb-color-focus) transition-all"
                     >
                         Close
                     </button>

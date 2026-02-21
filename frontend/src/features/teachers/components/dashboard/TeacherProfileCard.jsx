@@ -38,10 +38,10 @@ function safeStr(v) {
 
 function SmallStat({ label, value, tone = 'indigo' }) {
 	const tones = {
-		indigo: 'bg-indigo-50 text-indigo-800 border-indigo-100',
-		blue: 'bg-blue-50 text-blue-800 border-blue-100',
-		emerald: 'bg-emerald-50 text-emerald-800 border-emerald-100',
-		violet: 'bg-violet-50 text-violet-800 border-violet-100',
+		indigo: 'bg-(--nb-color-brand-50) text-(--nb-color-fg) border-(--nb-color-border)',
+		blue: 'bg-(--nb-color-brand-50) text-(--nb-color-fg) border-(--nb-color-border)',
+		emerald: 'bg-(--nb-color-accent-50) text-(--nb-color-fg) border-(--nb-color-border)',
+		violet: 'bg-(--nb-color-accent-50) text-(--nb-color-fg) border-(--nb-color-border)',
 	};
 	return (
 		<div className={`rounded-lg border px-4 py-3 ${tones[tone] || tones.indigo}`}>
@@ -66,41 +66,41 @@ export default function TeacherProfileCard({ user, summary }) {
 	const stats = summary || {};
 
 	return (
-		<Card className="rounded-xl border-blue-100 shadow-sm overflow-hidden">
-			<div className="px-6 py-3 bg-gray-800 text-white">
+		<Card className="rounded-xl border border-(--nb-color-border) shadow-sm overflow-hidden bg-(--nb-color-bg-card)">
+			<div className="px-6 py-3 bg-(--nb-color-brand) text-white">
 				<div className="font-semibold">{t('teachers.dashboard.profile.title', { defaultValue: 'My Profile' })}</div>
 				<div className="text-xs text-white/80 mt-0.5">{t('teachers.dashboard.profile.subtitle', { defaultValue: 'Quick account info' })}</div>
 			</div>
 
 			<div className="p-6 lg:p-8">
 				<div className="flex items-start gap-4">
-					<div className="shrink-0 w-14 h-14 rounded-full bg-linear-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-center font-semibold">
+					<div className="shrink-0 w-14 h-14 rounded-full bg-gradient-to-r from-(--nb-color-brand) to-(--nb-color-accent) text-white flex items-center justify-center font-semibold">
 						{initials}
 					</div>
 
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
-							<div className="text-xl md:text-2xl font-semibold text-gray-900 truncate">{fullName || t('teachers.dashboard.profile.teacherFallback', { defaultValue: 'Teacher' })}</div>
-							<span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 text-xs font-semibold">
+							<div className="text-xl md:text-2xl font-semibold text-(--nb-color-text) truncate">{fullName || t('teachers.dashboard.profile.teacherFallback', { defaultValue: 'Teacher' })}</div>
+							<span className="inline-flex items-center gap-1 rounded-full bg-(--nb-color-accent-50) text-(--nb-color-fg) border border-(--nb-color-border) px-2 py-0.5 text-xs font-semibold">
 								<BadgeCheck size={14} /> {role ? role.toUpperCase() : t('teachers.dashboard.profile.roleFallback', { defaultValue: 'TEACHER' })}
 							</span>
 						</div>
 
 						<div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-							<div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-base text-gray-800 min-w-0">
-								<UserCircle2 size={18} className="text-gray-400" />
+							<div className="flex items-center gap-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-base text-(--nb-color-text) min-w-0">
+								<UserCircle2 size={18} className="text-(--nb-color-muted)" />
 								<span className="truncate">{t('teachers.dashboard.profile.fields.username', { defaultValue: 'Username' })}: {safeStr(user?.username)}</span>
 							</div>
-							<div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-base text-gray-800 min-w-0">
-								<Hash size={18} className="text-gray-400" />
+							<div className="flex items-center gap-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-base text-(--nb-color-text) min-w-0">
+								<Hash size={18} className="text-(--nb-color-muted)" />
 								<span className="break-all">{t('teachers.dashboard.profile.fields.teacherRef', { defaultValue: 'Teacher Ref' })}: {teacherRef ? teacherRef : '—'}</span>
 							</div>
-							<div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-base text-gray-800 min-w-0">
-								<Mail size={18} className="text-gray-400" />
+							<div className="flex items-center gap-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-base text-(--nb-color-text) min-w-0">
+								<Mail size={18} className="text-(--nb-color-muted)" />
 								<span className="truncate">{t('teachers.dashboard.profile.fields.email', { defaultValue: 'Email' })}: {safeStr(user?.email)}</span>
 							</div>
-							<div className="flex items-center gap-2 rounded-lg border bg-gray-50 px-3 py-2 text-base text-gray-800 min-w-0">
-								<Phone size={18} className="text-gray-400" />
+							<div className="flex items-center gap-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-base text-(--nb-color-text) min-w-0">
+								<Phone size={18} className="text-(--nb-color-muted)" />
 								<span className="truncate">{t('teachers.dashboard.profile.fields.phone', { defaultValue: 'Phone' })}: {safeStr(user?.phone)}</span>
 							</div>
 						</div>
@@ -112,8 +112,8 @@ export default function TeacherProfileCard({ user, summary }) {
 							<SmallStat label={t('teachers.dashboard.profile.stats.week', { defaultValue: 'Week' })} value={Number.isFinite(stats?.weeklyLessons) ? stats.weeklyLessons : '—'} tone="violet" />
 						</div>
 
-						<div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
-							<Building2 size={14} className="text-gray-400" />
+						<div className="mt-4 flex items-center gap-2 text-xs text-(--nb-color-muted)">
+							<Building2 size={14} className="text-(--nb-color-muted)" />
 							<span>{t('teachers.dashboard.profile.tip', { defaultValue: 'Tip: If profile fields are missing, ask admin to update your teacher record.' })}</span>
 						</div>
 					</div>
@@ -191,17 +191,17 @@ function TeacherChangePasswordCard() {
 	};
 
 	return (
-		<div className="rounded-xl border bg-white overflow-hidden">
-			<div className="px-4 py-3 border-b">
+		<div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
+			<div className="px-4 py-3 border-b border-(--nb-color-border)">
 				<div className="flex items-center gap-2">
-					<Shield size={18} className="text-gray-700" />
+					<Shield size={18} className="text-(--nb-color-text)" />
 					<h3 className="text-base font-semibold">{t('students.profileTab.password.title', { defaultValue: 'Change Password' })}</h3>
 				</div>
-				<p className="text-xs text-gray-500">{t('students.profileTab.password.subtitle', { defaultValue: 'Update your password' })}</p>
+				<p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.password.subtitle', { defaultValue: 'Update your password' })}</p>
 			</div>
 			<div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
 				<div className="sm:col-span-1">
-					<label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.current', { defaultValue: 'Current password' })}</label>
+					<label className="block text-sm font-medium text-(--nb-color-text) mb-1">{t('students.profileTab.password.current', { defaultValue: 'Current password' })}</label>
 					<div className="relative">
 						<Input
 							type={showCurrentPw ? 'text' : 'password'}
@@ -214,7 +214,7 @@ function TeacherChangePasswordCard() {
 						/>
 						<button
 							type="button"
-							className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+							className="absolute right-3 top-1/2 -translate-y-1/2 text-(--nb-color-muted) hover:text-(--nb-color-text)"
 							onMouseEnter={() => setShowCurrentPw(true)}
 							onMouseLeave={() => setShowCurrentPw(false)}
 							onMouseDown={(e) => e.preventDefault()}
@@ -226,14 +226,14 @@ function TeacherChangePasswordCard() {
 						</button>
 					</div>
 					{isForcePasswordChange ? (
-						<div className="mt-1 text-[11px] text-gray-500">
+						<div className="mt-1 text-[11px] text-(--nb-color-muted)">
 							{t('students.profileTab.password.defaultPasswordNote', { defaultValue: 'Your account is using the default password. Please change it now.' })}
 						</div>
 					) : null}
 				</div>
 
 				<div className="sm:col-span-1">
-					<label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.new', { defaultValue: 'New password' })}</label>
+					<label className="block text-sm font-medium text-(--nb-color-text) mb-1">{t('students.profileTab.password.new', { defaultValue: 'New password' })}</label>
 					<div className="relative">
 						<Input
 							type={showNewPw ? 'text' : 'password'}
@@ -245,7 +245,7 @@ function TeacherChangePasswordCard() {
 						/>
 						<button
 							type="button"
-							className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+							className="absolute right-3 top-1/2 -translate-y-1/2 text-(--nb-color-muted) hover:text-(--nb-color-text)"
 							onMouseEnter={() => setShowNewPw(true)}
 							onMouseLeave={() => setShowNewPw(false)}
 							onMouseDown={(e) => e.preventDefault()}
@@ -258,7 +258,7 @@ function TeacherChangePasswordCard() {
 				</div>
 
 				<div className="sm:col-span-1">
-					<label className="block text-sm font-medium text-gray-700 mb-1">{t('students.profileTab.password.confirm', { defaultValue: 'Confirm password' })}</label>
+					<label className="block text-sm font-medium text-(--nb-color-text) mb-1">{t('students.profileTab.password.confirm', { defaultValue: 'Confirm password' })}</label>
 					<div className="relative">
 						<Input
 							type={showConfirmPw ? 'text' : 'password'}
@@ -270,7 +270,7 @@ function TeacherChangePasswordCard() {
 						/>
 						<button
 							type="button"
-							className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+							className="absolute right-3 top-1/2 -translate-y-1/2 text-(--nb-color-muted) hover:text-(--nb-color-text)"
 							onMouseEnter={() => setShowConfirmPw(true)}
 							onMouseLeave={() => setShowConfirmPw(false)}
 							onMouseDown={(e) => e.preventDefault()}
@@ -350,7 +350,7 @@ export function TeacherProfilePage() {
 
 	return (
 		<Card className="p-0 rounded-xl overflow-hidden">
-			<div className="bg-white p-10 border-b border-gray-200">
+			<div className="bg-(--nb-color-bg-card) p-10 border-b border-(--nb-color-border)">
 				{isAdminView ? (
 					<div className="mb-4">
 						<Button as={Link} to="/teachers" variant="neutral" size="md" icon={<ArrowLeft size={15} />}>
@@ -360,21 +360,21 @@ export function TeacherProfilePage() {
 				) : null}
 
 				<div className="flex flex-col items-center text-center gap-4">
-					<div className="w-28 h-28 rounded-full bg-white flex items-center justify-center shadow-inner ring-2 ring-gray-300">
-						<UserIcon size={56} className="text-black" />
+					<div className="w-28 h-28 rounded-full bg-(--nb-color-bg-card) flex items-center justify-center shadow-inner ring-2 ring-(--nb-color-border)">
+						<UserIcon size={56} className="text-(--nb-color-text)" />
 					</div>
-					<h2 className="text-2xl md:text-3xl font-bold leading-tight text-black">{fullName}</h2>
+					<h2 className="text-2xl md:text-3xl font-bold leading-tight text-(--nb-color-text)">{fullName}</h2>
 
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-6xl mt-3">
-						<div className="rounded-lg p-4 bg-indigo-50 text-indigo-700 border border-indigo-100">
+						<div className="rounded-lg p-4 bg-(--nb-color-brand-50) text-(--nb-color-fg) border border-(--nb-color-border)">
 							<div className="text-xs uppercase tracking-wide font-semibold">{t('teachers.dashboard.profile.fields.username', { defaultValue: 'Username' })}</div>
 							<div className="font-mono text-xl font-bold">{safeStr(effectiveUser?.username)}</div>
 						</div>
-						<div className="rounded-lg p-4 bg-emerald-50 text-emerald-700 border border-emerald-100">
+						<div className="rounded-lg p-4 bg-(--nb-color-accent-50) text-(--nb-color-fg) border border-(--nb-color-border)">
 							<div className="text-xs uppercase tracking-wide font-semibold">{t('teachers.profile.role', { defaultValue: 'Role' })}</div>
 							<div className="text-xl font-bold">{String(effectiveUser?.role || 'teacher').toUpperCase()}</div>
 						</div>
-						<div className="rounded-lg p-4 bg-amber-50 text-amber-700 border border-amber-100">
+						<div className="rounded-lg p-4 bg-(--nb-color-bg) text-(--nb-color-fg) border border-(--nb-color-border)">
 							<div className="text-xs uppercase tracking-wide font-semibold">{t('teachers.dashboard.profile.fields.teacherRef', { defaultValue: 'Teacher Ref' })}</div>
 							<div className="font-mono text-lg font-bold break-all leading-snug">{effectiveUser?.teacherRef ? String(effectiveUser.teacherRef) : '-'}</div>
 						</div>
@@ -384,7 +384,7 @@ export function TeacherProfilePage() {
 
 			<div className="p-6">
 				{isAdminView && profileQuery.isLoading && profileQuery.data == null ? (
-					<div className="text-sm text-gray-600 mb-4">{t('teachers.profile.loading', { defaultValue: 'Loading teacher profile…' })}</div>
+					<div className="text-sm text-(--nb-color-muted) mb-4">{t('teachers.profile.loading', { defaultValue: 'Loading teacher profile…' })}</div>
 				) : null}
 				{isAdminView && profileQuery.isError ? (
 					<div className="text-sm text-red-600 mb-4">{profileQuery.error?.data?.message || profileQuery.error?.message || t('teachers.profile.loadFailed', { defaultValue: 'Failed to load teacher profile' })}</div>
@@ -401,10 +401,10 @@ export function TeacherProfilePage() {
 
 				{isAdminView ? (
 					<div className="mt-6">
-						<div className="rounded-xl border bg-white overflow-hidden">
-							<div className="px-4 py-3 border-b">
+						<div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
+							<div className="px-4 py-3 border-b border-(--nb-color-border)">
 								<h3 className="text-base font-semibold">{t('teachers.profile.audit.title', { defaultValue: 'Audit History' })}</h3>
-								<p className="text-xs text-gray-500">{t('teachers.profile.audit.subtitle', { defaultValue: 'Recent actions recorded for this teacher account' })}</p>
+								<p className="text-xs text-(--nb-color-muted)">{t('teachers.profile.audit.subtitle', { defaultValue: 'Recent actions recorded for this teacher account' })}</p>
 							</div>
 							<div className="p-4">
 								<AuditHistoryTable

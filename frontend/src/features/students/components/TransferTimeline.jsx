@@ -17,11 +17,11 @@ function formatSection(gs) {
 
 export const TransferTimeline = ({ logs = [] }) => {
   const { t } = useI18n();
-  if (!logs.length) return <p className="text-xs text-gray-500">{t('students.transferTimeline.empty', { defaultValue: 'No transfers.' })}</p>;
+  if (!logs.length) return <p className="text-xs text-(--nb-color-muted)">{t('students.transferTimeline.empty', { defaultValue: 'No transfers.' })}</p>;
   // Show oldest at top for natural reading
   const ordered = [...logs].sort((a,b)=> new Date(a.date) - new Date(b.date));
   return (
-    <ol className="relative border-l border-gray-200 pl-4 space-y-4 text-xs">
+    <ol className="relative border-l border-(--nb-color-border) pl-4 space-y-4 text-xs">
       {ordered.map(l => {
   const isReturn = !!l.revertOf; // only the log that references a previous one is the 'return'
         const fromLabel = formatSection(l.fromGradeSection);
@@ -30,11 +30,11 @@ export const TransferTimeline = ({ logs = [] }) => {
         const ds = date.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
         return (
           <li key={l._id} className="ml-2">
-            <div className="absolute -left-1.5 w-3 h-3 rounded-full border bg-white border-gray-300" />
-            <p className="font-medium text-gray-700">
-              {isReturn ? t('students.transferTimeline.returned', { defaultValue: 'Returned' }) : t('students.transferTimeline.transferred', { defaultValue: 'Transferred' })}: <span className="text-gray-900">{fromLabel} → {toLabel}</span>
+            <div className="absolute -left-1.5 w-3 h-3 rounded-full border bg-(--nb-color-bg-card) border-(--nb-color-border)" />
+            <p className="font-medium text-(--nb-color-text)">
+              {isReturn ? t('students.transferTimeline.returned', { defaultValue: 'Returned' }) : t('students.transferTimeline.transferred', { defaultValue: 'Transferred' })}: <span className="text-(--nb-color-text)">{fromLabel} → {toLabel}</span>
             </p>
-            <p className="text-gray-500">{ds}{l.reason ? ` • ${l.reason}` : ''}</p>
+            <p className="text-(--nb-color-muted)">{ds}{l.reason ? ` • ${l.reason}` : ''}</p>
           </li>
         );
       })}

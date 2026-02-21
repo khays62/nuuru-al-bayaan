@@ -1,43 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Users, DollarSign, Printer, PlusCircle, Trash2, FileText, Info } from 'lucide-react';
+import { Search, Users, DollarSign, Printer, PlusCircle, Trash2, FileText, Info, RotateCcw } from 'lucide-react';
 import financeService from '../api/finance';
-import { listGradeSections } from '../../grades/api/gradeSections';
 import toast from 'react-hot-toast';
 import StudentResponsibilityModal from './StudentResponsibilityModal';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 
 export default function ResponsiblePaymentTab() {
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
-    const [classes, setClasses] = useState([]);
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedStudentRow, setSelectedStudentRow] = useState(null);
     const [showInfoModal, setShowInfoModal] = useState(false);
 
-    useEffect(() => {
-        const fetchClasses = async () => {
-            try {
-                const normalize = (payload) => Array.isArray(payload)
-                    ? payload
-                    : (payload?.data?.data || payload?.data || []);
-                const res = await listGradeSections({ limit: 100 });
-                let list = normalize(res);
-                if (list.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        list = normalize(fallback);
-                    } catch {
-                        // ignore
-                    }
-                }
-                setClasses(list);
-            } catch (error) {
-                console.error("Failed to load classes", error);
-            }
-        };
-        fetchClasses();
-    }, []);
+    const resetFilters = () => {
+        setSearch('');
+        setGradeId('');
+        setShiftId('');
+        setClassId('');
+        setStudents([]);
+    };
 
     const handleSearch = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
@@ -76,7 +63,7 @@ export default function ResponsiblePaymentTab() {
             key: 'id',
             label: 'ID',
             render: (row) => (
-                <span className="font-mono text-xs font-bold text-slate-500">
+                <span className="font-mono text-xs font-bold text-(--nb-color-muted)">
                     {row.student?.studentId || '—'}
                 </span>
             ),
@@ -86,9 +73,9 @@ export default function ResponsiblePaymentTab() {
             label: 'Student Name',
             render: (row) => (
                 <div className="flex flex-col">
-                    <span className="font-bold text-slate-900">{row.student?.fullName || '—'}</span>
+                    <span className="font-bold text-(--nb-color-fg)">{row.student?.fullName || '—'}</span>
                     {row.student?.admissionDate ? (
-                        <span className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">
+                        <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-tighter">
                             Reg: {new Date(row.student.admissionDate).toLocaleDateString()}
                         </span>
                     ) : null}
@@ -104,7 +91,7 @@ export default function ResponsiblePaymentTab() {
             key: 'class',
             label: 'Class',
             render: (row) => (
-                <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
+                <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
                     {row.student?.currentClass || '—'}
                 </span>
             ),
@@ -123,7 +110,7 @@ export default function ResponsiblePaymentTab() {
             key: 'info',
             label: 'Info',
             align: 'center',
-            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200 text-center',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border) text-center',
             render: (row) => (
                 <button
                     onClick={() => { setSelectedStudentRow(row); setShowInfoModal(true); }}
@@ -140,35 +127,60 @@ export default function ResponsiblePaymentTab() {
             <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <form onSubmit={handleSearch} className="flex-1 flex gap-2">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                        <Search className="absolute left-3 top-2.5 text-(--nb-color-muted)" size={20} />
                         <input
                             type="text"
-                            className="w-full h-11 pl-10 pr-4 py-2 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 transition-all font-medium"
+                            className="w-full h-11 pl-10 pr-4 py-2 bg-(--nb-color-bg-card) border border-(--nb-color-border) text-(--nb-color-fg) rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 transition-all font-medium"
                             placeholder="Search Responsible Name, ID or Phone..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
                     </div>
                 </form>
-                <select
-                    className="h-11 px-4 border rounded-xl outline-none focus:ring-4 focus:ring-blue-600/10 bg-white min-w-50 font-bold text-sm"
+                <GradeSelect
+                    value={gradeId}
+                    onChange={(v) => {
+                        setGradeId(v || '');
+                        setClassId('');
+                    }}
+                    placeholder="Grade"
+                    className="h-11 min-w-40 font-bold text-sm"
+                />
+                <ShiftSelect
+                    value={shiftId}
+                    onChange={(v) => {
+                        setShiftId(v || '');
+                        setClassId('');
+                    }}
+                    placeholder="Shift"
+                    className="h-11 min-w-40 font-bold text-sm"
+                />
+                <GradeSectionSelect
+                    gradeId={gradeId}
+                    shiftId={shiftId}
                     value={classId}
-                    onChange={e => setClassId(e.target.value)}
-                >
-                    <option value="">By Class Level</option>
-                    {classes.map(cls => {
-                        const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
-                        const sectionLabel = cls.section || cls.name || '';
-                        const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                        return (
-                            <option key={cls._id} value={cls._id}>{label || '—'}</option>
-                        );
-                    })}
-                </select>
-                <button onClick={handleSearch} className="h-11 bg-blue-600 text-white px-8 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-95">Go</button>
+                    onChange={(v) => setClassId(v || '')}
+                    searchable
+                    maxVisible={6}
+                    placeholder="Section"
+                    searchPlaceholder="Search…"
+                    className="h-11 min-w-50 font-bold text-sm"
+                />
+                <div className="flex gap-2">
+                    <button onClick={handleSearch} className="h-11 bg-blue-600 text-white px-8 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-95">Go</button>
+                    <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="h-11 bg-(--nb-color-bg-card) text-(--nb-color-fg) px-6 rounded-xl font-black text-sm uppercase tracking-widest border border-(--nb-color-border) hover:bg-(--nb-color-bg) transition-all active:scale-95 inline-flex items-center gap-2"
+                        title="Reset filters"
+                    >
+                        <RotateCcw size={16} />
+                        Reset
+                    </button>
+                </div>
             </div>
 
-            <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-xl overflow-hidden shadow-(--nb-shadow-sm)">
                 <StandardTable
                     isLoading={loading}
                     loadingMessage="Syncing Matrix..."

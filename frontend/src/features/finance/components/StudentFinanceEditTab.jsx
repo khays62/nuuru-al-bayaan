@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
-import financeService from '../api/finance';
-import { listGradeSections } from '../../grades/api/gradeSections';
+import { Search, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UpdateChargeModal from './UpdateChargeModal';
 import { useInvoicesQuery } from '../hooks/studentFinanceHooks';
@@ -9,7 +7,9 @@ import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
-import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
 
 export default function StudentFinanceEditTab() {
@@ -17,7 +17,8 @@ export default function StudentFinanceEditTab() {
 
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
-    const [classes, setClasses] = useState([]);
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [loading, setLoading] = useState(false);
     const [submittedParams, setSubmittedParams] = useState({});
     const [selectedStudentRow, setSelectedStudentRow] = useState(null);
@@ -26,32 +27,8 @@ export default function StudentFinanceEditTab() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
 
-    useEffect(() => {
-        const fetchClasses = async () => {
-            try {
-                const normalize = (payload) => Array.isArray(payload)
-                    ? payload
-                    : (payload?.data?.data || payload?.data || []);
-                const res = await listGradeSections({ limit: 100 });
-                let list = normalize(res);
-                if (list.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        list = normalize(fallback);
-                    } catch {
-                        // ignore
-                    }
-                }
-                setClasses(list);
-            } catch (error) {
-                console.error("Failed to load classes", error);
-            }
-        };
-        fetchClasses();
-    }, []);
-
     const invoicesQuery = useInvoicesQuery(submittedParams, {
-        enabled: true,
+        enabled: Boolean(submittedParams?.search || submittedParams?.classId),
         staleTime: 60_000,
         refetchOnMount: false,
         refetchOnWindowFocus: false,
@@ -102,8 +79,22 @@ export default function StudentFinanceEditTab() {
         const params = {};
         if (search) params.search = search;
         if (classId) params.classId = classId;
+
+        if (!params.search && !params.classId) {
+            toast.error(t('finance.studentFinance.editTab.toasts.selectFilterOrSearch', { defaultValue: 'Select a section or enter a search term' }));
+            return;
+        }
         setPage(1);
         setSubmittedParams(params);
+    };
+
+    const resetFilters = () => {
+        setSearch('');
+        setGradeId('');
+        setShiftId('');
+        setClassId('');
+        setSubmittedParams({});
+        setPage(1);
     };
 
     const total = students.length;
@@ -117,7 +108,7 @@ export default function StudentFinanceEditTab() {
             key: 'id',
             label: t('finance.studentFinance.editTab.columns.id', { defaultValue: 'ID' }),
             render: (row) => (
-                <span className="font-mono text-xs font-bold text-slate-500">{row.student?.studentId || '—'}</span>
+                <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row.student?.studentId || '—'}</span>
             ),
         },
         {
@@ -125,9 +116,9 @@ export default function StudentFinanceEditTab() {
             label: t('finance.studentFinance.editTab.columns.studentName', { defaultValue: 'Student Name' }),
             render: (row) => (
                 <div className="flex flex-col">
-                    <span className="font-bold text-slate-900">{row.student?.fullName || '—'}</span>
+                    <span className="font-bold text-(--nb-color-fg)">{row.student?.fullName || '—'}</span>
                     {row.student?.admissionDate ? (
-                        <span className="text-[10px] text-slate-400 font-mono uppercase tracking-tighter">
+                        <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-tighter">
                             {t('finance.studentFinance.editTab.labels.regPrefix', { defaultValue: 'Reg:' })}{' '}
                             {new Date(row.student.admissionDate).toLocaleDateString()}
                         </span>
@@ -144,7 +135,7 @@ export default function StudentFinanceEditTab() {
             key: 'class',
             label: t('finance.studentFinance.editTab.columns.class', { defaultValue: 'Class' }),
             render: (row) => (
-                <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-tight border border-slate-200">
+                <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
                     {row.student?.currentClass || '—'}
                 </span>
             ),
@@ -163,7 +154,7 @@ export default function StudentFinanceEditTab() {
             key: 'info',
             label: t('finance.studentFinance.editTab.columns.info', { defaultValue: 'Info' }),
             align: 'center',
-            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200 text-center',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border) text-center',
             render: (row) => (
                 <RowActionButtons
                     actions={[
@@ -190,7 +181,7 @@ export default function StudentFinanceEditTab() {
             <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <form onSubmit={handleSearch} className="flex-1 flex gap-2">
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                        <Search className="absolute left-3 top-2.5 text-(--nb-color-muted)" size={20} />
                         <Input
                             type="text"
                             className="h-11 pl-10 pr-4 font-medium"
@@ -200,26 +191,53 @@ export default function StudentFinanceEditTab() {
                         />
                     </div>
                 </form>
-                <SearchableSelect
+                <GradeSelect
+                    value={gradeId}
+                    onChange={(v) => {
+                        setGradeId(v || '');
+                        setClassId('');
+                    }}
+                    placeholder={t('common.filters.grade', { defaultValue: 'Grade' })}
+                    className="h-11 min-w-40 font-bold text-sm"
+                />
+
+                <ShiftSelect
+                    value={shiftId}
+                    onChange={(v) => {
+                        setShiftId(v || '');
+                        setClassId('');
+                    }}
+                    placeholder={t('common.filters.shift', { defaultValue: 'Shift' })}
+                    className="h-11 min-w-40 font-bold text-sm"
+                />
+
+                <GradeSectionSelect
+                    gradeId={gradeId}
+                    shiftId={shiftId}
                     value={classId}
-                    onChange={(v) => setClassId(v)}
-                    options={classes.map((cls) => {
-                        const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
-                        const sectionLabel = cls.section || cls.name || '';
-                        const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                        return { value: cls._id, label: label || '—' };
-                    })}
-                    placeholder={t('finance.studentFinance.editTab.filters.byClassLevel', { defaultValue: 'By Class Level' })}
-                    searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
+                    onChange={(v) => setClassId(v || '')}
+                    searchable
                     maxVisible={6}
+                    placeholder={t('common.filters.section', { defaultValue: 'Section' })}
+                    searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
                     className="h-11 min-w-50 font-bold text-sm"
                 />
                 <Button onClick={handleSearch} variant="brand" size="lg" className="h-11 px-8 font-black text-sm uppercase tracking-widest">
                     {t('finance.studentFinance.editTab.actions.go', { defaultValue: 'Go' })}
                 </Button>
+                <Button
+                    onClick={resetFilters}
+                    variant="neutral"
+                    size="lg"
+                    icon={<RotateCcw size={16} />}
+                    className="h-11 px-6 font-black text-sm uppercase tracking-widest"
+                    title={t('common.filters.resetTitle', { defaultValue: 'Reset filters' })}
+                >
+                    {t('common.actions.reset', { defaultValue: 'Reset' })}
+                </Button>
             </div>
 
-            <div className="bg-white border rounded-xl shadow-sm">
+            <div className="bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-xl shadow-(--nb-shadow-sm)">
                 <StandardTable
                     isLoading={loading}
                     loadingMessage={t('finance.studentFinance.editTab.loading.fetchingProfiles', { defaultValue: 'Fetching Profiles…' })}
@@ -234,7 +252,7 @@ export default function StudentFinanceEditTab() {
                             setLimit(v);
                             setPage(1);
                         },
-                        className: 'px-6 bg-white',
+                        className: 'px-6 bg-(--nb-color-bg-card)',
                     }}
                     getRowKey={(row) => row.student?._id}
                     emptyTitle={t('finance.studentFinance.editTab.empty.title', { defaultValue: 'No records found' })}

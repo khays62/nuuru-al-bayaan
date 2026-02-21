@@ -10,11 +10,32 @@
 	--nb-radius-md: 0.5rem;
 	--nb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
 	--nb-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-	--nb-color-brand: #2563eb; /* blue-600 */
-	--nb-color-text: #0f172a; /* slate-900 */
-	--nb-color-muted: #64748b; /* slate-500 */
-	--nb-color-border: #e2e8f0; /* slate-200 */
-	--nb-color-bg: #ffffff;
+	/* Brand tokens (Heritage & Light) */
+	--nb-color-brand: #4B2C20; /* Brand (brown) - primary UI elements, buttons */
+	--nb-color-accent: #E66E26; /* Accent (orange) - highlights, focus rings */
+	--nb-color-focus: var(--nb-color-accent);
+	/* Derived tints (single source of truth).
+	   Uses `color-mix` so changing brand/accent updates all derived shades automatically. */
+	--nb-color-brand-50: color-mix(in srgb, var(--nb-color-brand) 8%, white);
+	--nb-color-brand-100: color-mix(in srgb, var(--nb-color-brand) 14%, white);
+	--nb-color-brand-200: color-mix(in srgb, var(--nb-color-brand) 22%, white);
+	--nb-color-brand-300: color-mix(in srgb, var(--nb-color-brand) 32%, white);
+	--nb-color-accent-50: color-mix(in srgb, var(--nb-color-accent) 10%, white);
+	--nb-color-accent-100: color-mix(in srgb, var(--nb-color-accent) 18%, white);
+	--nb-color-accent-200: color-mix(in srgb, var(--nb-color-accent) 28%, white);
+	--nb-color-accent-300: color-mix(in srgb, var(--nb-color-accent) 38%, white);
+	/* Alpha variants for charts / subtle fills */
+	--nb-color-brand-a08: color-mix(in srgb, var(--nb-color-brand) 8%, transparent);
+	--nb-color-brand-a12: color-mix(in srgb, var(--nb-color-brand) 12%, transparent);
+	--nb-color-accent-a08: color-mix(in srgb, var(--nb-color-accent) 8%, transparent);
+	--nb-color-accent-a12: color-mix(in srgb, var(--nb-color-accent) 12%, transparent);
+	--nb-color-text: #0f172a; /* main text (keep existing dark tone) */
+	--nb-color-fg: var(--nb-color-text);
+	--nb-color-muted: #64748b; /* muted text */
+	--nb-color-border: #e2e8f0; /* neutral border */
+	/* Background: use a soft cream for page background and keep cards white */
+	--nb-color-bg: #F9F7F2; /* page background (cream) */
+	--nb-color-bg-card: #FFFFFF; /* card / surface background */
 }
 
 /* Print helpers + enhanced layout */
@@ -130,4 +151,17 @@
 
 .animate-nb-fade-in {
 	animation: nb-fade-in 240ms ease-out both;
+}
+
+/* Accessibility: ensure focus rings use the accent color (orange) while
+   primary brand stays as the brown tone. Many components use the generated
+   utility `.focus-visible:ring-(--nb-color-brand)`; override the resulting
+   ring color here so focus states are consistently orange. */
+.focus-visible\:ring-\(--nb-color-brand\):focus-visible {
+	--tw-ring-color: var(--nb-color-focus) !important;
+}
+
+html, body {
+	background: var(--nb-color-bg);
+	color: var(--nb-color-text);
 }

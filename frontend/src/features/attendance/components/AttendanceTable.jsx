@@ -24,14 +24,14 @@ export default function AttendanceTable({
       {
         key: 'studentId',
         label: t('attendance.marking.table.columns.studentId'),
-        thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-        tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200',
+        thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+        tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)',
       },
       {
         key: 'fullName',
         label: t('attendance.marking.table.columns.fullName'),
-        thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-        tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200',
+        thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+        tdClassName: 'px-6 py-4 text-sm font-medium text-(--nb-color-text) border-x border-(--nb-color-border)',
       },
     ];
 
@@ -40,14 +40,14 @@ export default function AttendanceTable({
           {
             key: 'marked',
             label: t('attendance.marking.table.columns.marked'),
-            thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200',
+            thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)',
           },
           {
             key: 'updated',
             label: t('attendance.marking.table.columns.updated'),
-            thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200',
+            thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)',
           },
         ]
       : [];
@@ -56,8 +56,8 @@ export default function AttendanceTable({
       {
         key: 'status',
         label: t('attendance.marking.table.columns.status'),
-        thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-        tdClassName: 'px-6 py-4 whitespace-normal border-x border-gray-200',
+        thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+        tdClassName: 'px-6 py-4 whitespace-normal border-x border-(--nb-color-border)',
       },
     ];
 
@@ -89,14 +89,14 @@ export default function AttendanceTable({
             return (
               <div className="leading-tight">
                 <div className="font-medium">{stu?.audit?.markedBy?.name || '—'}</div>
-                <div className="text-xs text-gray-500">{stu?.audit?.markedBy?.role || ''}{stu?.audit?.markedAt ? ` • ${new Date(stu.audit.markedAt).toLocaleString()}` : ''}</div>
+                <div className="text-xs text-(--nb-color-muted)">{stu?.audit?.markedBy?.role || ''}{stu?.audit?.markedAt ? ` • ${new Date(stu.audit.markedAt).toLocaleString()}` : ''}</div>
               </div>
             );
           case 'updated':
             return (
               <div className="leading-tight">
                 <div className="font-medium">{stu?.audit?.updatedBy?.name || '—'}</div>
-                <div className="text-xs text-gray-500">{stu?.audit?.updatedBy?.role || ''}{stu?.audit?.updatedAt ? ` • ${new Date(stu.audit.updatedAt).toLocaleString()}` : ''}</div>
+                <div className="text-xs text-(--nb-color-muted)">{stu?.audit?.updatedBy?.role || ''}{stu?.audit?.updatedAt ? ` • ${new Date(stu.audit.updatedAt).toLocaleString()}` : ''}</div>
               </div>
             );
           case 'status':
@@ -115,9 +115,9 @@ export default function AttendanceTable({
         }
       }}
       tableProps={{
-        theadClassName: 'bg-gray-800',
+        theadClassName: 'bg-(--nb-color-brand)',
         useDefaultHeaderStyles: false,
-        baseRowClassName: 'odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors',
+        baseRowClassName: 'border-t border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg) hover:bg-(--nb-color-bg-card) transition-colors',
       }}
     />
   );

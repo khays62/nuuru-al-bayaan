@@ -6,7 +6,10 @@ import { useI18n } from '../../../i18n/I18nProvider';
 function InlineSpinner({ className = '' }) {
   return (
     <span
-      className={cn('inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600', className)}
+      className={cn(
+        'inline-block h-4 w-4 animate-spin rounded-full border-2 border-(--nb-color-border) border-t-(--nb-color-accent)',
+        className
+      )}
       aria-hidden="true"
     />
   );
@@ -37,7 +40,7 @@ export default function LoadingState({
   if (v === 'table') {
     return (
       <div className={cn('w-full', className)}>
-        <div className="rounded-(--nb-radius-md) border border-slate-200 divide-y divide-slate-100 bg-white">
+        <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) divide-y divide-(--nb-color-border) bg-(--nb-color-bg-card)">
           {Array.from({ length: rows }).map((_, r) => (
             <div key={r} className="flex items-center">
               {Array.from({ length: columns }).map((__, c) => (
@@ -53,7 +56,7 @@ export default function LoadingState({
           ))}
         </div>
         {text ? (
-          <div className="flex justify-center mt-4 text-xs text-slate-500">{text}</div>
+          <div className="flex justify-center mt-4 text-xs text-(--nb-color-muted)">{text}</div>
         ) : null}
       </div>
     );
@@ -61,9 +64,9 @@ export default function LoadingState({
 
   // default 'card'
   return (
-    <div className={cn('flex items-center justify-center gap-2 rounded-(--nb-radius-md) border border-slate-200 bg-white p-6', className)}>
+    <div className={cn('flex items-center justify-center gap-2 rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) p-6', className)}>
       <InlineSpinner />
-      <span className="text-sm text-slate-700">{text}</span>
+      <span className="text-sm text-(--nb-color-fg)">{text}</span>
     </div>
   );
 }

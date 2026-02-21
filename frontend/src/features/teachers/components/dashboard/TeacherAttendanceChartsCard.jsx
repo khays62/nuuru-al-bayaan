@@ -25,7 +25,7 @@ const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
         `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
         (active
           ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand) shadow-sm'
-          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:shadow')
+          : 'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-brand-50) hover:shadow')
       }
     >
       {Icon ? <Icon size={16} /> : null}
@@ -43,8 +43,8 @@ const ActionButton = ({ disabled, onClick, icon: Icon, label }) => {
       className={
         `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
         (disabled
-          ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
-          : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50 hover:shadow')
+          ? 'bg-(--nb-color-bg) text-(--nb-color-muted) border-(--nb-color-border) cursor-not-allowed'
+          : 'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-brand-50) hover:shadow')
       }
       title={label}
     >
@@ -56,7 +56,7 @@ const ActionButton = ({ disabled, onClick, icon: Icon, label }) => {
 
 const MiniLegend = ({ items }) => {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-600">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-(--nb-color-muted)">
       {items.map((it) => (
         <div key={it.label} className="inline-flex items-center gap-2">
           <span className={`inline-block w-2.5 h-2.5 rounded ${it.dot}`} />
@@ -69,18 +69,18 @@ const MiniLegend = ({ items }) => {
 
 const SkeletonRow = () => (
   <div className="flex items-center gap-3 animate-pulse">
-    <div className="w-16 h-3 rounded bg-gray-200" />
-    <div className="flex-1 h-3 rounded bg-gray-200" />
-    <div className="w-12 h-3 rounded bg-gray-200" />
+    <div className="w-16 h-3 rounded bg-(--nb-color-border)" />
+    <div className="flex-1 h-3 rounded bg-(--nb-color-border)" />
+    <div className="w-12 h-3 rounded bg-(--nb-color-border)" />
   </div>
 );
 
 const TinyBadge = ({ tone = 'gray', children }) => {
   const tones = {
-    gray: 'bg-gray-100 text-gray-800 border-gray-200',
-    emerald: 'bg-emerald-100 text-emerald-900 border-emerald-200',
-    indigo: 'bg-indigo-100 text-indigo-900 border-indigo-200',
-    amber: 'bg-amber-100 text-amber-900 border-amber-200',
+    gray: 'bg-(--nb-color-bg) text-(--nb-color-text) border-(--nb-color-border)',
+    emerald: 'bg-(--nb-color-accent-50) text-(--nb-color-fg) border-(--nb-color-border)',
+    indigo: 'bg-(--nb-color-brand-50) text-(--nb-color-fg) border-(--nb-color-border)',
+    amber: 'bg-(--nb-color-brand-50) text-(--nb-color-fg) border-(--nb-color-border)',
   };
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tones[tone] || tones.gray}`}>
@@ -94,10 +94,10 @@ const StackedBar = ({ label, segments, showLabel = true }) => {
   return (
     <div className="flex items-center gap-3">
       {showLabel ? (
-        <div className="w-16 text-[11px] text-gray-600 tabular-nums">{label}</div>
+        <div className="w-16 text-[11px] text-(--nb-color-muted) tabular-nums">{label}</div>
       ) : null}
       <div className="flex-1">
-        <div className="h-3 w-full overflow-hidden rounded bg-gray-100 border border-gray-200">
+        <div className="h-3 w-full overflow-hidden rounded bg-(--nb-color-bg) border border-(--nb-color-border)">
           <div className="flex h-full">
             {segments.map((s) => (
               <div
@@ -110,23 +110,23 @@ const StackedBar = ({ label, segments, showLabel = true }) => {
           </div>
         </div>
       </div>
-      <div className="w-12 text-right text-[11px] text-gray-700 tabular-nums">{total}</div>
+      <div className="w-12 text-right text-[11px] text-(--nb-color-text) tabular-nums">{total}</div>
     </div>
   );
 };
 
-const PercentBar = ({ label, pct, tone = 'bg-indigo-600' }) => {
+const PercentBar = ({ label, pct, tone = 'bg-(--nb-color-brand)' }) => {
   const v = Number(pct || 0);
   const clamped = Math.max(0, Math.min(100, v));
   return (
     <div className="flex items-center gap-3">
-      <div className="w-20 text-[11px] text-gray-600 truncate">{label}</div>
+      <div className="w-20 text-[11px] text-(--nb-color-muted) truncate">{label}</div>
       <div className="flex-1">
-        <div className="h-3 w-full overflow-hidden rounded bg-gray-100 border border-gray-200">
+        <div className="h-3 w-full overflow-hidden rounded bg-(--nb-color-bg) border border-(--nb-color-border)">
           <div className={`h-full ${tone}`} style={{ width: `${Math.max(2, clamped)}%` }} />
         </div>
       </div>
-      <div className="w-12 text-right text-[11px] text-gray-700 tabular-nums">{clamped.toFixed(1)}%</div>
+      <div className="w-12 text-right text-[11px] text-(--nb-color-text) tabular-nums">{clamped.toFixed(1)}%</div>
     </div>
   );
 };
@@ -222,15 +222,15 @@ export default function TeacherAttendanceChartsCard() {
   const chartCaptureRef = useRef(null);
 
   const STATUSES = useMemo(() => ([
-    { key: 'present', label: t('teachers.dashboard.attendance.status.present', { defaultValue: 'Present' }), dot: 'bg-emerald-600', bar: 'bg-emerald-600' },
-    { key: 'absent', label: t('teachers.dashboard.attendance.status.absent', { defaultValue: 'Absent' }), dot: 'bg-red-500', bar: 'bg-red-500' },
-    { key: 'late', label: t('teachers.dashboard.attendance.status.late', { defaultValue: 'Late' }), dot: 'bg-amber-500', bar: 'bg-amber-500' },
+    { key: 'present', label: t('teachers.dashboard.attendance.status.present', { defaultValue: 'Present' }), dot: 'bg-(--nb-color-accent)', bar: 'bg-(--nb-color-accent)' },
+    { key: 'absent', label: t('teachers.dashboard.attendance.status.absent', { defaultValue: 'Absent' }), dot: 'bg-(--nb-color-brand) opacity-85', bar: 'bg-(--nb-color-brand) opacity-85' },
+    { key: 'late', label: t('teachers.dashboard.attendance.status.late', { defaultValue: 'Late' }), dot: 'bg-(--nb-color-brand) opacity-65', bar: 'bg-(--nb-color-brand) opacity-65' },
     // Use excusedExact to avoid double-counting (backend still provides legacy `excused` aggregate).
-    { key: 'excusedExact', label: t('teachers.dashboard.attendance.status.excused', { defaultValue: 'Excused' }), dot: 'bg-violet-600', bar: 'bg-violet-600' },
-    { key: 'sick', label: t('teachers.dashboard.attendance.status.sick', { defaultValue: 'Sick' }), dot: 'bg-sky-600', bar: 'bg-sky-600' },
-    { key: 'medical', label: t('teachers.dashboard.attendance.status.medical', { defaultValue: 'Medical' }), dot: 'bg-teal-600', bar: 'bg-teal-600' },
-    { key: 'family', label: t('teachers.dashboard.attendance.status.family', { defaultValue: 'Family' }), dot: 'bg-pink-600', bar: 'bg-pink-600' },
-    { key: 'other', label: t('teachers.dashboard.attendance.status.other', { defaultValue: 'Other' }), dot: 'bg-gray-600', bar: 'bg-gray-600' },
+    { key: 'excusedExact', label: t('teachers.dashboard.attendance.status.excused', { defaultValue: 'Excused' }), dot: 'bg-(--nb-color-accent) opacity-80', bar: 'bg-(--nb-color-accent) opacity-80' },
+    { key: 'sick', label: t('teachers.dashboard.attendance.status.sick', { defaultValue: 'Sick' }), dot: 'bg-(--nb-color-accent) opacity-65', bar: 'bg-(--nb-color-accent) opacity-65' },
+    { key: 'medical', label: t('teachers.dashboard.attendance.status.medical', { defaultValue: 'Medical' }), dot: 'bg-(--nb-color-accent) opacity-50', bar: 'bg-(--nb-color-accent) opacity-50' },
+    { key: 'family', label: t('teachers.dashboard.attendance.status.family', { defaultValue: 'Family' }), dot: 'bg-(--nb-color-brand) opacity-50', bar: 'bg-(--nb-color-brand) opacity-50' },
+    { key: 'other', label: t('teachers.dashboard.attendance.status.other', { defaultValue: 'Other' }), dot: 'bg-(--nb-color-muted)', bar: 'bg-(--nb-color-muted)' },
   ]), [t]);
 
   // (assignments are provided by React Query)
@@ -524,7 +524,7 @@ export default function TeacherAttendanceChartsCard() {
     if (!node) return;
     try {
       const canvas = await toCanvas(node, {
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--nb-color-bg-card)',
         pixelRatio: 2,
         cacheBust: true,
       });
@@ -543,7 +543,7 @@ export default function TeacherAttendanceChartsCard() {
     if (!node) return;
     try {
       const canvas = await toCanvas(node, {
-        backgroundColor: '#ffffff',
+        backgroundColor: 'var(--nb-color-bg-card)',
         pixelRatio: 2,
         cacheBust: true,
       });
@@ -602,8 +602,8 @@ export default function TeacherAttendanceChartsCard() {
   }, [trendDayAgg, trendPeriodAgg, report]);
 
   return (
-    <div className="rounded-2xl border border-emerald-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-      <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+      <div className="px-5 py-4 bg-(--nb-color-brand) text-white border-b border-(--nb-color-brand) flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-lg font-semibold">{t('teachers.dashboard.attendance.title', { defaultValue: 'Attendance' })}</div>
           <div className="text-sm text-white/80 mt-1">{t('teachers.dashboard.common.liveTeacherScoped', { defaultValue: 'Live data (teacher-scoped)' })}</div>
@@ -635,18 +635,18 @@ export default function TeacherAttendanceChartsCard() {
 
       <div className="p-5 flex flex-col gap-4">
 
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
+            <div className="inline-flex items-center gap-2 text-sm font-medium text-(--nb-color-text)">
               <SlidersHorizontal size={16} />
               <span>{t('teachers.dashboard.common.filters', { defaultValue: 'Filters' })}</span>
             </div>
-            <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.maxRange', { defaultValue: 'Max range: 31 days' })}</div>
+            <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.attendance.maxRange', { defaultValue: 'Max range: 31 days' })}</div>
           </div>
 
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.common.section', { defaultValue: 'Section' })}</div>
+              <div className="text-xs font-medium text-(--nb-color-muted) mb-1">{t('teachers.dashboard.common.section', { defaultValue: 'Section' })}</div>
               <DropdownSelect
                 value={sectionId}
                 onChange={(v) => { setSectionId(v); setReport(null); }}
@@ -656,7 +656,7 @@ export default function TeacherAttendanceChartsCard() {
               />
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.common.subject', { defaultValue: 'Subject' })}</div>
+              <div className="text-xs font-medium text-(--nb-color-muted) mb-1">{t('teachers.dashboard.common.subject', { defaultValue: 'Subject' })}</div>
               <DropdownSelect
                 value={subjectId}
                 onChange={(v) => { setSubjectId(v); setReport(null); }}
@@ -666,38 +666,38 @@ export default function TeacherAttendanceChartsCard() {
               />
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.attendance.range.title', { defaultValue: 'Range' })}</div>
+              <div className="text-xs font-medium text-(--nb-color-muted) mb-1">{t('teachers.dashboard.attendance.range.title', { defaultValue: 'Range' })}</div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setRangeTab('today')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='today'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{t('teachers.dashboard.attendance.range.today', { defaultValue: 'Today' })}</button>
-                <button type="button" onClick={() => setRangeTab('last7')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='last7'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{t('teachers.dashboard.attendance.range.last7', { defaultValue: 'Last 7' })}</button>
-                <button type="button" onClick={() => setRangeTab('custom')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='custom'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>{t('teachers.dashboard.attendance.range.custom', { defaultValue: 'Custom' })}</button>
+                <button type="button" onClick={() => setRangeTab('today')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='today'?'bg-(--nb-color-brand) text-white border-(--nb-color-brand)':'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-bg)'}`}>{t('teachers.dashboard.attendance.range.today', { defaultValue: 'Today' })}</button>
+                <button type="button" onClick={() => setRangeTab('last7')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='last7'?'bg-(--nb-color-brand) text-white border-(--nb-color-brand)':'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-bg)'}`}>{t('teachers.dashboard.attendance.range.last7', { defaultValue: 'Last 7' })}</button>
+                <button type="button" onClick={() => setRangeTab('custom')} className={`px-3 py-2 rounded-lg border text-sm ${rangeTab==='custom'?'bg-(--nb-color-brand) text-white border-(--nb-color-brand)':'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-bg)'}`}>{t('teachers.dashboard.attendance.range.custom', { defaultValue: 'Custom' })}</button>
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium text-gray-600 mb-1">{t('teachers.dashboard.attendance.dates', { defaultValue: 'Dates' })}</div>
+              <div className="text-xs font-medium text-(--nb-color-muted) mb-1">{t('teachers.dashboard.attendance.dates', { defaultValue: 'Dates' })}</div>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="date"
                   value={from}
                   onChange={(e) => { setFrom(e.target.value); setRangeTab('custom'); }}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-lg text-sm"
                 />
                 <input
                   type="date"
                   value={to}
                   onChange={(e) => { setTo(e.target.value); setRangeTab('custom'); }}
-                  className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm"
+                  className="w-full px-3 py-2 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-lg text-sm"
                 />
               </div>
             </div>
           </div>
 
           <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
-            <div className="text-xs text-gray-600">
+            <div className="text-xs text-(--nb-color-muted)">
               {subjectSlotsLoading ? t('teachers.dashboard.attendance.loadingTimetablePeriods', { defaultValue: 'Loading timetable periods…' }) : (subjectId && sectionId && subjectPeriodCodes.length === 0 ? t('teachers.dashboard.attendance.noPeriodsForSubject', { defaultValue: 'No timetable periods for this subject.' }) : '')}
               {assignmentsError ? ` ${assignmentsError}` : ''}
             </div>
-            <div className="text-xs text-gray-700">
+            <div className="text-xs text-(--nb-color-text)">
               <span className="font-medium">{t('teachers.dashboard.attendance.kpis.allDayPct', { defaultValue: 'All-day%' })}</span>: {kpis.dayPct}% • <span className="font-medium">{t('teachers.dashboard.attendance.kpis.perPeriodPct', { defaultValue: 'Per-period%' })}</span>: {kpis.periodPct}%
               {kpis.roster ? ` • ` : ''}{kpis.roster ? (<><span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>: {kpis.roster}</>) : null}
             </div>
@@ -705,9 +705,9 @@ export default function TeacherAttendanceChartsCard() {
         </div>
 
         {!isTeacher ? (
-          <div className="text-sm text-gray-600">{t('teachers.dashboard.common.teachersOnly', { defaultValue: 'This card is available for teachers only.' })}</div>
+          <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.common.teachersOnly', { defaultValue: 'This card is available for teachers only.' })}</div>
         ) : !teacherRef ? (
-          <div className="text-sm text-gray-600">{t('teachers.dashboard.common.noTeacherRef', { defaultValue: 'No teacherRef found on your account.' })}</div>
+          <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.common.noTeacherRef', { defaultValue: 'No teacherRef found on your account.' })}</div>
         ) : error ? (
           <Alert variant="danger">{error}</Alert>
         ) : loading ? (
@@ -716,36 +716,36 @@ export default function TeacherAttendanceChartsCard() {
             {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
           </div>
         ) : !canRun ? (
-          <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.selectFilters', { defaultValue: 'Select Section + Subject + date range to view charts.' })}</div>
+          <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.attendance.selectFilters', { defaultValue: 'Select Section + Subject + date range to view charts.' })}</div>
         ) : (trendDates.length === 0) ? (
-          <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.noData', { defaultValue: 'No attendance data found for the selected filters.' })}</div>
+          <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.attendance.noData', { defaultValue: 'No attendance data found for the selected filters.' })}</div>
         ) : view === 'performance' ? (
           <div ref={chartCaptureRef} className="space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.performance.title', { defaultValue: 'Attendance performance' })}</div>
-              <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.performance.subtitle', { defaultValue: 'Percent breakdown (prefers ALL DAY per date)' })}</div>
+              <div className="text-sm font-medium text-(--nb-color-text)">{t('teachers.dashboard.attendance.performance.title', { defaultValue: 'Attendance performance' })}</div>
+              <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.attendance.performance.subtitle', { defaultValue: 'Percent breakdown (prefers ALL DAY per date)' })}</div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-                <div className="text-xs font-semibold text-emerald-900">{t('teachers.dashboard.attendance.status.present', { defaultValue: 'Present' })}</div>
-                <div className="text-xl font-bold text-emerald-900 tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
-                <div className="text-[11px] text-emerald-900/70">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
+              <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-accent-50) p-3">
+                <div className="text-xs font-semibold text-(--nb-color-fg)">{t('teachers.dashboard.attendance.status.present', { defaultValue: 'Present' })}</div>
+                <div className="text-xl font-bold text-(--nb-color-fg) tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
+                <div className="text-[11px] text-(--nb-color-muted)">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                <div className="text-xs font-semibold text-gray-900">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</div>
-                <div className="text-xl font-bold text-gray-900 tabular-nums">{combinedTrend.length}</div>
-                <div className="text-[11px] text-gray-600">{t('teachers.dashboard.attendance.performance.markedDaysNote', { defaultValue: 'One row per date (DAY else PERIOD)' })}</div>
+              <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-3">
+                <div className="text-xs font-semibold text-(--nb-color-text)">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</div>
+                <div className="text-xl font-bold text-(--nb-color-text) tabular-nums">{combinedTrend.length}</div>
+                <div className="text-[11px] text-(--nb-color-muted)">{t('teachers.dashboard.attendance.performance.markedDaysNote', { defaultValue: 'One row per date (DAY else PERIOD)' })}</div>
               </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                <div className="text-xs font-semibold text-gray-900">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</div>
-                <div className="text-xl font-bold text-gray-900 tabular-nums">{Number(kpis.roster || 0) || '—'}</div>
-                <div className="text-[11px] text-gray-600">{t('teachers.dashboard.attendance.performance.rosterNote', { defaultValue: 'From report meta' })}</div>
+              <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-3">
+                <div className="text-xs font-semibold text-(--nb-color-text)">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</div>
+                <div className="text-xl font-bold text-(--nb-color-text) tabular-nums">{Number(kpis.roster || 0) || '—'}</div>
+                <div className="text-[11px] text-(--nb-color-muted)">{t('teachers.dashboard.attendance.performance.rosterNote', { defaultValue: 'From report meta' })}</div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-              <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+            <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
+              <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                 <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.performance.statusPercentages', { defaultValue: 'Status percentages' })}</div>
                 <div className="text-xs text-white/80">{t('teachers.dashboard.attendance.performance.totalRecords', { defaultValue: 'Total records: {{count}}', count: Number(performanceAgg.total || 0) })}</div>
               </div>
@@ -762,26 +762,26 @@ export default function TeacherAttendanceChartsCard() {
         ) : view === 'status' ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.statusTrend.title', { defaultValue: 'Attendance status trend' })}</div>
-              <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.statusTrend.subtitle', { defaultValue: 'All-day (DAY) and Per-period (LESSON)' })}</div>
+              <div className="text-sm font-medium text-(--nb-color-text)">{t('teachers.dashboard.attendance.statusTrend.title', { defaultValue: 'Attendance status trend' })}</div>
+              <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.attendance.statusTrend.subtitle', { defaultValue: 'All-day (DAY) and Per-period (LESSON)' })}</div>
             </div>
             <MiniLegend
               items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))}
             />
 
-            <div ref={chartCaptureRef} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-              <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+            <div ref={chartCaptureRef} className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
+              <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                 <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.statusTrend.dailyTrend', { defaultValue: 'Daily trend' })}</div>
                 <div className="text-xs text-white/80">{t('teachers.dashboard.attendance.statusTrend.dailyTrendNote', { defaultValue: 'One line per date (prefers ALL DAY)' })}</div>
               </div>
 
               <div className="p-4 space-y-2">
                 {combinedTrend.length === 0 ? (
-                  <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.statusTrend.noTrendRows', { defaultValue: 'No trend rows found.' })}</div>
+                  <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.attendance.statusTrend.noTrendRows', { defaultValue: 'No trend rows found.' })}</div>
                 ) : (
                   combinedTrend.map(({ date, source, row }) => (
                     <div key={date} className="flex items-start gap-3">
-                      <div className="w-16 shrink-0 pt-0.5 text-[11px] text-gray-600 tabular-nums">{String(date).slice(5)}</div>
+                      <div className="w-16 shrink-0 pt-0.5 text-[11px] text-(--nb-color-muted) tabular-nums">{String(date).slice(5)}</div>
                       <div className="w-20 shrink-0 pt-0.5">
                         {source === 'DAY' ? <TinyBadge tone="emerald">{t('teachers.dashboard.attendance.badges.allDay', { defaultValue: 'ALL DAY' })}</TinyBadge> : <TinyBadge tone="indigo">{t('teachers.dashboard.attendance.badges.period', { defaultValue: 'PERIOD' })}</TinyBadge>}
                       </div>
@@ -802,7 +802,7 @@ export default function TeacherAttendanceChartsCard() {
                 )}
 
                 {subjectPeriodCodes.length === 0 ? (
-                  <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.statusTrend.noTimetablePeriodsNote', { defaultValue: 'Note: no timetable periods found for this subject; PERIOD rows may be missing.' })}</div>
+                  <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.attendance.statusTrend.noTimetablePeriodsNote', { defaultValue: 'Note: no timetable periods found for this subject; PERIOD rows may be missing.' })}</div>
                 ) : null}
               </div>
             </div>
@@ -810,13 +810,13 @@ export default function TeacherAttendanceChartsCard() {
         ) : (
           <div ref={chartCaptureRef} className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.byPeriod.title', { defaultValue: 'Attendance by period' })}</div>
-              <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.byPeriod.subtitle', { defaultValue: 'Present total' })}</div>
+              <div className="text-sm font-medium text-(--nb-color-text)">{t('teachers.dashboard.attendance.byPeriod.title', { defaultValue: 'Attendance by period' })}</div>
+              <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.attendance.byPeriod.subtitle', { defaultValue: 'Present total' })}</div>
             </div>
             <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
             <div className="space-y-2">
               {periodAgg.length === 0 ? (
-                <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.byPeriod.empty', { defaultValue: 'No lesson periods found in this range.' })}</div>
+                <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.attendance.byPeriod.empty', { defaultValue: 'No lesson periods found in this range.' })}</div>
               ) : periodAgg.map((p) => (
                 <StackedBar
                   key={p.code}
@@ -833,9 +833,9 @@ export default function TeacherAttendanceChartsCard() {
           </div>
         )}
 
-        <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-          <div className="text-xs text-gray-500">{t('teachers.dashboard.attendance.source', { defaultValue: 'Source: Attendance Reports summary (teacher-scoped)' })}</div>
-          <div className="text-xs text-gray-600">
+        <div className="pt-2 border-t border-(--nb-color-border) flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.attendance.source', { defaultValue: 'Source: Attendance Reports summary (teacher-scoped)' })}</div>
+          <div className="text-xs text-(--nb-color-muted)">
             {t('teachers.dashboard.common.kpis', { defaultValue: 'KPIs' })}: <span className="font-medium">{t('teachers.dashboard.attendance.kpis.attendancePct', { defaultValue: 'Attendance %' })}</span> • <span className="font-medium">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</span> • <span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>
           </div>
         </div>

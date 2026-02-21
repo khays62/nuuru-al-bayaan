@@ -635,58 +635,51 @@ export default function ResultPage() {
                 {(mode === 'top' || mode === 'bottom') && (
                     <FilterItem>
                         <div className="flex items-center gap-2">
-                            <label className="text-sm text-gray-600">{t('results.page.filters.nLabel')}</label>
+                            <label className="text-sm text-(--nb-color-muted)">{t('results.page.filters.nLabel')}</label>
                             <Input className="w-20" type="number" min={1} max={100} value={mode==='top'?topN:bottomN} onChange={e=> (mode==='top'? setTopN(Number(e.target.value)||0): setBottomN(Number(e.target.value)||0))} />
                             {/* Number input styled separately for consistency */}
                         </div>
                     </FilterItem>
                 )}
-                {(() => {
-                    const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
-                    return (
-                        <FilterItem className="sm:ml-auto">
-                            <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
-                            {canPrintResults ? (
-                                <ActionButton
-                                    variant="neutral"
-                                    className={outlineBtn}
-                                    onClick={handlePrint}
-                                    title={t('common.actions.print')}
-                                    icon={<Printer size={16} />}
-                                >
-                                    {t('common.actions.print')}
-                                </ActionButton>
-                            ) : null}
+                <FilterItem className="sm:ml-auto">
+                    <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+                    {canPrintResults ? (
+                        <ActionButton
+                            variant="outline"
+                            onClick={handlePrint}
+                            title={t('common.actions.print')}
+                            icon={<Printer size={16} />}
+                        >
+                            {t('common.actions.print')}
+                        </ActionButton>
+                    ) : null}
 
-                            {canDownloadResults ? (
-                                <>
-                                    <PdfDownloadButton getPayload={getPdfPayload} disabled={!canExport} className={outlineBtn} />
-                                    <ExcelDownloadButton getPayload={getExcelPayload} disabled={!canExport} className={outlineBtn} />
-                                    <CsvDownloadButton getPayload={getExportPayload} disabled={!canExport} className={outlineBtn} />
-                                    <CopyTableButton getPayload={getExportPayload} disabled={!canExport} className={outlineBtn} />
-                                </>
-                            ) : null}
+                    {canDownloadResults ? (
+                        <>
+                            <PdfDownloadButton getPayload={getPdfPayload} disabled={!canExport} variant="outline" />
+                            <ExcelDownloadButton getPayload={getExcelPayload} disabled={!canExport} variant="outline" />
+                            <CsvDownloadButton getPayload={getExportPayload} disabled={!canExport} variant="outline" />
+                            <CopyTableButton getPayload={getExportPayload} disabled={!canExport} variant="outline" />
+                        </>
+                    ) : null}
 
-                            <ActionButton
-                                variant="neutral"
-                                className={outlineBtn}
-                                onClick={handleReset}
-                                title={t('common.filters.resetTitle')}
-                                icon={<RotateCcw size={16} />}
-                            >
-                                {t('common.actions.reset')}
-                            </ActionButton>
-                            </div>
-                        </FilterItem>
-                    );
-                })()}
+                    <ActionButton
+                        variant="outline"
+                        onClick={handleReset}
+                        title={t('common.filters.resetTitle')}
+                        icon={<RotateCcw size={16} />}
+                    >
+                        {t('common.actions.reset')}
+                    </ActionButton>
+                    </div>
+                </FilterItem>
 				</FilterRow>
             </Card>
 
             {cohortId && timeline.length > 0 && (
                 <Card className="p-3 flex flex-row flex-wrap gap-2 items-center no-print">
-                    <div className="text-sm font-medium text-gray-600 mr-2">{t('results.page.timeline.title')}</div>
-                    {timelineLoading && <div className="text-xs text-gray-500">{t('common.loading')}</div>}
+                    <div className="text-sm font-medium text-(--nb-color-muted) mr-2">{t('results.page.timeline.title')}</div>
+                    {timelineLoading && <div className="text-xs text-(--nb-color-muted)">{t('common.loading')}</div>}
                     {!timelineLoading && timeline.map(entry => {
                         const active = academicYearId === String(entry.academicYear._id) && gradeSectionId === String(entry.gradeSection._id);
                         return (
@@ -703,7 +696,7 @@ export default function ResultPage() {
                                     if (entry?.statusHint) setEnrollmentStatus(String(entry.statusHint));
                                     queueMicrotask(() => { applyingTimelineRef.current = false; });
                                 }}
-                                className={`text-xs px-2 py-1 rounded border ${active ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300'}`}
+                                className={`text-xs px-2 py-1 rounded border ${active ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)' : 'bg-(--nb-color-bg-card) hover:bg-(--nb-color-bg) text-(--nb-color-text) border-(--nb-color-border)'}`}
                             >
                                 {entry.academicYear.yearName} / {entry.grade.gradeName}{entry.gradeSection.section ? ` ${t('common.sectionPrefix')} ${entry.gradeSection.section}` : ''}
                             </button>
@@ -714,13 +707,13 @@ export default function ResultPage() {
 
             <Card className="p-4 overflow-auto results-print">
                 {(!academicYearId || !gradeSectionId) ? (
-                    <p className="text-sm text-gray-500">{t('results.page.emptyStates.selectFilters')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('results.page.emptyStates.selectFilters')}</p>
                 ) : (mode === 'subject' && !subjectId) ? (
-                    <p className="text-sm text-gray-500">{t('results.page.emptyStates.chooseSubject')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('results.page.emptyStates.chooseSubject')}</p>
                 ) : (mode === 'examType' && !examTypeId) ? (
-                    <p className="text-sm text-gray-500">{t('results.page.emptyStates.chooseExamType')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('results.page.emptyStates.chooseExamType')}</p>
                 ) : loading ? (
-                    <p className="text-sm text-gray-500">{t('teachers.dashboard.results.loading')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.results.loading')}</p>
                                 ) : (mode === 'trend') ? (
                                         <>
                                             {/* Removed duplicate Print action (toolbar already provides it) */}
@@ -749,11 +742,11 @@ export default function ResultPage() {
                                                 emptyTitle={t('results.page.emptyStates.noResults')}
                                                 rows={[...results, { __type: 'summary' }]}
                                                 columns={[
-                                                    { key: 'rank', label: t('results.page.table.rank'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'student', label: t('results.page.table.student'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
-                                                    { key: 'mid', label: t('results.page.table.midTerm'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'final', label: t('results.page.table.final'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'delta', label: t('results.page.table.delta'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-gray-700' },
+                                                    { key: 'rank', label: t('results.page.table.rank'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right border-x border-(--nb-color-border)' },
+                                                    { key: 'student', label: t('results.page.table.student'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-(--nb-color-border)' },
+                                                    { key: 'mid', label: t('results.page.table.midTerm'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right border-x border-(--nb-color-border)' },
+                                                    { key: 'final', label: t('results.page.table.final'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right border-x border-(--nb-color-border)' },
+                                                    { key: 'delta', label: t('results.page.table.delta'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-(--nb-color-border)' },
                                                 ]}
                                                 getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : r.studentId}
                                                 renderCell={(r, col) => {
@@ -772,10 +765,10 @@ export default function ResultPage() {
                                                     }
                                                 }}
                                                 tableProps={{
-                                                    theadClassName: 'bg-gray-800',
+                                                    theadClassName: 'bg-(--nb-color-brand)',
                                                     useDefaultHeaderStyles: false,
-                                                    baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
-                                                    rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-gray-700' : '',
+                                                    baseRowClassName: 'border-t border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg)',
+                                                    rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-(--nb-color-border)' : '',
                                                 }}
                                             />
                                         </>
@@ -807,14 +800,14 @@ export default function ResultPage() {
                                                 emptyTitle={t('results.page.emptyStates.noResults')}
                                                 rows={[...(summary?.subjects || []), { __type: 'summary' }]}
                                                 columns={[
-                                                    { key: 'subject', label: t('common.filters.subject'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
-                                                    { key: 'avg', label: t('results.page.table.avg'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'students', label: t('results.page.table.students'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right text-gray-700 border-x border-gray-700' },
+                                                    { key: 'subject', label: t('common.filters.subject'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-(--nb-color-border)' },
+                                                    { key: 'avg', label: t('results.page.table.avg'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right border-x border-(--nb-color-border)' },
+                                                    { key: 'students', label: t('results.page.table.students'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right text-(--nb-color-text) border-x border-(--nb-color-border)' },
                                                 ]}
                                                 getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : String(r._id)}
                                                 renderCell={(r, col) => {
                                                     if (r?.__type === 'summary') {
-                                                        if (col.key === 'subject') return <span className="font-medium text-gray-700">{t('results.page.table.classAvgSubjects')}</span>;
+                                                        if (col.key === 'subject') return <span className="font-medium text-(--nb-color-text)">{t('results.page.table.classAvgSubjects')}</span>;
                                                         if (col.key === 'avg') return Number((summary.classAverage ?? 0).toFixed?.(2));
                                                         if (col.key === 'students') return '—';
                                                         return '';
@@ -827,15 +820,15 @@ export default function ResultPage() {
                                                     }
                                                 }}
                                                 tableProps={{
-                                                    theadClassName: 'bg-gray-800',
+                                                    theadClassName: 'bg-(--nb-color-brand)',
                                                     useDefaultHeaderStyles: false,
-                                                    baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
-                                                    rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-gray-700' : '',
+                                                    baseRowClassName: 'border-t border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg)',
+                                                    rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-(--nb-color-border)' : '',
                                                 }}
                                             />
                                         </>
                                 ) : (results.length === 0) ? (
-                    <p className="text-sm text-gray-500">{t('results.page.emptyStates.noResults')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('results.page.emptyStates.noResults')}</p>
                 ) : (
                     <>
                     {/* Removed duplicate CSV/Print actions (toolbar already provides them) */}
@@ -866,8 +859,8 @@ export default function ResultPage() {
                                             rows={[...results, { __type: 'summary' }]}
                                             columns={(() => {
                                                 const base = [
-                                                    { key: 'rank', label: t('results.page.table.rank'), align: 'right', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
-                                                    { key: 'student', label: t('results.page.table.student'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-gray-700' },
+                                                    { key: 'rank', label: t('results.page.table.rank'), align: 'right', thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right border-x border-(--nb-color-border)' },
+                                                    { key: 'student', label: t('results.page.table.student'), thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 whitespace-nowrap border-x border-(--nb-color-border)' },
                                                 ];
 
                                                 const dynamic = showSubjectTemplateCols
@@ -875,22 +868,22 @@ export default function ResultPage() {
                                                         key: `et:${String(et._id)}`,
                                                         label: et.typeName,
                                                         align: 'right',
-                                                        thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                                                        tdClassName: 'px-4 py-3 text-right border-x border-gray-700',
+                                                        thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                                                        tdClassName: 'px-4 py-3 text-right border-x border-(--nb-color-border)',
                                                         _etId: String(et._id),
                                                     }))
                                                     : visibleSubjectCols.map(sc => ({
                                                         key: `sub:${String(sc._id)}`,
                                                         label: sc.subjectName,
                                                         align: 'right',
-                                                        thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                                                        tdClassName: 'px-4 py-3 text-right border-x border-gray-700',
+                                                        thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                                                        tdClassName: 'px-4 py-3 text-right border-x border-(--nb-color-border)',
                                                         _subId: String(sc._id),
                                                     }));
 
                                                 const tail = [
-                                                    { key: 'total', label: t('results.page.table.totalWithMax', { max: 100 }), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-gray-700' },
-                                                    { key: 'avg', label: t('results.page.table.average'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-4 py-3 text-right border-x border-gray-700' },
+                                                    { key: 'total', label: t('results.page.table.totalWithMax', { max: 100 }), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right font-semibold border-x border-(--nb-color-border)' },
+                                                    { key: 'avg', label: t('results.page.table.average'), align: 'right', thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'px-4 py-3 text-right border-x border-(--nb-color-border)' },
                                                 ];
 
                                                 return [...base, ...dynamic, ...tail];
@@ -898,7 +891,7 @@ export default function ResultPage() {
                                             getRowKey={(r, idx) => r?.__type === 'summary' ? `summary-${idx}` : r.studentId}
                                             renderCell={(r, col) => {
                                                 if (r?.__type === 'summary') {
-                                                    if (col.key === 'student') return <span className="block text-right text-gray-700">{t('results.page.table.classAverage')}</span>;
+                                                    if (col.key === 'student') return <span className="block text-right text-(--nb-color-text)">{t('results.page.table.classAverage')}</span>;
 
                                                     if (String(col.key).startsWith('et:')) {
                                                         const etId = col._etId;
@@ -946,10 +939,10 @@ export default function ResultPage() {
                                                 return '';
                                             }}
                                             tableProps={{
-                                                theadClassName: 'bg-gray-800',
+                                                theadClassName: 'bg-(--nb-color-brand)',
                                                 useDefaultHeaderStyles: false,
-                                                baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
-                                                rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-gray-700' : '',
+                                                baseRowClassName: 'border-t border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg)',
+                                                rowClassName: (r) => r?.__type === 'summary' ? 'font-medium border-t-2 border-(--nb-color-border)' : '',
                                             }}
                                         />
                     </>

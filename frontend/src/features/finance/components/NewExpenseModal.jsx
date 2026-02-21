@@ -256,40 +256,40 @@ export default function NewExpenseModal({
                 </FormField>
 
                 {selectedCategory ? (
-                    <div className="rounded-(--nb-radius-md) border border-slate-200 bg-slate-50 p-3">
+                    <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg) p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="text-xs font-semibold text-slate-700">
+                            <div className="text-xs font-semibold text-(--nb-color-fg)">
                                 {t('finance.expenses.budgetInfo.title', { defaultValue: 'Budget info' })}
                             </div>
                             {selectedMonth ? (
-                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-(--nb-color-muted)">
                                     {t('finance.expenses.budgetInfo.month', { defaultValue: 'Month: {{month}}', month: selectedMonth })}
                                 </div>
                             ) : null}
                         </div>
 
                         <div className="mt-2 grid grid-cols-3 gap-2">
-                            <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white px-3 py-2">
-                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-2">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-(--nb-color-muted)">
                                     {t('finance.expenses.budgetInfo.budget', { defaultValue: 'Budget' })}
                                 </div>
-                                <div className="text-sm font-black text-slate-900">
+                                <div className="text-sm font-black text-(--nb-color-fg)">
                                     {budgetInfo.hasBudget ? `$${Number(budgetInfo.budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
                                 </div>
                             </div>
-                            <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white px-3 py-2">
-                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-2">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-(--nb-color-muted)">
                                     {t('finance.expenses.budgetInfo.spent', { defaultValue: 'Spent' })}
                                 </div>
-                                <div className={'text-sm font-black ' + (budgetInfo.over ? 'text-red-600' : 'text-slate-900')}>
+                                <div className={'text-sm font-black ' + (budgetInfo.over ? 'text-red-600' : 'text-(--nb-color-fg)')}>
                                     ${Number(budgetInfo.spent || 0).toLocaleString()}
                                 </div>
                             </div>
-                            <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white px-3 py-2">
-                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-2">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-(--nb-color-muted)">
                                     {t('finance.expenses.budgetInfo.remaining', { defaultValue: 'Remaining' })}
                                 </div>
-                                <div className={'text-sm font-black ' + (budgetInfo.over ? 'text-red-600' : 'text-slate-900')}>
+                                <div className={'text-sm font-black ' + (budgetInfo.over ? 'text-red-600' : 'text-(--nb-color-fg)')}>
                                     {budgetInfo.hasBudget ? `$${Number(budgetInfo.remaining || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
                                 </div>
                             </div>

@@ -58,25 +58,25 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-slate-200">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-2xl rounded-xl shadow-(--nb-shadow-md) overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-(--nb-color-border)">
                 {/* Header */}
-                <div className="p-6 border-b border-slate-100 bg-slate-50/30">
+                <div className="p-6 border-b border-(--nb-color-border) bg-(--nb-color-bg)">
                     <div className="flex justify-between items-start">
                         <div>
                             <div className="flex items-center gap-3 mb-2">
                                 <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${step === 1 ? 'bg-blue-600 border-blue-600 text-white' : 'bg-green-500 border-green-500 text-white'}`}>
                                     {step === 1 ? '01' : <Check size={14} />}
                                 </span>
-                                <div className="h-px w-8 bg-slate-200" />
-                                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${step === 2 ? 'bg-blue-600 border-blue-600 text-white' : 'text-slate-300 border-slate-200'}`}>
+                                <div className="h-px w-8 bg-(--nb-color-border)" />
+                                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border-2 transition-all ${step === 2 ? 'bg-blue-600 border-blue-600 text-white' : 'text-(--nb-color-muted) border-(--nb-color-border)'}`}>
                                     02
                                 </span>
                             </div>
-                            <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Payroll Pipeline</h3>
-                            <p className="text-sm text-slate-500 font-medium font-mono uppercase tracking-widest">Process Salaries Period: {formData.month}</p>
+                            <h3 className="text-2xl font-black text-(--nb-color-fg) tracking-tight uppercase">Payroll Pipeline</h3>
+                            <p className="text-sm text-(--nb-color-muted) font-medium font-mono uppercase tracking-widest">Process Salaries Period: {formData.month}</p>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-white rounded-xl transition-all shadow-sm">
-                            <X size={22} className="text-slate-400" />
+                        <button onClick={onClose} className="p-2 hover:bg-(--nb-color-bg-card) rounded-xl transition-all shadow-(--nb-shadow-sm)">
+                            <X size={22} className="text-(--nb-color-muted)" />
                         </button>
                     </div>
                 </div>
@@ -86,19 +86,19 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                     {step === 1 && (
                         <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1 flex items-center gap-2">
                                     <Calendar size={12} className="text-blue-600" /> Target Fiscal Month
                                 </label>
                                 <input
                                     type="month"
-                                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none text-2xl font-black text-slate-900 tracking-tight"
+                                    className="w-full px-5 py-4 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none text-2xl font-black text-(--nb-color-fg) tracking-tight"
                                     value={formData.month}
                                     onChange={e => setFormData({ ...formData, month: e.target.value })}
                                 />
                             </div>
 
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1 flex items-center gap-2">
                                     <Users size={12} className="text-blue-600" /> Scope of Operation
                                 </label>
                                 <div className="grid grid-cols-1 gap-4">
@@ -109,14 +109,14 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                         <button
                                             key={opt.id}
                                             onClick={() => setFormData({ ...formData, scope: opt.id })}
-                                            className={`flex items-start gap-5 p-6 rounded-3xl border-2 text-left transition-all ${formData.scope === opt.id ? 'border-blue-600 bg-blue-50 shadow-lg shadow-blue-600/5' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
+                                            className={`flex items-start gap-5 p-6 rounded-3xl border-2 text-left transition-all ${formData.scope === opt.id ? 'border-blue-600 bg-blue-50 shadow-lg shadow-blue-600/5' : 'border-(--nb-color-border) hover:border-(--nb-color-focus) bg-(--nb-color-bg-card)'}`}
                                         >
-                                            <div className={`p-4 rounded-2xl ${formData.scope === opt.id ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-400'}`}>
+                                            <div className={`p-4 rounded-2xl ${formData.scope === opt.id ? 'bg-blue-600 text-white' : 'bg-(--nb-color-bg) text-(--nb-color-muted)'}`}>
                                                 <opt.icon size={24} />
                                             </div>
                                             <div>
-                                                <p className="font-black text-slate-900 uppercase tracking-tight text-lg leading-tight mb-1">{opt.label}</p>
-                                                <p className="text-sm text-slate-500 font-medium leading-relaxed">{opt.desc}</p>
+                                                <p className="font-black text-(--nb-color-fg) uppercase tracking-tight text-lg leading-tight mb-1">{opt.label}</p>
+                                                <p className="text-sm text-(--nb-color-muted) font-medium leading-relaxed">{opt.desc}</p>
                                             </div>
                                         </button>
                                     ))}
@@ -130,11 +130,11 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                             {formData.scope === 'single' ? (
                                 <>
                                     <div className="relative">
-                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-(--nb-color-muted)" size={20} />
                                         <input
                                             type="text"
                                             placeholder="Search directory..."
-                                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all text-lg"
+                                            className="w-full pl-12 pr-6 py-4 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-2xl font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all text-lg text-(--nb-color-fg)"
                                             value={search}
                                             onChange={e => setSearch(e.target.value)}
                                         />
@@ -142,20 +142,20 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                     <div className="space-y-3 pr-2">
                                         <div className="grid grid-cols-1 gap-2">
                                             {filteredStaff.length === 0 ? (
-                                                <p className="text-center py-10 text-slate-400 font-bold italic">No matching records found.</p>
+                                                <p className="text-center py-10 text-(--nb-color-muted) font-bold italic">No matching records found.</p>
                                             ) : filteredStaff.map(staff => (
                                                 <button
                                                     key={staff._id}
                                                     onClick={() => setFormData({ ...formData, staffId: staff._id })}
-                                                    className={`w-full flex items-center justify-between p-5 border-2 rounded-2xl transition-all ${formData.staffId === staff._id ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-slate-50 bg-white hover:border-slate-100'}`}
+                                                    className={`w-full flex items-center justify-between p-5 border-2 rounded-2xl transition-all ${formData.staffId === staff._id ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-(--nb-color-border) bg-(--nb-color-bg-card) hover:border-(--nb-color-focus)'}`}
                                                 >
                                                     <div className="flex items-center gap-4">
-                                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black ${formData.staffId === staff._id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black ${formData.staffId === staff._id ? 'bg-blue-600 text-white' : 'bg-(--nb-color-bg) text-(--nb-color-muted)'}`}>
                                                             {staff.fullName?.charAt(0)}
                                                         </div>
                                                         <div className="text-left">
-                                                            <p className="font-black text-slate-900 leading-tight">{staff.fullName}</p>
-                                                            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{staff.role || 'Personnel'}</p>
+                                                            <p className="font-black text-(--nb-color-fg) leading-tight">{staff.fullName}</p>
+                                                            <p className="text-[10px] text-(--nb-color-muted) uppercase tracking-widest font-bold">{staff.role || 'Personnel'}</p>
                                                         </div>
                                                     </div>
                                                     {formData.staffId === staff._id && (
@@ -169,13 +169,13 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                     </div>
                                 </>
                             ) : (
-                                <div className="text-center py-12 space-y-6 bg-slate-50/50 rounded-4xl border-2 border-dashed border-slate-200">
+                                <div className="text-center py-12 space-y-6 bg-(--nb-color-bg) rounded-4xl border-2 border-dashed border-(--nb-color-border)">
                                     <div className="w-24 h-24 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-blue-50">
                                         <Calculator size={48} className="stroke-[1.5]" />
                                     </div>
                                     <div>
-                                        <h4 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Bulk Initialization</h4>
-                                        <p className="text-slate-500 font-medium max-w-xs mx-auto mt-2 leading-relaxed">
+                                        <h4 className="text-2xl font-black text-(--nb-color-fg) tracking-tight uppercase">Bulk Initialization</h4>
+                                        <p className="text-(--nb-color-muted) font-medium max-w-xs mx-auto mt-2 leading-relaxed">
                                             The system will generate draft payroll records for <span className="text-blue-600 font-bold">all active faculty members</span> for the fiscal period <span className="font-black underline">{formData.month}</span>.
                                         </p>
                                     </div>
@@ -190,13 +190,13 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                 </div>
 
                 {/* Footer */}
-                <div className="p-10 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <div className="p-10 border-t border-(--nb-color-border) bg-(--nb-color-bg) flex items-center justify-between">
                     {step === 2 ? (
-                        <button onClick={() => setStep(1)} className="px-6 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:text-slate-900 flex items-center gap-3 transition-all">
+                        <button onClick={() => setStep(1)} className="px-6 py-4 text-(--nb-color-muted) font-black uppercase text-[10px] tracking-widest hover:text-(--nb-color-fg) flex items-center gap-3 transition-all">
                             <ArrowLeft size={16} /> Previous Step
                         </button>
                     ) : (
-                        <button onClick={onClose} className="px-6 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition-all">
+                        <button onClick={onClose} className="px-6 py-4 text-(--nb-color-muted) font-black uppercase text-[10px] tracking-widest hover:text-(--nb-color-fg) transition-all">
                             Discard Pipeline
                         </button>
                     )}
@@ -204,7 +204,7 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                     <button
                         onClick={step === 1 ? () => setStep(2) : handleRun}
                         disabled={loading || (step === 2 && formData.scope === 'single' && !formData.staffId)}
-                        className="bg-slate-900 hover:bg-black text-white px-10 py-5 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl shadow-slate-200 transition-all disabled:opacity-50 flex items-center gap-3"
+                        className="bg-(--nb-color-brand) hover:bg-(--nb-color-brand) text-white px-10 py-5 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-(--nb-shadow-md) transition-all disabled:opacity-50 flex items-center gap-3"
                     >
                         {loading ? 'Processing Pipeline...' : step === 1 ? 'Configure Strategy' : 'Execute Generation'}
                         {!loading && <ChevronRight size={16} />}

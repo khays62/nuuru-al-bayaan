@@ -82,10 +82,10 @@ async function buildLevelStats({ queryClient, studentId, historyRows }) {
 
 function SmallStat({ label, value, tone = 'gray', size = 'md' }) {
   const tones = {
-    gray: 'bg-gray-50 text-gray-700',
-    blue: 'bg-blue-50 text-blue-700',
-    emerald: 'bg-emerald-50 text-emerald-700',
-    amber: 'bg-amber-50 text-amber-700',
+    gray: 'bg-(--nb-color-bg) text-(--nb-color-fg)',
+    blue: 'bg-(--nb-color-brand-50) text-(--nb-color-brand)',
+    emerald: 'bg-(--nb-color-accent-50) text-(--nb-color-accent)',
+    amber: 'bg-(--nb-color-brand-50) text-(--nb-color-brand)',
     red: 'bg-red-50 text-red-700',
   };
 
@@ -105,12 +105,12 @@ function SmallStat({ label, value, tone = 'gray', size = 'md' }) {
 
 function DashboardSkeletonCard() {
   return (
-    <div className="rounded-xl border p-5 shadow-sm bg-white animate-pulse">
+    <div className="rounded-xl border border-(--nb-color-border) p-5 shadow-sm bg-(--nb-color-bg-card) animate-pulse">
       <div className="flex items-start gap-4">
-        <div className="shrink-0 w-11 h-11 rounded-lg bg-gray-100 border" />
+        <div className="shrink-0 w-11 h-11 rounded-lg bg-(--nb-color-bg) border border-(--nb-color-border)" />
         <div className="min-w-0 flex-1">
-          <div className="h-4 w-28 bg-gray-100 rounded" />
-          <div className="h-3 w-44 bg-gray-100 rounded mt-3" />
+          <div className="h-4 w-28 bg-(--nb-color-bg) rounded" />
+          <div className="h-3 w-44 bg-(--nb-color-bg) rounded mt-3" />
         </div>
       </div>
     </div>
@@ -120,9 +120,9 @@ function DashboardSkeletonCard() {
 function StudentDashboardSkeleton({ t }) {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-blue-200 bg-linear-to-r from-blue-50 to-indigo-50 p-5 animate-pulse">
-        <div className="h-7 w-56 bg-white/70 rounded" />
-        <div className="h-4 w-72 bg-white/70 rounded mt-3" />
+      <div className="rounded-xl border border-(--nb-color-border) bg-linear-to-r from-(--nb-color-brand-50) to-(--nb-color-accent-50) p-5 animate-pulse">
+        <div className="h-7 w-56 bg-(--nb-color-bg-card) opacity-70 rounded" />
+        <div className="h-4 w-72 bg-(--nb-color-bg-card) opacity-70 rounded mt-3" />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -130,58 +130,58 @@ function StudentDashboardSkeleton({ t }) {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-2 bg-gray-800 text-white">
+        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
+          <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('nav.attendance')}</div>
             <div className="text-xs text-white/80 mt-0.5">{t('common.loading')}</div>
           </div>
           <div className="p-5 animate-pulse">
-            <div className="h-5 w-36 bg-gray-100 rounded" />
+            <div className="h-5 w-36 bg-(--nb-color-bg) rounded" />
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-5">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-10 rounded bg-gray-100" />
+                <div key={i} className="h-10 rounded bg-(--nb-color-bg)" />
               ))}
             </div>
-            <div className="h-28 w-full rounded bg-gray-100 mt-6" />
+            <div className="h-28 w-full rounded bg-(--nb-color-bg) mt-6" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-2 bg-gray-800 text-white">
+        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
+          <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('students.selfDashboard.todayScheduleTitle')}</div>
             <div className="text-xs text-white/80 mt-0.5">{t('common.loading')}</div>
           </div>
           <div className="p-5 animate-pulse space-y-2">
-            <div className="h-10 rounded bg-gray-100" />
-            <div className="h-10 rounded bg-gray-100" />
-            <div className="h-10 rounded bg-gray-100" />
-            <div className="h-20 rounded bg-gray-100 mt-4" />
+            <div className="h-10 rounded bg-(--nb-color-bg)" />
+            <div className="h-10 rounded bg-(--nb-color-bg)" />
+            <div className="h-10 rounded bg-(--nb-color-bg)" />
+            <div className="h-20 rounded bg-(--nb-color-bg) mt-4" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden xl:col-span-2">
-          <div className="px-4 py-2 bg-gray-800 text-white">
+        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden xl:col-span-2">
+          <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('nav.transcript')}</div>
             <div className="text-xs text-white/80 mt-0.5">{t('common.loading')}</div>
           </div>
           <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-4 animate-pulse">
-            <div className="lg:col-span-2 rounded-lg border border-blue-100 bg-white p-4">
-              <div className="h-4 w-40 bg-gray-100 rounded" />
-              <div className="h-36 rounded bg-gray-100 mt-4" />
+            <div className="lg:col-span-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) p-4">
+              <div className="h-4 w-40 bg-(--nb-color-bg) rounded" />
+              <div className="h-36 rounded bg-(--nb-color-bg) mt-4" />
               <div className="flex flex-wrap gap-2 mt-4">
-                <div className="h-9 w-24 rounded bg-gray-100" />
-                <div className="h-9 w-24 rounded bg-gray-100" />
-                <div className="h-9 w-24 rounded bg-gray-100" />
+                <div className="h-9 w-24 rounded bg-(--nb-color-bg)" />
+                <div className="h-9 w-24 rounded bg-(--nb-color-bg)" />
+                <div className="h-9 w-24 rounded bg-(--nb-color-bg)" />
               </div>
             </div>
-            <div className="rounded-lg border border-blue-100 bg-white p-4">
-              <div className="h-4 w-40 bg-gray-100 rounded" />
-              <div className="h-3 w-44 bg-gray-100 rounded mt-3" />
-              <div className="h-28 w-28 rounded-full bg-gray-100 mt-6" />
+            <div className="rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) p-4">
+              <div className="h-4 w-40 bg-(--nb-color-bg) rounded" />
+              <div className="h-3 w-44 bg-(--nb-color-bg) rounded mt-3" />
+              <div className="h-28 w-28 rounded-full bg-(--nb-color-bg) mt-6" />
               <div className="space-y-2 mt-6">
-                <div className="h-3 w-full bg-gray-100 rounded" />
-                <div className="h-3 w-5/6 bg-gray-100 rounded" />
-                <div className="h-3 w-4/6 bg-gray-100 rounded" />
+                <div className="h-3 w-full bg-(--nb-color-bg) rounded" />
+                <div className="h-3 w-5/6 bg-(--nb-color-bg) rounded" />
+                <div className="h-3 w-4/6 bg-(--nb-color-bg) rounded" />
               </div>
             </div>
           </div>
@@ -204,7 +204,7 @@ function VerticalBarChart({ items = [], height = 88, onHover, onLeave }) {
           const barHeight = clamp(h, 2, height - 10);
           return (
             <div key={it.label} className="flex-1 min-w-0">
-              <div className="w-full rounded bg-gray-100 overflow-hidden" style={{ height }}>
+              <div className="w-full rounded bg-(--nb-color-bg) overflow-hidden" style={{ height }}>
                 <div
                   className={`${it.className} w-full`}
                   style={{ height: `${barHeight}px`, marginTop: `${height - barHeight}px` }}
@@ -212,7 +212,7 @@ function VerticalBarChart({ items = [], height = 88, onHover, onLeave }) {
                   onMouseLeave={typeof onLeave === 'function' ? onLeave : undefined}
                 />
               </div>
-              <div className="mt-2 text-[11px] text-gray-600 text-center truncate">{it.label}</div>
+              <div className="mt-2 text-[11px] text-(--nb-color-muted) text-center truncate">{it.label}</div>
             </div>
           );
         })}
@@ -320,8 +320,8 @@ function MiniBars({ values = [], height = 44 }) {
         const h = Math.round((n / max) * height);
         return (
           <div key={idx} className="flex-1 min-w-0">
-            <div className="w-full rounded bg-blue-100 overflow-hidden">
-              <div className="w-full bg-blue-500" style={{ height: `${clamp(h, 2, height)}px` }} />
+            <div className="w-full rounded bg-(--nb-color-brand-50) overflow-hidden">
+              <div className="w-full bg-(--nb-color-brand)" style={{ height: `${clamp(h, 2, height)}px` }} />
             </div>
           </div>
         );
@@ -334,8 +334,8 @@ function ProgressBar({ value = 0, max = 100 }) {
   const pct = max > 0 ? (Number(value || 0) / Number(max)) * 100 : 0;
   const w = `${clamp(pct, 0, 100).toFixed(1)}%`;
   return (
-    <div className="w-full rounded bg-gray-200 h-2 overflow-hidden">
-      <div className="bg-emerald-500 h-2" style={{ width: w }} />
+    <div className="w-full rounded bg-(--nb-color-border) h-2 overflow-hidden">
+      <div className="bg-(--nb-color-accent) h-2" style={{ width: w }} />
     </div>
   );
 }
@@ -392,19 +392,20 @@ function LineChart({ points = [], height = 140, onHover, onLeave }) {
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
       <defs>
         <linearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgb(59 130 246 / 0.25)" />
-          <stop offset="100%" stopColor="rgb(59 130 246 / 0.00)" />
+          <stop offset="0%" stopColor="var(--nb-color-brand)" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="var(--nb-color-brand)" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={area} fill="url(#lineFill)" />
-      <path d={d} fill="none" className="stroke-blue-600" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={d} fill="none" stroke="var(--nb-color-brand)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
       {points.map((p, i) => (
         <circle
           key={i}
           cx={xFor(i)}
           cy={yFor(p.value)}
           r="5"
-          className="fill-white stroke-blue-600"
+          fill="var(--nb-color-bg-card)"
+          stroke="var(--nb-color-brand)"
           strokeWidth="2"
           onMouseEnter={typeof onHover === 'function' ? (() => onHover(p, i)) : undefined}
           onMouseLeave={typeof onLeave === 'function' ? onLeave : undefined}
@@ -415,32 +416,23 @@ function LineChart({ points = [], height = 140, onHover, onLeave }) {
 }
 
 function Card({ to, title, description, Icon, tone }) {
-  const toneClasses = {
-    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    amber: 'bg-amber-50 text-amber-800 border-amber-100',
-    sky: 'bg-sky-50 text-sky-700 border-sky-100'
-  };
-
-  const cardBg = {
-    indigo: 'bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-100',
-    emerald: 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100',
-    amber: 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-100',
-    sky: 'bg-gradient-to-r from-sky-50 to-blue-50 border-sky-100',
-  };
+  const base =
+    'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
+    'bg-(--nb-color-bg-card) p-5 shadow-md transition';
+  const active = 'hover:shadow-lg hover:border-(--nb-color-accent-200)';
 
   return (
     <NavLink
       to={to}
-      className={`block rounded-xl border p-5 shadow-sm hover:shadow hover:border-blue-200 transition ${cardBg[tone] || cardBg.indigo}`}
+      className={`${base} ${active}`}
     >
       <div className="flex items-start gap-4">
-        <div className={`shrink-0 w-11 h-11 rounded-lg border flex items-center justify-center ${toneClasses[tone] || toneClasses.indigo}`}>
+        <div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand) flex items-center justify-center">
           {Icon ? <Icon size={20} /> : null}
         </div>
         <div className="min-w-0">
-          <div className="text-base font-semibold text-gray-900">{title}</div>
-          <div className="text-sm text-gray-600 mt-1">{description}</div>
+          <div className="text-base font-semibold text-(--nb-color-text)">{title}</div>
+          <div className="text-sm text-(--nb-color-muted) mt-1">{description}</div>
         </div>
       </div>
     </NavLink>
@@ -816,12 +808,12 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   const pieSegments = useMemo(() => {
     const arr = Array.isArray(levelStats) ? levelStats : [];
     const palette = [
-      'fill-blue-500',
-      'fill-emerald-500',
-      'fill-amber-500',
-      'fill-purple-500',
-      'fill-sky-500',
-      'fill-rose-500',
+      'fill-(--nb-color-brand)',
+      'fill-(--nb-color-accent)',
+      'fill-(--nb-color-brand)',
+      'fill-(--nb-color-accent)',
+      'fill-(--nb-color-brand)',
+      'fill-(--nb-color-accent)',
     ];
     return arr.map((x, idx) => ({
       label: x.yearName ? `${x.label} • ${x.yearName}` : x.label,
@@ -836,9 +828,9 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
         <StudentDashboardSkeleton t={t} />
       ) : (
         <>
-          <div className="rounded-xl border border-blue-200 bg-linear-to-r from-blue-50 to-indigo-50 p-5">
-            <div className="text-xl md:text-2xl font-semibold text-blue-900">{t('students.selfDashboard.welcome', { name })}</div>
-            <div className="text-sm text-blue-900/70 mt-1">{t('students.selfDashboard.chooseBelow')}</div>
+          <div className="rounded-xl border border-(--nb-color-border) bg-linear-to-r from-(--nb-color-brand-50) to-(--nb-color-accent-50) p-5">
+            <div className="text-xl md:text-2xl font-semibold text-(--nb-color-fg)">{t('students.selfDashboard.welcome', { name })}</div>
+            <div className="text-sm text-(--nb-color-muted) mt-1">{t('students.selfDashboard.chooseBelow')}</div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -880,8 +872,8 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-2 bg-gray-800 text-white">
+            <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
+          <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('nav.attendance')}</div>
             <div className="text-xs text-white/80 mt-0.5">
               {currentLevelLabel ? `${currentLevelLabel} • ` : ''}{t('students.selfDashboard.attendance.overview')}
@@ -890,7 +882,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
           <div className="p-5 h-full">
             <div className="h-full flex flex-col gap-5">
               <div className="flex items-baseline justify-between gap-3">
-                <div className="text-base font-semibold text-gray-900">{attendancePresentPct}% {t('students.attendance.status.present')}</div>
+                <div className="text-base font-semibold text-(--nb-color-text)">{attendancePresentPct}% {t('students.attendance.status.present')}</div>
                 {/* <div className="text-xs text-gray-500">Recorded entries only</div> */}
               </div>
 
@@ -906,14 +898,14 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
 
               <div className="relative pt-10 mt-auto pb-20">
                 {attendanceLoading ? (
-                  <div className="h-24 w-full rounded bg-gray-100" />
+                  <div className="h-24 w-full rounded bg-(--nb-color-bg)" />
                 ) : (
                   <VerticalBarChart
                     height={96}
                     items={[
-                      { label: t('students.attendance.status.present'), value: attendanceCounts.present, className: 'bg-emerald-500' },
+                      { label: t('students.attendance.status.present'), value: attendanceCounts.present, className: 'bg-(--nb-color-accent)' },
                       { label: t('students.attendance.status.late'), value: attendanceCounts.late, className: 'bg-amber-500' },
-                      { label: t('students.attendance.status.excused'), value: attendanceCounts.excused, className: 'bg-blue-500' },
+                      { label: t('students.attendance.status.excused'), value: attendanceCounts.excused, className: 'bg-(--nb-color-brand)' },
                       { label: t('students.attendance.status.absent'), value: attendanceCounts.absent, className: 'bg-red-500' },
                       { label: t('students.attendance.status.other'), value: attendanceCounts.other, className: 'bg-gray-500' },
                     ]}
@@ -928,8 +920,8 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                 )}
 
                 {attendanceHover ? (
-                  <div className="absolute -top-9 left-0 rounded-lg border border-blue-100 bg-white px-3 py-1 shadow text-xs text-gray-700 whitespace-nowrap">
-                    <span className="font-semibold text-gray-900">{attendanceHover.label}:</span>{' '}
+                  <div className="absolute -top-9 left-0 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-1 shadow text-xs text-(--nb-color-text) whitespace-nowrap">
+                    <span className="font-semibold text-(--nb-color-text)">{attendanceHover.label}:</span>{' '}
                     {attendanceHover.value} ({Number(attendanceHover.pct || 0).toFixed(1)}%)
                   </div>
                 ) : null}
@@ -938,20 +930,20 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden">
-          <div className="px-4 py-2 bg-gray-800 text-white">
+        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
+          <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('students.selfDashboard.todayScheduleTitle')}</div>
             <div className="text-xs text-white/80 mt-0.5">{todaySchedule.dayName} • {todaySchedule.dateISO}</div>
           </div>
           <div className="p-5">
             {historyLoading || timetableLoading ? (
               <div className="space-y-2">
-                <div className="h-10 rounded bg-gray-100" />
-                <div className="h-10 rounded bg-gray-100" />
-                <div className="h-10 rounded bg-gray-100" />
+                <div className="h-10 rounded bg-(--nb-color-bg)" />
+                <div className="h-10 rounded bg-(--nb-color-bg)" />
+                <div className="h-10 rounded bg-(--nb-color-bg)" />
               </div>
             ) : (todaySchedule.slots.length === 0 ? (
-              <div className="text-sm text-gray-600">{t('students.timetableTab.noClassesToday')}</div>
+              <div className="text-sm text-(--nb-color-muted)">{t('students.timetableTab.noClassesToday')}</div>
             ) : (
               <div className="space-y-2">
                 {todaySchedule.slots.map((s) => {
@@ -962,13 +954,13 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                   const meta = [time, room].filter(Boolean).join(' • ');
                   const key = String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${subject}`);
                   return (
-                    <div key={key} className="border border-blue-100 rounded-lg p-3 bg-white shadow-sm">
+                    <div key={key} className="border border-(--nb-color-border) rounded-lg p-3 bg-(--nb-color-bg-card) shadow-sm">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="font-semibold text-gray-900 truncate">{subject}</div>
-                          <div className="text-xs text-gray-600 mt-0.5 truncate">{teacher}</div>
+                          <div className="font-semibold text-(--nb-color-text) truncate">{subject}</div>
+                          <div className="text-xs text-(--nb-color-muted) mt-0.5 truncate">{teacher}</div>
                         </div>
-                        {meta ? <div className="text-xs text-gray-500 whitespace-nowrap">{meta}</div> : null}
+                        {meta ? <div className="text-xs text-(--nb-color-muted) whitespace-nowrap">{meta}</div> : null}
                       </div>
                     </div>
                   );
@@ -978,9 +970,9 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
 
             {!timetableLoading && timetableCountsByDay.some(n => Number(n || 0) > 0) ? (
               <div className="mt-4">
-                <div className="text-xs font-semibold text-gray-700 mb-2">{t('students.selfDashboard.timetable.classesPerDay')}</div>
+                <div className="text-xs font-semibold text-(--nb-color-text) mb-2">{t('students.selfDashboard.timetable.classesPerDay')}</div>
                 <MiniBars values={timetableCountsByDay} height={64} />
-                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-gray-500">
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-(--nb-color-muted)">
                   {dayLabels.map((d) => (
                     <span key={d} className="min-w-0 flex-1 text-center">{d}</span>
                   ))}
@@ -990,26 +982,26 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-blue-100 bg-white shadow-sm overflow-hidden xl:col-span-2">
-          <div className="px-4 py-2 bg-gray-800 text-white">
+        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden xl:col-span-2">
+          <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('nav.transcript')}</div>
             <div className="text-xs text-white/80 mt-0.5">{t('students.selfDashboard.transcript.subtitle')}</div>
           </div>
           <div className="p-5 grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 rounded-lg border border-blue-100 bg-white p-4">
+            <div className="lg:col-span-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) p-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-gray-900">{t('students.selfDashboard.transcript.avgByLevel')}</div>
+                <div className="text-sm font-semibold text-(--nb-color-text)">{t('students.selfDashboard.transcript.avgByLevel')}</div>
                 {lineHover ? (
-                  <div className="text-xs text-gray-600">
-                    <span className="font-semibold text-gray-900">{lineHover.label}</span>: {Number(lineHover.value || 0).toFixed(1)}%
+                  <div className="text-xs text-(--nb-color-muted)">
+                    <span className="font-semibold text-(--nb-color-text)">{lineHover.label}</span>: {Number(lineHover.value || 0).toFixed(1)}%
                   </div>
                 ) : null}
               </div>
               <div className="mt-3">
                 {transcriptLoading || levelsLoading ? (
-                  <div className="h-36 rounded bg-gray-100" />
+                  <div className="h-36 rounded bg-(--nb-color-bg)" />
                 ) : (levelLinePoints.length < 2 ? (
-                  <div className="text-sm text-gray-600">{t('students.selfDashboard.transcript.notEnoughData')}</div>
+                  <div className="text-sm text-(--nb-color-muted)">{t('students.selfDashboard.transcript.notEnoughData')}</div>
                 ) : (
                   <LineChart
                     points={levelLinePoints}
@@ -1027,13 +1019,13 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
               )}
             </div>
 
-            <div className="rounded-lg border border-blue-100 bg-white p-4">
-              <div className="text-sm font-semibold text-gray-900">{t('students.selfDashboard.transcript.levelsDistribution')}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{t('students.selfDashboard.transcript.levelsDistributionNote')}</div>
+            <div className="rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) p-4">
+              <div className="text-sm font-semibold text-(--nb-color-text)">{t('students.selfDashboard.transcript.levelsDistribution')}</div>
+              <div className="text-xs text-(--nb-color-muted) mt-0.5">{t('students.selfDashboard.transcript.levelsDistributionNote')}</div>
               <div className="mt-4 flex items-center gap-4">
                 <div className="relative">
                   {levelsLoading ? (
-                    <div className="h-28 w-28 rounded-full bg-gray-100" />
+                    <div className="h-28 w-28 rounded-full bg-(--nb-color-bg)" />
                   ) : (
                     <PieChart
                       size={112}
@@ -1047,8 +1039,8 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                     />
                   )}
                   {pieHover ? (
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-lg border border-blue-100 bg-white px-3 py-1 shadow text-xs text-gray-700 whitespace-nowrap">
-                      <span className="font-semibold text-gray-900">{pieHover.label}</span>: {pieHover.value} ({Number(pieHover.pct || 0).toFixed(1)}%)
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-1 shadow text-xs text-(--nb-color-text) whitespace-nowrap">
+                      <span className="font-semibold text-(--nb-color-text)">{pieHover.label}</span>: {pieHover.value} ({Number(pieHover.pct || 0).toFixed(1)}%)
                     </div>
                   ) : null}
                 </div>
@@ -1057,9 +1049,9 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                     <div key={s.label} className="flex items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={`inline-block w-2.5 h-2.5 rounded-full ${String(s.className).replace('fill-', 'bg-')}`} />
-                        <span className="truncate text-gray-700">{s.label}</span>
+                        <span className="truncate text-(--nb-color-text)">{s.label}</span>
                       </div>
-                      <span className="font-semibold text-gray-900">{Number(s.value || 0).toFixed(0)}</span>
+                      <span className="font-semibold text-(--nb-color-text)">{Number(s.value || 0).toFixed(0)}</span>
                     </div>
                   ))}
                 </div>

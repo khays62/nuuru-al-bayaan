@@ -6,6 +6,7 @@ const financeCategories = makeQueryKeys('financeCategories');
 const financeFeeTypes = makeQueryKeys('financeFeeTypes');
 const financePayroll = makeQueryKeys('financePayroll');
 const financeStudentFinance = makeQueryKeys('financeStudentFinance');
+const financeDashboard = makeQueryKeys('financeDashboard');
 
 export const expenseKeys = {
   base: financeExpenses.base,
@@ -22,8 +23,13 @@ export const accountKeys = {
 export const categoryKeys = {
   base: financeCategories.base,
   listBase: financeCategories.key('list'),
-  list: ({ type, includePreviousBalance } = {}) =>
-    financeCategories.key('list', qkStr(type || ''), qkStr(includePreviousBalance ? '1' : '0')),
+  list: ({ type, includePreviousBalance, includeInactive } = {}) =>
+    financeCategories.key(
+      'list',
+      qkStr(type || ''),
+      qkStr(includePreviousBalance ? '1' : '0'),
+      qkStr(includeInactive ? '1' : '0')
+    ),
 };
 
 export const feeTypeKeys = {
@@ -64,4 +70,10 @@ export const studentFinanceKeys = {
 
   monthHistoryBase: financeStudentFinance.key('monthHistory'),
   monthHistory: ({ studentId } = {}) => financeStudentFinance.key('monthHistory', qkStr(studentId || '')),
+};
+
+export const financeDashboardKeys = {
+  base: financeDashboard.base,
+  statsBase: financeDashboard.key('stats'),
+  stats: () => financeDashboard.key('stats'),
 };

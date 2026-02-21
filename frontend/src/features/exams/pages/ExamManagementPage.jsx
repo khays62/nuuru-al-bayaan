@@ -91,6 +91,7 @@ export default function ExamManagementPage() {
     const [recentlySaved, setRecentlySaved] = useState(new Set());
     const savingStartTimesRef = useRef(new Map());
     const lockedToastShownRef = useRef(new Set());
+    const lockedCountToastId = 'exam-grid-locked-count';
     const lockedStudentsSet = useMemo(() => {
         const ids = Array.isArray(grid?.lockedStudents) ? grid.lockedStudents : [];
         return new Set(ids.map(String));
@@ -475,6 +476,7 @@ export default function ExamManagementPage() {
 
     useEffect(() => {
         if (!examGridEnabled) {
+            toast.dismiss(lockedCountToastId);
             setGrid({ students: [], columns: [], scores: [], lockedStudents: [], lockedStudentVersions: {}, templateVersion: '' });
             setLocalInputs({});
             setSavingCells(new Set());
@@ -484,6 +486,7 @@ export default function ExamManagementPage() {
 
         if (examGridQuery.isError) {
             toast.error(examGridQuery.error?.message || t('exams.management.errors.loadGridFailed'));
+            toast.dismiss(lockedCountToastId);
             setGrid({ students: [], columns: [], scores: [], lockedStudents: [], lockedStudentVersions: {}, templateVersion: '' });
             setLocalInputs({});
             setSavingCells(new Set());
@@ -499,8 +502,13 @@ export default function ExamManagementPage() {
 
         lockedToastShownRef.current = new Set();
         const lockedCount = Array.isArray(next?.lockedStudents) ? next.lockedStudents.length : 0;
-        if (lockedCount > 0) {
-            toast.error(t('exams.management.errors.lockedCount', { count: lockedCount }));
+        const selectedVersion = String(templateVersion || '').trim();
+        const dataVersion = String(next?.templateVersion || '').trim();
+        const matchesSelectedVersion = !selectedVersion || !dataVersion || selectedVersion === dataVersion;
+        if (lockedCount > 0 && matchesSelectedVersion) {
+            toast.error(t('exams.management.errors.lockedCount', { count: lockedCount }), { id: lockedCountToastId });
+        } else {
+            toast.dismiss(lockedCountToastId);
         }
         setLocalInputs({});
         setSavingCells(new Set());
@@ -571,11 +579,11 @@ export default function ExamManagementPage() {
             {!isTeacher && cohortId ? (
                 <Card className="p-3">
                     <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold text-gray-800">{t('exams.management.timeline.title')}</div>
-                        {timelineLoading ? <div className="text-xs text-gray-500">{t('common.loading')}</div> : null}
+                        <div className="text-sm font-semibold text-(--nb-color-text)">{t('exams.management.timeline.title')}</div>
+                        {timelineLoading ? <div className="text-xs text-(--nb-color-muted)">{t('common.loading')}</div> : null}
                     </div>
                     {!timelineLoading && (!timeline || timeline.length === 0) ? (
-                        <div className="text-sm text-gray-500 mt-2">{t('exams.management.timeline.noData')}</div>
+                        <div className="text-sm text-(--nb-color-muted) mt-2">{t('exams.management.timeline.noData')}</div>
                     ) : null}
                     {Array.isArray(timeline) && timeline.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -596,7 +604,7 @@ export default function ExamManagementPage() {
                                         key={key}
                                         type="button"
                                         onClick={() => handleApplyTimelineItem(item)}
-                                        className={`px-3 py-1.5 rounded-md text-sm border ${isActive ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                                        className={`px-3 py-1.5 rounded-md text-sm border ${isActive ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)' : 'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-bg)'}`}
                                     >
                                             {label || t('exams.management.timeline.itemFallback')}
                                     </button>
@@ -756,16 +764,16 @@ export default function ExamManagementPage() {
 
             <Card className="p-4 overflow-auto">
                 {!academicYearId || !gradeSectionId ? (
-                    <p className="text-sm text-gray-500">{t('exams.management.emptyStates.selectFilters')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('exams.management.emptyStates.selectFilters')}</p>
                 ) : !subjectId ? (
-                    <p className="text-sm text-gray-500">{t('exams.management.emptyStates.chooseSubject')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('exams.management.emptyStates.chooseSubject')}</p>
                 ) : loadingGrid ? (
-                    <p className="text-sm text-gray-500">{t('exams.management.emptyStates.loadingGrid')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('exams.management.emptyStates.loadingGrid')}</p>
                 ) : grid.students.length === 0 ? (
-                    <p className="text-sm text-gray-500">{t('exams.management.emptyStates.noStudents')}</p>
+                    <p className="text-sm text-(--nb-color-muted)">{t('exams.management.emptyStates.noStudents')}</p>
                 ) : (Array.isArray(grid?.lockedStudents) && grid.lockedStudents.length > 0) ? (
                     <div className="space-y-3">
-                        <div className="text-sm text-gray-700">
+                        <div className="text-sm text-(--nb-color-text)">
                             {isTeacher
                                 ? t('exams.management.locked.teacherHelp')
                                 : t('exams.management.locked.adminHelp')}
@@ -778,12 +786,12 @@ export default function ExamManagementPage() {
                             rows={[]}
                             columns={[]}
                             tableProps={{
-                                theadClassName: 'bg-gray-800',
-                                tbodyClassName: 'divide-y divide-gray-200',
+                                theadClassName: 'bg-(--nb-color-brand)',
+                                tbodyClassName: 'divide-y divide-(--nb-color-border)',
                                 useDefaultHeaderStyles: false,
                                 renderHeader: () => (
                                     <tr>
-                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{t('exams.management.table.student')}</th>
+                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)">{t('exams.management.table.student')}</th>
                                         {[...grid.columns]
                                             .sort((a, b) => {
                                                 const ao = Number(a?.order || 0);
@@ -792,14 +800,14 @@ export default function ExamManagementPage() {
                                                 return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
                                             })
                                             .map(col => (
-                                                <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">
+                                                <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)">
                                                     <div className="flex items-center justify-center gap-2">
                                                         <span className="font-medium text-white">{col.typeName}</span>
-                                                        <span className="text-xs text-gray-200">({maxScoreMap[col.examId] ?? '-'})</span>
+                                                        <span className="text-xs text-white/80">({maxScoreMap[col.examId] ?? '-'})</span>
                                                     </div>
                                                 </th>
                                             ))}
-                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{t('exams.management.table.totalWithMax', { totalMax })}</th>
+                                        <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)">{t('exams.management.table.totalWithMax', { totalMax })}</th>
                                     </tr>
                                 ),
                                 renderBody: () => (
@@ -814,8 +822,8 @@ export default function ExamManagementPage() {
                                                 return sum + clamped;
                                             }, 0);
                                             return (
-                                                <tr key={st.studentId} className={`odd:bg-white even:bg-gray-50 hover:bg-gray-50 ${locked ? 'opacity-70' : ''}`}>
-                                                    <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">
+                                                <tr key={st.studentId} className={`odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg) hover:bg-(--nb-color-bg) ${locked ? 'opacity-70' : ''}`}>
+                                                    <td className="px-4 py-3 whitespace-nowrap text-(--nb-color-text) font-medium border-x border-(--nb-color-border)">
                                                         <span>{st.fullName}</span>
                                                         {locked ? (
                                                             <span
@@ -846,7 +854,7 @@ export default function ExamManagementPage() {
                                                             const hasError = errorCells.has(key);
                                                             const isInvalid = invalidKeys.has(key);
                                                             return (
-                                                                <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
+                                                                <td key={col.examId} className="px-2 py-2 border-x border-(--nb-color-border)">
                                                                     <div className="relative inline-flex items-center">
                                                                         <input
                                                                             type="number"
@@ -854,14 +862,14 @@ export default function ExamManagementPage() {
                                                                             min={0}
                                                                             max={weight}
                                                                             step="0.5"
-                                                                            className={`w-24 pr-7 rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-gray-300')} ${locked ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                                                            className={`w-24 pr-7 rounded-md px-2 py-1 text-left bg-(--nb-color-bg-card) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-(--nb-color-border)')} ${locked ? 'cursor-not-allowed bg-(--nb-color-bg)' : ''}`}
                                                                             value={val}
                                                                             onChange={(e) => handleChange(st.studentId, col.examId, e.target.value, weight)}
                                                                             disabled={locked || !canInput}
                                                                             title={t('exams.management.cell.maxTitle', { max: weight })}
                                                                         />
                                                                         {/* Status overlay inside input (no layout shift) */}
-                                                                        <span className="pointer-events-none absolute right-2 text-gray-400">
+                                                                        <span className="pointer-events-none absolute right-2 text-(--nb-color-muted)">
                                                                             {hasError ? (
                                                                                 <AlertCircle size={16} className="text-red-500" title={t('exams.management.cell.saveFailed')} />
                                                                             ) : isSaving ? (
@@ -878,7 +886,7 @@ export default function ExamManagementPage() {
                                                                 </td>
                                                             );
                                                         })}
-                                                    <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
+                                                    <td className="px-4 py-3 text-left font-semibold text-(--nb-color-text) border-x border-(--nb-color-border)">{Number(rowTotal.toFixed(2))}</td>
                                                 </tr>
                                             );
                                         })}
@@ -907,12 +915,12 @@ export default function ExamManagementPage() {
                         rows={[]}
                         columns={[]}
                         tableProps={{
-                            theadClassName: 'bg-gray-800',
-                            tbodyClassName: 'divide-y divide-gray-200',
+                            theadClassName: 'bg-(--nb-color-brand)',
+                            tbodyClassName: 'divide-y divide-(--nb-color-border)',
                             useDefaultHeaderStyles: false,
                             renderHeader: () => (
                                 <tr>
-                                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{t('exams.management.table.student')}</th>
+                                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)">{t('exams.management.table.student')}</th>
                                     {[...grid.columns]
                                         .sort((a, b) => {
                                             const ao = Number(a?.order || 0);
@@ -921,14 +929,14 @@ export default function ExamManagementPage() {
                                             return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
                                         })
                                         .map(col => (
-                                            <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">
+                                            <th key={col.examId} className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <span className="font-medium text-white">{col.typeName}</span>
-                                                    <span className="text-xs text-gray-200">({maxScoreMap[col.examId] ?? '-'})</span>
+                                                    <span className="text-xs text-white/80">({maxScoreMap[col.examId] ?? '-'})</span>
                                                 </div>
                                             </th>
                                         ))}
-                                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700">{t('exams.management.table.totalWithMax', { totalMax })}</th>
+                                    <th className="text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)">{t('exams.management.table.totalWithMax', { totalMax })}</th>
                                 </tr>
                             ),
                             renderBody: () => (
@@ -943,8 +951,8 @@ export default function ExamManagementPage() {
                                             return sum + clamped;
                                         }, 0);
                                         return (
-                                            <tr key={st.studentId} className={`odd:bg-white even:bg-gray-50 hover:bg-gray-50 ${locked ? 'opacity-70' : ''}`}>
-                                                <td className="px-4 py-3 whitespace-nowrap text-gray-800 font-medium border-x border-gray-200">{st.fullName}</td>
+                                            <tr key={st.studentId} className={`odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg) hover:bg-(--nb-color-bg) ${locked ? 'opacity-70' : ''}`}>
+                                                <td className="px-4 py-3 whitespace-nowrap text-(--nb-color-text) font-medium border-x border-(--nb-color-border)">{st.fullName}</td>
                                                 {[...grid.columns]
                                                     .sort((a, b) => {
                                                         const ao = Number(a?.order || 0);
@@ -959,7 +967,7 @@ export default function ExamManagementPage() {
                                                         const hasError = errorCells.has(key);
                                                         const isInvalid = invalidKeys.has(key);
                                                         return (
-                                                            <td key={col.examId} className="px-2 py-2 border-x border-gray-200">
+                                                            <td key={col.examId} className="px-2 py-2 border-x border-(--nb-color-border)">
                                                                 <div className="relative inline-flex items-center gap-2">
                                                                     <input
                                                                         type="number"
@@ -967,7 +975,7 @@ export default function ExamManagementPage() {
                                                                         min={0}
                                                                         max={weight}
                                                                         step="0.5"
-                                                                        className={`w-24 rounded-md px-2 py-1 text-left bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-gray-300')} ${locked ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                                                        className={`w-24 rounded-md px-2 py-1 text-left bg-(--nb-color-bg-card) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) ${isInvalid ? 'border-2 border-red-500' : (hasError ? 'border border-red-500' : 'border border-(--nb-color-border)')} ${locked ? 'cursor-not-allowed bg-(--nb-color-bg)' : ''}`}
                                                                         value={val}
                                                                         onChange={(e) => handleChange(st.studentId, col.examId, e.target.value)}
                                                                         disabled={locked || !canInput}
@@ -978,7 +986,7 @@ export default function ExamManagementPage() {
                                                             </td>
                                                         );
                                                     })}
-                                                <td className="px-4 py-3 text-left font-semibold text-gray-900 border-x border-gray-200">{Number(rowTotal.toFixed(2))}</td>
+                                                <td className="px-4 py-3 text-left font-semibold text-(--nb-color-text) border-x border-(--nb-color-border)">{Number(rowTotal.toFixed(2))}</td>
                                             </tr>
                                         );
                                     })}

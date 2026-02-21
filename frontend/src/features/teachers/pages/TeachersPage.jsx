@@ -300,8 +300,6 @@ export default function TeachersPage() {
 		}
 		setTimeout(() => window.print(), 0);
 	};
-
-	const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
 	const isLoading = Boolean(teachersQuery.isLoading && teachersQuery.data == null);
 	const canExport = Boolean(canDownloadTeachers && !isLoading && Array.isArray(sortedItems) && sortedItems.length > 0);
 	const buildExportPayload = useCallback(async () => {
@@ -410,8 +408,7 @@ export default function TeachersPage() {
 							{canDownloadTeachers && (
 								<>
 									<ActionButton
-										variant="neutral"
-										className={outlineBtn}
+										variant="outline"
 										onClick={handlePrint}
 										title={t('common.actions.print')}
 										icon={<Printer size={16} />}
@@ -419,16 +416,15 @@ export default function TeachersPage() {
 										{t('common.actions.print')}
 									</ActionButton>
 
-									<PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-									<ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-									<CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-									<CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+									<ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+									<CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+									<CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
 								</>
 							)}
 
 							<ActionButton
-								variant="neutral"
-								className={outlineBtn}
+								variant="outline"
 								onClick={onReset}
 								title={t('teachers.resetFilters')}
 								icon={<RotateCcw size={16} />}

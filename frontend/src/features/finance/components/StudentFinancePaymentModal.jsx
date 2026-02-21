@@ -679,12 +679,12 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
             <div className="flex flex-col gap-4 h-full overflow-hidden">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                        <div className="bg-slate-100 p-2 rounded-lg border border-slate-200">
-                            <Wallet className="w-4 h-4 text-slate-700" />
+                        <div className="bg-(--nb-color-bg) p-2 rounded-lg border border-(--nb-color-border)">
+                            <Wallet className="w-4 h-4 text-(--nb-color-fg)" />
                         </div>
                         <div className="min-w-0">
-                            <div className="font-bold text-slate-900 truncate">{student?.fullName || '—'}</div>
-                            <div className="text-xs text-slate-500 font-mono uppercase tracking-widest truncate">{student?.studentId || ''}</div>
+                            <div className="font-bold text-(--nb-color-fg) truncate">{student?.fullName || '—'}</div>
+                            <div className="text-xs text-(--nb-color-muted) font-mono uppercase tracking-widest truncate">{student?.studentId || ''}</div>
                         </div>
                     </div>
 
@@ -693,7 +693,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                             onClick={() => setView('ledger')}
                             variant="neutral"
                             size="sm"
-                            className={view === 'ledger' ? 'bg-slate-900! text-white! border-slate-900!' : ''}
+                            className={view === 'ledger' ? 'bg-(--nb-color-brand)! text-white! border-(--nb-color-brand)!' : ''}
                         >
                             {t('finance.studentFinance.paymentModal.tabs.ledger', { defaultValue: 'Ledger' })}
                         </Button>
@@ -701,7 +701,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                             onClick={() => setView('history')}
                             variant="neutral"
                             size="sm"
-                            className={view === 'history' ? 'bg-slate-900! text-white! border-slate-900!' : ''}
+                            className={view === 'history' ? 'bg-(--nb-color-brand)! text-white! border-(--nb-color-brand)!' : ''}
                         >
                             {t('finance.studentFinance.paymentModal.tabs.history', { defaultValue: 'History' })}
                         </Button>
@@ -712,9 +712,9 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                     {view === 'ledger' ? (
                         <div className="space-y-4">
                             {/* Controls Bar */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-3 rounded-xl border border-slate-200 shrink-0">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-(--nb-color-bg-card) p-3 rounded-xl border border-(--nb-color-border) shrink-0">
                                 <div className="space-y-1.5">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1 flex items-center gap-1.5">
                                         <Info size={10} /> {t('finance.studentFinance.paymentModal.controls.selectLedgerAccount', { defaultValue: 'Select Ledger Account' })}
                                     </label>
                                     <DropdownSelect
@@ -730,15 +730,15 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
                                         {t('finance.studentFinance.paymentModal.controls.paymentMode', { defaultValue: 'Payment Mode' })}
                                     </label>
-                                    <div className="h-10 bg-slate-50 p-1 rounded-lg flex gap-1 border border-slate-200">
+                                    <div className="h-10 bg-(--nb-color-bg) p-1 rounded-lg flex gap-1 border border-(--nb-color-border)">
                                         <Button
                                             onClick={() => setPaymentType('level')}
                                             variant="neutral"
                                             size="sm"
-                                            className={`flex-1 h-full px-0 border-0 shadow-none rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${paymentType === 'level' ? 'bg-white! text-slate-900! shadow-sm border border-slate-100' : 'bg-transparent! text-slate-400!'}`}
+                                            className={`flex-1 h-full px-0 border-0 shadow-none rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${paymentType === 'level' ? 'bg-(--nb-color-bg-card)! text-(--nb-color-fg)! shadow-(--nb-shadow-sm) border border-(--nb-color-border)' : 'bg-transparent! text-(--nb-color-muted)!'}`}
                                         >
                                             {t('finance.studentFinance.paymentModal.controls.byLevel', { defaultValue: 'By Level' })}
                                         </Button>
@@ -746,7 +746,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                             onClick={() => setPaymentType('receipt')}
                                             variant="neutral"
                                             size="sm"
-                                            className={`flex-1 h-full px-0 border-0 shadow-none rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${paymentType === 'receipt' ? 'bg-white! text-slate-900! shadow-sm border border-slate-100' : 'bg-transparent! text-slate-400!'}`}
+                                            className={`flex-1 h-full px-0 border-0 shadow-none rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${paymentType === 'receipt' ? 'bg-(--nb-color-bg-card)! text-(--nb-color-fg)! shadow-(--nb-shadow-sm) border border-(--nb-color-border)' : 'bg-transparent! text-(--nb-color-muted)!'}`}
                                         >
                                             {t('finance.studentFinance.paymentModal.controls.byReceipt', { defaultValue: 'By Receipt' })}
                                         </Button>
@@ -754,12 +754,12 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
                                         {t('finance.studentFinance.paymentModal.controls.paymentDate', { defaultValue: 'Payment Date' })}
                                     </label>
                                     <Input
                                         type="date"
-                                        className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-xs text-slate-900"
+                                        className="h-10 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-lg font-bold text-xs text-(--nb-color-fg)"
                                         value={paymentDate}
                                         onChange={e => setPaymentDate(e.target.value)}
                                     />
@@ -780,9 +780,9 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
 
                             {/* Hormaris Multi-Month Selection */}
                             {hormarisMonthOptions.length > 0 ? (
-                                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm shrink-0 flex flex-col gap-2">
+                                <div className="bg-(--nb-color-bg-card) p-3 rounded-xl border border-(--nb-color-border) shadow-(--nb-shadow-sm) shrink-0 flex flex-col gap-2">
                                     <div className="flex items-center justify-between gap-4">
-                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                        <div className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest">
                                             {t('finance.studentFinance.paymentModal.hormaris.selectMonths', { defaultValue: 'Select Hormaris Months' })}
                                         </div>
                                         <Button
@@ -790,7 +790,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                             disabled={selectedHormarisMonths.length === 0 || !accountId}
                                             variant="neutral"
                                             size="md"
-                                            className="h-8 px-4 bg-slate-900! text-white! border-slate-900! rounded-lg text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                                            className="h-8 px-4 bg-(--nb-color-brand)! text-white! border-(--nb-color-brand)! rounded-lg text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
                                         >
                                             {t('finance.studentFinance.paymentModal.actions.paySelected', { defaultValue: 'Pay Selected' })}
                                         </Button>
@@ -801,7 +801,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                         placeholder={t('finance.studentFinance.paymentModal.placeholders.phoneRef', { defaultValue: 'Phone/Ref' })}
                                         value={hormarisReference}
                                         onChange={(e) => setHormarisReference(e.target.value)}
-                                        className="h-8 w-full px-3 bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-widest text-slate-900"
+                                        className="h-8 w-full px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-lg font-black text-[10px] uppercase tracking-widest text-(--nb-color-fg)"
                                     />
 
                                     <div className="flex flex-wrap gap-2">
@@ -814,7 +814,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                         onClick={() => handleToggleHormarisMonth(o.month)}
                                                         variant="neutral"
                                                         size="sm"
-                                                        className={`px-3 py-1.5 shadow-none rounded-lg text-[10px] font-black uppercase tracking-widest ${checked ? 'bg-red-50! border-red-200! text-red-700!' : 'bg-slate-50! border-slate-200! text-slate-700!'}`}
+                                                        className={`px-3 py-1.5 shadow-none rounded-lg text-[10px] font-black uppercase tracking-widest ${checked ? 'bg-red-50! border-red-200! text-red-700!' : 'bg-(--nb-color-bg)! border-(--nb-color-border)! text-(--nb-color-fg)!'}`}
                                                         title={`Balance: $${Number(o.total || 0).toFixed(2)}`}
                                                     >
                                                         {o.month}
@@ -826,7 +826,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                             placeholder={t('finance.studentFinance.paymentModal.placeholders.full', { defaultValue: 'FULL' })}
                                                             value={selectedHormarisAmounts?.[o.month] ?? ''}
                                                             onChange={(e) => handleHormarisAmountChange(o.month, e.target.value)}
-                                                            className="h-8 w-24 px-3 bg-slate-50 border border-slate-200 rounded-lg font-black text-[10px] uppercase tracking-widest text-slate-900"
+                                                            className="h-8 w-24 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-lg font-black text-[10px] uppercase tracking-widest text-(--nb-color-fg)"
                                                         />
                                                     ) : null}
                                                 </div>
@@ -836,7 +836,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                 </div>
                             ) : null}
 
-                            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                            <div className="overflow-x-auto border border-(--nb-color-border) rounded-xl">
                                 <StandardTable
                                     isLoading={loading}
                                     loadingMessage={t('finance.studentFinance.paymentModal.loading.analysing', { defaultValue: 'Analysing...' })}
@@ -876,15 +876,15 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
 
                                         switch (col.key) {
                                             case 'no':
-                                                return <span className="text-xs font-mono text-slate-500">{String(idx + 1).padStart(2, '0')}</span>;
+                                                return <span className="text-xs font-mono text-(--nb-color-muted)">{String(idx + 1).padStart(2, '0')}</span>;
                                             case 'month':
                                                 return (
                                                     <div className="flex items-center gap-2">
-                                                        <span className="bg-slate-100 text-slate-900 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide">
+                                                        <span className="bg-(--nb-color-bg) text-(--nb-color-fg) px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide">
                                                             {inv?.billingMonth || '—'}
                                                         </span>
                                                         {isHormaris ? (
-                                                            <span className="bg-slate-900 text-white px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
+                                                            <span className="bg-(--nb-color-brand) text-white px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
                                                                 Hormaris
                                                             </span>
                                                         ) : null}
@@ -894,7 +894,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                 return (
                                                     <Input
                                                         type="text"
-                                                        className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/10 transition-all"
+                                                        className="w-full h-9 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded text-xs font-bold text-(--nb-color-fg) outline-none focus:ring-2 focus:ring-blue-500/10 transition-all"
                                                         placeholder={student?.phoneNumber
                                                             ? t('finance.studentFinance.paymentModal.placeholders.defaultPhone', { defaultValue: 'Default: {{phone}}', phone: student.phoneNumber })
                                                             : t('finance.studentFinance.paymentModal.placeholders.phoneRef', { defaultValue: 'Phone/Ref' })}
@@ -907,7 +907,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                 return (
                                                     <div className={isHormaris ? 'text-red-700' : ''}>
                                                         <div className="text-sm font-bold">{inv?.title || t('finance.studentFinance.paymentModal.invoice.titleFallback', { defaultValue: 'Tuition Fee' })}</div>
-                                                        <div className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">ID: {String(inv?._id || '').slice(-6).toUpperCase()}</div>
+                                                        <div className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-widest">ID: {String(inv?._id || '').slice(-6).toUpperCase()}</div>
                                                     </div>
                                                 );
                                             case 'dr':
@@ -920,7 +920,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                 return (
                                                     <Input
                                                         type="number"
-                                                        className="w-full h-9 px-3 bg-slate-50 border border-slate-200 rounded text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-center"
+                                                        className="w-full h-9 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded text-xs font-bold text-(--nb-color-fg) outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-center"
                                                         placeholder={t('finance.studentFinance.paymentModal.placeholders.amountZero', { defaultValue: '0.00' })}
                                                         value={editingPaid?.[inv._id] || ''}
                                                         onChange={(e) => handlePaidChange(inv._id, e.target.value)}
@@ -974,7 +974,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                     ) : (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between gap-3">
-                                <div className="text-sm font-black text-slate-900 tracking-widest uppercase">
+                                <div className="text-sm font-black text-(--nb-color-fg) tracking-widest uppercase">
                                     {t('finance.studentFinance.paymentModal.history.title', { defaultValue: 'Payment History & Receipts' })}
                                 </div>
                                 <Button
@@ -986,7 +986,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                 </Button>
                             </div>
 
-                            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                            <div className="overflow-x-auto border border-(--nb-color-border) rounded-xl">
                                 <StandardTable
                                     isLoading={loading}
                                     items={history}
@@ -1015,7 +1015,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                 );
                                             case 'description':
                                                 return (
-                                                    <span className="text-sm font-medium text-slate-700">
+                                                    <span className="text-sm font-medium text-(--nb-color-fg)">
                                                         {h?.description || t('finance.studentFinance.paymentModal.history.descFallback', { defaultValue: 'Standard Tuition' })}
                                                     </span>
                                                 );

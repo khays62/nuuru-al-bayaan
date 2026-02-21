@@ -49,7 +49,7 @@ function TabNav({ tabs = [] }) {
   const primary = tabsOrder.slice(0, PRIMARY_SIZE);
   const overflow = tabsOrder.slice(PRIMARY_SIZE);
   return (
-    <div className="border-b border-gray-200 mb-4">
+    <div className="border-b border-(--nb-color-border) mb-4">
       {/* Desktop: show all */}
       <nav className="hidden md:flex -mb-px gap-4" aria-label={t('common.aria.tabs', { defaultValue: 'Tabs' })}>
         {tabsOrder.map(t => (
@@ -59,8 +59,8 @@ function TabNav({ tabs = [] }) {
             className={({ isActive }) =>
               `whitespace-nowrap py-4 px-1 border-b-2 text-sm font-medium ${
                 isActive
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-(--nb-color-brand) text-(--nb-color-brand)'
+                  : 'border-transparent text-(--nb-color-muted) hover:text-(--nb-color-text) hover:border-(--nb-color-border)'
               }`
             }
             end
@@ -79,8 +79,8 @@ function TabNav({ tabs = [] }) {
               className={({ isActive }) =>
                 `whitespace-nowrap py-3 px-1 border-b-2 text-xs font-medium ${
                   isActive
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-(--nb-color-brand) text-(--nb-color-brand)'
+                    : 'border-transparent text-(--nb-color-muted) hover:text-(--nb-color-text) hover:border-(--nb-color-border)'
                 }`
               }
               end
@@ -94,7 +94,7 @@ function TabNav({ tabs = [] }) {
             <button
               type="button"
               onClick={() => setOpen(o => !o)}
-              className="text-xs text-gray-600 px-2 py-1 rounded border bg-white hover:bg-gray-50 flex items-center justify-center w-10"
+              className="text-xs text-(--nb-color-muted) px-2 py-1 rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-bg) flex items-center justify-center w-10"
               title={t('students.dashboard.moreTabs')}
             >
               <span className="font-semibold tracking-wider">⋯</span>
@@ -108,7 +108,7 @@ function TabNav({ tabs = [] }) {
                         to={t.to}
                         onClick={() => promote(t.to)}
                         className={({ isActive }) =>
-                          `block px-3 py-1 ${isActive ? 'text-indigo-600 font-medium' : 'text-gray-700 hover:bg-gray-50'}`
+                          `block px-3 py-1 ${isActive ? 'text-(--nb-color-brand) font-medium bg-(--nb-color-brand-50)' : 'text-(--nb-color-text) hover:bg-(--nb-color-bg)'}`
                         }
                         end
                       >
@@ -191,7 +191,7 @@ function StudentDashboardInner({ studentId }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{t('students.dashboard.title')}</h1>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-(--nb-color-muted)">
             {profileQuery.isLoading ? t('students.dashboard.loadingStudent') : studentName}
           </div>
         </div>

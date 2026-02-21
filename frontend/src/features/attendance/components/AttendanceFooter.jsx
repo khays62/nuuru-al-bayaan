@@ -47,7 +47,7 @@ export default function AttendanceFooter({
         </ActionButton>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-700">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-(--nb-color-fg)">
         <div>
           {t('attendance.marking.footer.summary', {
             present: presentCount,
@@ -68,7 +68,7 @@ export default function AttendanceFooter({
                       : t('attendance.marking.modes.perLesson'),
                   })
                   : t('attendance.marking.footer.notSavedYet'))}
-            {!dirty && selectionHasRecords && lastSavedAt ? <span className="text-gray-500"> • {new Date(lastSavedAt).toLocaleTimeString()}</span> : null}
+            {!dirty && selectionHasRecords && lastSavedAt ? <span className="text-(--nb-color-muted)"> • {new Date(lastSavedAt).toLocaleTimeString()}</span> : null}
           </div>
         )}
       </div>

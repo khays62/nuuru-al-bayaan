@@ -9,7 +9,11 @@ const financeService = {
 
     // Configuration
     getFinanceCategories: async (type, options = {}) => {
-        const response = await axios.get('/finance/config/categories', { params: type ? { type } : {} });
+        const params = {
+            ...(type ? { type } : {}),
+            ...(options?.includeInactive ? { includeInactive: 'true' } : {}),
+        };
+        const response = await axios.get('/finance/config/categories', { params });
         const data = response.data;
         if (String(type || '').toLowerCase() !== 'fee') return data;
         if (options?.includePreviousBalance) return data;

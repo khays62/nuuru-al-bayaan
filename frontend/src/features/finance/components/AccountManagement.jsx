@@ -30,8 +30,6 @@ import { useI18n } from '../../../i18n/I18nProvider.jsx';
 export default function AccountManagement() {
     const { t } = useI18n();
 
-    const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
-
     const getAccountTypeLabel = useCallback((raw) => {
         const v = String(raw || '');
         if (v === 'Bank') return t('finance.accounts.options.accountType.bank', { defaultValue: 'Bank' });
@@ -585,8 +583,7 @@ export default function AccountManagement() {
 
                                 <div className="shrink-0 flex items-center gap-2">
                                     <ActionButton
-                                        variant="neutral"
-                                        className={outlineBtn}
+                                        variant="outline"
                                         icon={<Printer size={16} />}
                                         disabled={!ledgerCanExport}
                                         onClick={() => { if (ledgerCanExport) setTimeout(() => window.print(), 0); }}
@@ -594,10 +591,10 @@ export default function AccountManagement() {
                                     >
                                         {t('common.actions.print', { defaultValue: 'Print' })}
                                     </ActionButton>
-                                    <PdfDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} className={outlineBtn} />
-                                    <ExcelDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} className={outlineBtn} />
-                                    <CsvDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} className={outlineBtn} />
-                                    <CopyTableButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} className={outlineBtn} />
+                                    <PdfDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                    <ExcelDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                    <CsvDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                    <CopyTableButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
                                 </div>
                             </div>
 

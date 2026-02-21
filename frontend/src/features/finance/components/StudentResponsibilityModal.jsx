@@ -77,10 +77,10 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
 
     return (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-slate-50 w-full max-w-6xl h-[90vh] rounded-[3.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
+            <div className="bg-(--nb-color-bg) w-full max-w-6xl h-[90vh] rounded-[3.5rem] shadow-(--nb-shadow-md) overflow-hidden flex flex-col border border-(--nb-color-border) animate-in zoom-in-95 duration-300">
 
                 {/* Header Branding */}
-                <div className="bg-slate-900 px-10 py-8 flex justify-between items-center shrink-0 border-b border-white/5">
+                <div className="bg-(--nb-color-brand) px-10 py-8 flex justify-between items-center shrink-0 border-b border-white/5">
                     <div className="flex items-center gap-6">
                         <div className="w-16 h-16 bg-blue-600/20 rounded-4xl flex items-center justify-center border border-white/10 backdrop-blur-xl">
                             <Layers className="text-blue-500" size={32} />
@@ -88,10 +88,10 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                         <div>
                             <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">Student Responsibility</h2>
                             <div className="flex items-center gap-4 mt-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5 border border-white/10 px-2 py-1 rounded-md">
+                                <span className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] flex items-center gap-1.5 border border-white/10 px-2 py-1 rounded-md">
                                     <Smartphone size={10} className="text-blue-500" /> {student?.studentId}
                                 </span>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-1.5 border border-white/10 px-2 py-1 rounded-md">
+                                <span className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] flex items-center gap-1.5 border border-white/10 px-2 py-1 rounded-md">
                                     <Info size={10} className="text-blue-500" /> {student?.fullName}
                                 </span>
                             </div>
@@ -103,18 +103,18 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                 </div>
 
                 {/* Sub Navigation */}
-                <div className="bg-white border-b border-slate-200 px-10 flex justify-between items-center shrink-0">
+                <div className="bg-(--nb-color-bg-card) border-b border-(--nb-color-border) px-10 flex justify-between items-center shrink-0">
                     <div className="flex gap-10">
                         <button
                             onClick={() => setView('finance')}
-                            className={`py-6 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${view === 'finance' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`py-6 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${view === 'finance' ? 'text-blue-600' : 'text-(--nb-color-muted) hover:text-(--nb-color-fg)'}`}
                         >
                             Finance History
                             {view === 'finance' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
                         </button>
                         <button
                             onClick={() => setView('history')}
-                            className={`py-6 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${view === 'history' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`py-6 text-xs font-black uppercase tracking-[0.2em] transition-all relative ${view === 'history' ? 'text-blue-600' : 'text-(--nb-color-muted) hover:text-(--nb-color-fg)'}`}
                         >
                             Responsible History
                             {view === 'history' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-full" />}
@@ -124,7 +124,7 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                     {view === 'finance' && (
                         <div className="flex items-center gap-4">
                             <select
-                                className="h-10 px-4 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
+                                className="h-10 px-4 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-xl text-[10px] font-black uppercase outline-none focus:ring-2 focus:ring-blue-600/20"
                                 value={feeTypeFilter}
                                 onChange={e => setFeeTypeFilter(e.target.value)}
                             >
@@ -139,11 +139,11 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                     {view === 'finance' ? (
                         <>
                             {/* Controls */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 bg-white p-8 rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 bg-(--nb-color-bg-card) p-8 rounded-[3rem] border border-(--nb-color-border) shadow-(--nb-shadow-md)">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Account</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Target Account</label>
                                     <select
-                                        className="w-full h-14 px-6 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900 outline-none"
+                                        className="w-full h-14 px-6 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-2xl font-black text-(--nb-color-fg) outline-none"
                                         value={accountId}
                                         onChange={e => setAccountId(e.target.value)}
                                     >
@@ -152,17 +152,17 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                                     </select>
                                 </div>
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Payment Mode</label>
-                                    <div className="flex h-14 p-1.5 bg-slate-100 rounded-2xl">
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Payment Mode</label>
+                                    <div className="flex h-14 p-1.5 bg-(--nb-color-bg) rounded-2xl">
                                         <button
                                             onClick={() => setPaymentType('level')}
-                                            className={`flex-1 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${paymentType === 'level' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                                            className={`flex-1 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${paymentType === 'level' ? 'bg-(--nb-color-bg-card) text-blue-600 shadow-(--nb-shadow-sm)' : 'text-(--nb-color-muted)'}`}
                                         >
                                             By Level
                                         </button>
                                         <button
                                             onClick={() => setPaymentType('receipt')}
-                                            className={`flex-1 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${paymentType === 'receipt' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                                            className={`flex-1 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${paymentType === 'receipt' ? 'bg-(--nb-color-bg-card) text-blue-600 shadow-(--nb-shadow-sm)' : 'text-(--nb-color-muted)'}`}
                                         >
                                             By Receipt
                                         </button>
@@ -177,7 +177,7 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                             </div>
 
                             {/* Table */}
-                            <div className="flex-1 bg-white rounded-[3.5rem] border border-slate-100 shadow-xl shadow-slate-200/30 overflow-hidden flex flex-col">
+                            <div className="flex-1 bg-(--nb-color-bg-card) rounded-[3.5rem] border border-(--nb-color-border) shadow-(--nb-shadow-md) overflow-hidden flex flex-col">
                                 <div className="overflow-y-auto flex-1 custom-scrollbar">
                                     <StandardTable
                                         isLoading={loading}
@@ -197,19 +197,19 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                                         emptyTitle="No records for this selection."
                                         tableProps={{
                                             shellClassName: 'ring-0 shadow-none rounded-none',
-                                            theadClassName: 'sticky top-0 z-10 bg-slate-50/90 backdrop-blur-md',
+                                            theadClassName: 'sticky top-0 z-10 bg-(--nb-color-bg) backdrop-blur-md',
                                             useDefaultHeaderStyles: false,
-                                            headerRowClassName: 'border-b border-slate-200',
-                                            tbodyClassName: 'divide-y divide-slate-100 font-bold',
+                                            headerRowClassName: 'border-b border-(--nb-color-border)',
+                                            tbodyClassName: 'divide-y divide-(--nb-color-border) font-bold',
                                             renderHeader: () => (
-                                                <tr className="border-b border-slate-200">
-                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Month</th>
-                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Description</th>
-                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Dr</th>
-                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Cr</th>
-                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] w-40 text-center">Paid</th>
-                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center no-print">Actions</th>
-                                                    <th className="py-6 px-8 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Balance</th>
+                                                <tr className="border-b border-(--nb-color-border)">
+                                                    <th className="py-6 px-8 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em]">Month</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em]">Description</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em] text-right">Dr</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em] text-right">Cr</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em] w-40 text-center">Paid</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em] text-center no-print">Actions</th>
+                                                    <th className="py-6 px-8 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em] text-right">Balance</th>
                                                 </tr>
                                             ),
                                             renderBody: ({ rows }) => (
@@ -232,24 +232,24 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                                                             : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
 
                                                         return (
-                                                            <tr key={inv._id} className="hover:bg-slate-50/50 transition-all">
+                                                            <tr key={inv._id} className="hover:bg-(--nb-color-bg) transition-all">
                                                                 <td className="py-5 px-8">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="bg-slate-100 text-slate-900 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{inv.billingMonth || '—'}</span>
+                                                                        <span className="bg-(--nb-color-bg) text-(--nb-color-fg) px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{inv.billingMonth || '—'}</span>
                                                                         {isHormaris ? (
-                                                                            <span className="bg-slate-900 text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Hormaris</span>
+                                                                            <span className="bg-(--nb-color-brand) text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Hormaris</span>
                                                                         ) : null}
                                                                     </div>
                                                                 </td>
                                                                 <td className="py-5 px-8">
-                                                                    <span className="text-sm text-slate-900">{inv.title || 'Tuition Fee'}</span>
+                                                                    <span className="text-sm text-(--nb-color-fg)">{inv.title || 'Tuition Fee'}</span>
                                                                 </td>
-                                                                <td className="py-5 px-8 text-right tabular-nums text-slate-900 font-black">${Number(inv.amount || 0).toFixed(2)}</td>
+                                                                <td className="py-5 px-8 text-right tabular-nums text-(--nb-color-fg) font-black">${Number(inv.amount || 0).toFixed(2)}</td>
                                                                 <td className="py-5 px-8 text-right tabular-nums text-green-600">${Number(inv.paidAmount || 0).toFixed(2)}</td>
                                                                 <td className="py-5 px-8">
                                                                     <input
                                                                         type="number"
-                                                                        className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl text-sm font-black text-slate-900 outline-none text-center focus:bg-white focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                                                        className="w-full h-11 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-xl text-sm font-black text-(--nb-color-fg) outline-none text-center focus:bg-(--nb-color-bg-card) focus:ring-4 focus:ring-blue-600/10 transition-all"
                                                                         placeholder="0.00"
                                                                         value={editingPaid[inv._id] || ''}
                                                                         onChange={e => handlePaidChange(inv._id, e.target.value)}
@@ -264,7 +264,7 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                                                                         >
                                                                             <Save size={16} />
                                                                         </button>
-                                                                        <button className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black shadow-lg">
+                                                                        <button className="w-10 h-10 bg-(--nb-color-brand) text-white rounded-xl flex items-center justify-center hover:opacity-95 shadow-lg">
                                                                             <Printer size={16} />
                                                                         </button>
                                                                     </div>
@@ -288,11 +288,11 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 bg-white rounded-[3.5rem] border border-slate-100 shadow-xl flex items-center justify-center">
+                        <div className="flex-1 bg-(--nb-color-bg-card) rounded-[3.5rem] border border-(--nb-color-border) shadow-(--nb-shadow-md) flex items-center justify-center">
                             <div className="text-center space-y-4">
-                                <History className="w-20 h-20 text-slate-200 mx-auto" />
-                                <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter">History Under Reconstruction</h4>
-                                <p className="text-slate-400 text-sm max-w-xs mx-auto">This module is currently being optimized for faster record retrieval.</p>
+                                <History className="w-20 h-20 text-(--nb-color-border) mx-auto" />
+                                <h4 className="text-xl font-black text-(--nb-color-fg) uppercase tracking-tighter">History Under Reconstruction</h4>
+                                <p className="text-(--nb-color-muted) text-sm max-w-xs mx-auto">This module is currently being optimized for faster record retrieval.</p>
                             </div>
                         </div>
                     )}

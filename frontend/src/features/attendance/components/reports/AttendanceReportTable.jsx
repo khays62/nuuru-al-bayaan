@@ -3,7 +3,7 @@ import { useI18n } from '../../../../i18n/I18nProvider';
 
 function SkeletonCell({ wClass = 'w-24' }) {
   return (
-    <div className={`h-4 ${wClass} rounded bg-gray-200`} />
+    <div className={`h-4 ${wClass} rounded bg-(--nb-color-bg)`} />
   );
 }
 
@@ -30,8 +30,8 @@ export default function AttendanceReportTable({
       rows={[]}
       columns={[]}
       tableProps={{
-        theadClassName: 'bg-gray-800',
-        tbodyClassName: `divide-y divide-gray-200 ${loading ? 'animate-pulse' : ''}`,
+        theadClassName: 'bg-(--nb-color-brand)',
+        tbodyClassName: `divide-y divide-(--nb-color-border) ${loading ? 'animate-pulse' : ''}`,
         useDefaultHeaderStyles: false,
         renderHeader: () => (
           <>
@@ -44,7 +44,7 @@ export default function AttendanceReportTable({
                       colSpan={cell?.colSpan || 1}
                       rowSpan={cell?.rowSpan || 1}
                       className={
-                        'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700 ' +
+                        'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border) ' +
                         (cell?.className || '')
                       }
                     >
@@ -59,7 +59,7 @@ export default function AttendanceReportTable({
                   <th
                     key={c.key}
                     className={
-                      'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700 ' +
+                      'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border) ' +
                       (c.headerClassName || '')
                     }
                   >
@@ -73,9 +73,9 @@ export default function AttendanceReportTable({
         renderBody: () => (
           <>
             {loading && Array.from({ length: skeletonRows }).map((_, i) => (
-              <tr key={`sk-${i}`} className="odd:bg-white even:bg-gray-50">
+              <tr key={`sk-${i}`} className="odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg)">
                 {safeColumns.map((c) => (
-                  <td key={`${c.key}-sk-${i}`} className="px-6 py-4 border-x border-gray-200">
+                  <td key={`${c.key}-sk-${i}`} className="px-6 py-4 border-x border-(--nb-color-border)">
                     <SkeletonCell wClass={c.skeletonClassName || 'w-24'} />
                   </td>
                 ))}
@@ -84,19 +84,19 @@ export default function AttendanceReportTable({
 
             {!loading && safeRows.length === 0 && (
               <tr>
-                <td className="px-6 py-4 text-sm text-gray-600" colSpan={colCount}>
+                <td className="px-6 py-4 text-sm text-(--nb-color-muted)" colSpan={colCount}>
                   {emptyMessage || t('common.emptyStates.noDataFound')}
                 </td>
               </tr>
             )}
 
             {!loading && safeRows.length > 0 && safeRows.map((row, idx) => (
-              <tr key={row?._id || row?.id || `${idx}`} className="odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors">
+              <tr key={row?._id || row?.id || `${idx}`} className="odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg) hover:bg-(--nb-color-bg-card) transition-colors">
                 {safeColumns.map((c) => (
                   <td
                     key={`${c.key}-${idx}`}
                     className={
-                      'px-6 py-4 text-sm text-gray-700 border-x border-gray-200 ' +
+                      'px-6 py-4 text-sm text-(--nb-color-fg) border-x border-(--nb-color-border) ' +
                       (c.cellClassName || '')
                     }
                   >

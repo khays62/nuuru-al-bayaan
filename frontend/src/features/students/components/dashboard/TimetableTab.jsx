@@ -131,9 +131,9 @@ export default function TimetableTab() {
       <PrintHeader />
 
       <div className="mb-4">
-        <div className="border-l-4 border-blue-600 bg-blue-50 rounded px-3 py-2">
-          <h2 className="text-lg font-semibold text-blue-900">{t('nav.timetable')}</h2>
-          <div className="text-xs text-blue-800/80 mt-0.5">{t('students.timetableTab.subtitle')}</div>
+        <div className="border-l-4 border-(--nb-color-brand) bg-(--nb-color-brand-50) rounded px-3 py-2">
+          <h2 className="text-lg font-semibold text-(--nb-color-fg)">{t('nav.timetable')}</h2>
+          <div className="text-xs text-(--nb-color-muted) mt-0.5">{t('students.timetableTab.subtitle')}</div>
         </div>
       </div>
 
@@ -146,19 +146,19 @@ export default function TimetableTab() {
       )}
 
       {!gradeSectionId && !error && !loading && !classLoading && (
-        <div className="text-lg font-semibold text-gray-800">{t('students.timetableTab.noActiveClass')}</div>
+        <div className="text-lg font-semibold text-(--nb-color-text)">{t('students.timetableTab.noActiveClass')}</div>
       )}
 
       {!loading && !error && gradeSectionId && (
         <>
-          <div className="mb-4 border border-blue-100 rounded-lg bg-white overflow-hidden shadow-sm">
-            <div className="px-4 py-2 bg-gray-800 text-white">
+          <div className="mb-4 border border-(--nb-color-border) rounded-lg bg-(--nb-color-bg-card) overflow-hidden shadow-sm">
+            <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
               <div className="font-semibold">{t('students.timetableTab.todayLabel')} {todayInfo.dayName || '—'}{todayInfo.dateISO ? ` • ${todayInfo.dateISO}` : ''}</div>
               <div className="text-xs text-white/80 mt-0.5">{t('students.timetableTab.todaySubtitle')}</div>
             </div>
             <div className="p-4">
               {todayInfo.slots.filter(s => !s?.isBreak).length === 0 ? (
-                <div className="text-sm text-gray-600">{t('students.timetableTab.noClassesToday')}</div>
+                <div className="text-sm text-(--nb-color-muted)">{t('students.timetableTab.noClassesToday')}</div>
               ) : (
                 (() => {
                   const byTeacher = new Map();
@@ -187,11 +187,11 @@ export default function TimetableTab() {
                   return (
                     <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
                       {teacherCards.map((card) => (
-                        <div key={card.teacherName} className="border border-blue-100 rounded-lg bg-white shadow-sm overflow-hidden">
-                          <div className="px-4 py-2 bg-blue-50 text-blue-900 border-b border-blue-100">
+                        <div key={card.teacherName} className="border border-(--nb-color-border) rounded-lg bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
+                          <div className="px-4 py-2 bg-(--nb-color-brand-50) text-(--nb-color-fg) border-b border-(--nb-color-border)">
                             <div className="font-semibold truncate">{card.teacherName}</div>
                             {card.subjects.length > 0 ? (
-                              <div className="text-xs text-blue-900/70 mt-0.5 truncate">{card.subjects.join(' • ')}</div>
+                              <div className="text-xs text-(--nb-color-muted) mt-0.5 truncate">{card.subjects.join(' • ')}</div>
                             ) : null}
                           </div>
                           <div className="p-4 space-y-2">
@@ -201,9 +201,9 @@ export default function TimetableTab() {
                               const room = s?.room ? `${t('common.room')} ${s.room}` : '';
                               const meta = [time, room].filter(Boolean).join(' • ');
                               return (
-                                <div key={String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${subject}`)} className="border border-blue-100 rounded-lg p-3 bg-white">
-                                  <div className="font-medium text-gray-900 truncate">{subject}</div>
-                                  {meta ? <div className="text-xs text-gray-500 mt-0.5 truncate">{meta}</div> : null}
+                                <div key={String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${subject}`)} className="border border-(--nb-color-border) rounded-lg p-3 bg-(--nb-color-bg-card)">
+                                  <div className="font-medium text-(--nb-color-text) truncate">{subject}</div>
+                                  {meta ? <div className="text-xs text-(--nb-color-muted) mt-0.5 truncate">{meta}</div> : null}
                                 </div>
                               );
                             })}
@@ -218,7 +218,7 @@ export default function TimetableTab() {
           </div>
 
           {slots.length === 0 ? (
-            <div className="text-lg font-semibold text-gray-800">{t('students.timetableTab.empty')}</div>
+            <div className="text-lg font-semibold text-(--nb-color-text)">{t('students.timetableTab.empty')}</div>
           ) : (
             <StandardTable
               isLoading={false}
@@ -228,12 +228,12 @@ export default function TimetableTab() {
               rows={[]}
               columns={[]}
               tableProps={{
-                shellClassName: 'shadow-sm ring-blue-100',
+                shellClassName: 'shadow-sm ring-(--nb-color-border)',
                 theadClassName: '',
                 useDefaultHeaderStyles: false,
                 renderHeader: () => (
-                  <tr className="bg-gray-800 text-white border-b border-gray-700">
-                    <th className="text-left px-3 py-2 whitespace-nowrap sticky left-0 z-10 bg-gray-800">{t('students.timetableTab.table.day')}</th>
+                  <tr className="bg-(--nb-color-brand) text-white border-b border-(--nb-color-border)">
+                    <th className="text-left px-3 py-2 whitespace-nowrap sticky left-0 z-10 bg-(--nb-color-brand)">{t('students.timetableTab.table.day')}</th>
                     {periods.length === 0 ? (
                       <th className="text-left px-3 py-2">{t('students.timetableTab.table.noPeriods')}</th>
                     ) : (
@@ -285,7 +285,7 @@ export default function TimetableTab() {
 
               return (
                 <div className="mt-4">
-                  <div className="mb-2 text-sm font-semibold text-gray-900">{t('students.timetableTab.teachersAndSubjects')}</div>
+                  <div className="mb-2 text-sm font-semibold text-(--nb-color-text)">{t('students.timetableTab.teachersAndSubjects')}</div>
                   <StandardTable
                     isLoading={false}
                     items={rows}
@@ -296,13 +296,13 @@ export default function TimetableTab() {
                         key: 'teacherName',
                         label: t('students.timetableTab.table.teacher'),
                         thClassName: 'text-left px-3 py-2 whitespace-nowrap',
-                        tdClassName: 'px-3 py-2 font-medium text-gray-900 whitespace-nowrap',
+                        tdClassName: 'px-3 py-2 font-medium text-(--nb-color-text) whitespace-nowrap',
                       },
                       {
                         key: 'subjects',
                         label: t('students.timetableTab.table.subjects'),
                         thClassName: 'text-left px-3 py-2',
-                        tdClassName: 'px-3 py-2 text-sm text-gray-700',
+                        tdClassName: 'px-3 py-2 text-sm text-(--nb-color-text)',
                       },
                     ]}
                     getRowKey={(r) => r.teacherName}
@@ -312,7 +312,7 @@ export default function TimetableTab() {
                       return '';
                     }}
                     tableProps={{
-                      theadClassName: 'bg-blue-50 text-blue-900 border-b border-blue-100',
+                      theadClassName: 'bg-(--nb-color-brand-50) text-(--nb-color-fg) border-b border-(--nb-color-border)',
                       useDefaultHeaderStyles: false,
                       baseRowClassName: 'border-t',
                     }}

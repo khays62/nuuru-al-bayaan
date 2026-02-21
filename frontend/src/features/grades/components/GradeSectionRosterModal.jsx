@@ -116,7 +116,6 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
     { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }), thClassName: 'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
   ]), [t]);
 
-  const outlineBtn = 'bg-white! text-blue-700! border-blue-400! hover:bg-blue-50!';
   const canExport = Boolean(!isLoading && Array.isArray(students) && students.length > 0);
 
   const buildExportPayload = useCallback(async () => {
@@ -184,10 +183,10 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
       panelClassName="max-w-6xl"
     >
       <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto no-print">
-        <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-        <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-        <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-        <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+        <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+        <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+        <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+        <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
       </div>
 
       <div className="mt-4 max-h-[70vh] overflow-auto">
@@ -221,7 +220,7 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
               showRowsSelector={false}
               paginationProps={{ infoVariant: 'range', className: 'no-print' }}
               tableProps={{
-                theadClassName: 'bg-gray-800',
+                theadClassName: 'bg-(--nb-color-brand)',
                 useDefaultHeaderStyles: false,
                 tbodyClassName: 'divide-y divide-gray-200',
                 baseRowClassName: 'odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors',

@@ -48,12 +48,12 @@ export default function TransfersCandidatesTable({
 			onSort={onSort}
 			columns={[
 				{ key: 'studentId', label: t('transfers.candidates.columns.studentId', { defaultValue: 'Student ID' }), sortable: true, field: 'studentId' },
-				{ key: 'fullName', label: t('transfers.candidates.columns.fullName', { defaultValue: 'Full Name' }), sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+				{ key: 'fullName', label: t('transfers.candidates.columns.fullName', { defaultValue: 'Full Name' }), sortable: true, field: 'fullName' },
 				{ key: 'academicYear', label: t('common.filters.academicYear', { defaultValue: 'Academic Year' }), sortable: true, field: 'academicYear' },
 				{ key: 'grade', label: t('common.filters.grade', { defaultValue: 'Grade' }), sortable: true, field: 'grade' },
 				{ key: 'section', label: t('common.filters.section', { defaultValue: 'Section' }), sortable: true, field: 'section' },
 				{ key: 'shift', label: t('common.filters.shift', { defaultValue: 'Shift' }), sortable: true, field: 'shift' },
-				{ key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-gray-200 no-print' },
+				{ key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-(--nb-color-border) no-print' },
 			]}
 			controlsProps={{
 				limit: meta?.limit,

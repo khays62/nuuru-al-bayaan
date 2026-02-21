@@ -116,21 +116,17 @@ export default function AttendanceReportsPage() {
     return dt.toISOString().slice(0, 10);
   };
 
-  const clampRangeToMonth = (fromStr, toStr) => {
+  const normalizeRange = (fromStr, toStr) => {
     const fromDt = parseISODateOnlyUTC(fromStr);
     const toDt = parseISODateOnlyUTC(toStr);
-    if (!fromDt || !toDt) return { from: fromStr, to: toStr, clamped: false };
+    if (!fromDt || !toDt) return { from: fromStr, to: toStr, normalized: false };
 
-    // Normalize if user picked a reversed range.
+    // If user picked a reversed range, normalize it to a single-day range.
     if (toDt < fromDt) {
-      return { from: fromStr, to: fromStr, clamped: true };
+      return { from: fromStr, to: fromStr, normalized: true };
     }
 
-    const diffDays = Math.floor((toDt.getTime() - fromDt.getTime()) / 86400000) + 1;
-    if (diffDays <= 31) return { from: fromStr, to: toStr, clamped: false };
-
-    const maxTo = new Date(fromDt.getTime() + (30 * 86400000));
-    return { from: fromStr, to: fmtISODateOnlyUTC(maxTo), clamped: true };
+    return { from: fromStr, to: toStr, normalized: false };
   };
 
 
@@ -371,15 +367,7 @@ export default function AttendanceReportsPage() {
   const isSummary = reportType === 'summary';
   const isDetails = reportType === 'details';
 
-  // Enforce max 31-day range.
-  useEffect(() => {
-    if (!isSummary && !isDetails) return;
-    const r = clampRangeToMonth(from, to);
-    if (r.clamped && r.to !== to) {
-      toast.error(t('attendance.reports.toasts.maxRangeClamped'));
-      setTo(r.to);
-    }
-  }, [isSummary, isDetails, from, to, t]);
+
 
   const canRun = Boolean(
     sectionId && from && to && (!isTeacher || (subjectId && !subjectSlotsLoading && subjectPeriodCodes.length > 0))
@@ -708,9 +696,9 @@ export default function AttendanceReportsPage() {
       const ac = new AbortController();
       detailsAbortRef.current = ac;
 
-      const clamped = clampRangeToMonth(from, to);
-      const rangeFrom = clamped.from;
-      const rangeTo = clamped.to;
+      const r = normalizeRange(from, to);
+      const rangeFrom = r.from;
+      const rangeTo = r.to;
 
       // Fast path: use ONE summary request to discover which dates exist and which periodCodes exist per date.
       // This avoids calling attendance meta per day (which was slow).
@@ -1230,12 +1218,9 @@ export default function AttendanceReportsPage() {
                 value={from}
                 onChange={e => {
                   const nextFrom = e.target.value;
-                  const r = clampRangeToMonth(nextFrom, to);
+                  const r = normalizeRange(nextFrom, to);
                   setFrom(r.from);
-                  if (r.to !== to) {
-                    toast.error(t('attendance.reports.toasts.maxRangeClamped'));
-                    setTo(r.to);
-                  }
+                  if (r.to !== to) setTo(r.to);
                   clearOutputs();
                 }}
               />
@@ -1249,11 +1234,8 @@ export default function AttendanceReportsPage() {
                 value={to}
                 onChange={e => {
                   const nextTo = e.target.value;
-                  const r = clampRangeToMonth(from, nextTo);
+                  const r = normalizeRange(from, nextTo);
                   setTo(r.to);
-                  if (r.to !== nextTo) {
-                    toast.error(t('attendance.reports.toasts.maxRangeClamped'));
-                  }
                   clearOutputs();
                 }}
               />

@@ -390,8 +390,8 @@ export default function PayrollEmployeeInfoModal({
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div className="md:col-span-2">
-                        <div className="text-sm font-semibold text-slate-900">{staff?.fullName || ''}</div>
-                        <div className="text-xs text-slate-500">{formatEmployeeType(staff?.employeeType, staff?.role)}</div>
+                        <div className="text-sm font-semibold text-(--nb-color-fg)">{staff?.fullName || ''}</div>
+                        <div className="text-xs text-(--nb-color-muted)">{formatEmployeeType(staff?.employeeType, staff?.role)}</div>
                     </div>
 
                     <FormField label={t('finance.payroll.employeeInfo.fields.date', { defaultValue: 'Register date' })} className="md:col-span-1">
@@ -409,7 +409,7 @@ export default function PayrollEmployeeInfoModal({
                     </div>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                <div className="overflow-x-auto border border-(--nb-color-border) rounded-xl">
                     <StandardTable
                         isLoading={isTableLoading}
                         error={tableError}
@@ -458,7 +458,7 @@ export default function PayrollEmployeeInfoModal({
                                             className={canEditRow(r) ? 'cursor-pointer' : ''}
                                             onClick={() => requestEdit(r)}
                                         >
-                                            <span className="text-sm text-slate-700">{r.sendNumber || '-'}</span>
+                                            <span className="text-sm text-(--nb-color-fg)">{r.sendNumber || '-'}</span>
                                         </div>
                                     );
                                 case 'description':
@@ -473,7 +473,7 @@ export default function PayrollEmployeeInfoModal({
                                             className={canEditRow(r) ? 'cursor-pointer' : ''}
                                             onClick={() => requestEdit(r)}
                                         >
-                                            <span className="text-sm text-slate-700">{r.description || '-'}</span>
+                                            <span className="text-sm text-(--nb-color-fg)">{r.description || '-'}</span>
                                         </div>
                                     );
                                 case 'commission':
@@ -545,7 +545,7 @@ export default function PayrollEmployeeInfoModal({
                                                         autoFocus
                                                     />
                                                 ) : (
-                                                    <span className="text-sm text-slate-700 text-center">{r.paid}</span>
+                                                    <span className="text-sm text-(--nb-color-fg) text-center">{r.paid}</span>
                                                 )}
                                             </div>
                                         );
@@ -560,7 +560,7 @@ export default function PayrollEmployeeInfoModal({
                                             : status.kind === 'exact'
                                                 ? '!bg-green-600 hover:!bg-green-700'
                                                 : status.kind === 'under'
-                                                    ? '!bg-yellow-500 hover:!bg-yellow-600 !text-slate-900'
+                                                    ? '!bg-yellow-500 hover:!bg-yellow-600 !text-(--nb-color-fg)'
                                                     : '';
 
                                         return (

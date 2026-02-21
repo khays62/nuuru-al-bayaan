@@ -35,11 +35,11 @@ export default function ColumnVisibilityMenu({
         title={t('common.chooseColumns', { defaultValue: 'Choose columns' })}
         icon={<Columns size={16} />}
         className={
-          (`bg-white! text-blue-700! border-blue-400! hover:bg-blue-50! ` + buttonClassName).trim()
+          (`bg-(--nb-color-bg-card)! text-(--nb-color-brand)! border-(--nb-color-brand)! hover:bg-(--nb-color-accent-50)! ` + buttonClassName).trim()
         }
       >
         <span>{t('common.columns', { defaultValue: 'Columns' })}</span>
-        <ChevronDown size={16} className="text-blue-700" />
+        <ChevronDown size={16} className="text-(--nb-color-accent)" />
       </ActionButton>
 
       {open ? (
@@ -54,7 +54,7 @@ export default function ColumnVisibilityMenu({
                   key={key}
                   type="button"
                   className={
-                    (`w-full px-3 py-2 text-sm flex items-center justify-between hover:bg-gray-50 ` +
+                    (`w-full px-3 py-2 text-sm flex items-center justify-between hover:bg-(--nb-color-brand-50) ` +
                       (disabled ? 'opacity-60 cursor-not-allowed ' : 'cursor-pointer ')).trim()
                   }
                   onClick={() => {
@@ -62,8 +62,8 @@ export default function ColumnVisibilityMenu({
                     onToggle?.(key);
                   }}
                 >
-                  <span className="text-gray-800">{c.label}</span>
-                  <span className={checked ? 'text-blue-700' : 'text-transparent'}>
+                  <span className="text-(--nb-color-fg)">{c.label}</span>
+                  <span className={checked ? 'text-(--nb-color-accent)' : 'text-transparent'}>
                     <Check size={16} />
                   </span>
                 </button>

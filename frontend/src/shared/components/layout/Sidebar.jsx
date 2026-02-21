@@ -3,7 +3,7 @@ import { NavLink, Link, useLocation } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import { navItems } from '../../../config/navigation';
-import logo from '../../../assets/nuuruBayaan.png';
+import logo from '../../../assets/Logo.jpeg';
 import { useAuth } from '../../../auth/AuthContext';
 import Badge from '../ui/Badge.jsx';
 import { useAnnouncementsUnread } from '../../../features/announcements/hooks/useAnnouncementsUnread';
@@ -14,7 +14,9 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
   const { isRTL, t } = useI18n();
   const navLinkClasses = ({ isActive }) =>
     `flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${
-      isActive ? 'bg-(--nb-color-brand) text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+      isActive
+        ? 'bg-(--nb-color-accent) text-white shadow-sm ring-1 ring-(--nb-color-accent-200)'
+        : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand)'
     }`;
 
   const { auth, hasPermission } = useAuth();
@@ -202,7 +204,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         return (
           <div key={item.key || item.label}>
             {shouldRenderHeader ? (
-              <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+              <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-(--nb-color-muted)">
                 {group}
               </div>
             ) : null}
@@ -211,7 +213,9 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
               onClick={onToggle}
               className={
                 `w-full flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${
-                  isOpen ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                  isOpen
+                    ? 'bg-(--nb-color-accent-50) text-(--nb-color-brand) ring-1 ring-(--nb-color-accent-100)'
+                    : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand)'
                 } ` + (collapsed ? 'justify-center' : '')
               }
               title={collapsed ? item.label : ''}
@@ -222,7 +226,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
             </button>
 
             {isOpen && !collapsed ? (
-              <div className="ms-6 border-s border-gray-700 ps-2">
+              <div className="ms-6 border-s border-(--nb-color-border) ps-2">
                 {item.children.map((child) => {
                   const childLabel = child.labelKey
                     ? t(child.labelKey, { defaultValue: child.label })
@@ -234,7 +238,9 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
                       to={child.path}
                       className={({ isActive }) =>
                         `flex items-center p-2 my-1 rounded-md transition-colors duration-200 ${
-                          isActive ? 'bg-(--nb-color-brand) text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                          isActive
+                            ? 'bg-(--nb-color-accent) text-white shadow-sm ring-1 ring-(--nb-color-accent-200)'
+                            : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand)'
                         }`
                       }
                       onClick={isMobile ? onMobileNavClick : undefined}
@@ -255,7 +261,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
       return (
         <React.Fragment key={item.key || item.path}>
           {shouldRenderHeader ? (
-            <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            <div className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-(--nb-color-muted)">
               {group}
             </div>
           ) : null}
@@ -289,34 +295,38 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
   return (
     <>
       {/* Sidebar for Desktop */}
-      <aside className={`bg-gray-800 text-white flex-col h-full transition-all duration-300 ease-in-out hidden md:flex no-print ${isCollapsed ? 'w-20' : 'w-64'}`}>
-        <Link to={homePath} className="flex items-center justify-center h-16 border-b border-gray-700 px-4 hover:bg-gray-700 transition-colors">
+      <aside className={`bg-(--nb-color-bg) text-(--nb-color-fg) flex-col h-full transition-all duration-300 ease-in-out hidden md:flex no-print border-e border-(--nb-color-border) ${isCollapsed ? 'w-20' : 'w-64'}`}>
+        <Link to={homePath} className="flex items-center justify-center h-16 border-b border-(--nb-color-border) px-4 bg-(--nb-color-bg-card) hover:bg-(--nb-color-accent-50) transition-colors">
           <img src={logo} alt="Nuuru Al-Bayaan Logo" className={`h-10 transition-all shrink-0 ${isCollapsed ? 'w-10' : 'w-auto'}`} />
           {!isCollapsed ? (
-            <span className="ms-3 font-semibold text-lg whitespace-nowrap overflow-hidden">Nuuru Al-Bayaan</span>
+            <span className="ms-3 font-semibold text-lg whitespace-nowrap overflow-hidden text-(--nb-color-brand)">Nuuru Al-Bayaan</span>
           ) : null}
         </Link>
 
-        <nav className={`flex-1 px-4 py-4 overflow-y-auto ${isCollapsed ? 'px-2' : ''}`}>
-          {renderNavItems({ variant: 'desktop' })}
-        </nav>
+        <div className={`flex-1 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-3'} py-3`}>
+          <nav className="min-h-full rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-3 shadow-(--nb-shadow-md) transition-colors hover:border-(--nb-color-focus) focus-within:border-(--nb-color-focus)">
+            {renderNavItems({ variant: 'desktop' })}
+          </nav>
+        </div>
       </aside>
 
       {/* Sidebar for Mobile */}
       <aside className={
-        `fixed top-0 ${isRTL ? 'right-0' : 'left-0'} h-full w-64 bg-gray-800 text-white flex-col z-30 transition-transform duration-300 ease-in-out md:hidden flex no-print ` +
+        `fixed top-0 ${isRTL ? 'right-0' : 'left-0'} h-full w-64 bg-(--nb-color-bg) text-(--nb-color-fg) flex-col z-30 transition-transform duration-300 ease-in-out md:hidden flex no-print border-e border-(--nb-color-border) shadow-lg ` +
         (isMobileMenuOpen
           ? 'translate-x-0'
           : (isRTL ? 'translate-x-full' : '-translate-x-full'))
       }>
-        <Link to={homePath} onClick={onMobileNavClick} className="flex items-center justify-center h-16 border-b border-gray-700 px-4 shrink-0">
+        <Link to={homePath} onClick={onMobileNavClick} className="flex items-center justify-center h-16 border-b border-(--nb-color-border) px-4 shrink-0 bg-(--nb-color-bg-card)">
           <img src={logo} alt="Nuuru Al-Bayaan Logo" className="h-10" />
-          <span className="ms-3 font-semibold text-lg">Nuuru Al-Bayaan</span>
+          <span className="ms-3 font-semibold text-lg text-(--nb-color-brand)">Nuuru Al-Bayaan</span>
         </Link>
 
-        <nav className="flex-1 px-4 py-4 overflow-y-auto">
-          {renderNavItems({ variant: 'mobile' })}
-        </nav>
+        <div className="flex-1 overflow-y-auto px-3 py-3">
+          <nav className="min-h-full rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-3 shadow-(--nb-shadow-md) transition-colors hover:border-(--nb-color-focus) focus-within:border-(--nb-color-focus)">
+            {renderNavItems({ variant: 'mobile' })}
+          </nav>
+        </div>
       </aside>
     </>
   );

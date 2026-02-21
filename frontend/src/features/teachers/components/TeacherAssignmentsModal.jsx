@@ -206,7 +206,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
     >
       <div className="space-y-4">
         {error && <div className="text-red-600 text-sm">{error}</div>}
-        {loading && <div className="text-sm text-gray-600">{t('teachers.assignments.loading')}</div>}
+        {loading && <div className="text-sm text-(--nb-color-muted)">{t('teachers.assignments.loading')}</div>}
         <FilterRow>
           <FilterItem>
             <DropdownSelect
@@ -258,22 +258,22 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
           <ActionButton type="button" variant="brand" onClick={onAdd} disabled={!canAdd || submitting}>{t('teachers.assignments.add')}</ActionButton>
         </div>
 
-        <div className="border rounded-md overflow-hidden">
+        <div className="border border-(--nb-color-border) rounded-(--nb-radius-md) overflow-hidden">
           {(assignments || []).length === 0 ? (
-            <div className="px-2 py-2 text-gray-500 text-sm">{t('teachers.assignments.none')}</div>
+            <div className="px-2 py-2 text-(--nb-color-muted) text-sm">{t('teachers.assignments.none')}</div>
           ) : (
             <DataTable
               rows={assignments}
               showControls={false}
               theadClassName=""
-              headerRowClassName="bg-gray-50 border-b"
-              baseRowClassName="border-t"
+              headerRowClassName="bg-(--nb-color-bg) border-b border-(--nb-color-border)"
+              baseRowClassName="border-t border-(--nb-color-border)"
               useDefaultHeaderStyles={false}
               columns={[
-                { key: 'level', label: t('teachers.assignments.columns.level'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
-                { key: 'shift', label: t('teachers.assignments.columns.shift'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
-                { key: 'section', label: t('teachers.assignments.columns.section'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
-                { key: 'subject', label: t('teachers.assignments.columns.subject'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-gray-700', tdClassName: 'px-2 py-1 text-gray-800 text-sm' },
+                { key: 'level', label: t('teachers.assignments.columns.level'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-(--nb-color-muted)', tdClassName: 'px-2 py-1 text-(--nb-color-fg) text-sm' },
+                { key: 'shift', label: t('teachers.assignments.columns.shift'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-(--nb-color-muted)', tdClassName: 'px-2 py-1 text-(--nb-color-fg) text-sm' },
+                { key: 'section', label: t('teachers.assignments.columns.section'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-(--nb-color-muted)', tdClassName: 'px-2 py-1 text-(--nb-color-fg) text-sm' },
+                { key: 'subject', label: t('teachers.assignments.columns.subject'), thClassName: 'text-left px-2 py-1 text-xs font-medium text-(--nb-color-muted)', tdClassName: 'px-2 py-1 text-(--nb-color-fg) text-sm' },
                 { key: 'actions', label: '', align: 'right', noPrint: true, thClassName: 'text-right px-2 py-1', tdClassName: 'px-2 py-1 text-right' },
               ]}
               getRowKey={(a) => a._id}

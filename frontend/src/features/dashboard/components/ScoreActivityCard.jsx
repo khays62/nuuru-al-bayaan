@@ -37,7 +37,7 @@ const isoWeekYearWeek = (date) => {
 const RangeTabs = ({ value, onChange, items }) => {
     const safe = Array.isArray(items) ? items : [];
     return (
-        <div className="inline-flex flex-wrap gap-2 rounded-xl border bg-white p-1 shadow-sm">
+        <div className="inline-flex flex-wrap gap-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-1 shadow-sm">
             {safe.map((it) => {
                 const active = value === it.value;
                 return (
@@ -48,8 +48,8 @@ const RangeTabs = ({ value, onChange, items }) => {
                         className={
                             `px-3 py-1.5 text-sm font-semibold rounded-lg transition ` +
                             (active
-                                ? 'bg-indigo-600 text-white shadow-sm'
-                                : 'text-gray-700 hover:bg-gray-50')
+                                ? 'bg-(--nb-color-brand) text-white shadow-sm'
+                                : 'text-(--nb-color-text) hover:bg-(--nb-color-brand-50)')
                         }
                     >
                         {it.label}
@@ -94,17 +94,17 @@ const SvgBars = ({ series, height = 180 }) => {
     return (
         <div className="w-full">
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
-                <rect x="0" y="0" width={width} height={height} fill="#F9FAFB" rx="10" />
+                <rect x="0" y="0" width={width} height={height} fill="var(--nb-color-bg-card)" rx="10" />
 
                 {/* Y axis */}
-                <line x1={padL} y1={padY} x2={padL} y2={padY + innerH} stroke="#e5e7eb" strokeWidth="1" />
+                <line x1={padL} y1={padY} x2={padL} y2={padY + innerH} stroke="var(--nb-color-border)" strokeWidth="1" />
 
                 {ticks.map((t) => {
                     const y = padY + innerH - (t / maxV) * innerH;
                     return (
                         <g key={t}>
-                            <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="#f1f5f9" strokeWidth="1" />
-                            <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#6b7280">
+                            <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="var(--nb-color-border)" strokeWidth="1" />
+                            <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill="var(--nb-color-muted)">
                                 {t}
                             </text>
                         </g>
@@ -112,7 +112,7 @@ const SvgBars = ({ series, height = 180 }) => {
                 })}
 
                 {/* X axis */}
-                <line x1={padL} y1={padY + innerH} x2={width - padR} y2={padY + innerH} stroke="#e5e7eb" strokeWidth="1" />
+                <line x1={padL} y1={padY + innerH} x2={width - padR} y2={padY + innerH} stroke="var(--nb-color-border)" strokeWidth="1" />
 
                 {bars.map((b, i) => (
                     <g key={i}>
@@ -122,7 +122,7 @@ const SvgBars = ({ series, height = 180 }) => {
                             width={barW}
                             height={b.h}
                             rx="6"
-                            fill="#4f46e5"
+                            fill="var(--nb-color-accent)"
                             opacity="0.85"
                         >
                             <title>{`${b.label}: ${b.v}`}</title>
@@ -131,7 +131,7 @@ const SvgBars = ({ series, height = 180 }) => {
                 ))}
             </svg>
 
-            <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-gray-500">
+            <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-(--nb-color-muted)">
                 {bars.map((b, i) => (
                     <div key={i} className="flex-1 text-center tabular-nums truncate">
                         {b.label}
@@ -144,10 +144,10 @@ const SvgBars = ({ series, height = 180 }) => {
 
 const TinyStat = ({ label, value, tone = 'gray' }) => {
     const tones = {
-        gray: 'bg-gray-100 text-gray-800 border-gray-200',
-        emerald: 'bg-emerald-100 text-emerald-900 border-emerald-200',
-        amber: 'bg-amber-100 text-amber-900 border-amber-200',
-        indigo: 'bg-indigo-100 text-indigo-900 border-indigo-200',
+        gray: 'bg-(--nb-color-bg) text-(--nb-color-text) border-(--nb-color-border)',
+        emerald: 'bg-(--nb-color-accent-100) text-(--nb-color-brand) border-(--nb-color-border)',
+        amber: 'bg-(--nb-color-accent-100) text-(--nb-color-brand) border-(--nb-color-border)',
+        indigo: 'bg-(--nb-color-brand-100) text-(--nb-color-brand) border-(--nb-color-border)',
     };
 
     return (
@@ -306,8 +306,8 @@ export default function ScoreActivityCard({ buckets, series }) {
     const totals = derivedTotals;
 
     return (
-        <div className="rounded-2xl border border-indigo-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-            <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+            <div className="px-5 py-4 bg-(--nb-color-brand) text-white border-b border-white/10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <div className="text-lg font-semibold">{t('dashboard.cards.scoreActivity.title')}</div>
                     <div className="text-sm text-white/80 mt-1">{t('dashboard.cards.scoreActivity.subtitle')}</div>
@@ -320,18 +320,18 @@ export default function ScoreActivityCard({ buckets, series }) {
                 </div>
             </div>
 
-            <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between gap-3 flex-wrap">
-                <div className="inline-flex items-center gap-2 text-sm text-gray-700">
+            <div className="px-5 py-3 bg-(--nb-color-bg) border-b border-(--nb-color-border) flex items-center justify-between gap-3 flex-wrap">
+                <div className="inline-flex items-center gap-2 text-sm text-(--nb-color-text)">
                     <PenLine size={16} />
                     <span className="font-semibold">{t('common.range.title')}</span>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 text-xs text-gray-600 tabular-nums">
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                            {t('common.range.today')}: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.today?.touched)}</span>
+                    <div className="flex items-center gap-2 text-xs text-(--nb-color-muted) tabular-nums">
+                        <span className="inline-flex items-center rounded-full border border-(--nb-color-border) bg-(--nb-color-bg-card) px-2.5 py-1">
+                            {t('common.range.today')}: <span className="ml-1 font-semibold text-(--nb-color-text)">{fmtOrDash(todayAndLast7.today?.touched)}</span>
                         </span>
-                        <span className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1">
-                            {t('common.range.last7')}: <span className="ml-1 font-semibold text-gray-900">{fmtOrDash(todayAndLast7.last7?.touched)}</span>
+                        <span className="inline-flex items-center rounded-full border border-(--nb-color-border) bg-(--nb-color-bg-card) px-2.5 py-1">
+                            {t('common.range.last7')}: <span className="ml-1 font-semibold text-(--nb-color-text)">{fmtOrDash(todayAndLast7.last7?.touched)}</span>
                         </span>
                     </div>
 
@@ -350,7 +350,7 @@ export default function ScoreActivityCard({ buckets, series }) {
 
             <div className="p-5">
                 <SvgBars series={activeSeries} height={180} />
-                <div className="mt-3 text-xs text-gray-500">
+                <div className="mt-3 text-xs text-(--nb-color-muted)">
                     {t('dashboard.cards.scoreActivity.noteDefinition', {
                         label: t('dashboard.cards.scoreActivity.stats.touched'),
                     })}

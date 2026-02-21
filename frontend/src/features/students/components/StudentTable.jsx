@@ -110,16 +110,16 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
     });
 
     const columns = useMemo(() => ([
-        { key: 'studentId', label: t('students.table.columns.studentId'), sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-        { key: 'fullName', label: t('students.table.columns.fullName'), sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-        { key: 'gender', label: t('students.table.columns.gender'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
-        { key: 'grade', label: t('students.table.columns.grade'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-        { key: 'section', label: t('students.table.columns.section'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-        { key: 'academicYear', label: t('students.table.columns.academicYear'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-        { key: 'shift', label: t('students.table.columns.shift'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-600 border-x border-gray-200' },
-        { key: 'status', label: t('students.table.columns.status'), tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
-        { key: 'contact', label: t('students.table.columns.contact'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 border-x border-gray-200' },
-        { key: 'actions', label: t('students.table.columns.actions'), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-gray-200 no-print' },
+        { key: 'studentId', label: t('students.table.columns.studentId'), sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-text) border-x border-(--nb-color-border)' },
+        { key: 'fullName', label: t('students.table.columns.fullName'), sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-(--nb-color-text) border-x border-(--nb-color-border)' },
+        { key: 'gender', label: t('students.table.columns.gender'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-muted) border-x border-(--nb-color-border)' },
+        { key: 'grade', label: t('students.table.columns.grade'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-text) border-x border-(--nb-color-border)' },
+        { key: 'section', label: t('students.table.columns.section'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-muted) border-x border-(--nb-color-border)' },
+        { key: 'academicYear', label: t('students.table.columns.academicYear'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-muted) border-x border-(--nb-color-border)' },
+        { key: 'shift', label: t('students.table.columns.shift'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-muted) border-x border-(--nb-color-border)' },
+        { key: 'status', label: t('students.table.columns.status'), tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-(--nb-color-border)' },
+        { key: 'contact', label: t('students.table.columns.contact'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-muted) border-x border-(--nb-color-border)' },
+        { key: 'actions', label: t('students.table.columns.actions'), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2 border-x border-(--nb-color-border) no-print' },
     ]), [t]);
 
     return (

@@ -10,6 +10,7 @@ export default function PdfDownloadButton({
   disabled = false,
   className = '',
   orientation = 'landscape',
+  variant = 'outline',
 }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
@@ -31,7 +32,7 @@ export default function PdfDownloadButton({
 
   return (
     <ActionButton
-      variant="brand"
+      variant={variant}
       className={className}
       icon={<FileDown size={16} />}
       disabled={disabled || busy}

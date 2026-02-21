@@ -24,12 +24,12 @@ export default function EmptyState({
   );
 
   return (
-    <div className={cn('rounded-(--nb-radius-md) border border-slate-200 bg-white p-6', className)}>
+    <div className={cn('rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) p-6', className)}>
       <div className="flex items-start gap-3">
-        {icon ? <div className="mt-0.5 text-slate-500">{icon}</div> : null}
+        {icon ? <div className="mt-0.5 text-(--nb-color-muted)">{icon}</div> : null}
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-900">{resolvedTitle}</div>
-          {description ? <div className="mt-1 text-sm text-slate-600">{description}</div> : null}
+          <div className="text-sm font-semibold text-(--nb-color-fg)">{resolvedTitle}</div>
+          {description ? <div className="mt-1 text-sm text-(--nb-color-muted)">{description}</div> : null}
           {computedAction ? <div className="mt-3">{computedAction}</div> : null}
         </div>
       </div>

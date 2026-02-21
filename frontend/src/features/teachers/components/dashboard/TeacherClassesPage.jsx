@@ -11,11 +11,11 @@ import { useRealtimeInvalidation } from '../../../../shared/realtime/useRealtime
 import { useI18n } from '../../../../i18n/I18nProvider';
 
 const CARD_THEMES = [
-	{ header: 'bg-gradient-to-r from-blue-600 to-indigo-600' },
-	{ header: 'bg-gradient-to-r from-emerald-600 to-teal-600' },
-	{ header: 'bg-gradient-to-r from-purple-600 to-fuchsia-600' },
-	{ header: 'bg-gradient-to-r from-amber-600 to-orange-600' },
-	{ header: 'bg-gradient-to-r from-sky-600 to-blue-600' },
+	{ header: 'bg-gradient-to-r from-(--nb-color-brand) to-(--nb-color-accent)' },
+	{ header: 'bg-gradient-to-r from-(--nb-color-brand) to-(--nb-color-accent)' },
+	{ header: 'bg-gradient-to-r from-(--nb-color-brand) to-(--nb-color-accent)' },
+	{ header: 'bg-gradient-to-r from-(--nb-color-brand) to-(--nb-color-accent)' },
+	{ header: 'bg-gradient-to-r from-(--nb-color-brand) to-(--nb-color-accent)' },
 ];
 
 const themeIndexForKey = (key) => {
@@ -197,17 +197,17 @@ export default function TeacherClassesPage() {
 
 	return (
 		<div className="space-y-4">
-			<div className="rounded-2xl border border-blue-200/80 bg-white shadow-md p-4">
-				<div className="text-lg font-semibold text-gray-900">{t('teachers.dashboard.classes.title', { defaultValue: 'My Classes' })}</div>
-				<div className="text-sm text-gray-600 mt-0.5">{t('teachers.dashboard.classes.subtitle', { defaultValue: 'View active students for your assigned classes.' })}</div>
+			<div className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-md p-4">
+				<div className="text-lg font-semibold text-(--nb-color-fg)">{t('teachers.dashboard.classes.title', { defaultValue: 'My Classes' })}</div>
+				<div className="text-sm text-(--nb-color-muted) mt-0.5">{t('teachers.dashboard.classes.subtitle', { defaultValue: 'View active students for your assigned classes.' })}</div>
 			</div>
 
 			{assignmentsQuery.isLoading && cards.length === 0 ? (
-				<div className="text-sm text-gray-600">{t('teachers.dashboard.classes.loading', { defaultValue: 'Loading classes…' })}</div>
+				<div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.classes.loading', { defaultValue: 'Loading classes…' })}</div>
 			) : assignmentsQuery.isError ? (
 				<div className="text-sm text-red-600">{t('teachers.dashboard.classes.loadFailed', { defaultValue: 'Failed to load classes' })}</div>
 			) : cards.length === 0 ? (
-				<div className="text-sm text-gray-600">{t('teachers.dashboard.classes.empty', { defaultValue: 'No assigned classes.' })}</div>
+				<div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.classes.empty', { defaultValue: 'No assigned classes.' })}</div>
 			) : (
 				<div className="w-full">
 					<div className={`grid ${gridColsClass} gap-4 items-stretch`}>
@@ -229,8 +229,8 @@ export default function TeacherClassesPage() {
 									type="button"
 									onClick={() => setRosterUi({ isOpen: true, sectionId: c.id, label: c.label })}
 									className={
-										'group text-left w-full rounded-2xl border border-blue-200/80 bg-white shadow-lg overflow-hidden flex flex-col min-h-96 ' +
-										'hover:shadow-xl hover:-translate-y-1 hover:border-blue-300 transition-all duration-200'
+										'group text-left w-full rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-lg overflow-hidden flex flex-col min-h-96 ' +
+										'hover:shadow-xl hover:-translate-y-1 hover:border-(--nb-color-accent) transition-all duration-200'
 									}
 								>
 									<div className={`p-4 ${theme.header}`}>
@@ -243,9 +243,9 @@ export default function TeacherClassesPage() {
 									</div>
 
 									<div className="p-4 flex-1">
-										<div className="rounded-xl border border-gray-200/70 bg-gray-50 p-4">
-											<div className="text-sm font-semibold text-gray-900">{t('teachers.dashboard.classes.studentsCardTitle', { defaultValue: 'Students' })}</div>
-											<div className="text-sm text-gray-600 mt-1">{countText}</div>
+										<div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-4">
+											<div className="text-sm font-semibold text-(--nb-color-fg)">{t('teachers.dashboard.classes.studentsCardTitle', { defaultValue: 'Students' })}</div>
+											<div className="text-sm text-(--nb-color-muted) mt-1">{countText}</div>
 										</div>
 									</div>
 
@@ -276,11 +276,11 @@ export default function TeacherClassesPage() {
 				)}
 			>
 				{loadingStudents ? (
-					<div className="text-sm text-gray-600">{t('teachers.dashboard.classes.loadingRoster', { defaultValue: 'Loading roster…' })}</div>
+					<div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.classes.loadingRoster', { defaultValue: 'Loading roster…' })}</div>
 				) : (studentsError ? (
 					<div className="text-sm text-red-600">{studentsError}</div>
 				) : ((students || []).length === 0 ? (
-					<div className="text-sm text-gray-600">{t('teachers.dashboard.classes.noActiveStudentsFound', { defaultValue: 'No active students found.' })}</div>
+					<div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.classes.noActiveStudentsFound', { defaultValue: 'No active students found.' })}</div>
 				) : (
 					<div className="max-h-[65vh] overflow-auto">
 						<StandardTable
@@ -293,19 +293,19 @@ export default function TeacherClassesPage() {
 									key: 'studentId',
 									label: t('teachers.dashboard.classes.rosterTable.studentId', { defaultValue: 'Student ID' }),
 									thClassName: 'text-left px-3 py-2',
-									tdClassName: 'px-3 py-2 text-sm text-gray-700',
+									tdClassName: 'px-3 py-2 text-sm text-(--nb-color-fg)',
 								},
 								{
 									key: 'fullName',
 									label: t('teachers.dashboard.classes.rosterTable.fullName', { defaultValue: 'Full Name' }),
 									thClassName: 'text-left px-3 py-2',
-									tdClassName: 'px-3 py-2 text-sm text-gray-900',
+									tdClassName: 'px-3 py-2 text-sm text-(--nb-color-fg)',
 								},
 								{
 									key: 'gender',
 									label: t('teachers.dashboard.classes.rosterTable.gender', { defaultValue: 'Gender' }),
 									thClassName: 'text-left px-3 py-2',
-									tdClassName: 'px-3 py-2 text-sm text-gray-700',
+									tdClassName: 'px-3 py-2 text-sm text-(--nb-color-fg)',
 								},
 							]}
 							getRowKey={(st) => st?._id || st?.studentId}
@@ -322,9 +322,9 @@ export default function TeacherClassesPage() {
 								}
 							}}
 							tableProps={{
-								theadClassName: 'bg-black text-white',
+								theadClassName: 'bg-(--nb-color-brand) text-white',
 								useDefaultHeaderStyles: false,
-								baseRowClassName: 'border-t',
+								baseRowClassName: 'border-t border-(--nb-color-border)',
 							}}
 						/>
 					</div>

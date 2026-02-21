@@ -6,6 +6,7 @@ import { EVENTS } from '../../utils/events';
 import { expenseKeys, accountKeys, categoryKeys, feeTypeKeys } from './queryKeys';
 import { payrollKeys } from './queryKeys';
 import { studentFinanceKeys } from './queryKeys';
+import { financeDashboardKeys } from './queryKeys';
 
 export function useFinanceRealtimeInvalidation() {
   const queryClient = useQueryClient();
@@ -13,6 +14,11 @@ export function useFinanceRealtimeInvalidation() {
   useRealtimeInvalidation(EVENTS.EXPENSES_CHANGED, () => {
     try {
       queryClient.invalidateQueries({ queryKey: expenseKeys.listBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+
+    // Dashboard aggregates can depend on expenses.
+    try {
+      queryClient.invalidateQueries({ queryKey: financeDashboardKeys.base, refetchType: 'active' });
     } catch { /* ignore */ }
   });
 
@@ -25,17 +31,32 @@ export function useFinanceRealtimeInvalidation() {
     try {
       queryClient.invalidateQueries({ queryKey: ['finance', 'audit', 'accounts'], refetchType: 'active' });
     } catch { /* ignore */ }
+
+    // Dashboard aggregates can depend on accounts.
+    try {
+      queryClient.invalidateQueries({ queryKey: financeDashboardKeys.base, refetchType: 'active' });
+    } catch { /* ignore */ }
   });
 
   useRealtimeInvalidation(EVENTS.FINANCE_CATEGORIES_CHANGED, () => {
     try {
       queryClient.invalidateQueries({ queryKey: categoryKeys.listBase, refetchType: 'active' });
     } catch { /* ignore */ }
+
+    // Categories can affect dashboard breakdowns.
+    try {
+      queryClient.invalidateQueries({ queryKey: financeDashboardKeys.base, refetchType: 'active' });
+    } catch { /* ignore */ }
   });
 
   useRealtimeInvalidation(EVENTS.FEE_TYPES_CHANGED, () => {
     try {
       queryClient.invalidateQueries({ queryKey: feeTypeKeys.listBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+
+    // Fee types can affect dashboard breakdowns.
+    try {
+      queryClient.invalidateQueries({ queryKey: financeDashboardKeys.base, refetchType: 'active' });
     } catch { /* ignore */ }
   });
 
@@ -45,6 +66,11 @@ export function useFinanceRealtimeInvalidation() {
     } catch { /* ignore */ }
     try {
       queryClient.invalidateQueries({ queryKey: payrollKeys.staffLedgerBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+
+    // Payroll affects finance totals.
+    try {
+      queryClient.invalidateQueries({ queryKey: financeDashboardKeys.base, refetchType: 'active' });
     } catch { /* ignore */ }
   });
 
@@ -60,6 +86,11 @@ export function useFinanceRealtimeInvalidation() {
     } catch { /* ignore */ }
     try {
       queryClient.invalidateQueries({ queryKey: studentFinanceKeys.monthHistoryBase, refetchType: 'active' });
+    } catch { /* ignore */ }
+
+    // Student finance events impact dashboard revenue/pending.
+    try {
+      queryClient.invalidateQueries({ queryKey: financeDashboardKeys.base, refetchType: 'active' });
     } catch { /* ignore */ }
   });
 }

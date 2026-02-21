@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import financeService from '../api/finance';
-import { listGradeSections } from '../../grades/api/gradeSections';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../common/ConfirmationModal';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 
 export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
-    const [classes, setClasses] = useState([]);
     const [feeTypes, setFeeTypes] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
     // Form State
     const [classId, setClassId] = useState('');
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [title, setTitle] = useState('');
     const [dueDate, setDueDate] = useState('');
+
+    const resetClassFilters = () => {
+        setGradeId('');
+        setShiftId('');
+        setClassId('');
+    };
 
     // Multi-Item State
     const [selectedItems, setSelectedItems] = useState([
@@ -31,23 +40,7 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [sectionsRes, catsRes] = await Promise.all([
-                    listGradeSections({ limit: 100 }),
-                    financeService.getFinanceCategories('fee')
-                ]);
-                const normalize = (payload) => Array.isArray(payload)
-                    ? payload
-                    : (payload?.data?.data || payload?.data || []);
-                let list = normalize(sectionsRes);
-                if (list.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        list = normalize(fallback);
-                    } catch {
-                        // ignore
-                    }
-                }
-                setClasses(list);
+                const catsRes = await financeService.getFinanceCategories('fee');
                 setFeeTypes(catsRes.data || catsRes || []);
             } catch (error) {
                 console.error("Failed to load initial data", error);
@@ -135,13 +128,13 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-3xl rounded-xl shadow-(--nb-shadow-md) overflow-hidden flex flex-col max-h-[90vh] border border-(--nb-color-border)">
+                <div className="flex justify-between items-center p-6 border-b border-(--nb-color-border)">
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Bulk Fee Generation</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Create monthly invoices for a class</p>
+                        <h3 className="text-lg font-black text-(--nb-color-fg) uppercase tracking-tight">Bulk Fee Generation</h3>
+                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest leading-none mt-1">Create monthly invoices for a class</p>
                     </div>
-                    <button onClick={onClose} className="text-slate-300 hover:text-slate-900 transition-colors p-2 hover:bg-slate-100 rounded-full">
+                    <button onClick={onClose} className="text-(--nb-color-muted) hover:text-(--nb-color-fg) transition-colors p-2 hover:bg-(--nb-color-bg) rounded-full">
                         <X size={24} />
                     </button>
                 </div>
@@ -149,31 +142,53 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
                 <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Class</label>
-                            <select
-                                className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-sm"
-                                value={classId}
-                                onChange={e => setClassId(e.target.value)}
-                                required
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Target Class</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <GradeSelect
+                                    value={gradeId}
+                                    onChange={(v) => {
+                                        setGradeId(v || '');
+                                        setClassId('');
+                                    }}
+                                    placeholder="Grade"
+                                    className="w-full px-5 py-3.5 border border-(--nb-color-border) rounded-xl outline-none font-bold text-sm"
+                                />
+                                <ShiftSelect
+                                    value={shiftId}
+                                    onChange={(v) => {
+                                        setShiftId(v || '');
+                                        setClassId('');
+                                    }}
+                                    placeholder="Shift"
+                                    className="w-full px-5 py-3.5 border border-(--nb-color-border) rounded-xl outline-none font-bold text-sm"
+                                />
+                                <GradeSectionSelect
+                                    gradeId={gradeId}
+                                    shiftId={shiftId}
+                                    value={classId}
+                                    onChange={(v) => setClassId(v || '')}
+                                    searchable
+                                    maxVisible={7}
+                                    placeholder="Section"
+                                    searchPlaceholder="Search…"
+                                    className="w-full px-5 py-3.5 border border-(--nb-color-border) rounded-xl outline-none font-bold text-sm"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={resetClassFilters}
+                                className="mt-2 h-10 px-4 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) font-bold text-sm inline-flex items-center gap-2 hover:bg-(--nb-color-bg)"
+                                title="Reset class filters"
                             >
-                                <option value="">Select Class</option>
-                                {classes.map(cls => {
-                                    const gradeLabel = cls.grade?.gradeName || cls.grade?.name || cls.gradeName || '';
-                                    const sectionLabel = cls.section || cls.name || '';
-                                    const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                                    return (
-                                        <option key={cls._id} value={cls._id}>
-                                            {label || '—'}
-                                        </option>
-                                    );
-                                })}
-                            </select>
+                                <RotateCcw size={16} />
+                                Reset
+                            </button>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Invoice Title</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Invoice Title</label>
                             <input
                                 type="text"
-                                className="w-full px-5 py-3.5 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-sm"
+                                className="w-full px-5 py-3.5 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-sm"
                                 value={title}
                                 onChange={e => setTitle(e.target.value)}
                                 placeholder="e.g. June Monthly Fees"
@@ -184,18 +199,18 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
 
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
-                            <h4 className="font-black text-slate-900 uppercase tracking-tight text-sm">Fee Items</h4>
+                            <h4 className="font-black text-(--nb-color-fg) uppercase tracking-tight text-sm">Fee Items</h4>
                             <button type="button" onClick={handleAddItem} className="text-blue-600 hover:underline text-sm font-bold flex items-center gap-1">
                                 <Plus size={16} /> Add Item
                             </button>
                         </div>
 
                         {selectedItems.map((item, index) => (
-                            <div key={index} className="flex gap-2 items-end bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div key={index} className="flex gap-2 items-end bg-(--nb-color-bg) p-4 rounded-xl border border-(--nb-color-border)">
                                 <div className="flex-1 space-y-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Category</label>
                                     <select
-                                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                        className="w-full px-3 py-2.5 border border-(--nb-color-border) rounded-xl bg-(--nb-color-bg) text-(--nb-color-fg) text-sm font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                         value={item.category || ''}
                                         onChange={e => updateItem(index, 'category', e.target.value)}
                                     >
@@ -205,21 +220,21 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="flex-[2] space-y-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Item Name</label>
+                                <div className="flex-2 space-y-1">
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Item Name</label>
                                     <input
                                         type="text"
-                                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                        className="w-full px-3 py-2.5 border border-(--nb-color-border) rounded-xl bg-(--nb-color-bg) text-(--nb-color-fg) text-sm font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                         value={item.name}
                                         onChange={e => updateItem(index, 'name', e.target.value)}
                                         placeholder="Description"
                                     />
                                 </div>
                                 <div className="w-24 space-y-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount ($)</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Amount ($)</label>
                                     <input
                                         type="number"
-                                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-black outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                        className="w-full px-3 py-2.5 border border-(--nb-color-border) rounded-xl bg-(--nb-color-bg) text-(--nb-color-fg) text-sm font-black outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                         value={item.amount}
                                         onChange={e => updateItem(index, 'amount', e.target.value)}
                                     />
@@ -241,13 +256,13 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
                         <div className="flex gap-2">
                             <input
                                 type="text"
-                                className="flex-1 px-3 py-2.5 border border-blue-100 rounded-xl bg-white text-sm font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                className="flex-1 px-3 py-2.5 border border-blue-100 rounded-xl bg-(--nb-color-bg-card) text-(--nb-color-fg) text-sm font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                 placeholder="Reason e.g. Early Bird"
                                 value={discount.name}
                                 onChange={e => setDiscount({ ...discount, name: e.target.value })}
                             />
                             <select
-                                className="w-28 px-3 py-2.5 border border-blue-100 rounded-xl bg-white text-sm font-bold outline-none"
+                                className="w-28 px-3 py-2.5 border border-blue-100 rounded-xl bg-(--nb-color-bg-card) text-(--nb-color-fg) text-sm font-bold outline-none"
                                 value={discount.type}
                                 onChange={e => setDiscount({ ...discount, type: e.target.value })}
                             >
@@ -256,7 +271,7 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
                             </select>
                             <input
                                 type="number"
-                                className="w-24 px-3 py-2.5 border border-blue-100 rounded-xl bg-white text-sm font-black outline-none"
+                                className="w-24 px-3 py-2.5 border border-blue-100 rounded-xl bg-(--nb-color-bg-card) text-(--nb-color-fg) text-sm font-black outline-none"
                                 value={discount.value}
                                 onChange={e => setDiscount({ ...discount, value: e.target.value })}
                             />
@@ -264,17 +279,17 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
                     </div>
                 </form>
 
-                <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div className="p-6 border-t border-(--nb-color-border) bg-(--nb-color-bg) flex items-center justify-between">
                     <div>
-                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Per Student Total</p>
-                        <p className="text-2xl font-black text-slate-900 tabular-nums">${total.toFixed(2)}</p>
+                        <p className="text-[10px] text-(--nb-color-muted) uppercase font-black tracking-widest">Per Student Total</p>
+                        <p className="text-2xl font-black text-(--nb-color-fg) tabular-nums">${total.toFixed(2)}</p>
                     </div>
                     <div className="flex gap-3">
                         <div className="space-y-1 mr-4">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 block">Due Date</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1 block">Due Date</label>
                             <input
                                 type="date"
-                                className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-bold bg-white outline-none"
+                                className="px-4 py-2.5 border border-(--nb-color-border) rounded-xl text-sm font-bold bg-(--nb-color-bg) text-(--nb-color-fg) outline-none"
                                 value={dueDate}
                                 onChange={e => setDueDate(e.target.value)}
                             />

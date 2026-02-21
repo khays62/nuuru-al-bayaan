@@ -6,7 +6,7 @@ import Card from '../ui/Card.jsx';
 
 export default function TableShell({ children, className = '' }) {
 	return (
-		<Card className={`overflow-x-auto rounded-xl ring-1 ring-gray-200 ${className}`.trim()}>
+		<Card className={`overflow-x-auto border-0 rounded-(--nb-radius-md) ring-1 ring-(--nb-color-border) ${className}`.trim()}>
 			<table className="w-full text-sm border-collapse">
 				{children}
 			</table>

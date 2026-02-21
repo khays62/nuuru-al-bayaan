@@ -452,11 +452,11 @@ export default function ExamSettingsPage() {
           </div>
 
           <div className="min-w-40">
-            <label className="block text-xs text-gray-600 mb-1">{t('exams.settings.labels.declaredTotal')}</label>
+            <label className="block text-xs text-(--nb-color-muted) mb-1">{t('exams.settings.labels.declaredTotal')}</label>
             <Input
               type="number"
               min={1}
-              className={draftValidation.sumExceedsTotal ? 'border-red-500 focus:border-red-500' : 'border-slate-300 focus:border-slate-900'}
+              className={draftValidation.sumExceedsTotal ? 'border-red-500 focus-visible:ring-red-500' : ''}
               value={templateTotalInput}
               onChange={(e) => setTemplateTotalInput(e.target.value)}
               disabled={savingTemplate || templateLocked || !canEditTemplate}
@@ -493,17 +493,17 @@ export default function ExamSettingsPage() {
 
         {!templateDetail ? (
           templateDetailLoading ? (
-            <div className="text-sm text-gray-500">{t('exams.settings.states.loadingTemplate')}</div>
+            <div className="text-sm text-(--nb-color-muted)">{t('exams.settings.states.loadingTemplate')}</div>
           ) : (
-            <div className="text-sm text-gray-500">{t('exams.settings.hints.selectTemplateToEdit')}</div>
+            <div className="text-sm text-(--nb-color-muted)">{t('exams.settings.hints.selectTemplateToEdit')}</div>
           )
         ) : (
           <>
-            {templateDetailLoading ? <div className="text-xs text-gray-500">{t('exams.settings.states.refreshing')}</div> : null}
-            <div className="text-sm text-gray-700">
+            {templateDetailLoading ? <div className="text-xs text-(--nb-color-muted)">{t('exams.settings.states.refreshing')}</div> : null}
+            <div className="text-sm text-(--nb-color-text)">
               {t('exams.settings.labels.templateWithVersion')} <span className="font-semibold">v{templateDetail.templateVersion}</span>
               {templateDetail.isActive ? (
-                <span className="ml-2 text-xs px-2 py-1 rounded border bg-gray-900 text-white border-gray-900">{t('exams.settings.labels.defaultBadge')}</span>
+                <span className="ml-2 text-xs px-2 py-1 rounded border bg-(--nb-color-brand) text-white border-(--nb-color-brand)">{t('exams.settings.labels.defaultBadge')}</span>
               ) : null}
               <span className="ml-3">
                 {t('exams.settings.labels.sumMax')}:{' '}
@@ -514,7 +514,7 @@ export default function ExamSettingsPage() {
             </div>
 
             {templateDetail.hasScores ? (
-              <div className="text-xs text-gray-600">
+              <div className="text-xs text-(--nb-color-muted)">
                 {t('exams.settings.hints.templateLockedHelp')}
               </div>
             ) : null}
@@ -530,26 +530,26 @@ export default function ExamSettingsPage() {
                   {
                     key: 'typeName',
                     label: t('exams.settings.table.columns.name'),
-                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                    tdClassName: 'px-4 py-2 border-x border-gray-200',
+                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                    tdClassName: 'px-4 py-2 border-x border-(--nb-color-border)',
                   },
                   {
                     key: 'maxScore',
                     label: t('exams.settings.table.columns.maxScore'),
-                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                    tdClassName: 'px-4 py-2 border-x border-gray-200',
+                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                    tdClassName: 'px-4 py-2 border-x border-(--nb-color-border)',
                   },
                   {
                     key: 'order',
                     label: t('common.table.order'),
-                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                    tdClassName: 'px-4 py-2 border-x border-gray-200',
+                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                    tdClassName: 'px-4 py-2 border-x border-(--nb-color-border)',
                   },
                   {
                     key: 'actions',
                     label: t('common.table.actions'),
-                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                    tdClassName: 'px-4 py-2 border-x border-gray-200',
+                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                    tdClassName: 'px-4 py-2 border-x border-(--nb-color-border)',
                   },
                 ]}
                 getRowKey={(c) => String(c?._id || c?.id || '__row')}
@@ -566,7 +566,7 @@ export default function ExamSettingsPage() {
                             value={newComponent.typeName}
                             onChange={(e) => setNewComponent((p) => ({ ...p, typeName: e.target.value }))}
                             disabled={savingTemplate || templateLocked || !canEditTemplate}
-                            className="w-56 border rounded-md px-2 py-1 text-sm border-gray-300 focus:border-gray-900 focus:outline-none focus:ring-0"
+                            className="w-56 border rounded-md px-2 py-1 text-sm bg-(--nb-color-bg-card) text-(--nb-color-fg) border-(--nb-color-border) focus:border-(--nb-color-brand) focus:outline-none focus:ring-0"
                           />
                         );
                       case 'maxScore':
@@ -579,7 +579,7 @@ export default function ExamSettingsPage() {
                             onChange={(e) => setNewComponent((p) => ({ ...p, maxScore: e.target.value }))}
                             disabled={savingTemplate || templateLocked || !canEditTemplate}
                             className={`w-32 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
-                              draftValidation.newWouldExceed ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
+                              draftValidation.newWouldExceed ? 'border-red-500 focus:border-red-500' : 'bg-(--nb-color-bg-card) text-(--nb-color-fg) border-(--nb-color-border) focus:border-(--nb-color-brand)'
                             }`}
                           />
                         );
@@ -593,7 +593,7 @@ export default function ExamSettingsPage() {
                             onChange={(e) => setNewComponent((p) => ({ ...p, order: e.target.value }))}
                             disabled={savingTemplate || templateLocked || !canEditTemplate}
                             className={`w-24 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
-                              draftValidation.newOrderDuplicate ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
+                              draftValidation.newOrderDuplicate ? 'border-red-500 focus:border-red-500' : 'bg-(--nb-color-bg-card) text-(--nb-color-fg) border-(--nb-color-border) focus:border-(--nb-color-brand)'
                             }`}
                           />
                         );
@@ -636,7 +636,7 @@ export default function ExamSettingsPage() {
                               [id]: { ...prev[id], typeName: e.target.value, maxScore, order },
                             }))
                           }
-                          className="w-56 border rounded-md px-2 py-1 text-sm border-gray-300 focus:border-gray-900 focus:outline-none focus:ring-0"
+                          className="w-56 border rounded-md px-2 py-1 text-sm bg-(--nb-color-bg-card) text-(--nb-color-fg) border-(--nb-color-border) focus:border-(--nb-color-brand) focus:outline-none focus:ring-0"
                         />
                       );
                     case 'maxScore':
@@ -653,7 +653,7 @@ export default function ExamSettingsPage() {
                             }))
                           }
                           className={`w-28 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
-                            maxInvalid ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
+                            maxInvalid ? 'border-red-500 focus:border-red-500' : 'bg-(--nb-color-bg-card) text-(--nb-color-fg) border-(--nb-color-border) focus:border-(--nb-color-brand)'
                           }`}
                         />
                       );
@@ -671,7 +671,7 @@ export default function ExamSettingsPage() {
                             }))
                           }
                           className={`w-20 border rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-0 ${
-                            orderInvalid ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-gray-900'
+                            orderInvalid ? 'border-red-500 focus:border-red-500' : 'bg-(--nb-color-bg-card) text-(--nb-color-fg) border-(--nb-color-border) focus:border-(--nb-color-brand)'
                           }`}
                         />
                       );
@@ -700,7 +700,7 @@ export default function ExamSettingsPage() {
                           >
                             {t('common.actions.delete')}
                           </ActionButton>
-                          {c?.hasScores ? <span className="text-xs text-gray-500">{t('exams.settings.labels.hasScores')}</span> : null}
+                          {c?.hasScores ? <span className="text-xs text-(--nb-color-muted)">{t('exams.settings.labels.hasScores')}</span> : null}
                         </div>
                       );
                     default:
@@ -708,10 +708,10 @@ export default function ExamSettingsPage() {
                   }
                 }}
                 tableProps={{
-                  theadClassName: 'bg-gray-800',
+                  theadClassName: 'bg-(--nb-color-brand)',
                   useDefaultHeaderStyles: false,
-                  baseRowClassName: 'border-t border-gray-200 bg-white hover:bg-gray-50 transition-colors',
-                  rowClassName: (row) => (row?.__type === 'new' ? 'bg-gray-50' : ''),
+                  baseRowClassName: 'border-t border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-bg) transition-colors',
+                  rowClassName: (row) => (row?.__type === 'new' ? 'bg-(--nb-color-bg)' : ''),
                 }}
               />
             </div>

@@ -30,7 +30,7 @@ const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
                 `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
                 (active
                     ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand) shadow-sm'
-                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:shadow')
+                    : 'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-brand-50) hover:shadow')
             }
         >
             {Icon ? <Icon size={16} /> : null}
@@ -48,8 +48,8 @@ const ActionButton = ({ disabled, onClick, icon: Icon, label }) => {
             className={
                 `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition shadow-sm ` +
                 (disabled
-                    ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
-                    : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50 hover:shadow')
+                    ? 'bg-(--nb-color-bg) text-(--nb-color-muted) border-(--nb-color-border) cursor-not-allowed'
+                    : 'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-brand-50) hover:shadow')
             }
             title={label}
         >
@@ -63,17 +63,17 @@ const HistogramBar = ({ label, value, max, valueLabel }) => {
     const pct = max > 0 ? (value / max) * 100 : 0;
     return (
         <div className="flex items-center gap-3">
-            <div className="w-16 shrink-0 text-[11px] text-gray-600 tabular-nums">{label}</div>
+            <div className="w-16 shrink-0 text-[11px] text-(--nb-color-muted) tabular-nums">{label}</div>
             <div className="flex-1">
-                <div className="h-3 w-full overflow-hidden rounded bg-gray-100 border border-gray-200">
+                <div className="h-3 w-full overflow-hidden rounded bg-(--nb-color-bg) border border-(--nb-color-border)">
                     <div
-                        className="h-full bg-indigo-600"
+                        className="h-full bg-(--nb-color-accent)"
                         style={{ width: `${Math.max(2, Math.min(100, pct))}%` }}
                         title={`${label}: ${value}`}
                     />
                 </div>
             </div>
-            <div className="w-12 text-right text-[11px] text-gray-700 tabular-nums">{valueLabel ?? value}</div>
+            <div className="w-12 text-right text-[11px] text-(--nb-color-text) tabular-nums">{valueLabel ?? value}</div>
         </div>
     );
 };
@@ -102,14 +102,14 @@ const ExamTypeBarChart = ({ rows }) => {
 
     return (
         <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-56">
-            <rect x="0" y="0" width={w} height={h} fill="#F9FAFB" rx="10" />
+            <rect x="0" y="0" width={w} height={h} fill="var(--nb-color-bg-card)" rx="10" />
 
             {tickVals.map((tv, idx) => {
                 const yy = y(tv);
                 return (
                     <g key={idx}>
-                        <line x1={padL} x2={w - padR} y1={yy} y2={yy} stroke="#E5E7EB" strokeWidth="1" />
-                        <text x={padL - 6} y={yy + 4} textAnchor="end" fontSize="10" fill="#6B7280">
+                        <line x1={padL} x2={w - padR} y1={yy} y2={yy} stroke="var(--nb-color-border)" strokeWidth="1" />
+                        <text x={padL - 6} y={yy + 4} textAnchor="end" fontSize="10" fill="var(--nb-color-muted)">
                             {tv.toFixed(0)}%
                         </text>
                     </g>
@@ -123,11 +123,11 @@ const ExamTypeBarChart = ({ rows }) => {
                 const hh = Math.max(0, y0 - yy);
                 return (
                     <g key={r.id || i}>
-                        <rect x={x} y={yy} width={barW} height={hh} rx="6" fill="#4F46E5" />
-                        <text x={x + barW / 2} y={yy - 6} textAnchor="middle" fontSize="10" fill="#374151">
+                        <rect x={x} y={yy} width={barW} height={hh} rx="6" fill="var(--nb-color-accent)" />
+                        <text x={x + barW / 2} y={yy - 6} textAnchor="middle" fontSize="10" fill="var(--nb-color-text)">
                             {Number.isFinite(vv) ? vv.toFixed(0) : 0}%
                         </text>
-                        <text x={x + barW / 2} y={h - 22} textAnchor="middle" fontSize="10" fill="#374151">
+                        <text x={x + barW / 2} y={h - 22} textAnchor="middle" fontSize="10" fill="var(--nb-color-text)">
                             {String(r.label || '').slice(0, 10)}
                         </text>
                     </g>
@@ -539,8 +539,8 @@ export default function ResultsChartsCard() {
         : 'p-4 space-y-2 max-h-[420px] overflow-y-auto pr-2';
 
     return (
-        <div className="rounded-2xl border border-indigo-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-            <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+            <div className="px-5 py-4 bg-(--nb-color-brand) text-white border-b border-white/10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                     <div className="text-lg font-semibold">{t('teachers.dashboard.results.title')}</div>
                     <div className="text-sm text-white/80 mt-1">{t('dashboard.cards.results.subtitle')}</div>
@@ -556,9 +556,9 @@ export default function ResultsChartsCard() {
             </div>
 
             <div className="p-5 flex flex-col gap-4">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-4">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
+                        <div className="inline-flex items-center gap-2 text-sm font-medium text-(--nb-color-text)">
                             <SlidersHorizontal size={16} />
                             <span>{t('common.filters.title')}</span>
                         </div>
@@ -573,7 +573,7 @@ export default function ResultsChartsCard() {
                                 setSubjectId('');
                                 setExamTypeId('');
                             }}
-                            className="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                            className="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-text) hover:bg-(--nb-color-brand-50)"
                             title={t('common.filters.resetTitle')}
                         >
                             <RotateCcw size={14} />
@@ -700,7 +700,7 @@ export default function ResultsChartsCard() {
                     </div>
 
                     {mode === 'overall' && gradeSectionId && subjectOptions.length > 0 ? (
-                        <div className="mt-2 text-[11px] text-gray-600">
+                        <div className="mt-2 text-[11px] text-(--nb-color-muted)">
                             {t('dashboard.cards.results.notes.modeTip')}{' '}
                             <span className="font-semibold">{t('teachers.dashboard.results.filters.mode')} = {t('dashboard.cards.results.modes.subject')}</span>{' '}
                             {t('dashboard.cards.results.notes.modeTipTail')}{' '}
@@ -709,13 +709,13 @@ export default function ResultsChartsCard() {
                     ) : null}
 
                     {gradeSectionId && subjectsPreview ? (
-                        <div className="mt-1 text-[11px] text-gray-600">
+                        <div className="mt-1 text-[11px] text-(--nb-color-muted)">
                             <span className="font-semibold">{t('dashboard.cards.results.labels.subjectsInClass')}</span>: {subjectsPreview}
                         </div>
                     ) : null}
 
                     <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-(--nb-color-muted)">
                             {gradeSectionDetailQuery.isError ? t('dashboard.cards.results.errors.loadClassSubjectsFailed') : null}
                             {!gradeSectionDetailQuery.isError && gradeSectionId ? (
                                 <span>
@@ -729,7 +729,7 @@ export default function ResultsChartsCard() {
                                 </span>
                             ) : null}
                         </div>
-                        <div className="text-xs text-gray-700">
+                        <div className="text-xs text-(--nb-color-text)">
                             <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg')}</span>: {fmtNum(classAvg, 2)} •{' '}
                             <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct')}</span> (≥{passThreshold}): {fmtNum(passPct, 1)}%
                         </div>
@@ -738,14 +738,14 @@ export default function ResultsChartsCard() {
 
                 <div ref={exportCaptureRef} className="flex flex-col gap-4">
                     {exporting ? (
-                        <div className="rounded-xl border border-gray-200 bg-white p-3">
-                            <div className="text-sm font-semibold text-gray-900">{t('dashboard.cards.results.export.title')}</div>
-                            <div className="mt-1 text-xs text-gray-600">{exportFilterSummary}</div>
+                        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-3">
+                            <div className="text-sm font-semibold text-(--nb-color-text)">{t('dashboard.cards.results.export.title')}</div>
+                            <div className="mt-1 text-xs text-(--nb-color-muted)">{exportFilterSummary}</div>
                         </div>
                     ) : null}
 
                     {!isAdminOrStaff ? (
-                        <div className="text-sm text-gray-600">{t('dashboard.cards.results.onlyAdminStaff')}</div>
+                        <div className="text-sm text-(--nb-color-muted)">{t('dashboard.cards.results.onlyAdminStaff')}</div>
                     ) : (view === 'performance' && perfError) ? (
                         <Alert variant="danger">{perfError}</Alert>
                     ) : error ? (
@@ -755,38 +755,38 @@ export default function ResultsChartsCard() {
                     ) : loading ? (
                         <UiLoadingState label={t('teachers.dashboard.results.loading')} className="border-0 bg-transparent p-0 justify-start" />
                     ) : !canRun ? (
-                        <div className="text-sm text-gray-600">{t('dashboard.cards.results.selectFilters')}</div>
+                        <div className="text-sm text-(--nb-color-muted)">{t('dashboard.cards.results.selectFilters')}</div>
                     ) : (view === 'performance' && (perf?.rows || []).length === 0) ? (
-                        <div className="text-sm text-gray-600">{t('teachers.dashboard.results.noPerformanceData')}</div>
+                        <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.results.noPerformanceData')}</div>
                     ) : results.length === 0 ? (
-                        <div className="text-sm text-gray-600">{t('teachers.dashboard.results.noMarks')}</div>
+                        <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.results.noMarks')}</div>
                     ) : view === 'performance' ? (
-                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                            <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+                        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
+                            <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                                 <div className="text-sm font-semibold">{t('teachers.dashboard.results.performance.title')}</div>
                                 <div className="text-xs text-white/80">
                                     {String(perfMode === 'subject' ? t('teachers.dashboard.results.performance.subjectMode') : t('teachers.dashboard.results.performance.overallMode'))} • {t('teachers.dashboard.results.performance.template')} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : '—'}
                                 </div>
                             </div>
                             <div className="p-4 space-y-3">
-                                <div className="text-xs text-gray-600">{t('teachers.dashboard.results.performance.help')}</div>
+                                <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.results.performance.help')}</div>
                                 <ExamTypeBarChart rows={perf.rows} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                     {perf.rows.map((r) => (
-                                        <div key={r.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                                            <div className="text-xs font-semibold text-gray-900 truncate">{r.label}</div>
-                                            <div className="text-[11px] text-gray-600">
+                                        <div key={r.id} className="rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2">
+                                            <div className="text-xs font-semibold text-(--nb-color-text) truncate">{r.label}</div>
+                                            <div className="text-[11px] text-(--nb-color-muted)">
                                                 {t('teachers.dashboard.results.performance.avg')}: {fmtNum(r.avg, 1)} / {fmtNum(r.maxScore, 0)} ({fmtNum(r.pct, 1)}%)
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="text-[11px] text-gray-500">{t('teachers.dashboard.results.performance.tip')}</div>
+                                <div className="text-[11px] text-(--nb-color-muted)">{t('teachers.dashboard.results.performance.tip')}</div>
                             </div>
                         </div>
                     ) : view === 'distribution' ? (
-                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                            <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between">
+                        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
+                            <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between">
                                 <div className="text-sm font-semibold">{t('teachers.dashboard.results.distribution.title')}</div>
                                 <div className="text-xs text-white/80">{t('teachers.dashboard.results.distribution.subtitle')}</div>
                             </div>
@@ -794,14 +794,14 @@ export default function ResultsChartsCard() {
                                 {histogram.map((b) => (
                                     <HistogramBar key={b.label} label={b.label} value={b.value} max={maxBin} />
                                 ))}
-                                <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800 mt-2">
+                                <div className="rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-50) px-3 py-2 text-xs text-(--nb-color-brand) mt-2">
                                     {t('dashboard.cards.results.distribution.kpiLine')}
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                            <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between">
+                        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
+                            <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between">
                                 <div className="text-sm font-semibold">{t('teachers.dashboard.results.top.title')}</div>
                                 <div className="text-xs text-white/80">{t('teachers.dashboard.results.top.subtitle')}</div>
                             </div>
@@ -820,9 +820,9 @@ export default function ResultsChartsCard() {
                     )}
                 </div>
 
-                <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-                    <div className="text-xs text-gray-500">{t('dashboard.cards.results.footer.source')}</div>
-                    <div className="text-xs text-gray-600">
+                <div className="pt-2 border-t border-(--nb-color-border) flex items-center justify-between gap-3 flex-wrap">
+                    <div className="text-xs text-(--nb-color-muted)">{t('dashboard.cards.results.footer.source')}</div>
+                    <div className="text-xs text-(--nb-color-muted)">
                         {t('teachers.dashboard.results.modesFooter')}{' '}
                         <span className="font-medium">{t('dashboard.cards.results.modes.allSubjects')}</span> /{' '}
                         <span className="font-medium">{t('dashboard.cards.results.modes.subject')}</span> /{' '}

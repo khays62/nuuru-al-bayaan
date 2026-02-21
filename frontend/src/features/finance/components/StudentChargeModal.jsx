@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import financeService from '../api/finance';
-import { listGradeSections } from '../../grades/api/gradeSections';
-import { CheckCircle, Wallet, Calendar, Users } from 'lucide-react';
+import { CheckCircle, Wallet, Calendar, Users, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChargeStudentFeesMutation } from '../hooks/studentFinanceHooks';
 import Input from '../../../shared/components/ui/Input.jsx';
@@ -10,15 +9,19 @@ import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 
 export default function StudentChargeModal({ onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
-    const [classes, setClasses] = useState([]);
     const [amountTypes, setAmountTypes] = useState([]);
     const [feeTypes, setFeeTypes] = useState([]);
 
     const [scope, setScope] = useState('all'); // all, single, class
     const [targetId, setTargetId] = useState(''); // studentId or classId
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [amountTypeId, setAmountTypeId] = useState('');
     const [feeType, setFeeType] = useState('personal'); // fee type code
     const [customAmount, setCustomAmount] = useState('');
@@ -45,25 +48,12 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [catsRes, sectionsRes] = await Promise.all([
+                const [catsRes] = await Promise.all([
                     financeService.getFinanceCategories('fee'),
-                    listGradeSections({ limit: 100 })
                 ]);
                 const rawCats = Array.isArray(catsRes?.data) ? catsRes.data : (Array.isArray(catsRes) ? catsRes : []);
                 const cats = rawCats.filter(c => c.type === 'fee' && c.status !== 'inactive');
                 setAmountTypes(cats);
-                let list = Array.isArray(sectionsRes) ? sectionsRes : (sectionsRes?.data || []);
-                if (list.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        list = Array.isArray(fallback)
-                            ? fallback
-                            : (fallback?.data || []);
-                    } catch {
-                        // ignore
-                    }
-                }
-                setClasses(list);
 
                 // Fee Types are separate from Amount Types
                 const ftRes = await financeService.getFeeTypes();
@@ -94,18 +84,11 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
         { value: 'class', label: 'Charge by Class/Grade' },
     ];
 
-    const classOptions = classes.map((c) => {
-        const gradeLabel = c.grade?.gradeName || c.grade?.name || c.gradeName || '';
-        const sectionLabel = c.section || c.name || '';
-        const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-        return { value: c._id, label: label || '—' };
-    });
-
     const amountTypeOptions = amountTypes.map((t) => ({ value: t._id, label: t.name }));
     const feeTypeOptions = (feeTypes.length > 0
         ? feeTypes.map((ft) => ({ value: String(ft.code).toLowerCase(), label: ft.name }))
         : [
-            { value: 'personal', label: 'Personal' },
+            { value: 'personal', label: 'Regular' },
             { value: 'free', label: 'Free' },
         ]);
 
@@ -141,7 +124,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                 feeType: feeType, // personal or free
                 amount: finalAmount,
                 studentId: scope === 'single' ? targetId : undefined,
-                classId: (scope === 'class' || scope === 'all') ? targetId : undefined,
+                classId: scope === 'class' ? targetId : undefined,
                 // academicYearId is not yet in form, but backend allows it
             };
 
@@ -160,17 +143,19 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
     return (
         <Modal isOpen onClose={onClose} closeOnBackdrop={false} title="Student Charge">
             <div className="space-y-6">
-                <div className="text-sm text-slate-500">
+                <div className="text-sm text-(--nb-color-muted)">
                     {formStep === 1 ? 'Step 1: Select Option' : 'Step 2: Select Charge Form'}
                 </div>
                     {formStep === 1 ? (
                         <div className="space-y-4">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Charge Method</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Charge Method</label>
                             <DropdownSelect
                                 value={scope}
                                 onChange={(v) => {
                                     setScope(v);
                                     setTargetId('');
+                                    setGradeId('');
+                                    setShiftId('');
                                 }}
                                 options={scopeOptions}
                                 clearable={false}
@@ -179,7 +164,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
 
                             {scope === 'single' && (
                                 <div className="space-y-2 animate-in slide-in-from-top-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Student Registration ID</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Student Registration ID</label>
                                     <Input
                                         type="text"
                                         className="h-11 font-bold"
@@ -192,16 +177,53 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
 
                             {scope === 'class' && (
                                 <div className="space-y-2 animate-in slide-in-from-top-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Target Class</label>
-                                    <SearchableSelect
-                                        value={targetId}
-                                        onChange={(v) => setTargetId(v)}
-                                        options={classOptions}
-                                        placeholder="-- Choose Class --"
-                                        searchPlaceholder="Search classes…"
-                                        maxVisible={6}
-                                        className="h-11 font-bold"
-                                    />
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Select Target Class</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <GradeSelect
+                                            value={gradeId}
+                                            onChange={(v) => {
+                                                setGradeId(v || '');
+                                                setTargetId('');
+                                            }}
+                                            placeholder="Grade"
+                                            className="h-11 font-bold"
+                                        />
+                                        <ShiftSelect
+                                            value={shiftId}
+                                            onChange={(v) => {
+                                                setShiftId(v || '');
+                                                setTargetId('');
+                                            }}
+                                            placeholder="Shift"
+                                            className="h-11 font-bold"
+                                        />
+                                        <GradeSectionSelect
+                                            gradeId={gradeId}
+                                            shiftId={shiftId}
+                                            value={targetId}
+                                            onChange={(v) => setTargetId(v || '')}
+                                            searchable
+                                            maxVisible={6}
+                                            placeholder="Section"
+                                            searchPlaceholder="Search…"
+                                            className="h-11 font-bold"
+                                        />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <Button
+                                            type="button"
+                                            variant="neutral"
+                                            size="sm"
+                                            icon={<RotateCcw size={16} />}
+                                            onClick={() => {
+                                                setGradeId('');
+                                                setShiftId('');
+                                                setTargetId('');
+                                            }}
+                                        >
+                                            Reset
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -209,7 +231,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                         <div className="space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount Type</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Amount Type</label>
                                     <SearchableSelect
                                         value={amountTypeId}
                                         onChange={(v) => setAmountTypeId(v)}
@@ -221,7 +243,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fee Type</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Fee Type</label>
                                     <DropdownSelect
                                         value={feeType}
                                         onChange={(v) => setFeeType(v)}
@@ -234,7 +256,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
 
                             {isSpecialType && (
                                 <div className="space-y-2 animate-in zoom-in-95">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Enter Amount ($)</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Enter Amount ($)</label>
                                     <Input
                                         type="number"
                                         className="w-full h-11 font-black text-blue-600"
@@ -247,7 +269,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Billing Month</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Billing Month</label>
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between gap-3">
                                             <DropdownSelect
@@ -260,7 +282,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                                             />
                                         </div>
 
-                                        <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 select-none">
+                                        <label className="flex items-center gap-2 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1 select-none">
                                             <Checkbox
                                                 checked={useMultipleMonths}
                                                 onChange={(e) => {
@@ -277,7 +299,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                                         </label>
 
                                         {useMultipleMonths && (
-                                            <div className="grid grid-cols-3 gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                                            <div className="grid grid-cols-3 gap-2 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-2xl p-3">
                                                 {months.map(m => {
                                                     const active = selectedMonths.has(m);
                                                     return (
@@ -287,7 +309,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                                                             onClick={() => toggleSelectedMonth(m)}
                                                             variant="neutral"
                                                             size="sm"
-                                                            className={`px-2 py-2 shadow-none rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${active ? 'bg-slate-900! text-white! border-slate-900!' : 'bg-white! text-slate-700! border-slate-200! hover:bg-slate-100!'}`}
+                                                            className={`px-2 py-2 shadow-none rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${active ? 'bg-(--nb-color-brand)! text-white! border-(--nb-color-brand)!' : 'bg-(--nb-color-bg-card)! text-(--nb-color-fg)! border-(--nb-color-border)! hover:bg-(--nb-color-bg)!'}`}
                                                         >
                                                             {m.slice(0, 3)}
                                                         </Button>
@@ -298,7 +320,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Charge Date</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Charge Date</label>
                                     <Input
                                         type="date"
                                         className="w-full h-11 font-bold text-sm"
@@ -310,7 +332,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                         </div>
                     )}
 
-                <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-200">
+                <div className="flex items-center justify-between gap-2 pt-4 border-t border-(--nb-color-border)">
                     <Button type="button" onClick={onClose} variant="neutral" size="md">
                         Close
                     </Button>

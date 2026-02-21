@@ -561,12 +561,12 @@ export default function TimetablePage() {
       <PrintFooter left={t('common.generatedBy')} />
       {dndBusy && (
         <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white/95 rounded-2xl shadow-xl border border-white/60 px-10 py-10">
+          <div className="bg-(--nb-color-bg-card) rounded-2xl shadow-(--nb-shadow-md) border border-(--nb-color-border) px-10 py-10">
             <div className="flex flex-col items-center gap-4">
-              <div className="text-blue-600">
+              <div className="text-(--nb-color-accent)">
                 <Spinner size={72} color="currentColor" />
               </div>
-              <div className="text-xs text-gray-600 tracking-wide">{t('common.working')}</div>
+              <div className="text-xs text-(--nb-color-muted) tracking-wide">{t('common.working')}</div>
             </div>
           </div>
         </div>
@@ -647,7 +647,7 @@ export default function TimetablePage() {
 
       <div className="print-only">
         <div className="text-xl font-semibold">{t('nav.timetable')}</div>
-        <div className="mt-1 text-sm text-gray-700">
+        <div className="mt-1 text-sm text-(--nb-color-fg)">
           {selectedSection
             ? `${selectedSection.grade?.gradeName || ''} • ${selectedSection.shift?.shiftName || ''} • ${t('common.sectionPrefix')} ${selectedSection.section}`
             : t('timetable.page.print.selectSection')}
@@ -741,15 +741,15 @@ export default function TimetablePage() {
                         step={60}
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="px-2 py-1 border rounded w-full"
+                        className="px-2 py-1 border border-(--nb-color-border) rounded-(--nb-radius-md) bg-(--nb-color-bg-card) text-(--nb-color-text) w-full"
                       />
-                      <span className="text-sm text-gray-600">{t('common.to')}</span>
+                        <span className="text-sm text-(--nb-color-muted)">{t('common.to')}</span>
                       <input
                         type="time"
                         step={60}
                         value={endTime}
                         onChange={(e) => setEndTime(e.target.value)}
-                        className="px-2 py-1 border rounded w-full"
+                          className="px-2 py-1 border border-(--nb-color-border) rounded-(--nb-radius-md) bg-(--nb-color-bg-card) text-(--nb-color-text) w-full"
                       />
                     </div>
                   </FilterItem>
@@ -760,7 +760,7 @@ export default function TimetablePage() {
                       value={room}
                       onChange={e=>setRoom(e.target.value)}
                       placeholder={t('common.room')}
-                      className="px-2 py-1 border rounded w-full"
+                      className="px-2 py-1 border border-(--nb-color-border) rounded-(--nb-radius-md) bg-(--nb-color-bg-card) text-(--nb-color-text) w-full"
                     />
                   </FilterItem>
                 </FilterRow>
@@ -777,10 +777,10 @@ export default function TimetablePage() {
                       return next;
                     });
                   }}
-                  className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors ${isBreak ? 'bg-blue-500' : 'bg-gray-300'}`}
+                  className={`relative inline-flex items-center h-6 w-11 rounded-full transition-colors ${isBreak ? 'bg-(--nb-color-accent)' : 'bg-(--nb-color-border)'}`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 bg-white rounded-full shadow transform transition-transform ${isBreak ? 'translate-x-5' : 'translate-x-1'}`}
+                    className={`inline-block h-5 w-5 bg-(--nb-color-bg-card) rounded-full shadow transform transition-transform ${isBreak ? 'translate-x-5' : 'translate-x-1'}`}
                   />
                 </button>
               )}
@@ -799,7 +799,7 @@ export default function TimetablePage() {
               theadClassName: '',
               useDefaultHeaderStyles: false,
               renderHeader: () => (
-                <tr className="bg-black text-white">
+                <tr className="bg-(--nb-color-brand) text-white">
                   <th className="text-left px-3 py-2">{t('timetable.page.table.day')}</th>
                   {periods.length === 0 ? (
                     <th className="text-left px-3 py-2">{t('timetable.grid.noPeriods')}</th>
@@ -815,16 +815,16 @@ export default function TimetablePage() {
               renderBody: () => (
                 <>
                   {loading && (
-                    <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>{t('timetable.page.loadingSlots')}</td></tr>
+                    <tr><td className="px-3 py-2 text-sm text-(--nb-color-muted)" colSpan={2}>{t('timetable.page.loadingSlots')}</td></tr>
                   )}
                   {!loading && error && (
                     <tr><td className="px-3 py-2 text-sm text-red-600" colSpan={2}>{String(error)}</td></tr>
                   )}
                   {!loading && !error && slots.length === 0 && (
                     (displayDays.length === 0 ? (
-                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>{t('timetable.grid.noDaysSelected')}</td></tr>
+                      <tr><td className="px-3 py-2 text-sm text-(--nb-color-muted)" colSpan={Math.max(2, 1 + periods.length)}>{t('timetable.grid.noDaysSelected')}</td></tr>
                     ) : periods.length === 0 ? (
-                      <tr><td className="px-3 py-2 text-sm text-gray-500" colSpan={2}>{t('timetable.page.empty.setValidTimeRange')}</td></tr>
+                      <tr><td className="px-3 py-2 text-sm text-(--nb-color-muted)" colSpan={2}>{t('timetable.page.empty.setValidTimeRange')}</td></tr>
                     ) : (
                       <TimetableGrid
                         slots={slots}

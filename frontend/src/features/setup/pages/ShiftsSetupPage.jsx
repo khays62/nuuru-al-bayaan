@@ -140,9 +140,9 @@ export default function ShiftsSetupPage() {
 
   const columns = useMemo(
     () => [
-      { key: 'shiftName', label: t('setup.shifts.columns.shift', { defaultValue: 'Shift' }), sortable: true, field: 'shiftName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
-      { key: 'updatedAt', label: t('common.table.updated', { defaultValue: 'Updated' }), sortable: true, field: 'updatedAt', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200' },
-      { key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
+      { key: 'shiftName', label: t('setup.shifts.columns.shift', { defaultValue: 'Shift' }), sortable: true, field: 'shiftName', tdClassName: 'px-6 py-4 text-sm font-medium text-(--nb-color-fg) border-x border-(--nb-color-border)' },
+      { key: 'updatedAt', label: t('common.table.updated', { defaultValue: 'Updated' }), sortable: true, field: 'updatedAt', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)' },
+      { key: 'actions', label: t('common.table.actions', { defaultValue: 'Actions' }), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-(--nb-color-border) no-print' },
     ],
     [t]
   );
@@ -225,7 +225,6 @@ export default function ShiftsSetupPage() {
     setSortBy((prev) => (String(prev || '') === nextField ? prev : nextField));
   };
 
-  const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
   const onReset = () => {
     setSearch('');
     setSortBy('shiftName');
@@ -269,8 +268,7 @@ export default function ShiftsSetupPage() {
 
               <div className="flex items-center gap-2 flex-wrap">
                 <ActionButton
-                  variant="brand"
-                  className={outlineBtn}
+                  variant="outline"
                   icon={<Printer size={16} />}
                   disabled={!canExport}
                   onClick={handlePrint}
@@ -278,13 +276,12 @@ export default function ShiftsSetupPage() {
                 >
                   {t('common.actions.print', { defaultValue: 'Print' })}
                 </ActionButton>
-                <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-                <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+                <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
                 <ActionButton
-                  variant="neutral"
-                  className={outlineBtn}
+                  variant="outline"
                   icon={<RotateCcw size={16} />}
                   onClick={onReset}
                 >

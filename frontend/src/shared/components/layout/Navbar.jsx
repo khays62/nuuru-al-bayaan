@@ -229,7 +229,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                 {/* Mobile Menu Toggle (Hamburger Icon) */}
                 <button
                     onClick={onToggleMobileMenu}
-                    className="text-gray-600 hover:text-gray-800 md:hidden"
+                    className="text-(--nb-color-muted) hover:text-(--nb-color-fg) md:hidden"
                     title={t('common.openMenu', { defaultValue: 'Open Menu' })}
                 >
                     <Menu size={24} />
@@ -238,7 +238,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                 {/* Desktop Collapse Toggle */}
                 <button
                     onClick={onToggleCollapse}
-                    className="hidden md:block text-gray-600 hover:text-gray-800"
+                    className="hidden md:block text-(--nb-color-muted) hover:text-(--nb-color-fg)"
                     title={isCollapsed
                         ? t('common.expandSidebar', { defaultValue: 'Expand Sidebar' })
                         : t('common.collapseSidebar', { defaultValue: 'Collapse Sidebar' })
@@ -251,7 +251,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
 
                 {/* Current Page Title */}
                 <div className="hidden sm:block">
-                    <h1 className={(isRTL ? 'text-right' : 'text-left') + " text-lg font-bold text-gray-800"}>{currentPageTitle || ''}</h1>
+                    <h1 className={(isRTL ? 'text-right' : 'text-left') + " text-lg font-bold text-(--nb-color-fg)"}>{currentPageTitle || ''}</h1>
                 </div>
         </div>
     );
@@ -263,14 +263,14 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                     "absolute inset-y-0 flex items-center " +
                     (isRTL ? 'right-0 pr-3' : 'left-0 pl-3')
                 }>
-                    <Search size={20} className="text-gray-400" />
+                    <Search size={20} className="text-(--nb-color-muted)" />
                 </span>
                 <input
                     dir={isRTL ? 'rtl' : 'ltr'}
                     type="text"
                     placeholder={t('common.search', { defaultValue: 'Search…' })}
                     className={
-                        "w-full py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 " +
+                        "w-full py-2 border border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) placeholder:text-(--nb-color-muted) rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2 " +
                         (isRTL ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4')
                     }
                 />
@@ -283,7 +283,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             <button
                 type="button"
                 onClick={() => setOpenLang((v) => !v)}
-                className="p-2 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                className="p-2 rounded-md border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50) text-(--nb-color-fg)"
                 title={t('common.language', { defaultValue: 'Language' })}
                 aria-label={t('common.language', { defaultValue: 'Language' })}
             >
@@ -299,34 +299,34 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         type="button"
                         onClick={() => { setLang('en'); setOpenLang(false); }}
                         className={
-                            'w-full px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ' +
-                            (lang === 'en' ? 'text-blue-700 font-medium' : 'text-slate-700')
+                            'w-full px-3 py-2 text-sm hover:bg-(--nb-color-brand-50) flex items-center justify-between ' +
+                            (lang === 'en' ? 'text-(--nb-color-brand) font-medium' : 'text-(--nb-color-fg)')
                         }
                     >
                         <span>{t('common.english', { defaultValue: 'English' })}</span>
-                        {lang === 'en' ? <span className="text-blue-700">✓</span> : null}
+                        {lang === 'en' ? <span className="text-(--nb-color-accent)">✓</span> : null}
                     </button>
                     <button
                         type="button"
                         onClick={() => { setLang('so'); setOpenLang(false); }}
                         className={
-                            'w-full px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ' +
-                            (lang === 'so' ? 'text-blue-700 font-medium' : 'text-slate-700')
+                            'w-full px-3 py-2 text-sm hover:bg-(--nb-color-brand-50) flex items-center justify-between ' +
+                            (lang === 'so' ? 'text-(--nb-color-brand) font-medium' : 'text-(--nb-color-fg)')
                         }
                     >
                         <span>{t('common.somali', { defaultValue: 'Somali' })}</span>
-                        {lang === 'so' ? <span className="text-blue-700">✓</span> : null}
+                        {lang === 'so' ? <span className="text-(--nb-color-accent)">✓</span> : null}
                     </button>
                     <button
                         type="button"
                         onClick={() => { setLang('ar'); setOpenLang(false); }}
                         className={
-                            'w-full px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between ' +
-                            (lang === 'ar' ? 'text-blue-700 font-medium' : 'text-slate-700')
+                            'w-full px-3 py-2 text-sm hover:bg-(--nb-color-brand-50) flex items-center justify-between ' +
+                            (lang === 'ar' ? 'text-(--nb-color-brand) font-medium' : 'text-(--nb-color-fg)')
                         }
                     >
                         <span>{t('common.arabic', { defaultValue: 'Arabic' })}</span>
-                        {lang === 'ar' ? <span className="text-blue-700">✓</span> : null}
+                        {lang === 'ar' ? <span className="text-(--nb-color-accent)">✓</span> : null}
                     </button>
                 </Card>
             ) : null}
@@ -338,10 +338,10 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             <button
                 type="button"
                 onClick={() => setOpenLocks((v) => !v)}
-                className="relative p-2 rounded-md hover:bg-gray-100"
+                className="relative p-2 rounded-md hover:bg-(--nb-color-brand-50)"
                 title={t('common.securityBell.notificationsTitle', { defaultValue: 'Security notifications' })}
             >
-                <Bell size={20} className="text-gray-700" />
+                <Bell size={20} className="text-(--nb-color-muted)" />
                 {Number(lockCountQuery.data || 0) > 0 && (
                     <span className={
                         "absolute -top-1 min-w-4.5 h-4.5 px-1 rounded-full bg-red-600 text-white text-[11px] flex items-center justify-center " +
@@ -357,7 +357,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                     dir={isRTL ? 'rtl' : 'ltr'}
                     className={(isRTL ? 'left-0' : 'right-0') + " absolute mt-2 w-96 rounded-xl shadow-xl overflow-hidden z-50"}
                 >
-                                <div className="px-3 py-2 border-b flex items-center justify-between bg-gray-50">
+                                <div className="px-3 py-2 border-b border-(--nb-color-border) flex items-center justify-between bg-(--nb-color-bg)">
                                     <div className="flex items-center gap-2">
                                         <ShieldAlert size={16} className="text-red-600" />
                                         <span className="font-semibold text-sm">{t('common.securityBell.alertsTitle', { defaultValue: 'Security alerts' })}</span>
@@ -365,7 +365,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                     <button
                                         type="button"
                                         onClick={() => setOpenLocks(false)}
-                                        className="text-gray-500 hover:text-gray-800"
+                                        className="text-(--nb-color-muted) hover:text-(--nb-color-fg)"
                                         title={t('common.close', { defaultValue: 'Close' })}
                                     >
                                         <X size={16} />
@@ -382,7 +382,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         </div>
                                     )}
                                     {!locksQuery.isLoading && (locksQuery.data?.length || 0) === 0 && (
-                                        <div className="p-3 text-sm text-gray-600">
+                                        <div className="p-3 text-sm text-(--nb-color-muted)">
                                             {t('common.securityBell.noLockedAccounts', { defaultValue: 'No locked accounts right now.' })}
                                         </div>
                                     )}
@@ -445,14 +445,14 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         const toggleBusy = inactiveBusy || activeBusy;
                                         const disableSecurityActions = isInactiveAccount || toggleBusy;
                                         return (
-                                            <div key={ev._id} className="p-3 border-b last:border-b-0 hover:bg-gray-50">
+                                            <div key={ev._id} className="p-3 border-b border-(--nb-color-border) last:border-b-0 hover:bg-(--nb-color-brand-50)">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div className="min-w-0">
-                                                        <div className="text-sm font-semibold text-gray-800 truncate">{displayName}</div>
+                                                        <div className="text-sm font-semibold text-(--nb-color-fg) truncate">{displayName}</div>
                                                         {showUsername && (
-                                                            <div className="text-xs text-gray-500 truncate">{ev.username}</div>
+                                                            <div className="text-xs text-(--nb-color-muted) truncate">{ev.username}</div>
                                                         )}
-                                                        <div className="text-xs text-gray-500">
+                                                        <div className="text-xs text-(--nb-color-muted)">
                                                             {r || t('common.securityBell.userRoleFallback', { defaultValue: 'USER' })}
                                                             {isInactiveAccount
                                                                 ? ` • ${t('common.securityBell.inactiveTag', { defaultValue: 'INACTIVE' })}`
@@ -464,7 +464,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                     : '')}
                                                         </div>
                                                         {ev.occurrences > 1 && (
-                                                            <div className="text-xs text-gray-500">
+                                                            <div className="text-xs text-(--nb-color-muted)">
                                                                 {t('common.securityBell.attemptsLockCount', {
                                                                     defaultValue: 'Attempts lock count: {{count}}',
                                                                     count: ev.occurrences,
@@ -478,7 +478,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                 ? (canResetThis && (
                                                                     <button
                                                                         type="button"
-                                                                        className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-100 disabled:opacity-60"
+                                                                        className="px-2 py-1 text-xs rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50) disabled:opacity-60"
                                                                         onClick={() => doResetToDefault(String(ev.principalId), role)}
                                                                         title={t('common.securityBell.titles.resetToDefaultAndUnlock', { defaultValue: 'Reset password to default + unlock' })}
                                                                         disabled={resetBusy || unlockBusy || disableSecurityActions}
@@ -491,7 +491,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                 : (canUnlockThis && (
                                                                     <button
                                                                         type="button"
-                                                                        className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-100 disabled:opacity-60"
+                                                                        className="px-2 py-1 text-xs rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50) disabled:opacity-60"
                                                                         onClick={() => doUnlock(String(ev.principalId))}
                                                                         title={t('common.securityBell.titles.unlockAccount', { defaultValue: 'Unlock account (clear login lockout)' })}
                                                                         disabled={unlockBusy || resetBusy || disableSecurityActions}
@@ -536,7 +536,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
 
                                                         <button
                                                             type="button"
-                                                            className="px-2 py-1 text-xs rounded border bg-white hover:bg-gray-100 disabled:opacity-60"
+                                                            className="px-2 py-1 text-xs rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50) disabled:opacity-60"
                                                             onClick={() => doClear(String(ev._id))}
                                                             title={t('common.securityBell.titles.clearNotification', { defaultValue: 'Clear notification' })}
                                                             disabled={clearBusy}
@@ -559,10 +559,10 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const userEl = (
         <>
             <div dir={isRTL ? 'rtl' : 'ltr'} className={(isRTL ? 'text-left' : 'text-right') + " hidden sm:block"}>
-                <p className="font-semibold text-sm text-gray-800">{displayName}</p>
-                <p className="text-xs text-gray-500">{meta || ' '}</p>
+                <p className="font-semibold text-sm text-(--nb-color-fg)">{displayName}</p>
+                <p className="text-xs text-(--nb-color-muted)">{meta || ' '}</p>
             </div>
-            <User size={24} className="text-gray-600 sm:hidden" />
+            <User size={24} className="text-(--nb-color-muted) sm:hidden" />
         </>
     );
 
@@ -605,7 +605,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             // Important: keep layout direction stable so RTL swaps (DOM order) work predictably.
             // Text direction is applied on inner groups.
             dir="ltr"
-            className="relative bg-white shadow-lg p-4 flex items-center justify-between gap-4 z-40 no-print"
+            className="relative bg-(--nb-color-bg-card) shadow-lg p-4 flex items-center justify-between gap-4 z-40 no-print"
         >
             {isRTL ? rightGroup : leftGroup}
             {searchGroup}

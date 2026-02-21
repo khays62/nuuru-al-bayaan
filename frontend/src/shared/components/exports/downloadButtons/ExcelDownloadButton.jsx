@@ -5,7 +5,7 @@ import ActionButton from '../../ui/ActionButton';
 import { exportTableToExcel } from '../../../../utils/exportTable';
 import { useI18n } from '../../../../i18n/I18nProvider';
 
-export default function ExcelDownloadButton({ getPayload, disabled = false, className = '' }) {
+export default function ExcelDownloadButton({ getPayload, disabled = false, className = '', variant = 'outline' }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
@@ -48,7 +48,7 @@ export default function ExcelDownloadButton({ getPayload, disabled = false, clas
 
   return (
     <ActionButton
-      variant="brand"
+      variant={variant}
       className={className}
       icon={<FileDown size={16} />}
       disabled={disabled || busy}

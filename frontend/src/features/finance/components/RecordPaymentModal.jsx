@@ -58,22 +58,22 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-lg rounded-xl shadow-(--nb-shadow-md) overflow-hidden border border-(--nb-color-border)">
+                <div className="flex justify-between items-center p-6 border-b border-(--nb-color-border)">
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Record Payment</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">
+                        <h3 className="text-lg font-black text-(--nb-color-fg) uppercase tracking-tight">Record Payment</h3>
+                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest leading-none mt-1">
                             Invoice or Hormaris credit
                         </p>
                     </div>
-                    <button onClick={onClose} className="text-slate-300 hover:text-slate-900 transition-colors p-2 hover:bg-slate-100 rounded-full">
+                    <button onClick={onClose} className="text-(--nb-color-muted) hover:text-(--nb-color-fg) transition-colors p-2 hover:bg-(--nb-color-bg) rounded-full">
                         <X size={24} />
                     </button>
                 </div>
 
-                <div className="p-6 bg-slate-50 border-b border-slate-100 space-y-3">
+                <div className="p-6 bg-(--nb-color-bg) border-b border-(--nb-color-border) space-y-3">
                     <div className="flex gap-6">
-                        <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-(--nb-color-fg)">
                             <input
                                 type="radio"
                                 checked={paymentType === 'Invoice'}
@@ -81,7 +81,7 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
                             />
                             Pay Invoice
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-700">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-(--nb-color-fg)">
                             <input
                                 type="radio"
                                 checked={paymentType === 'Hormaris'}
@@ -92,25 +92,25 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
                     </div>
 
                     {paymentType === 'Invoice' ? (
-                        <div className="text-sm space-y-1 text-slate-700">
-                            <p>Paying for: <span className="font-black text-slate-900">{invoice?.title}</span></p>
-                            <p>Student: <span className="font-black text-slate-900">{invoice?.student?.firstName} {invoice?.student?.lastName}</span></p>
+                        <div className="text-sm space-y-1 text-(--nb-color-fg)">
+                            <p>Paying for: <span className="font-black text-(--nb-color-fg)">{invoice?.title}</span></p>
+                            <p>Student: <span className="font-black text-(--nb-color-fg)">{invoice?.student?.firstName} {invoice?.student?.lastName}</span></p>
                             <p>Total Balance: <span className="font-black text-blue-600">${invoice?.balance}</span></p>
                         </div>
                     ) : (
-                        <div className="text-sm space-y-1 text-slate-700">
-                            <p>Student: <span className="font-black text-slate-900">{invoice?.student?.firstName} {invoice?.student?.lastName}</span></p>
-                            <p className="text-slate-500 italic">This will credit the student's account for future fees.</p>
+                        <div className="text-sm space-y-1 text-(--nb-color-fg)">
+                            <p>Student: <span className="font-black text-(--nb-color-fg)">{invoice?.student?.firstName} {invoice?.student?.lastName}</span></p>
+                            <p className="text-(--nb-color-muted) italic">This will credit the student's account for future fees.</p>
                         </div>
                     )}
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount to {paymentType === 'Hormaris' ? 'Credit' : 'Pay'}</label>
+                        <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Amount to {paymentType === 'Hormaris' ? 'Credit' : 'Pay'}</label>
                         <input
                             type="number"
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                            className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                             value={formData.amount}
                             max={paymentType === 'Invoice' ? invoice?.balance : undefined}
                             onChange={e => setFormData({ ...formData, amount: e.target.value })}
@@ -120,10 +120,10 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
 
                     {paymentType === 'Hormaris' && (
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Month (YYYY-MM)</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Target Month (YYYY-MM)</label>
                             <input
                                 type="month"
-                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                 value={formData.targetMonth}
                                 onChange={e => setFormData({ ...formData, targetMonth: e.target.value })}
                                 required
@@ -133,9 +133,9 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Method</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Method</label>
                             <select
-                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                 value={formData.method}
                                 onChange={e => setFormData({ ...formData, method: e.target.value })}
                             >
@@ -145,10 +145,10 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Reference No.</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Reference No.</label>
                             <input
                                 type="text"
-                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) text-(--nb-color-fg) border border-(--nb-color-border) rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                 placeholder="Optional"
                                 value={formData.reference}
                                 onChange={e => setFormData({ ...formData, reference: e.target.value })}
@@ -157,7 +157,7 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
                     </div>
 
                     <div className="pt-4 flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 py-3 font-black uppercase text-xs tracking-widest text-slate-500 hover:bg-slate-100 rounded-xl">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 font-black uppercase text-xs tracking-widest text-(--nb-color-muted) hover:bg-(--nb-color-bg) rounded-xl">
                             Cancel
                         </button>
                         <button

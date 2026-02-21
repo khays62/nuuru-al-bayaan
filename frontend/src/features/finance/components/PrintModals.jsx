@@ -1,7 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { useState, useEffect } from 'react';
-import { Printer, X, Download, FileText, CheckCircle, Search, Calendar, ChevronRight, Users, TrendingUp } from 'lucide-react';
-import { listGradeSections } from '../../grades/api/gradeSections';
+import { Printer, X, Download, FileText, CheckCircle, Search, Calendar, ChevronRight, Users, TrendingUp, RotateCcw } from 'lucide-react';
 import financeService from '../api/finance';
 import toast from 'react-hot-toast';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
@@ -10,17 +9,20 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 
 // Reusable Print Modal Wrapper (DS-aligned)
 const PrintModalWrapper = ({ title, subtitle, onClose, onPrint, children, loading }) => (
     <Modal isOpen onClose={onClose} title={title}>
         {subtitle ? (
-            <p className="text-sm text-slate-500 -mt-1 mb-4">{subtitle}</p>
+            <p className="text-sm text-(--nb-color-muted) -mt-1 mb-4">{subtitle}</p>
         ) : null}
 
         {children}
 
-        <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        <div className="mt-6 pt-4 border-t border-(--nb-color-border) flex items-center justify-end gap-3">
             <Button onClick={onClose} variant="neutral" size="md">
                 Close
             </Button>
@@ -767,10 +769,11 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
 // 1. Monthly Invoice Modal
 export const PrintMonthlyInvoiceModal = ({ onClose }) => {
     const [month, setMonth] = useState(months[new Date().getMonth()]);
-    const [classes, setClasses] = useState([]);
     const [years, setYears] = useState([]);
     const [amountTypes, setAmountTypes] = useState([]);
     const [selectedYear, setSelectedYear] = useState('');
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [selectedClass, setSelectedClass] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
     const [loading, setLoading] = useState(false);
@@ -778,31 +781,12 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
     useEffect(() => {
         const load = async () => {
             try {
-                const [clsRes, yrRes, catRes] = await Promise.all([
-                    listGradeSections({ limit: 100 }),
+                const [yrRes, catRes] = await Promise.all([
                     financeService.getAcademicYears(),
                     financeService.getFinanceCategories('fee')
                 ]);
-
-                const classesData = Array.isArray(clsRes)
-                    ? clsRes
-                    : (clsRes?.data?.data || clsRes?.data || []);
                 const yearsData = Array.isArray(yrRes) ? yrRes : (yrRes?.data || []);
                 const categoriesData = Array.isArray(catRes) ? catRes : (catRes?.data || []);
-
-                let finalClasses = classesData;
-                if (finalClasses.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        finalClasses = Array.isArray(fallback)
-                            ? fallback
-                            : (fallback?.data || []);
-                    } catch {
-                        // ignore, keep empty
-                    }
-                }
-
-                setClasses(finalClasses);
                 setYears(yearsData);
                 const filteredCategories = (categoriesData || []).filter(c => {
                     const name = String(c?.name || '').trim().toLowerCase();
@@ -864,7 +848,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
             <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Academic Year</label>
+                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Academic Year</label>
                         <DropdownSelect
                             value={selectedYear}
                             onChange={setSelectedYear}
@@ -873,7 +857,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Billing Month</label>
+                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Billing Month</label>
                         <DropdownSelect
                             value={month}
                             onChange={setMonth}
@@ -885,7 +869,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Fee Category / Amount Type</label>
+                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Fee Category / Amount Type</label>
                     <SearchableSelect
                         value={selectedCategory}
                         onChange={setSelectedCategory}
@@ -896,24 +880,57 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                     />
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <div className="space-y-1.5 pt-2 border-t border-(--nb-color-border)">
                     <div className="flex items-center gap-2 mb-2">
-                        <Users size={12} className="text-slate-400" />
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Class Filtering (Optional)</span>
+                        <Users size={12} className="text-(--nb-color-muted)" />
+                        <span className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest">Class Filtering (Optional)</span>
                     </div>
-                    <SearchableSelect
-                        value={selectedClass}
-                        onChange={setSelectedClass}
-                        options={(classes || []).map((c) => {
-                            const gradeLabel = c?.grade?.gradeName || c?.grade?.name || c?.gradeName || '';
-                            const sectionLabel = c?.section || c?.name || '';
-                            const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                            return { value: c?._id, label: label || '—' };
-                        })}
-                        placeholder="Campus Wide (Default)"
-                        searchPlaceholder="Search…"
-                        maxVisible={7}
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <GradeSelect
+                            value={gradeId}
+                            onChange={(v) => {
+                                setGradeId(v || '');
+                                setSelectedClass('');
+                            }}
+                            placeholder="Grade"
+                            className="h-11 font-bold"
+                        />
+                        <ShiftSelect
+                            value={shiftId}
+                            onChange={(v) => {
+                                setShiftId(v || '');
+                                setSelectedClass('');
+                            }}
+                            placeholder="Shift"
+                            className="h-11 font-bold"
+                        />
+                        <GradeSectionSelect
+                            gradeId={gradeId}
+                            shiftId={shiftId}
+                            value={selectedClass}
+                            onChange={(v) => setSelectedClass(v || '')}
+                            searchable
+                            maxVisible={7}
+                            placeholder="Campus Wide (Default)"
+                            searchPlaceholder="Search…"
+                            className="h-11 font-bold"
+                        />
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                setGradeId('');
+                                setShiftId('');
+                                setSelectedClass('');
+                            }}
+                            variant="neutral"
+                            size="sm"
+                            icon={<RotateCcw size={16} />}
+                        >
+                            Reset
+                        </Button>
+                    </div>
                 </div>
             </div>
         </PrintModalWrapper>
@@ -945,11 +962,11 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
             <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">From Date</label>
+                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">From Date</label>
                         <Input type="date" className="h-11 font-bold" value={fromDate} onChange={e => setFromDate(e.target.value)} />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">To Date</label>
+                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">To Date</label>
                         <Input type="date" className="h-11 font-bold" value={toDate} onChange={e => setToDate(e.target.value)} />
                     </div>
                 </div>
@@ -962,9 +979,10 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
 // 3. Pass Card Modal
 export const PrintPassCardModal = ({ onClose }) => {
     const [loading, setLoading] = useState(false);
-    const [classes, setClasses] = useState([]);
     const [years, setYears] = useState([]);
     const [selectedClass, setSelectedClass] = useState('');
+    const [gradeId, setGradeId] = useState('');
+    const [shiftId, setShiftId] = useState('');
     const [selectedYear, setSelectedYear] = useState('');
     const [examType, setExamType] = useState('Midterm Examination');
     const [layout, setLayout] = useState('portrait');
@@ -974,28 +992,10 @@ export const PrintPassCardModal = ({ onClose }) => {
     useEffect(() => {
         const load = async () => {
             try {
-                const [clsRes, yrRes] = await Promise.all([
-                    listGradeSections({ limit: 100 }),
+                const [yrRes] = await Promise.all([
                     financeService.getAcademicYears()
                 ]);
-
-                const classesData = Array.isArray(clsRes)
-                    ? clsRes
-                    : (clsRes?.data?.data || clsRes?.data || []);
                 const yearsData = Array.isArray(yrRes) ? yrRes : (yrRes?.data || []);
-                let finalClasses = classesData;
-                if (finalClasses.length === 0) {
-                    try {
-                        const fallback = await financeService.getGradeSections({ limit: 100 });
-                        finalClasses = Array.isArray(fallback)
-                            ? fallback
-                            : (fallback?.data || []);
-                    } catch {
-                        // ignore
-                    }
-                }
-
-                setClasses(finalClasses);
                 setYears(yearsData);
                 // Keep empty by default to allow "All Classes" printing.
 
@@ -1065,7 +1065,7 @@ export const PrintPassCardModal = ({ onClose }) => {
         <PrintModalWrapper title="Academic Hub" subtitle="Student Clearance Passcards" onClose={onClose} onPrint={handlePrint} loading={loading}>
             <div className="space-y-5">
                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Academic Year</label>
+                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Target Academic Year</label>
                     <DropdownSelect
                         value={selectedYear}
                         onChange={setSelectedYear}
@@ -1075,24 +1075,57 @@ export const PrintPassCardModal = ({ onClose }) => {
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Choose Class</label>
-                    <SearchableSelect
-                        value={selectedClass}
-                        onChange={setSelectedClass}
-                        options={(classes || []).map((c) => {
-                            const gradeLabel = c?.grade?.gradeName || c?.grade?.name || c?.gradeName || '';
-                            const sectionLabel = c?.section || c?.name || '';
-                            const label = `${gradeLabel}${sectionLabel ? ` - ${sectionLabel}` : ''}`.trim();
-                            return { value: c?._id, label: label || '—' };
-                        })}
-                        placeholder="All Classes"
-                        searchPlaceholder="Search…"
-                        maxVisible={7}
-                    />
+                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Choose Class</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <GradeSelect
+                            value={gradeId}
+                            onChange={(v) => {
+                                setGradeId(v || '');
+                                setSelectedClass('');
+                            }}
+                            placeholder="Grade"
+                            className="h-11 font-bold"
+                        />
+                        <ShiftSelect
+                            value={shiftId}
+                            onChange={(v) => {
+                                setShiftId(v || '');
+                                setSelectedClass('');
+                            }}
+                            placeholder="Shift"
+                            className="h-11 font-bold"
+                        />
+                        <GradeSectionSelect
+                            gradeId={gradeId}
+                            shiftId={shiftId}
+                            value={selectedClass}
+                            onChange={(v) => setSelectedClass(v || '')}
+                            searchable
+                            maxVisible={7}
+                            placeholder="All Classes"
+                            searchPlaceholder="Search…"
+                            className="h-11 font-bold"
+                        />
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                        <Button
+                            type="button"
+                            onClick={() => {
+                                setGradeId('');
+                                setShiftId('');
+                                setSelectedClass('');
+                            }}
+                            variant="neutral"
+                            size="sm"
+                            icon={<RotateCcw size={16} />}
+                        >
+                            Reset
+                        </Button>
+                    </div>
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Examination Type</label>
+                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Examination Type</label>
                     <DropdownSelect
                         value={examType}
                         onChange={setExamType}
@@ -1102,12 +1135,12 @@ export const PrintPassCardModal = ({ onClose }) => {
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-(--nb-color-border)">
                     <Button
                         onClick={() => setLayout('portrait')}
                         variant="neutral"
                         size="md"
-                        className={`w-full justify-center gap-2 p-3! rounded-xl border-2 shadow-none font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'portrait' ? 'border-blue-600! bg-blue-50! text-blue-600!' : 'border-slate-100! text-slate-400! bg-white!'}`}
+                        className={`w-full justify-center gap-2 p-3! rounded-xl border-2 shadow-none font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'portrait' ? 'border-blue-600! bg-blue-50! text-blue-600!' : 'border-(--nb-color-border)! text-(--nb-color-muted)! bg-(--nb-color-bg-card)!'}`}
                     >
                         Portrait
                     </Button>
@@ -1115,7 +1148,7 @@ export const PrintPassCardModal = ({ onClose }) => {
                         onClick={() => setLayout('landscape')}
                         variant="neutral"
                         size="md"
-                        className={`w-full justify-center gap-2 p-3! rounded-xl border-2 shadow-none font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'landscape' ? 'border-blue-600! bg-blue-50! text-blue-600!' : 'border-slate-100! text-slate-400! bg-white!'}`}
+                        className={`w-full justify-center gap-2 p-3! rounded-xl border-2 shadow-none font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'landscape' ? 'border-blue-600! bg-blue-50! text-blue-600!' : 'border-(--nb-color-border)! text-(--nb-color-muted)! bg-(--nb-color-bg-card)!'}`}
                     >
                         Landscape
                     </Button>

@@ -33,36 +33,36 @@ export default function CreateInvoiceModal({ onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-lg rounded-xl shadow-(--nb-shadow-md) overflow-hidden border border-(--nb-color-border)">
+                <div className="flex justify-between items-center p-6 border-b border-(--nb-color-border)">
                     <div>
-                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Create New Invoice</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Single student invoice</p>
+                        <h3 className="text-lg font-black text-(--nb-color-fg) uppercase tracking-tight">Create New Invoice</h3>
+                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest leading-none mt-1">Single student invoice</p>
                     </div>
-                    <button onClick={onClose} className="text-slate-300 hover:text-slate-900 transition-colors p-2 hover:bg-slate-100 rounded-full">
+                    <button onClick={onClose} className="text-(--nb-color-muted) hover:text-(--nb-color-fg) transition-colors p-2 hover:bg-(--nb-color-bg) rounded-full">
                         <X size={20} />
                     </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Student ID</label>
+                        <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Student ID</label>
                         <input
                             type="text"
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                            className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-xl font-bold text-sm text-(--nb-color-fg) outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                             placeholder="Enter Student ID"
                             value={formData.studentId}
                             onChange={e => setFormData({ ...formData, studentId: e.target.value })}
                             required
                         />
-                        <p className="text-[11px] text-slate-400 mt-1">Copy ID from student list (e.g., 677...)</p>
+                        <p className="text-[11px] text-(--nb-color-muted) mt-1">Copy ID from student list (e.g., 677...)</p>
                     </div>
 
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fee Title</label>
+                        <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Fee Title</label>
                         <input
                             type="text"
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                            className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-xl font-bold text-sm text-(--nb-color-fg) outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                             placeholder="e.g. Monthly Tuition - Jan"
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
@@ -72,9 +72,9 @@ export default function CreateInvoiceModal({ onClose, onSuccess }) {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Type</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Type</label>
                             <select
-                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-xl font-bold text-sm text-(--nb-color-fg) outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                 value={formData.type}
                                 onChange={e => setFormData({ ...formData, type: e.target.value })}
                             >
@@ -85,10 +85,10 @@ export default function CreateInvoiceModal({ onClose, onSuccess }) {
                             </select>
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Amount</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Amount</label>
                             <input
                                 type="number"
-                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                                className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-xl font-bold text-sm text-(--nb-color-fg) outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                                 placeholder="0.00"
                                 value={formData.amount}
                                 onChange={e => setFormData({ ...formData, amount: e.target.value })}
@@ -98,10 +98,10 @@ export default function CreateInvoiceModal({ onClose, onSuccess }) {
                     </div>
 
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Due Date</label>
+                        <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Due Date</label>
                         <input
                             type="date"
-                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
+                            className="w-full px-5 py-3.5 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-xl font-bold text-sm text-(--nb-color-fg) outline-none focus:ring-4 focus:ring-blue-600/10 transition-all"
                             value={formData.dueDate}
                             onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
                             required
@@ -112,7 +112,7 @@ export default function CreateInvoiceModal({ onClose, onSuccess }) {
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-5 py-3 rounded-xl font-black uppercase text-xs tracking-widest text-slate-600 bg-slate-100 hover:bg-slate-200"
+                            className="px-5 py-3 rounded-xl font-black uppercase text-xs tracking-widest text-(--nb-color-muted) bg-(--nb-color-bg) hover:bg-(--nb-color-bg-card)"
                         >
                             Cancel
                         </button>

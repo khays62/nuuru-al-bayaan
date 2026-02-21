@@ -401,7 +401,6 @@ export default function TranscriptPage() {
     return list;
   };
 
-  const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
   const canExport = Boolean(
     canPrintTranscript
     && selectedStudentIds.length > 0
@@ -612,7 +611,7 @@ export default function TranscriptPage() {
         <Skeleton className="h-6 w-64 mx-auto" />
         <Skeleton className="h-4 w-40 mx-auto" />
       </div>
-      <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white p-3">
+      <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) p-3">
         <div className="flex flex-wrap gap-3">
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-4 w-40" />
@@ -636,7 +635,7 @@ export default function TranscriptPage() {
   );
 
   const EnrollmentTableSkeleton = () => (
-    <div className="rounded-(--nb-radius-md) border border-slate-200 bg-white p-3">
+    <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) p-3">
       <div className="flex flex-wrap gap-3">
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-4 w-40" />
@@ -761,11 +760,11 @@ export default function TranscriptPage() {
         {cohortId ? (
           <Card className="p-3 mt-3">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-800">{t('transcript.page.timeline.title')}</div>
-              {timelineLoading ? <div className="text-xs text-gray-500">{t('common.loading')}</div> : null}
+              <div className="text-sm font-semibold text-(--nb-color-text)">{t('transcript.page.timeline.title')}</div>
+              {timelineLoading ? <div className="text-xs text-(--nb-color-muted)">{t('common.loading')}</div> : null}
             </div>
             {!timelineLoading && (!timeline || timeline.length === 0) ? (
-              <div className="text-sm text-gray-500 mt-2">{t('transcript.page.timeline.noData')}</div>
+              <div className="text-sm text-(--nb-color-muted) mt-2">{t('transcript.page.timeline.noData')}</div>
             ) : null}
             {Array.isArray(timeline) && timeline.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -799,7 +798,7 @@ export default function TranscriptPage() {
                           setEnrollmentStatus(hint);
                         }
                       }}
-                      className={`px-3 py-1.5 rounded-md text-sm border ${isActive ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                      className={`px-3 py-1.5 rounded-md text-sm border ${isActive ? 'bg-(--nb-color-brand) text-white border-(--nb-color-brand)' : 'bg-(--nb-color-bg-card) text-(--nb-color-text) border-(--nb-color-border) hover:bg-(--nb-color-bg)'}`}
                       title={label || t('transcript.page.timeline.itemFallback')}
                     >
                       {label || t('transcript.page.timeline.itemFallback')}
@@ -840,7 +839,7 @@ export default function TranscriptPage() {
 
                 {(isPickerOpen || (showSuggestions && suggestions.length > 0)) && (
                   <Card className="absolute left-0 right-0 top-full mt-1 z-50 max-h-72 overflow-auto">
-                    <div className="sticky top-0 bg-white border-b px-2 py-1 flex items-center gap-2">
+                    <div className="sticky top-0 bg-(--nb-color-bg-card) border-b border-(--nb-color-border) px-2 py-1 flex items-center gap-2">
                       <Input
                         id="transcript-student-filter"
                         name="transcript-student-filter"
@@ -856,20 +855,20 @@ export default function TranscriptPage() {
                       const list = (suggestions || []).filter((s) => !q
                         || s.fullName?.toLowerCase().includes(q)
                         || String(s.studentId).toLowerCase().includes(q));
-                      if (!list.length) return <div className="px-3 py-2 text-sm text-gray-500">{t('transcript.page.studentPicker.noStudentsFound')}</div>;
+                      if (!list.length) return <div className="px-3 py-2 text-sm text-(--nb-color-muted)">{t('transcript.page.studentPicker.noStudentsFound')}</div>;
                       return list.map((s) => {
                         const checked = selectedStudents.some((x) => x._id === s._id);
                         return (
-                          <label key={s._id} className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                          <label key={s._id} className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-(--nb-color-bg) cursor-pointer">
                             <div className="flex items-center gap-2">
                               <Checkbox
                                 checked={checked}
                                 onChange={() => (checked ? removeStudent(s._id) : addStudent(s))}
                                 aria-label={t('transcript.page.studentPicker.selectStudentAria', { name: s.fullName })}
                               />
-                              <span>{s.fullName} <span className="text-gray-500">({s.studentId})</span></span>
+                              <span>{s.fullName} <span className="text-(--nb-color-muted)">({s.studentId})</span></span>
                             </div>
-                            {s.gradeDisplay && <span className="text-xs text-gray-500">{s.gradeDisplay}</span>}
+                            {s.gradeDisplay && <span className="text-xs text-(--nb-color-muted)">{s.gradeDisplay}</span>}
                           </label>
                         );
                       });
@@ -911,21 +910,21 @@ export default function TranscriptPage() {
                 type="button"
                 disabled={mode !== 'levels'}
                 onClick={() => mode === 'levels' && setLevelsOpen((o) => !o)}
-                className={`px-2 py-1 border rounded text-xs flex items-center gap-1 ${mode === 'levels' ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                className={`px-2 py-1 border border-(--nb-color-border) rounded-(--nb-radius-md) text-xs flex items-center gap-1 ${mode === 'levels' ? 'bg-(--nb-color-bg) hover:bg-(--nb-color-brand-50) text-(--nb-color-text)' : 'bg-(--nb-color-bg) text-(--nb-color-muted) opacity-60 cursor-not-allowed'}`}
               >
-                {t('transcript.page.levels.levelsButton')} {selectedLevels.length ? <span className="text-indigo-600">({selectedLevels.length})</span> : null}
+                {t('transcript.page.levels.levelsButton')} {selectedLevels.length ? <span className="text-(--nb-color-brand)">({selectedLevels.length})</span> : null}
               </button>
               {levelsOpen && mode === 'levels' && (
                 <Card className="absolute z-40 mt-1 w-48 max-h-64 overflow-auto">
-                  <div className="sticky top-0 bg-white border-b px-2 py-1 text-xs font-medium">{t('transcript.page.levels.selectTitle')}</div>
-                  {(!grades || grades.length === 0) && <div className="px-3 py-2 text-xs text-gray-500">{t('transcript.page.levels.noGrades')}</div>}
+                  <div className="sticky top-0 bg-(--nb-color-bg-card) border-b border-(--nb-color-border) px-2 py-1 text-xs font-medium">{t('transcript.page.levels.selectTitle')}</div>
+                  {(!grades || grades.length === 0) && <div className="px-3 py-2 text-xs text-(--nb-color-muted)">{t('transcript.page.levels.noGrades')}</div>}
                   {grades && [...grades]
                     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
                     .map((g) => {
                       const id = String(g._id || g.id);
                       const checked = selectedLevels.includes(id);
                       return (
-                        <label key={id} className="flex items-center gap-2 px-3 py-1 text-xs hover:bg-gray-50 cursor-pointer">
+                        <label key={id} className="flex items-center gap-2 px-3 py-1 text-xs hover:bg-(--nb-color-bg) cursor-pointer">
                           <Checkbox checked={checked} onChange={() => setSelectedLevels((prev) => (checked ? prev.filter((x) => x !== id) : [...prev, id]))} />
                           <span>{g.gradeName || g.name || t('common.filters.grade')}</span>
                         </label>
@@ -935,7 +934,7 @@ export default function TranscriptPage() {
                     <button
                       type="button"
                       onClick={() => setSelectedLevels([])}
-                      className="m-2 mt-1 px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 w-[calc(100%-1rem)]"
+                      className="m-2 mt-1 px-2 py-1 text-xs rounded-(--nb-radius-md) bg-(--nb-color-bg) hover:bg-(--nb-color-brand-50) w-[calc(100%-1rem)]"
                     >{t('common.actions.clear')}</button>
                   )}
                 </Card>
@@ -945,16 +944,16 @@ export default function TranscriptPage() {
 
           <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
             {canPrintTranscript ? (
-              <ActionButton variant="neutral" className={outlineBtn} onClick={handlePrint} title={t('common.actions.print')} icon={<Printer size={16} />}>
+              <ActionButton variant="outline" onClick={handlePrint} title={t('common.actions.print')} icon={<Printer size={16} />}>
                 {t('common.actions.print')}
               </ActionButton>
             ) : null}
 
-            <PdfDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} orientation="landscape" />
-            <ExcelDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} />
-            <CopyTableButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} className={outlineBtn} />
+            <PdfDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" orientation="landscape" />
+            <ExcelDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" />
+            <CopyTableButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" />
 
-            <ActionButton variant="neutral" className={outlineBtn} onClick={handleReset} title={t('common.filters.resetTitle')} icon={<RotateCcw size={16} />}>
+            <ActionButton variant="outline" onClick={handleReset} title={t('common.filters.resetTitle')} icon={<RotateCcw size={16} />}>
               {t('common.actions.reset')}
             </ActionButton>
           </div>
@@ -988,7 +987,7 @@ export default function TranscriptPage() {
                     <div key={sel._id} className="space-y-3 student-block">
                       <div className="print:text-center avoid-break">
                         <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
-                        <p className="text-sm text-gray-500">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
+                        <p className="text-sm text-(--nb-color-muted)">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
                       </div>
                       {(!ok || filteredEnrolls.length === 0) && (
                         <Alert variant="neutral">{t('transcript.page.emptyStates.noTranscriptData')}</Alert>
@@ -1018,30 +1017,30 @@ export default function TranscriptPage() {
                             {
                               key: 'subject',
                               label: t('common.filters.subject'),
-                              thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                              tdClassName: 'px-4 py-3 border-x border-gray-700',
+                              thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                              tdClassName: 'px-4 py-3 border-x border-(--nb-color-border)',
                             },
                             ...examTypesSorted.map((et) => ({
                               key: `et:${String(et._id)}`,
                               label: et.typeName,
                               align: 'right',
-                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                              tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                              tdClassName: 'text-right px-4 py-3 border-x border-(--nb-color-border)',
                               _etId: String(et._id),
                             })),
                             {
                               key: 'total',
                               label: t('transcript.page.table.total'),
                               align: 'right',
-                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                              tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                              tdClassName: 'text-right px-4 py-3 border-x border-(--nb-color-border)',
                             },
                             {
                               key: 'avg',
                               label: t('results.page.table.average'),
                               align: 'right',
-                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                              tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                              thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                              tdClassName: 'text-right px-4 py-3 border-x border-(--nb-color-border)',
                             },
                           ];
 
@@ -1075,10 +1074,10 @@ export default function TranscriptPage() {
                                     return '';
                                   }}
                                   tableProps={{
-                                    theadClassName: 'bg-gray-800',
+                                    theadClassName: 'bg-(--nb-color-brand)',
                                     useDefaultHeaderStyles: false,
-                                    baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
-                                    rowClassName: (row) => row?.__type === 'overall' ? 'font-medium border-t-2 border-gray-700' : '',
+                                    baseRowClassName: 'border-t border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg)',
+                                    rowClassName: (row) => row?.__type === 'overall' ? 'font-medium border-t-2 border-(--nb-color-border)' : '',
                                   }}
                                 />
                               );
@@ -1096,7 +1095,7 @@ export default function TranscriptPage() {
                     <div key={sel._id} className="space-y-3 student-block">
                       <div className="print:text-center avoid-break">
                         <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
-                        <p className="text-sm text-gray-500">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
+                        <p className="text-sm text-(--nb-color-muted)">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
                       </div>
                       <Alert variant="neutral">{t('transcript.page.emptyStates.selectGrades')}</Alert>
                     </div>
@@ -1126,7 +1125,7 @@ export default function TranscriptPage() {
                   <div key={sel._id} className="space-y-3 student-block">
                     <div className="print:text-center avoid-break">
                       <h2 className="text-2xl font-semibold">{sel.fullName}</h2>
-                      <p className="text-sm text-gray-500">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
+                      <p className="text-sm text-(--nb-color-muted)">{t('transcript.page.labels.studentId')}: {sel.studentId}</p>
                     </div>
 
                     {targetMeta.length === 0 ? (
@@ -1180,30 +1179,30 @@ export default function TranscriptPage() {
                                   {
                                     key: 'subject',
                                     label: t('common.filters.subject'),
-                                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                                    tdClassName: 'px-4 py-3 border-x border-gray-700',
+                                    thClassName: 'text-left px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                                    tdClassName: 'px-4 py-3 border-x border-(--nb-color-border)',
                                   },
                                   ...examTypesSorted.map((et) => ({
                                     key: `et:${String(et._id)}`,
                                     label: et.typeName,
                                     align: 'right',
-                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                                    tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                                    tdClassName: 'text-right px-4 py-3 border-x border-(--nb-color-border)',
                                     _etId: String(et._id),
                                   })),
                                   {
                                     key: 'total',
                                     label: t('transcript.page.table.total'),
                                     align: 'right',
-                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                                    tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                                    tdClassName: 'text-right px-4 py-3 border-x border-(--nb-color-border)',
                                   },
                                   {
                                     key: 'avg',
                                     label: t('results.page.table.average'),
                                     align: 'right',
-                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-gray-700',
-                                    tdClassName: 'text-right px-4 py-3 border-x border-gray-700',
+                                    thClassName: 'text-right px-4 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)',
+                                    tdClassName: 'text-right px-4 py-3 border-x border-(--nb-color-border)',
                                   },
                                 ];
 
@@ -1237,10 +1236,10 @@ export default function TranscriptPage() {
                                       return '';
                                     }}
                                     tableProps={{
-                                      theadClassName: 'bg-gray-800',
+                                      theadClassName: 'bg-(--nb-color-brand)',
                                       useDefaultHeaderStyles: false,
-                                      baseRowClassName: 'border-t border-gray-700 odd:bg-white even:bg-gray-50',
-                                      rowClassName: (row) => row?.__type === 'overall' ? 'font-medium border-t-2 border-gray-700' : '',
+                                      baseRowClassName: 'border-t border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg)',
+                                      rowClassName: (row) => row?.__type === 'overall' ? 'font-medium border-t-2 border-(--nb-color-border)' : '',
                                     }}
                                   />
                                 );

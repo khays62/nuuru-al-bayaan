@@ -3,13 +3,15 @@ import { cn } from '../../utils/cn';
 import { useI18n } from '../../../i18n/I18nProvider';
 
 const variants = {
-  indigo: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-  neutral: 'border-slate-200 bg-slate-50 text-slate-700',
+  // Back-compat: keep `indigo` key but map it to our brand/accent palette.
+  indigo: 'border-(--nb-color-accent-200) bg-(--nb-color-accent-50) text-(--nb-color-brand)',
+  accent: 'border-(--nb-color-accent-200) bg-(--nb-color-accent-50) text-(--nb-color-brand)',
+  neutral: 'border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-muted)',
   brand: 'border-(--nb-color-brand) bg-(--nb-color-brand) text-white',
 };
 
 export default function Chip({
-  variant = 'indigo',
+  variant = 'accent',
   className = '',
   onRemove,
   removeLabel,
@@ -25,7 +27,7 @@ export default function Chip({
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs',
-        variants[variant] || variants.indigo,
+        variants[variant] || variants.accent,
         className
       )}
       {...rest}
@@ -38,7 +40,7 @@ export default function Chip({
           className={cn(
             'ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full',
             'opacity-80 hover:opacity-100',
-            variant === 'brand' ? 'bg-white/20 hover:bg-white/25' : 'hover:bg-black/5'
+            variant === 'brand' ? 'bg-white/20 hover:bg-white/25' : 'hover:bg-(--nb-color-brand-a08)'
           )}
           aria-label={resolvedRemoveLabel}
           title={resolvedRemoveLabel}

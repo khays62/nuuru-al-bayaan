@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarCheck, ClipboardList, Clock, CheckCircle, XCircle, RefreshCw, Printer, CreditCard, Search } from 'lucide-react';
+import { CalendarCheck, ClipboardList, Clock, CheckCircle, XCircle, RefreshCw, Printer, CreditCard, Search, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import financeService from '../api/finance';
-import { listGradeSections } from '../../grades/api/gradeSections';
 import { listStudents } from '../../students/api/studentsApi';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import GradeSelect from '../../lookups/components/GradeSelect.jsx';
+import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
+import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 
 const paymentMethods = ['Cash', 'Bank', 'Mobile Money', 'Cheque'];
 
@@ -100,47 +102,47 @@ const PaymentModal = ({ open, onClose, onSubmit, accounts, appointment }) => {
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-            <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
-                <div className="flex items-center justify-between p-6 border-b">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-xl rounded-2xl shadow-(--nb-shadow-md) overflow-hidden border border-(--nb-color-border)">
+                <div className="flex items-center justify-between p-6 border-b border-(--nb-color-border)">
                     <div>
-                        <h3 className="text-lg font-black uppercase">Start Payment</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appointment Payment</p>
+                        <h3 className="text-lg font-black uppercase text-(--nb-color-fg)">Start Payment</h3>
+                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Appointment Payment</p>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-900">✕</button>
+                    <button onClick={onClose} className="text-(--nb-color-muted) hover:text-(--nb-color-fg)">✕</button>
                 </div>
                 <div className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paid Amount</label>
-                            <input className="w-full px-4 py-2 border rounded-xl" value={amount} onChange={e => setAmount(e.target.value)} />
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Paid Amount</label>
+                            <input className="w-full px-4 py-2 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl" value={amount} onChange={e => setAmount(e.target.value)} />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Method</label>
-                            <select className="w-full px-4 py-2 border rounded-xl" value={method} onChange={e => setMethod(e.target.value)}>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Payment Method</label>
+                            <select className="w-full px-4 py-2 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl" value={method} onChange={e => setMethod(e.target.value)}>
                                 {paymentMethods.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account</label>
-                            <select className="w-full px-4 py-2 border rounded-xl" value={accountId} onChange={e => setAccountId(e.target.value)}>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Account</label>
+                            <select className="w-full px-4 py-2 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl" value={accountId} onChange={e => setAccountId(e.target.value)}>
                                 <option value="">-- Select Account --</option>
                                 {accounts.map(a => <option key={a._id} value={a._id}>{a.name || a.accountName || a.label}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reference</label>
-                            <input className="w-full px-4 py-2 border rounded-xl" value={reference} onChange={e => setReference(e.target.value)} />
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Reference</label>
+                            <input className="w-full px-4 py-2 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl" value={reference} onChange={e => setReference(e.target.value)} />
                         </div>
                     </div>
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Remarks</label>
-                        <input className="w-full px-4 py-2 border rounded-xl" value={remarks} onChange={e => setRemarks(e.target.value)} />
+                        <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Remarks</label>
+                        <input className="w-full px-4 py-2 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl" value={remarks} onChange={e => setRemarks(e.target.value)} />
                     </div>
                 </div>
-                <div className="p-6 border-t flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 rounded-xl border">Cancel</button>
+                <div className="p-6 border-t border-(--nb-color-border) flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) hover:bg-(--nb-color-bg)">Cancel</button>
                     <button
                         onClick={() => onSubmit({ paidAmount: amount, method, accountId, reference, remarks })}
                         className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold"
@@ -168,32 +170,32 @@ const RescheduleModal = ({ open, onClose, onSubmit }) => {
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
-                <div className="flex items-center justify-between p-6 border-b">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-lg rounded-2xl shadow-(--nb-shadow-md) overflow-hidden border border-(--nb-color-border)">
+                <div className="flex items-center justify-between p-6 border-b border-(--nb-color-border)">
                     <div>
-                        <h3 className="text-lg font-black uppercase">Reschedule Appointment</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Update Date & Time</p>
+                        <h3 className="text-lg font-black uppercase text-(--nb-color-fg)">Reschedule Appointment</h3>
+                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Update Date & Time</p>
                     </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-900">✕</button>
+                    <button onClick={onClose} className="text-(--nb-color-muted) hover:text-(--nb-color-fg)">✕</button>
                 </div>
                 <div className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">New Date</label>
-                            <input type="date" className="w-full px-4 py-2 border rounded-xl" value={date} onChange={e => setDate(e.target.value)} />
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">New Date</label>
+                            <input type="date" className="w-full px-4 py-2 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl" value={date} onChange={e => setDate(e.target.value)} />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">New Time</label>
-                            <input type="time" className="w-full px-4 py-2 border rounded-xl" value={time} onChange={e => setTime(e.target.value)} />
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">New Time</label>
+                            <input type="time" className="w-full px-4 py-2 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl" value={time} onChange={e => setTime(e.target.value)} />
                         </div>
                     </div>
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason</label>
-                        <input className="w-full px-4 py-2 border rounded-xl" value={reason} onChange={e => setReason(e.target.value)} />
+                        <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Reason</label>
+                        <input className="w-full px-4 py-2 border border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg) rounded-xl" value={reason} onChange={e => setReason(e.target.value)} />
                     </div>
                 </div>
-                <div className="p-6 border-t flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 rounded-xl border">Cancel</button>
+                <div className="p-6 border-t border-(--nb-color-border) flex justify-end gap-3">
+                    <button onClick={onClose} className="px-4 py-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) hover:bg-(--nb-color-bg)">Cancel</button>
                     <button
                         onClick={() => onSubmit({ appointmentDate: date, appointmentTime: time, reason })}
                         className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold"
@@ -209,15 +211,19 @@ const RescheduleModal = ({ open, onClose, onSubmit }) => {
 export default function FinanceAppointments() {
     const [activeTab, setActiveTab] = useState('create');
     const [loading, setLoading] = useState(false);
-    const [classes, setClasses] = useState([]);
     const [years, setYears] = useState([]);
     const [amountTypes, setAmountTypes] = useState([]);
     const [accounts, setAccounts] = useState([]);
 
     const [studentSearch, setStudentSearch] = useState('');
     const [studentClassFilter, setStudentClassFilter] = useState('');
+    const [studentFilterGradeId, setStudentFilterGradeId] = useState('');
+    const [studentFilterShiftId, setStudentFilterShiftId] = useState('');
     const [studentResults, setStudentResults] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
+
+    const [formGradeId, setFormGradeId] = useState('');
+    const [formShiftId, setFormShiftId] = useState('');
 
     const [form, setForm] = useState({
         academicYear: '',
@@ -237,24 +243,28 @@ export default function FinanceAppointments() {
     const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
 
+    const resetCreateClassFilters = () => {
+        setFormGradeId('');
+        setFormShiftId('');
+        setForm(prev => ({ ...prev, classId: '' }));
+    };
+
+    const resetStudentSearchFilters = () => {
+        setStudentSearch('');
+        setStudentFilterGradeId('');
+        setStudentFilterShiftId('');
+        setStudentClassFilter('');
+        setStudentResults([]);
+        setSelectedStudent(null);
+    };
+
     const fetchReferenceData = async () => {
         try {
-            const [clsRes, yrRes, catRes, accRes] = await Promise.all([
-                listGradeSections({ limit: 100 }),
+            const [yrRes, catRes, accRes] = await Promise.all([
                 financeService.getAcademicYears(),
                 financeService.getFinanceCategories('fee'),
                 financeService.getAccounts()
             ]);
-            let classList = normalizeList(clsRes);
-            if (classList.length === 0) {
-                try {
-                    const fallback = await financeService.getGradeSections({ limit: 100 });
-                    classList = normalizeList(fallback);
-                } catch {
-                    // ignore
-                }
-            }
-            setClasses(classList);
             setYears(normalizeList(yrRes));
             const cats = normalizeList(catRes).filter(c => String(c?.name || '').trim().toLowerCase() !== 'previous balance');
             setAmountTypes(cats);
@@ -343,9 +353,6 @@ export default function FinanceAppointments() {
 
     const handleSelectStudent = (student) => {
         setSelectedStudent(student);
-        if (student?.classId) {
-            setForm((prev) => ({ ...prev, classId: student.classId }));
-        }
     };
 
     const resetForm = () => {
@@ -561,14 +568,46 @@ export default function FinanceAppointments() {
                         </div>
                         <div className="space-y-1">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class / Grade</label>
-                            <select
-                                className="w-full h-11 px-4 border rounded-xl"
-                                value={form.classId}
-                                onChange={e => setForm(prev => ({ ...prev, classId: e.target.value }))}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <GradeSelect
+                                    value={formGradeId}
+                                    onChange={(v) => {
+                                        setFormGradeId(v || '');
+                                        setForm(prev => ({ ...prev, classId: '' }));
+                                    }}
+                                    placeholder="Grade"
+                                    className="w-full h-11 px-4 border rounded-xl"
+                                />
+                                <ShiftSelect
+                                    value={formShiftId}
+                                    onChange={(v) => {
+                                        setFormShiftId(v || '');
+                                        setForm(prev => ({ ...prev, classId: '' }));
+                                    }}
+                                    placeholder="Shift"
+                                    className="w-full h-11 px-4 border rounded-xl"
+                                />
+                                <GradeSectionSelect
+                                    gradeId={formGradeId}
+                                    shiftId={formShiftId}
+                                    value={form.classId}
+                                    onChange={(v) => setForm(prev => ({ ...prev, classId: v || '' }))}
+                                    searchable
+                                    maxVisible={7}
+                                    placeholder="Section"
+                                    searchPlaceholder="Search…"
+                                    className="w-full h-11 px-4 border rounded-xl"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={resetCreateClassFilters}
+                                className="mt-2 h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold text-sm inline-flex items-center gap-2 hover:bg-slate-50"
+                                title="Reset class filters"
                             >
-                                <option value="">-- Choose Class --</option>
-                                {classes.map(cls => <option key={cls._id} value={cls._id}>{formatClassLabel(cls)}</option>)}
-                            </select>
+                                <RotateCcw size={16} />
+                                Reset
+                            </button>
                         </div>
                     </div>
 
@@ -583,15 +622,49 @@ export default function FinanceAppointments() {
                                 value={studentSearch}
                                 onChange={e => setStudentSearch(e.target.value)}
                             />
-                            <select
-                                className="h-11 px-4 py-2 border rounded-xl"
-                                value={studentClassFilter}
-                                onChange={e => setStudentClassFilter(e.target.value)}
-                            >
-                                <option value="">All Classes</option>
-                                {classes.map(cls => <option key={cls._id} value={cls._id}>{formatClassLabel(cls)}</option>)}
-                            </select>
-                            <button onClick={handleStudentSearch} className="h-11 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold">Search</button>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:col-span-2">
+                                <GradeSelect
+                                    value={studentFilterGradeId}
+                                    onChange={(v) => {
+                                        setStudentFilterGradeId(v || '');
+                                        setStudentClassFilter('');
+                                    }}
+                                    placeholder="Grade"
+                                    className="h-11 px-4 py-2 border rounded-xl"
+                                />
+                                <ShiftSelect
+                                    value={studentFilterShiftId}
+                                    onChange={(v) => {
+                                        setStudentFilterShiftId(v || '');
+                                        setStudentClassFilter('');
+                                    }}
+                                    placeholder="Shift"
+                                    className="h-11 px-4 py-2 border rounded-xl"
+                                />
+                                <GradeSectionSelect
+                                    gradeId={studentFilterGradeId}
+                                    shiftId={studentFilterShiftId}
+                                    value={studentClassFilter}
+                                    onChange={(v) => setStudentClassFilter(v || '')}
+                                    searchable
+                                    maxVisible={7}
+                                    placeholder="All Classes"
+                                    searchPlaceholder="Search…"
+                                    className="h-11 px-4 py-2 border rounded-xl"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={handleStudentSearch} className="h-11 px-4 py-2 rounded-xl bg-slate-900 text-white font-bold">Search</button>
+                                <button
+                                    type="button"
+                                    onClick={resetStudentSearchFilters}
+                                    className="h-11 px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold inline-flex items-center gap-2 hover:bg-slate-50"
+                                    title="Reset student search filters"
+                                >
+                                    <RotateCcw size={16} />
+                                    Reset
+                                </button>
+                            </div>
                         </div>
                         <div className="mt-3">
                             <select

@@ -40,14 +40,14 @@ export default function TeacherTable({
   const canResetPassword = isAdmin || hasPermission('teachers', 'resetPassword');
 
   const columns = useMemo(() => ([
-    { key: 'name', label: t('teachers.table.columns.name'), sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-gray-900 border-x border-gray-200' },
+    { key: 'name', label: t('teachers.table.columns.name'), sortable: true, field: 'fullName' },
     { key: 'teacherId', label: t('teachers.table.columns.teacherId'), sortable: true, field: 'teacherId' },
     { key: 'email', label: t('teachers.table.columns.email'), sortable: true, field: 'email' },
     { key: 'phone', label: t('teachers.table.columns.phone'), sortable: true, field: 'phone' },
     { key: 'salary', label: t('teachers.table.columns.salary'), sortable: false, field: 'salary' },
     { key: 'createdAt', label: t('teachers.table.columns.createdAt'), sortable: true, field: 'createdAt' },
-    { key: 'status', label: t('teachers.table.columns.status'), sortable: true, field: 'status', tdClassName: 'px-6 py-4 whitespace-nowrap border-x border-gray-200' },
-    { key: 'actions', label: t('teachers.table.columns.actions'), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-gray-200 no-print' },
+    { key: 'status', label: t('teachers.table.columns.status'), sortable: true, field: 'status' },
+    { key: 'actions', label: t('teachers.table.columns.actions'), align: 'right', noPrint: true, locked: false, tdClassName: 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium border-x border-(--nb-color-border) no-print' },
   ]), [t]);
 
   return (
@@ -105,7 +105,16 @@ export default function TeacherTable({
                     ? t('common.status.inactive')
                     : (row.status || '-');
             return (
-              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ring-1 ${row.status === 'active' ? 'bg-green-50 text-green-700 ring-green-200' : 'bg-slate-50 text-slate-700 ring-slate-200'}`}>{label}</span>
+              <span
+                className={
+                  `inline-flex items-center px-2 py-0.5 rounded text-xs ring-1 ` +
+                  (statusNorm === 'active'
+                    ? 'bg-green-50 text-green-700 ring-green-200'
+                    : 'bg-(--nb-color-bg) text-(--nb-color-muted) ring-(--nb-color-border)')
+                }
+              >
+                {label}
+              </span>
             );
             }
           case 'actions':

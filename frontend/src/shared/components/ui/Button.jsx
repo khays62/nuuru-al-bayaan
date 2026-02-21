@@ -2,11 +2,12 @@ import React from 'react';
 import { cn } from '../../utils/cn';
 
 const variants = {
-  primary: 'border-blue-300 bg-white text-blue-700 hover:bg-blue-50',
+  primary: 'border-(--nb-color-brand) bg-(--nb-color-bg-card) text-(--nb-color-brand) hover:bg-(--nb-color-brand-50)',
+  outline: 'border-(--nb-color-brand) bg-(--nb-color-bg-card) text-(--nb-color-brand) hover:bg-(--nb-color-brand-50)',
   brand: 'border-(--nb-color-brand) bg-(--nb-color-brand) text-white hover:opacity-95',
-  neutral: 'border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100',
+  neutral: 'border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) hover:bg-(--nb-color-bg)',
   danger: 'border-red-600 bg-red-600 text-white hover:bg-red-700',
-  info: 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100',
+  info: 'border-(--nb-color-accent-200) bg-(--nb-color-accent-50) text-(--nb-color-brand) hover:bg-(--nb-color-accent-100)',
 };
 
 const sizes = {
@@ -39,6 +40,7 @@ const Button = React.forwardRef(function Button(
 ) {
   const base =
     'inline-flex items-center gap-1.5 rounded-md border shadow-sm whitespace-nowrap ' +
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2 ' +
     'disabled:opacity-60 disabled:cursor-not-allowed';
 
   const isButton = Component === 'button';

@@ -3,9 +3,9 @@ import TableShell from './TableShell.jsx';
 import SortableTh from './SortableTh.jsx';
 import StickyTableControls from './StickyTableControls.jsx';
 
-const TH_BASE = 'px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-white/20';
-const TD_BASE = 'px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-x border-gray-200';
-const TR_BASE = 'border-t border-gray-200 odd:bg-white even:bg-gray-50 hover:bg-gray-50 transition-colors';
+const TH_BASE = 'px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)';
+const TD_BASE = 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)';
+const TR_BASE = 'border-t border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg) hover:bg-(--nb-color-brand-50) transition-colors';
 
 function readVisibility(storageKey) {
   if (!storageKey) return {};
@@ -36,7 +36,7 @@ export default function DataTable({
   getRowKey,
   rowClassName,
 
-  theadClassName = 'bg-gray-800',
+  theadClassName = 'bg-(--nb-color-brand)',
   headerRowClassName = '',
   tbodyClassName = '',
   baseRowClassName = TR_BASE,

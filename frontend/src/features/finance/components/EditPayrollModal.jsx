@@ -89,29 +89,29 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-100">
+            <div className="bg-(--nb-color-bg-card) w-full max-w-2xl rounded-xl shadow-(--nb-shadow-md) overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-(--nb-color-border)">
+                <div className="flex justify-between items-center p-6 border-b border-(--nb-color-border)">
                     <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                        <h3 className="text-xl font-black text-(--nb-color-fg) tracking-tight flex items-center gap-3">
                             <Calculator className="text-blue-600" size={24} />
                             Payroll Adjustment & Release
                         </h3>
-                        <p className="text-sm text-slate-500 font-medium">Employee: {payroll.staff?.fullName}</p>
+                        <p className="text-sm text-(--nb-color-muted) font-medium">Employee: {payroll.staff?.fullName}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-all">
-                        <X size={24} className="text-slate-400" />
+                    <button onClick={onClose} className="p-2 hover:bg-(--nb-color-bg) rounded-xl transition-all">
+                        <X size={24} className="text-(--nb-color-muted)" />
                     </button>
                 </div>
 
                 <div className="p-6 grid grid-cols-2 gap-6 overflow-y-auto max-h-[70vh]">
                     <div className="space-y-6">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Salary Components</h4>
+                        <h4 className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest border-b border-(--nb-color-border) pb-2">Salary Components</h4>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Base Salary ($)</label>
+                            <label className="text-xs font-black text-(--nb-color-fg) uppercase tracking-wider">Base Salary ($)</label>
                             <input
                                 type="number"
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-lg"
+                                className="w-full p-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-lg text-(--nb-color-fg)"
                                 value={formData.basicSalary}
                                 onChange={e => setFormData({ ...formData, basicSalary: Number(e.target.value) })}
                             />
@@ -119,7 +119,7 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Commission (+)</label>
+                                <label className="text-xs font-black text-(--nb-color-fg) uppercase tracking-wider">Commission (+)</label>
                                 <input
                                     type="number"
                                     className="w-full p-3 bg-green-50/50 border border-green-100 rounded-xl focus:ring-4 focus:ring-green-500/10 outline-none font-bold text-green-700"
@@ -128,7 +128,7 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Decrease (-)</label>
+                                <label className="text-xs font-black text-(--nb-color-fg) uppercase tracking-wider">Decrease (-)</label>
                                 <input
                                     type="number"
                                     className="w-full p-3 bg-red-50/50 border border-red-100 rounded-xl focus:ring-4 focus:ring-red-500/10 outline-none font-bold text-red-700"
@@ -139,7 +139,7 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Correction (+/-)</label>
+                            <label className="text-xs font-black text-(--nb-color-fg) uppercase tracking-wider">Correction (+/-)</label>
                             <input
                                 type="number"
                                 className="w-full p-3 bg-blue-50/50 border border-blue-100 rounded-xl focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-blue-700"
@@ -148,19 +148,19 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
                             />
                         </div>
 
-                        <div className="bg-slate-900 p-6 rounded-2xl">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Net Payable Salary</p>
+                        <div className="bg-(--nb-color-brand) p-6 rounded-2xl">
+                            <p className="text-[10px] font-black text-white/80 uppercase tracking-widest leading-none mb-2">Net Payable Salary</p>
                             <p className="text-3xl font-black text-white tracking-tighter">${netSalary.toLocaleString()}</p>
                         </div>
                     </div>
 
                     <div className="space-y-6">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Disbursement Details</h4>
+                        <h4 className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest border-b border-(--nb-color-border) pb-2">Disbursement Details</h4>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Source Account</label>
+                            <label className="text-xs font-black text-(--nb-color-fg) uppercase tracking-wider">Source Account</label>
                             <select
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
+                                className="w-full p-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-(--nb-color-fg)"
                                 value={formData.accountId}
                                 onChange={e => setFormData({ ...formData, accountId: e.target.value })}
                             >
@@ -172,9 +172,9 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Payment Method</label>
+                            <label className="text-xs font-black text-(--nb-color-fg) uppercase tracking-wider">Payment Method</label>
                             <select
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold"
+                                className="w-full p-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none font-bold text-(--nb-color-fg)"
                                 value={formData.paymentMethod}
                                 onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}
                             >
@@ -186,10 +186,10 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Internal Reference</label>
+                            <label className="text-xs font-black text-(--nb-color-fg) uppercase tracking-wider">Internal Reference</label>
                             <input
                                 type="text"
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none"
+                                className="w-full p-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-xl focus:ring-4 focus:ring-blue-600/10 outline-none text-(--nb-color-fg)"
                                 placeholder="E.g. PB-990-2024"
                                 value={formData.reference}
                                 onChange={e => setFormData({ ...formData, reference: e.target.value })}
@@ -200,14 +200,14 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
                             <button
                                 onClick={handleConfirmPayment}
                                 disabled={loading}
-                                className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
+                                className="w-full bg-(--nb-color-brand) hover:opacity-90 text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-(--nb-shadow-md)"
                             >
                                 <DollarSign size={14} /> Release Disbursement
                             </button>
                             <button
                                 onClick={handleAdjustOnly}
                                 disabled={loading}
-                                className="w-full bg-white border border-slate-200 text-slate-600 hover:text-slate-900 py-3 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="w-full bg-(--nb-color-bg-card) border border-(--nb-color-border) text-(--nb-color-muted) hover:text-(--nb-color-fg) hover:bg-(--nb-color-bg) py-3 rounded-xl font-black uppercase text-[10px] tracking-[0.2em] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 <Save size={14} /> Only Save Adjustment
                             </button>

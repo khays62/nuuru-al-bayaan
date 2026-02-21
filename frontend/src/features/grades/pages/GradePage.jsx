@@ -237,8 +237,6 @@ function GradePageInner() {
 		};
 	}, [canExport, gradeFilter, shiftFilter, sectionFilter, sortedClassesForView, t]);
 
-	const outlineBtn = 'bg-white! text-blue-700! border-blue-400! hover:bg-blue-50!';
-
 	return (
 		<div className="space-y-6 with-print-header with-print-footer">
 			<PrintHeader />
@@ -304,8 +302,7 @@ function GradePageInner() {
 							{canView && (
 								<>
 									<ActionButton
-										variant="neutral"
-										className={outlineBtn}
+										variant="outline"
 										onClick={handlePrint}
 										title={t('common.actions.print', { defaultValue: 'Print' })}
 										icon={<Printer size={16} />}
@@ -313,16 +310,15 @@ function GradePageInner() {
 										{t('common.actions.print', { defaultValue: 'Print' })}
 									</ActionButton>
 
-									<PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-									<ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-									<CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
-									<CopyTableButton getPayload={buildExportPayload} disabled={!canExport} className={outlineBtn} />
+									<PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+									<ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+									<CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+									<CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
 								</>
 							)}
 
 							<ActionButton
-								variant="neutral"
-								className={outlineBtn}
+								variant="outline"
 								onClick={() => {
 									setGradeFilter('');
 									setShiftFilter('');

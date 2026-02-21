@@ -92,7 +92,7 @@ export default function TimetableGrid({
   if (!daysFilter.length) {
     return (
       <tr>
-        <td className="px-3 py-2 text-sm text-gray-500" colSpan={Math.max(2, 1 + periods.length)}>
+        <td className="px-3 py-2 text-sm text-(--nb-color-muted)" colSpan={Math.max(2, 1 + periods.length)}>
           {t('timetable.grid.noDaysSelected')}
         </td>
       </tr>
@@ -104,15 +104,15 @@ export default function TimetableGrid({
       {daysFilter.map((idx, rowIndex) => (
         <tr
           key={idx}
-          className={`border-t border-gray-200 align-top ${rowIndex % 2 === 0 ? 'bg-slate-50' : 'bg-white'} hover:bg-blue-50`}
+          className={`border-t border-(--nb-color-border) align-top ${rowIndex % 2 === 0 ? 'bg-(--nb-color-bg)' : 'bg-(--nb-color-bg-card)'} hover:bg-(--nb-color-brand-50)`}
         >
           <td
-            className={`px-3 py-2 font-medium whitespace-nowrap border-r border-gray-200 sticky left-0 z-10 ${rowIndex % 2 === 0 ? 'bg-slate-50' : 'bg-white'}`}
+            className={`px-3 py-2 font-medium whitespace-nowrap border-r border-(--nb-color-border) sticky left-0 z-10 ${rowIndex % 2 === 0 ? 'bg-(--nb-color-bg)' : 'bg-(--nb-color-bg-card)'}`}
           >
             {days[idx]}
           </td>
           {periods.length === 0 ? (
-            <td className="px-3 py-2 text-sm text-gray-500">{t('timetable.grid.noPeriods')}</td>
+            <td className="px-3 py-2 text-sm text-(--nb-color-muted)">{t('timetable.grid.noPeriods')}</td>
           ) : (
             periods.map((p, i) => {
               const cellSlot = findSlotForCell(idx, p);
@@ -122,7 +122,7 @@ export default function TimetableGrid({
                 return (
                   <td
                     key={`${idx}-${i}`}
-                    className={`px-3 py-6 border-l border-gray-200 transition-colors min-w-40 ${isActive ? 'bg-blue-50 ring-2 ring-blue-300 ring-inset' : ''}`}
+                    className={`px-3 py-6 border-l border-(--nb-color-border) transition-colors min-w-40 ${isActive ? 'bg-(--nb-color-brand-50) ring-2 ring-(--nb-color-accent) ring-inset' : ''}`}
                     onDragOver={canDnd ? onDragOver : undefined}
                     onDragEnter={canDnd ? (() => onDragEnterCell(idx, p)) : undefined}
                     onDragLeave={canDnd ? (() => onDragLeaveCell(idx, p)) : undefined}
@@ -133,7 +133,7 @@ export default function TimetableGrid({
               return (
                 <td
                   key={cellSlot._id}
-                  className={`px-3 py-2 border-l border-gray-200 transition-colors min-w-40 ${cellSlot.isBreak ? 'bg-gray-50' : ''} ${isActive ? 'bg-indigo-50 ring-2 ring-indigo-300 ring-inset' : ''}`}
+                  className={`px-3 py-2 border-l border-(--nb-color-border) transition-colors min-w-40 ${cellSlot.isBreak ? 'bg-(--nb-color-bg)' : ''} ${isActive ? 'bg-(--nb-color-brand-50) ring-2 ring-(--nb-color-accent) ring-inset' : ''}`}
                   onDragOver={canDnd ? onDragOver : undefined}
                   onDragEnter={canDnd ? (() => onDragEnterCell(idx, p)) : undefined}
                   onDragLeave={canDnd ? (() => onDragLeaveCell(idx, p)) : undefined}
@@ -149,11 +149,11 @@ export default function TimetableGrid({
                     title={cellSlot.isBreak ? t('timetable.grid.breakLocked') : (canDnd ? t('timetable.grid.dragToMove') : '')}
                   >
                     {cellSlot.isBreak ? (
-                      <div className="text-xs text-gray-500">{t('timetable.grid.break')}</div>
+                      <div className="text-xs text-(--nb-color-muted)">{t('timetable.grid.break')}</div>
                     ) : (
                       <>
                         <div className="text-sm font-medium">{cellSlot.subject?.subjectName || '-'}</div>
-                        <div className="text-xs text-gray-600">{cellSlot.teacher?.fullName || '—'}{cellSlot.room ? ` • ${t('common.room')} ${cellSlot.room}` : ''}</div>
+                        <div className="text-xs text-(--nb-color-muted)">{cellSlot.teacher?.fullName || '—'}{cellSlot.room ? ` • ${t('common.room')} ${cellSlot.room}` : ''}</div>
                       </>
                     )}
                   </div>

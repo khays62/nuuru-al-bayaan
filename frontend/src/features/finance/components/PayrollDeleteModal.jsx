@@ -217,7 +217,7 @@ export default function PayrollDeleteModal({
                     panelClassName="max-w-xl"
                 >
                     <div className="space-y-4">
-                        <div className="text-sm text-slate-700">
+                        <div className="text-sm text-(--nb-color-fg)">
                             {t('finance.payroll.deletePaid.warning', {
                                 defaultValue: 'This will permanently delete Paid payroll records for the selected month/year. This action is risky and may affect financial history.',
                             })}

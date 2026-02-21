@@ -51,8 +51,6 @@ export default function PayrollPrintModal({
     const { t, lang } = useI18n();
     const [loading, setLoading] = useState(false);
 
-    const outlineBtn = '!bg-white !text-blue-700 !border-blue-400 hover:!bg-blue-50';
-
     const [form, setForm] = useState({
         month: defaultMonth,
         academicYear: defaultAcademicYearId || '',
@@ -401,8 +399,7 @@ export default function PayrollPrintModal({
                         {t('common.close', { defaultValue: 'Close' })}
                     </Button>
                     <ActionButton
-                        variant="neutral"
-                        className={outlineBtn}
+                        variant="outline"
                         icon={<Printer size={16} />}
                         type="submit"
                         disabled={!canRun || loading}

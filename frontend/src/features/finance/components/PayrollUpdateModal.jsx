@@ -196,7 +196,7 @@ export default function PayrollUpdateModal({
                     panelClassName="max-w-xl"
                 >
                     <div className="space-y-4">
-                        <div className="text-sm text-slate-700">
+                        <div className="text-sm text-(--nb-color-fg)">
                             {t('finance.payroll.updatePaid.warning', {
                                 defaultValue: 'You are updating a Paid payroll record. This may affect financial history. Continue only if you understand the impact.',
                             })}

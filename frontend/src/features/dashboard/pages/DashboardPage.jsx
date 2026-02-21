@@ -30,36 +30,57 @@ import AnnouncementsMixCard from '../components/AnnouncementsMixCard.jsx';
 import { useDashboardRealtimeInvalidation } from '../useDashboardRealtimeInvalidation';
 import { useI18n } from '../../../i18n/I18nProvider';
 
+// Token-driven tones (single source of truth via CSS variables in index.css)
 const tones = {
+    // Map legacy tone names onto our brand/accent palette.
     blue: {
-        card: 'from-blue-50 to-indigo-50 border-blue-100',
-        accent: 'text-blue-700 bg-blue-100 border-blue-200',
-        sparkStroke: '#2563eb',
-        sparkFill: 'rgba(37, 99, 235, 0.12)',
+        card: 'from-(--nb-color-bg-card) to-(--nb-color-brand-50) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand) bg-(--nb-color-brand-100) border-(--nb-color-border)',
+        sparkStroke: 'var(--nb-color-brand)',
+        sparkFill: 'var(--nb-color-brand-a12)',
     },
     emerald: {
-        card: 'from-emerald-50 to-teal-50 border-emerald-100',
-        accent: 'text-emerald-800 bg-emerald-100 border-emerald-200',
-        sparkStroke: '#059669',
-        sparkFill: 'rgba(5, 150, 105, 0.12)',
+        card: 'from-(--nb-color-bg-card) to-(--nb-color-accent-50) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand) bg-(--nb-color-accent-100) border-(--nb-color-border)',
+        sparkStroke: 'var(--nb-color-accent)',
+        sparkFill: 'var(--nb-color-accent-a12)',
     },
     amber: {
-        card: 'from-amber-50 to-orange-50 border-amber-100',
-        accent: 'text-amber-900 bg-amber-100 border-amber-200',
-        sparkStroke: '#d97706',
-        sparkFill: 'rgba(217, 119, 6, 0.12)',
+        card: 'from-(--nb-color-bg-card) to-(--nb-color-accent-50) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand) bg-(--nb-color-accent-100) border-(--nb-color-border)',
+        sparkStroke: 'var(--nb-color-accent)',
+        sparkFill: 'var(--nb-color-accent-a12)',
     },
     violet: {
-        card: 'from-violet-50 to-fuchsia-50 border-violet-100',
-        accent: 'text-violet-800 bg-violet-100 border-violet-200',
-        sparkStroke: '#7c3aed',
-        sparkFill: 'rgba(124, 58, 237, 0.12)',
+        card: 'from-(--nb-color-bg-card) to-(--nb-color-brand-50) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand) bg-(--nb-color-brand-100) border-(--nb-color-border)',
+        sparkStroke: 'var(--nb-color-brand)',
+        sparkFill: 'var(--nb-color-brand-a12)',
     },
     gray: {
-        card: 'from-white to-slate-50 border-slate-200',
-        accent: 'text-slate-700 bg-slate-100 border-slate-200',
-        sparkStroke: '#334155',
-        sparkFill: 'rgba(51, 65, 85, 0.10)',
+        card: 'from-(--nb-color-bg-card) to-(--nb-color-bg) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-text) bg-(--nb-color-bg) border-(--nb-color-border)',
+        sparkStroke: 'var(--nb-color-text)',
+        sparkFill: 'var(--nb-color-brand-a08)',
+    },
+    // Aliases for legacy tone names used across the dashboard.
+    indigo: {
+        card: 'from-(--nb-color-bg-card) to-(--nb-color-brand-50) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand) bg-(--nb-color-brand-100) border-(--nb-color-border)',
+        sparkStroke: 'var(--nb-color-brand)',
+        sparkFill: 'var(--nb-color-brand-a12)',
+    },
+    sky: {
+        card: 'from-(--nb-color-bg-card) to-(--nb-color-accent-50) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand) bg-(--nb-color-accent-100) border-(--nb-color-border)',
+        sparkStroke: 'var(--nb-color-accent)',
+        sparkFill: 'var(--nb-color-accent-a12)',
+    },
+    rose: {
+        card: 'from-(--nb-color-bg-card) to-(--nb-color-accent-50) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand) bg-(--nb-color-accent-100) border-(--nb-color-border)',
+        sparkStroke: 'var(--nb-color-accent)',
+        sparkFill: 'var(--nb-color-accent-a12)',
     },
 };
 
@@ -84,37 +105,20 @@ const isoMinusDaysUTC = (isoDateOnly, days) => {
 };
 
 const QuickCard = ({ title, description, to, Icon, tone = 'indigo', disabled = false }) => {
-    const cardBg = {
-        indigo: 'bg-linear-to-r from-indigo-50 to-violet-50 border-indigo-100',
-        emerald: 'bg-linear-to-r from-emerald-50 to-lime-50 border-emerald-100',
-        amber: 'bg-linear-to-r from-amber-50 to-orange-50 border-amber-100',
-        sky: 'bg-linear-to-r from-sky-50 to-cyan-50 border-sky-100',
-    };
-    const accent = {
-        indigo: 'border-b-indigo-300',
-        emerald: 'border-b-emerald-300',
-        amber: 'border-b-amber-300',
-        sky: 'border-b-sky-300',
-    };
-    const toneClasses = {
-        indigo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-        emerald: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        amber: 'bg-amber-100 text-amber-900 border-amber-200',
-        sky: 'bg-sky-100 text-sky-800 border-sky-200',
-    };
-
-    const base = `block rounded-xl border border-b-4 p-5 shadow-md transition ${cardBg[tone] || cardBg.indigo} ${accent[tone] || accent.indigo}`;
-    const active = 'hover:shadow-lg hover:border-blue-200';
+    const base =
+        'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
+        'bg-(--nb-color-bg-card) p-5 shadow-md transition';
+    const active = 'hover:shadow-lg hover:border-(--nb-color-accent-200)';
     const off = 'opacity-60 cursor-not-allowed';
 
     const inner = (
         <div className="flex items-start gap-4">
-            <div className={`shrink-0 w-11 h-11 rounded-lg border flex items-center justify-center ${toneClasses[tone] || toneClasses.indigo}`}>
+            <div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand) flex items-center justify-center">
                 {Icon ? <Icon size={20} /> : null}
             </div>
             <div className="min-w-0">
-                <div className="text-base font-semibold text-gray-900">{title}</div>
-                <div className="text-sm text-gray-600 mt-1">{description}</div>
+                <div className="text-base font-semibold text-(--nb-color-text)">{title}</div>
+                <div className="text-sm text-(--nb-color-muted) mt-1">{description}</div>
             </div>
         </div>
     );
@@ -151,7 +155,7 @@ const isoWeekYearWeek = (date) => {
 const RangeTabs = ({ value, onChange, items }) => {
     const safe = Array.isArray(items) ? items : [];
     return (
-        <div className="inline-flex flex-wrap gap-2 rounded-xl border bg-white p-1 shadow-sm">
+        <div className="inline-flex flex-wrap gap-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-1 shadow-sm">
             {safe.map((it) => {
                 const active = value === it.value;
                 return (
@@ -162,8 +166,8 @@ const RangeTabs = ({ value, onChange, items }) => {
                         className={
                             `px-3 py-1.5 text-sm font-semibold rounded-lg transition ` +
                             (active
-                                ? 'bg-indigo-600 text-white shadow-sm'
-                                : 'text-gray-700 hover:bg-gray-50')
+                                ? 'bg-(--nb-color-brand) text-white shadow-sm'
+                                : 'text-(--nb-color-text) hover:bg-(--nb-color-brand-50)')
                         }
                     >
                         {it.label}
@@ -177,7 +181,7 @@ const RangeTabs = ({ value, onChange, items }) => {
 const DashboardSkeleton = () => {
     return (
         <div className="space-y-5">
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-linear-to-r from-blue-700 via-indigo-700 to-violet-700 p-5 shadow-lg">
+            <div className="relative overflow-hidden rounded-2xl border border-(--nb-color-border) bg-linear-to-r from-(--nb-color-brand) to-(--nb-color-accent) p-5 shadow-lg">
                 <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
                 <div className="pointer-events-none absolute -left-20 -bottom-20 h-56 w-56 rounded-full bg-black/10 blur-3xl" />
                 <div className="relative space-y-3">
@@ -188,7 +192,7 @@ const DashboardSkeleton = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="rounded-2xl border bg-white p-5 shadow-md">
+                    <div key={i} className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-5 shadow-md">
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                                 <Skeleton className="h-4 w-24" />
@@ -201,12 +205,12 @@ const DashboardSkeleton = () => {
                 ))}
             </div>
 
-            <div className="rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-5 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-2">
                         <Skeleton className="h-5 w-40" />
                     </div>
-                    <div className="inline-flex flex-wrap gap-2 rounded-xl border bg-white p-1 shadow-sm">
+                    <div className="inline-flex flex-wrap gap-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-1 shadow-sm">
                         {Array.from({ length: 4 }).map((__, t) => (
                             <Skeleton key={t} className="h-9 w-16 rounded-lg" />
                         ))}
@@ -215,7 +219,7 @@ const DashboardSkeleton = () => {
 
                 <div className="mt-4">
                     <div className="w-full" style={{ aspectRatio: '760 / 320' }}>
-                        <div className="w-full h-full rounded-xl bg-slate-100 animate-pulse" />
+                        <div className="w-full h-full rounded-xl bg-(--nb-color-bg) animate-pulse" />
                     </div>
                 </div>
             </div>
@@ -224,33 +228,26 @@ const DashboardSkeleton = () => {
 };
 
 const ModuleCard = ({ title, subtitle, to, Icon, count, tone = 'blue', disabled = false }) => {
-    const themes = {
-        blue: 'from-blue-600 to-indigo-600',
-        emerald: 'from-emerald-600 to-teal-600',
-        violet: 'from-violet-600 to-fuchsia-600',
-        amber: 'from-amber-500 to-orange-600',
-        sky: 'from-sky-600 to-cyan-600',
-        rose: 'from-rose-600 to-pink-600',
-    };
+    void tone;
 
-    const base = `relative overflow-hidden rounded-2xl border border-white/10 bg-linear-to-br ${themes[tone] || themes.blue} p-5 shadow-md transition`;
-    const active = 'hover:shadow-lg hover:-translate-y-0.5';
+    const base =
+        'relative overflow-hidden rounded-2xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
+        'bg-(--nb-color-bg-card) p-5 shadow-md transition';
+    const active = 'hover:shadow-lg hover:border-(--nb-color-accent-200) hover:-translate-y-0.5';
     const off = 'opacity-60 cursor-not-allowed';
 
     const inner = (
         <div className="relative">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white/90 truncate">{title}</div>
-                    <div className="mt-2 text-3xl font-extrabold tracking-tight text-white tabular-nums">{fmtCount(count)}</div>
-                    {subtitle ? <div className="mt-1 text-xs text-white/80 truncate">{subtitle}</div> : null}
+                    <div className="text-sm font-semibold text-(--nb-color-text) truncate">{title}</div>
+                    <div className="mt-2 text-3xl font-extrabold tracking-tight text-(--nb-color-text) tabular-nums">{fmtCount(count)}</div>
+                    {subtitle ? <div className="mt-1 text-xs text-(--nb-color-muted) truncate">{subtitle}</div> : null}
                 </div>
-                <div className="shrink-0 w-11 h-11 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center text-white">
+                <div className="shrink-0 w-11 h-11 rounded-xl bg-(--nb-color-accent-50) border border-(--nb-color-accent-100) flex items-center justify-center text-(--nb-color-brand)">
                     {Icon ? <Icon size={22} /> : null}
                 </div>
             </div>
-            <div className="pointer-events-none absolute -right-10 -top-12 h-24 w-24 rounded-full bg-white/20 blur-2xl" />
-            <div className="pointer-events-none absolute -left-12 -bottom-12 h-28 w-28 rounded-full bg-black/10 blur-2xl" />
         </div>
     );
 
@@ -325,24 +322,24 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
             >
             <defs>
                 <linearGradient id="nbNewStudentsFill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(79,70,229,0.22)" />
-                    <stop offset="100%" stopColor="rgba(79,70,229,0.02)" />
+                    <stop offset="0%" stopColor="var(--nb-color-brand-a12)" />
+                    <stop offset="100%" stopColor="var(--nb-color-brand-a08)" />
                 </linearGradient>
                 <linearGradient id="nbNewStudentsStroke" x1="0" x2="1" y1="0" y2="0">
-                    <stop offset="0%" stopColor="#2563EB" />
-                    <stop offset="100%" stopColor="#7C3AED" />
+                    <stop offset="0%" stopColor="var(--nb-color-accent)" />
+                    <stop offset="100%" stopColor="var(--nb-color-brand)" />
                 </linearGradient>
             </defs>
 
-            <rect x="0" y="0" width={w} height={h} rx="14" fill="#F9FAFB" />
+            <rect x="0" y="0" width={w} height={h} rx="14" fill="var(--nb-color-bg-card)" />
 
             {/* Y grid + tick labels (LEFT) */}
             {ticks.map((tv, idx) => {
                 const yy = toY(tv);
                 return (
                     <g key={idx}>
-                        <line x1={padL} x2={w - padR} y1={yy} y2={yy} stroke="#E5E7EB" strokeWidth="1" />
-                        <text x={padL - 10} y={yy + 4} textAnchor="end" fontSize="10" fill="#6B7280">
+                        <line x1={padL} x2={w - padR} y1={yy} y2={yy} stroke="var(--nb-color-border)" strokeWidth="1" />
+                        <text x={padL - 10} y={yy + 4} textAnchor="end" fontSize="10" fill="var(--nb-color-muted)">
                             {fmtCount(tv)}
                         </text>
                     </g>
@@ -350,7 +347,7 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
             })}
 
             {/* X axis line */}
-            <line x1={padL} x2={w - padR} y1={h - padB} y2={h - padB} stroke="#CBD5E1" strokeWidth="1" />
+            <line x1={padL} x2={w - padR} y1={h - padB} y2={h - padB} stroke="var(--nb-color-border)" strokeWidth="1" />
 
             {/* Area fill */}
             <polyline points={area} fill="url(#nbNewStudentsFill)" />
@@ -376,8 +373,8 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
                             cx={toX(i)}
                             cy={toY(r.y)}
                             r={active ? 7 : 5.5}
-                            fill={active ? '#E0E7FF' : '#EEF2FF'}
-                            stroke="#4F46E5"
+                            fill={active ? 'var(--nb-color-brand-100)' : 'var(--nb-color-brand-50)'}
+                            stroke="var(--nb-color-brand)"
                             strokeWidth={active ? 2.5 : 2}
                         >
                             <title>{`${String(r?.x || '')}: ${fmtCount(r?.y)}`}</title>
@@ -406,7 +403,7 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
                 const yy = h - padB + 18;
                 return (
                     <g key={`x-${i}`} transform={`translate(${xx},${yy}) rotate(35)`}>
-                        <text textAnchor="start" fontSize="10" fill="#6B7280">
+                        <text textAnchor="start" fontSize="10" fill="var(--nb-color-muted)">
                             {label.length > 14 ? `${label.slice(0, 14)}…` : label}
                         </text>
                     </g>
@@ -417,7 +414,7 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
             <text
                 transform={`translate(16 ${padT + innerH / 2}) rotate(-90)`}
                 fontSize="11"
-                fill="#6B7280"
+                fill="var(--nb-color-muted)"
                 fontWeight="600"
             >
                 {yAxisLabel}
@@ -448,7 +445,7 @@ const Pill = ({ children, tone = 'gray' }) => {
     );
 };
 
-const Sparkline = ({ values = [], stroke = '#2563eb', fill = 'rgba(37,99,235,0.12)' }) => {
+const Sparkline = ({ values = [], stroke = 'var(--nb-color-brand)', fill = 'var(--nb-color-brand-a12)' }) => {
     const pts = Array.isArray(values) ? values.map((v) => Number(v || 0)) : [];
     if (pts.length < 2) {
         return <div className="h-10" />;
@@ -515,10 +512,10 @@ const StatCard = ({ title, value, subtitle, Icon, tone = 'blue', sparkValues = [
 };
 
 const CardShell = ({ children, className = '' }) => (
-    <div className={`rounded-2xl border bg-white/80 backdrop-blur-sm shadow-sm ${className}`}>{children}</div>
+    <div className={`rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card)/80 backdrop-blur-sm shadow-sm ${className}`}>{children}</div>
 );
 
-const SvgLineChart = ({ series = [], stroke = '#2563eb', fill = 'rgba(37,99,235,0.12)', height = 160 }) => {
+const SvgLineChart = ({ series = [], stroke = 'var(--nb-color-brand)', fill = 'var(--nb-color-brand-a12)', height = 160 }) => {
     const { t } = useI18n();
     const rows = Array.isArray(series) ? series : [];
     if (rows.length < 2) {
@@ -565,7 +562,7 @@ const SvgLineChart = ({ series = [], stroke = '#2563eb', fill = 'rgba(37,99,235,
                     className="animate-[nb-draw_900ms_ease-out_both]"
                 />
             </svg>
-            <div className="flex items-center justify-between text-[11px] text-gray-500 px-1">
+            <div className="flex items-center justify-between text-[11px] text-(--nb-color-muted) px-1">
                 <span className="truncate max-w-[33%]">{leftLabel}</span>
                 <span className="truncate max-w-[33%]">{midLabel}</span>
                 <span className="truncate max-w-[33%] text-right">{rightLabel}</span>
@@ -576,17 +573,17 @@ const SvgLineChart = ({ series = [], stroke = '#2563eb', fill = 'rgba(37,99,235,
 
 const KpiCard = ({ title, value, subtitle, tone = 'indigo' }) => {
     const tones = {
-        indigo: 'border-indigo-100 bg-linear-to-r from-white to-indigo-50',
-        emerald: 'border-emerald-100 bg-linear-to-r from-white to-emerald-50',
-        amber: 'border-amber-100 bg-linear-to-r from-white to-amber-50',
-        sky: 'border-sky-100 bg-linear-to-r from-white to-sky-50',
-        gray: 'border-gray-200 bg-white',
+        indigo: 'border-(--nb-color-border) bg-linear-to-r from-(--nb-color-bg-card) to-(--nb-color-brand-50)',
+        emerald: 'border-(--nb-color-border) bg-linear-to-r from-(--nb-color-bg-card) to-(--nb-color-accent-50)',
+        amber: 'border-(--nb-color-border) bg-linear-to-r from-(--nb-color-bg-card) to-(--nb-color-accent-50)',
+        sky: 'border-(--nb-color-border) bg-linear-to-r from-(--nb-color-bg-card) to-(--nb-color-accent-50)',
+        gray: 'border-(--nb-color-border) bg-(--nb-color-bg-card)',
     };
     return (
         <div className={`rounded-xl border p-4 shadow-sm ${tones[tone] || tones.gray}`}>
-            <div className="text-xs font-semibold text-gray-500">{title}</div>
-            <div className="mt-2 text-2xl font-bold text-gray-900 tabular-nums animate-[fadeIn_0.35s_ease-out]">{value}</div>
-            {subtitle ? <div className="mt-1 text-xs text-gray-600">{subtitle}</div> : null}
+            <div className="text-xs font-semibold text-(--nb-color-muted)">{title}</div>
+            <div className="mt-2 text-2xl font-bold text-(--nb-color-text) tabular-nums animate-[fadeIn_0.35s_ease-out]">{value}</div>
+            {subtitle ? <div className="mt-1 text-xs text-(--nb-color-muted)">{subtitle}</div> : null}
         </div>
     );
 };
@@ -794,7 +791,7 @@ export default function DashboardPage() {
 
     return (
         <div className="space-y-5">
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-linear-to-r from-blue-700 via-indigo-700 to-violet-700 p-5 shadow-lg">
+            <div className="relative overflow-hidden rounded-2xl border border-(--nb-color-border) bg-linear-to-r from-(--nb-color-brand) to-(--nb-color-accent) p-5 shadow-lg">
                 <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
                 <div className="pointer-events-none absolute -left-20 -bottom-20 h-56 w-56 rounded-full bg-black/10 blur-3xl" />
                 <div className="relative">
@@ -890,8 +887,8 @@ export default function DashboardPage() {
             {/* Analytics (2-column layout) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {perms?.allowStudents ? (
-                    <div className="rounded-2xl border border-indigo-100 bg-white shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-                        <div className="px-5 py-4 bg-gray-900 text-white border-b border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+                        <div className="px-5 py-4 bg-(--nb-color-brand) text-white border-b border-white/10 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <div className="text-lg font-semibold">{t('dashboard.page.newStudents.title')}</div>
                                 <div className="text-sm text-white/80 mt-1">{t('dashboard.page.newStudents.subtitle')}</div>

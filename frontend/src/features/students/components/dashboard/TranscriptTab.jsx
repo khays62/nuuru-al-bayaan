@@ -108,9 +108,9 @@ export default function TranscriptTab() {
       <PrintHeader />
 
       <div className="mb-4">
-        <div className="border-l-4 border-blue-600 bg-blue-50 rounded px-3 py-2">
-          <h2 className="text-lg font-semibold text-blue-900">{t('nav.transcript')}</h2>
-          <div className="text-xs text-blue-800/80 mt-0.5">{t('students.transcriptTab.subtitle')}</div>
+        <div className="border-l-4 border-(--nb-color-brand) bg-(--nb-color-brand-50) rounded px-3 py-2">
+          <h2 className="text-lg font-semibold text-(--nb-color-fg)">{t('nav.transcript')}</h2>
+          <div className="text-xs text-(--nb-color-muted) mt-0.5">{t('students.transcriptTab.subtitle')}</div>
         </div>
       </div>
       {enrLoading && (
@@ -122,7 +122,7 @@ export default function TranscriptTab() {
       {!enrLoading && !enrError && (
         <div className="space-y-4">
           {enrollments.length === 0 && (
-            <div className="text-sm text-gray-500">{t('students.transcriptTab.noEnrollments')}</div>
+            <div className="text-sm text-(--nb-color-muted)">{t('students.transcriptTab.noEnrollments')}</div>
           )}
           {enrollments.length > 0 && (
             <LevelsTabs
@@ -136,9 +136,9 @@ export default function TranscriptTab() {
 
           {activeTab === 'summary' ? (
             <Card className="p-4 shadow-none">
-              <div className="flex items-center justify-between bg-gray-50 text-gray-700 border border-gray-200 px-3 py-2 rounded">
+              <div className="flex items-center justify-between bg-(--nb-color-bg) text-(--nb-color-fg) border border-(--nb-color-border) px-3 py-2 rounded">
                 <div className="text-sm font-medium">{t('students.transcriptTab.overallSummary')}</div>
-                {overallLoading && <span className="text-xs text-slate-500">{t('common.loading')}</span>}
+                {overallLoading && <span className="text-xs text-(--nb-color-muted)">{t('common.loading')}</span>}
               </div>
               <div className="mt-3">
                 {overallError && <Alert variant="danger" title={overallError} className="mt-2" />}
@@ -148,15 +148,15 @@ export default function TranscriptTab() {
                   const rankDisp = overallSummary?.cumulativeRank ?? null;
                   return (
                     <div className="flex flex-wrap items-center gap-3">
-                      <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-emerald-50 text-emerald-700">
+                      <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-(--nb-color-accent-50) text-(--nb-color-accent)">
                         <span className="font-semibold">{t('students.transcriptTab.labels.overall')}:</span>
                         <span>{formatNumber(overallTotal)}</span>
                       </div>
-                      <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-blue-50 text-blue-700">
+                      <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-(--nb-color-brand-50) text-(--nb-color-brand)">
                         <span className="font-semibold">{t('students.transcriptTab.labels.average')}:</span>
                         <span>{formatPercent(weightedAvg)}</span>
                       </div>
-                      <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-purple-50 text-purple-700" title={t('students.transcriptTab.rankTooltip')}>
+                      <div className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded bg-(--nb-color-bg) text-(--nb-color-fg) border border-(--nb-color-border)" title={t('students.transcriptTab.rankTooltip')}>
                         <span className="font-semibold">{t('students.transcriptTab.labels.rank')}:</span>
                         <span>{rankDisp != null ? `${rankDisp}` : '-'}</span>
                       </div>
@@ -171,26 +171,26 @@ export default function TranscriptTab() {
             const tx = txQuery.data;
             const orderedExamTypes = tx ? orderExamTypes(tx.examTypes) : [];
             return (
-              <Card className="p-4 border-blue-100 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 bg-blue-50 text-blue-900 border border-blue-100 px-3 py-3 rounded">
+              <Card className="p-4 border-(--nb-color-border) shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 bg-(--nb-color-brand-50) text-(--nb-color-fg) border border-(--nb-color-border) px-3 py-3 rounded">
                   <div className="text-sm">
-                    <span className="font-semibold text-blue-900">{t('students.table.columns.academicYear')}:</span>{' '}
-                    <span className="text-blue-900/90">{en.academicYear?.yearName || '-'}</span>
-                    <span className="mx-2 text-blue-900/60">•</span>
-                    <span className="font-semibold text-blue-900">{t('students.table.columns.grade')}:</span>{' '}
-                    <span className="text-blue-900/90">{en.grade?.gradeName || en.gradeSection?.grade?.gradeName || '-'}</span>
-                    <span className="mx-2 text-blue-900/60">•</span>
-                    <span className="font-semibold text-blue-900">{t('students.table.columns.section')}:</span>{' '}
-                    <span className="text-blue-900/90">{en.gradeSection?.section || '-'}</span>
+                    <span className="font-semibold text-(--nb-color-fg)">{t('students.table.columns.academicYear')}:</span>{' '}
+                    <span className="text-(--nb-color-fg)">{en.academicYear?.yearName || '-'}</span>
+                    <span className="mx-2 text-(--nb-color-muted)">•</span>
+                    <span className="font-semibold text-(--nb-color-fg)">{t('students.table.columns.grade')}:</span>{' '}
+                    <span className="text-(--nb-color-fg)">{en.grade?.gradeName || en.gradeSection?.grade?.gradeName || '-'}</span>
+                    <span className="mx-2 text-(--nb-color-muted)">•</span>
+                    <span className="font-semibold text-(--nb-color-fg)">{t('students.table.columns.section')}:</span>{' '}
+                    <span className="text-(--nb-color-fg)">{en.gradeSection?.section || '-'}</span>
                     {en.gradeSection?.shift && (<>
-                      <span className="mx-2 text-blue-900/60">•</span>
-                      <span className="font-semibold text-blue-900">{t('students.table.columns.shift')}:</span>{' '}
-                      <span className="text-blue-900/90">{en.shift?.shiftName || en.gradeSection?.shift?.shiftName || en.gradeSection?.shift || '-'}</span>
+                      <span className="mx-2 text-(--nb-color-muted)">•</span>
+                      <span className="font-semibold text-(--nb-color-fg)">{t('students.table.columns.shift')}:</span>{' '}
+                      <span className="text-(--nb-color-fg)">{en.shift?.shiftName || en.gradeSection?.shift?.shiftName || en.gradeSection?.shift || '-'}</span>
                     </>)}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-700 font-semibold">{t('students.transcriptTab.labels.overall')}: {formatNumber(tx?.overall?.total || 0)}</span>
-                    <span className="inline-flex items-center text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 font-semibold">{t('students.transcriptTab.labels.average')}: {formatNumber(tx?.overall?.average || 0)}</span>
+                    <span className="inline-flex items-center text-xs px-2 py-1 rounded bg-(--nb-color-accent-50) text-(--nb-color-accent) font-semibold">{t('students.transcriptTab.labels.overall')}: {formatNumber(tx?.overall?.total || 0)}</span>
+                    <span className="inline-flex items-center text-xs px-2 py-1 rounded bg-(--nb-color-brand-50) text-(--nb-color-brand) font-semibold">{t('students.transcriptTab.labels.average')}: {formatNumber(tx?.overall?.average || 0)}</span>
                   </div>
                 </div>
                 <div className="mt-3">
@@ -207,7 +207,7 @@ export default function TranscriptTab() {
                   )}
                   {tx && (
                     tx.subjects?.length === 0 || tx.examTypes?.length === 0 ? (
-                      <div className="text-sm text-gray-500">{t('students.transcriptTab.noExams')}</div>
+                      <div className="text-sm text-(--nb-color-muted)">{t('students.transcriptTab.noExams')}</div>
                     ) : (
                       <div className="space-y-3">
                         <StandardTable
@@ -219,20 +219,20 @@ export default function TranscriptTab() {
                               key: 'subject',
                               label: t('students.transcriptTab.table.subject'),
                               thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide',
-                              tdClassName: 'px-4 py-3 font-medium text-gray-900 whitespace-nowrap',
+                              tdClassName: 'px-4 py-3 font-medium text-(--nb-color-text) whitespace-nowrap',
                             },
                             ...orderedExamTypes.map((et) => ({
                               key: `et:${String(et._id)}`,
                               label: et.typeName || t('students.transcriptTab.examFallback'),
                               examTypeId: String(et._id),
                               thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap',
-                              tdClassName: 'px-4 py-3 text-gray-800',
+                              tdClassName: 'px-4 py-3 text-(--nb-color-text)',
                             })),
                             {
                               key: 'total',
                               label: t('students.transcriptTab.table.total'),
                               thClassName: 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide',
-                              tdClassName: 'px-4 py-3 font-semibold text-gray-900',
+                              tdClassName: 'px-4 py-3 font-semibold text-(--nb-color-text)',
                             },
                           ]}
                           getRowKey={(r) => String(r.subjectId)}
@@ -247,9 +247,9 @@ export default function TranscriptTab() {
                             return '';
                           }}
                           tableProps={{
-                            theadClassName: 'bg-gray-800 text-white border-b border-gray-700',
+                            theadClassName: 'bg-(--nb-color-brand) text-white border-b border-(--nb-color-border)',
                             useDefaultHeaderStyles: false,
-                            baseRowClassName: 'odd:bg-white even:bg-gray-50/40 hover:bg-blue-50 transition-colors border-b last:border-0',
+                            baseRowClassName: 'odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg) hover:bg-(--nb-color-brand-50) transition-colors border-b border-(--nb-color-border) last:border-0',
                           }}
                         />
                       </div>
@@ -345,10 +345,10 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
   return (
     <div>
       {/* Desktop: dhammaan levels + summary */}
-      <div className="hidden md:flex items-center gap-4 border-b">
+      <div className="hidden md:flex items-center gap-4 border-b border-(--nb-color-border)">
         <button
           onClick={() => setActiveTab('summary')}
-          className={`${activeTab === 'summary' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} pb-2 px-1 text-sm whitespace-nowrap`}
+          className={`${activeTab === 'summary' ? 'border-b-2 border-(--nb-color-brand) text-(--nb-color-brand)' : 'text-(--nb-color-muted) hover:text-(--nb-color-text)'} pb-2 px-1 text-sm whitespace-nowrap`}
         >{t('common.summary')}</button>
         {order.map((id) => {
           const en = idToEnrollment(id);
@@ -359,7 +359,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
             <button
               key={id}
               onClick={() => handleSelectDesktop(id)}
-              className={`${active ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} pb-2 px-1 text-sm whitespace-nowrap`}
+              className={`${active ? 'border-b-2 border-(--nb-color-brand) text-(--nb-color-brand)' : 'text-(--nb-color-muted) hover:text-(--nb-color-text)'} pb-2 px-1 text-sm whitespace-nowrap`}
               title={`${en.academicYear?.yearName || ''} • ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} • ${t('students.table.columns.section')} ${en.gradeSection?.section || ''}`}
             >{label}</button>
           );
@@ -367,11 +367,11 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
       </div>
 
       {/* Mobile: primary + overflow menu (⋯) */}
-      <div className="flex md:hidden items-center justify-between border-b">
+      <div className="flex md:hidden items-center justify-between border-b border-(--nb-color-border)">
         <div className="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto">
           <button
             onClick={() => setActiveTab('summary')}
-            className={`${activeTab === 'summary' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} pb-2 px-1 text-xs whitespace-nowrap shrink-0`}
+            className={`${activeTab === 'summary' ? 'border-b-2 border-(--nb-color-brand) text-(--nb-color-brand)' : 'text-(--nb-color-muted) hover:text-(--nb-color-text)'} pb-2 px-1 text-xs whitespace-nowrap shrink-0`}
           >{t('common.summary')}</button>
           {effectivePrimary.map((id) => {
             const en = idToEnrollment(id);
@@ -382,7 +382,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
               <button
                 key={id}
                 onClick={() => handleSelectMobile(id)}
-                className={`${active ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'} pb-2 px-1 text-xs whitespace-nowrap shrink-0`}
+                className={`${active ? 'border-b-2 border-(--nb-color-brand) text-(--nb-color-brand)' : 'text-(--nb-color-muted) hover:text-(--nb-color-text)'} pb-2 px-1 text-xs whitespace-nowrap shrink-0`}
                 title={`${en.academicYear?.yearName || ''} • ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} • ${t('students.table.columns.section')} ${en.gradeSection?.section || ''}`}
               >{label}</button>
             );
@@ -396,7 +396,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
               onClick={() => setOpen(o => !o)}
               aria-haspopup="true"
               aria-expanded={open ? 'true' : 'false'}
-              className="text-xs text-gray-600 px-2 py-1 rounded border bg-white hover:bg-gray-50 flex items-center justify-center w-10 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="text-xs text-(--nb-color-muted) px-2 py-1 rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-bg) flex items-center justify-center w-10 focus:outline-none focus:ring-2 focus:ring-(--nb-color-brand)"
               title={t('students.transcriptTab.moreLevelsTooltip')}
               ref={btnRef}
             >
@@ -414,14 +414,14 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
                       <li key={id}>
                         <button
                           onClick={() => handleSelectMobile(id)}
-                          className={`w-full text-left px-3 py-1 ${active ? 'text-indigo-600 font-medium bg-indigo-50' : 'text-gray-700 hover:bg-gray-50'} focus:outline-none focus:bg-gray-100`}
+                          className={`w-full text-left px-3 py-1 ${active ? 'text-(--nb-color-brand) font-medium bg-(--nb-color-brand-50)' : 'text-(--nb-color-text) hover:bg-(--nb-color-bg)'} focus:outline-none focus:bg-(--nb-color-bg)`}
                           role="menuitem"
                         >{label}</button>
                       </li>
                     );
                   })}
                   {effectiveOverflow.length === 0 && (
-                    <li className="px-3 py-1 text-gray-400 text-xs">{t('common.empty')}</li>
+                    <li className="px-3 py-1 text-(--nb-color-muted) text-xs">{t('common.empty')}</li>
                   )}
                 </ul>
               </FixedMenu>
@@ -454,7 +454,7 @@ function FixedMenu({ btnRef, setMenuPos, menuPos, children }) {
   }, [btnRef, setMenuPos]);
   const style = menuPos ? { position: 'fixed', top: `${menuPos.top}px`, left: `${menuPos.left}px`, width: `${menuPos.width}px`, zIndex: 1000 } : { display: 'none' };
   return (
-    <Card style={style} className="shadow-lg">
+    <Card style={style} className="shadow-(--nb-shadow-md)">
       {children}
     </Card>
   );

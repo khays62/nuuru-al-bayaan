@@ -11,12 +11,12 @@ export default function PromotionPreviewPanel({
   const { t } = useI18n();
   const previewColumns = useMemo(
     () => [
-      { key: 'student', label: t('promotions.preview.columns.student', { defaultValue: 'Student' }), thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
-      { key: 'from', label: t('promotions.preview.columns.from', { defaultValue: 'From' }), thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
-      { key: 'to', label: t('promotions.preview.columns.to', { defaultValue: 'To' }), thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
-      { key: 'avg', label: t('promotions.preview.columns.avg', { defaultValue: 'Avg' }), thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2 text-xs' },
-      { key: 'failed', label: t('promotions.preview.columns.failed', { defaultValue: 'Failed' }), thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2 text-xs' },
-      { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }), thClassName: 'p-2 text-left border-b border-gray-200', tdClassName: 'p-2' },
+      { key: 'student', label: t('promotions.preview.columns.student', { defaultValue: 'Student' }), thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'p-2 border-x border-(--nb-color-border)' },
+      { key: 'from', label: t('promotions.preview.columns.from', { defaultValue: 'From' }), thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'p-2 border-x border-(--nb-color-border)' },
+      { key: 'to', label: t('promotions.preview.columns.to', { defaultValue: 'To' }), thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'p-2 border-x border-(--nb-color-border)' },
+      { key: 'avg', label: t('promotions.preview.columns.avg', { defaultValue: 'Avg' }), thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'p-2 border-x border-(--nb-color-border) text-xs' },
+      { key: 'failed', label: t('promotions.preview.columns.failed', { defaultValue: 'Failed' }), thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'p-2 border-x border-(--nb-color-border) text-xs' },
+      { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }), thClassName: 'p-2 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)', tdClassName: 'p-2 border-x border-(--nb-color-border)' },
     ],
     [t]
   );
@@ -26,7 +26,7 @@ export default function PromotionPreviewPanel({
       <h3 className="font-semibold mb-2">{t('common.actions.preview', { defaultValue: 'Preview' })}</h3>
 
       {!preview ? (
-        <div className="text-gray-500">{t('promotions.preview.empty', { defaultValue: 'Run Preview to see targets, auto-create needs, and graduations' })}</div>
+        <div className="text-(--nb-color-muted)">{t('promotions.preview.empty', { defaultValue: 'Run Preview to see targets, auto-create needs, and graduations' })}</div>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center gap-4 text-sm">
@@ -37,7 +37,7 @@ export default function PromotionPreviewPanel({
             <div>{t('promotions.preview.summary.capacityIssues', { defaultValue: 'Capacity Issues' })}: <b className="text-red-700">{preview.summary.capacityIssues}</b></div>
           </div>
 
-          <div className="border rounded max-h-130 overflow-auto">
+          <div className="border border-(--nb-color-border) rounded max-h-130 overflow-auto">
             <StandardTable
               isLoading={false}
               error={null}
@@ -76,13 +76,13 @@ export default function PromotionPreviewPanel({
                 }
               }}
               tableProps={{
-                theadClassName: 'bg-gray-50',
+                theadClassName: 'bg-(--nb-color-brand)',
                 useDefaultHeaderStyles: false,
-                baseRowClassName: 'border-b border-gray-200 hover:bg-gray-50 transition-colors',
+                baseRowClassName: 'border-b border-(--nb-color-border) hover:bg-(--nb-color-bg-card) transition-colors',
                 rowClassName: (it) => {
                   const failed = (Array.isArray(it.errors) && it.errors.includes('BELOW_MIN_AVG')) || it.action === 'stay';
                   const graduated = it.action === 'graduate';
-                  return failed ? 'bg-red-50' : (graduated ? 'bg-blue-50' : 'bg-white');
+                  return failed ? 'bg-red-50' : (graduated ? 'bg-blue-50' : 'bg-(--nb-color-bg-card)');
                 },
               }}
             />

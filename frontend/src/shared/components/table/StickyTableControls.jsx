@@ -37,11 +37,11 @@ export default function StickyTableControls({
 	});
 
 	return (
-		<div className={`no-print sticky top-0 z-20 bg-white pt-2 pb-2 border-b border-gray-200 ${className}`.trim()}>
+		<div className={`no-print sticky top-0 z-20 bg-(--nb-color-bg-card) pt-2 pb-2 border-b border-(--nb-color-border) ${className}`.trim()}>
 			<div className="flex items-center justify-between gap-3">
 				{showRows ? (
-					<div className="flex items-center gap-2 text-sm text-slate-700">
-							<span className="text-slate-600">{t('common.rows', { defaultValue: 'Rows' })}</span>
+					<div className="flex items-center gap-2 text-sm text-(--nb-color-fg)">
+							<span className="text-(--nb-color-muted)">{t('common.rows', { defaultValue: 'Rows' })}</span>
 						<div className="min-w-24">
 							<DropdownSelect
 								value={selectValue}

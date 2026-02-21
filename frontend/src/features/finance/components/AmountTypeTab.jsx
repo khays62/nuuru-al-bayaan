@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Shield, Settings } from 'lucide-react';
+import { Plus, Edit, Trash2, Shield, Settings, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import {
@@ -18,10 +18,15 @@ import Modal from '../../../shared/components/ui/Modal.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 
 export default function AmountTypeTab() {
-    const categoriesQuery = useFinanceCategoriesQuery({ type: 'fee', includePreviousBalance: true }, { staleTime: 30_000 });
+    const categoriesQuery = useFinanceCategoriesQuery(
+        { type: 'fee', includePreviousBalance: true, includeInactive: true },
+        { staleTime: 30_000 }
+    );
     const createMutation = useCreateFinanceCategoryMutation();
     const updateMutation = useUpdateFinanceCategoryMutation();
     const deleteMutation = useDeleteFinanceCategoryMutation();
+
+    const isSaving = Boolean(createMutation.isPending || updateMutation.isPending);
 
     const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
     // Only show skeleton on the initial load; keep rows visible on background refetch.
@@ -35,17 +40,35 @@ export default function AmountTypeTab() {
         name: '',
         type: 'fee',
         defaultAmount: 0,
-        feeType: 'Standard' // Standard, Mandatory, Optional, etc.
+        feeType: 'Standard', // Standard, Mandatory, Optional, etc.
+        status: 'active'
     });
 
     const [isCustomFeeType, setIsCustomFeeType] = useState(false);
     const [customFeeType, setCustomFeeType] = useState('');
+    const [extraFeeTypes, setExtraFeeTypes] = useState([]);
 
     const [sortBy, setSortBy] = useState('name');
     const [sortDir, setSortDir] = useState('asc');
 
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
+
+    const feeTypeOptions = useMemo(() => {
+        const fromExisting = (Array.isArray(categories) ? categories : [])
+            .map((c) => String(c?.feeType || '').trim())
+            .filter(Boolean);
+
+        const pendingCustom = normalizeFeeType(customFeeType);
+        const merged = Array.from(new Set([
+            ...DEFAULT_FEE_TYPES,
+            ...fromExisting,
+            ...(Array.isArray(extraFeeTypes) ? extraFeeTypes : []),
+            ...(pendingCustom ? [pendingCustom] : []),
+        ]));
+        merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+        return merged;
+    }, [categories, customFeeType, extraFeeTypes]);
 
     useEffect(() => {
         if (!categoriesQuery.isError) return;
@@ -90,7 +113,9 @@ export default function AmountTypeTab() {
     const start = (safePage - 1) * limit;
     const currentRows = tableRows.slice(start, start + limit);
 
-    const normalizeFeeType = (value) => String(value || '').trim();
+    function normalizeFeeType(value) {
+        return String(value || '').trim();
+    }
 
     const beginFeeTypeEdit = (value) => {
         const normalized = normalizeFeeType(value) || 'Standard';
@@ -129,8 +154,9 @@ export default function AmountTypeTab() {
             setIsCustomFeeType(false);
             setCustomFeeType('');
             return true;
-        } catch {
-            toast.error("Process interrupted by server");
+        } catch (e) {
+            const msg = e?.data?.message || e?.response?.data?.message || e?.message;
+            toast.error(msg || "Process interrupted by server");
             return false;
         }
     };
@@ -139,13 +165,15 @@ export default function AmountTypeTab() {
         setEditingId(null);
         setIsCustomFeeType(false);
         setCustomFeeType('');
+        setExtraFeeTypes([]);
     };
 
     const startNew = () => {
         setEditingId('new');
-        setFormData({ name: '', type: 'fee', defaultAmount: 0, feeType: 'Standard' });
+        setFormData({ name: '', type: 'fee', defaultAmount: 0, feeType: 'Standard', status: 'active' });
         setIsCustomFeeType(false);
         setCustomFeeType('');
+        setExtraFeeTypes([]);
     };
 
     const startEdit = (cat) => {
@@ -153,21 +181,24 @@ export default function AmountTypeTab() {
         const normalized = normalizeFeeType(cat.feeType) || 'Standard';
         setIsCustomFeeType(!DEFAULT_FEE_TYPES.includes(normalized));
         setCustomFeeType(!DEFAULT_FEE_TYPES.includes(normalized) ? normalized : '');
+        setExtraFeeTypes([]);
         setFormData({
             name: cat.name,
             type: cat.type,
             defaultAmount: cat.defaultAmount,
-            feeType: normalized
+            feeType: normalized,
+            status: cat.status || 'active'
         });
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Archiving this configuration will prevent new charges from using it. Proceed?")) return;
+        if (!window.confirm("Delete this Amount Type permanently? If it is already used in invoices/appointments, deletion will be blocked — set it Inactive instead.")) return;
         try {
-            await deleteMutation.mutateAsync(id);
-            toast.success("Configuration Archived");
-        } catch {
-            toast.error("Operation failed");
+            const res = await deleteMutation.mutateAsync(id);
+            toast.success(res?.message || "Deleted successfully");
+        } catch (e) {
+            const msg = e?.data?.message || e?.response?.data?.message || e?.message;
+            toast.error(msg || "Delete failed");
         }
     };
 
@@ -227,6 +258,23 @@ export default function AmountTypeTab() {
                         </div>
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                            <DropdownSelect
+                                value={formData.status}
+                                onChange={(v) => setFormData((p) => ({ ...p, status: v || 'active' }))}
+                                options={[
+                                    { value: 'active', label: 'Active' },
+                                    { value: 'inactive', label: 'Inactive' },
+                                ]}
+                                clearable={false}
+                                className="h-11 font-black text-xs uppercase"
+                            />
+                        </div>
+                        <div />
+                    </div>
+
                     <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Transaction Category</label>
                         <div className="flex gap-2">
@@ -242,7 +290,7 @@ export default function AmountTypeTab() {
                                 <DropdownSelect
                                     value={formData.feeType}
                                     onChange={(v) => beginFeeTypeEdit(v)}
-                                    options={DEFAULT_FEE_TYPES.map((t) => ({ value: t, label: t }))}
+                                    options={feeTypeOptions.map((t) => ({ value: t, label: t }))}
                                     clearable={false}
                                     className="flex-1 h-11 font-black text-xs uppercase"
                                 />
@@ -251,9 +299,17 @@ export default function AmountTypeTab() {
                             <Button
                                 onClick={() => {
                                     if (isCustomFeeType) {
+                                        const pendingCustom = normalizeFeeType(customFeeType);
+                                        if (pendingCustom) {
+                                            setExtraFeeTypes((prev) => {
+                                                const list = Array.isArray(prev) ? prev : [];
+                                                if (list.includes(pendingCustom)) return list;
+                                                return [...list, pendingCustom];
+                                            });
+                                        }
                                         setIsCustomFeeType(false);
                                         setCustomFeeType('');
-                                        setFormData((p) => ({ ...p, feeType: 'Standard' }));
+                                        setFormData((p) => ({ ...p, feeType: pendingCustom || p.feeType || 'Standard' }));
                                     } else {
                                         setIsCustomFeeType(true);
                                         setCustomFeeType('');
@@ -263,7 +319,7 @@ export default function AmountTypeTab() {
                                 size="lg"
                                 className="h-11 font-black text-[10px] uppercase tracking-widest"
                             >
-                                {isCustomFeeType ? 'Use List' : 'Create'}
+                                {isCustomFeeType ? 'Use List' : 'Custom'}
                             </Button>
                         </div>
                     </div>
@@ -279,14 +335,17 @@ export default function AmountTypeTab() {
                         </Button>
                         <Button
                             onClick={async () => {
+                                if (isSaving) return;
                                 const ok = await handleSave();
                                 if (ok) closeFormModal();
                             }}
                             variant="primary"
                             size="lg"
                             className="h-11 font-black text-[10px] uppercase tracking-[0.2em]"
+                            disabled={isSaving}
+                            icon={isSaving ? <Loader2 size={18} className="animate-spin" /> : undefined}
                         >
-                            Save
+                            {isSaving ? 'Saving...' : 'Save'}
                         </Button>
                     </div>
                 </div>

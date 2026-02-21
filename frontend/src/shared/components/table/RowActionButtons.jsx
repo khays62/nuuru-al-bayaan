@@ -1,10 +1,10 @@
 import React from 'react';
 
 const toneClassMap = {
-	view: 'text-blue-700 hover:text-blue-900 hover:bg-blue-50 focus:ring-blue-300',
+	view: 'text-(--nb-color-accent) hover:text-(--nb-color-brand) hover:bg-(--nb-color-accent-50) focus:ring-(--nb-color-focus)',
 	edit: 'text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 focus:ring-emerald-300',
 	delete: 'text-red-700 hover:text-red-900 hover:bg-red-50 focus:ring-red-300',
-	neutral: 'text-slate-700 hover:text-slate-900 hover:bg-slate-50 focus:ring-slate-300',
+	neutral: 'text-(--nb-color-muted) hover:text-(--nb-color-fg) hover:bg-(--nb-color-brand-50) focus:ring-(--nb-color-border)',
 };
 
 export default function RowActionButtons({ actions }) {
@@ -22,12 +22,12 @@ export default function RowActionButtons({ actions }) {
 					const showLabel = Boolean(action.showLabel);
 					const borderByTone =
 						tone === 'view'
-							? 'border-blue-200'
+								? 'border-(--nb-color-accent-200)'
 							: tone === 'edit'
 								? 'border-emerald-200'
 								: tone === 'delete'
 									? 'border-red-200'
-									: 'border-slate-200';
+									: 'border-(--nb-color-border)';
 
 					return (
 						<button
@@ -39,7 +39,7 @@ export default function RowActionButtons({ actions }) {
 							aria-label={action['aria-label'] || action.label}
 							className={
 								(showLabel
-									? `inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 border ${borderByTone} bg-white transition-colors `
+									? `inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-2.5 border ${borderByTone} bg-(--nb-color-bg-card) transition-colors `
 									: 'inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors ') +
 								'focus:outline-none focus:ring-2 focus:ring-offset-2 ' +
 								toneClasses +

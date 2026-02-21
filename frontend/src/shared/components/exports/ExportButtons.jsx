@@ -30,7 +30,10 @@ export default function ExportButtons({
       const payload = await (typeof getPayload === 'function' ? getPayload() : null);
       if (!payload) return;
       const next = ext ? { ...payload, filename: withExtension(payload.filename, ext) } : payload;
-      fn(next);
+      await fn(next);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Export failed:', e);
     } finally {
       setBusy(false);
     }

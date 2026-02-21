@@ -94,39 +94,42 @@ export default function SearchableSelect({
         onClick={() => setOpen((v) => !v)}
         className={cn(
           'w-full inline-flex items-center justify-between gap-2',
-          'px-3 py-2 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-md shadow-sm text-sm text-gray-800',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+          'px-3 py-2 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-md shadow-sm text-sm text-(--nb-color-fg)',
+          'focus:outline-none focus:border-(--nb-color-focus)',
+          'focus:shadow-none focus-visible:shadow-none',
+          'focus-visible:outline-none focus-visible:border-(--nb-color-focus)',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           className
         )}
         {...buttonProps}
       >
-        <span className={cn('truncate', selectedLabel ? 'text-gray-800' : 'text-gray-500')}>
+        <span className={cn('truncate', selectedLabel ? 'text-(--nb-color-fg)' : 'text-(--nb-color-muted)')}>
           {selectedLabel || resolvedPlaceholder}
         </span>
-        <ChevronDown size={18} className="text-gray-500" />
+        <ChevronDown size={18} className="text-(--nb-color-muted)" />
       </button>
 
       {open && !disabled ? (
         <div
           className={cn(
             'absolute right-0 left-0 mt-2 overflow-hidden z-50',
-            'rounded-md border border-gray-200 bg-white shadow-lg'
+            'rounded-md border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-lg'
           )}
         >
-          <div className="p-2 border-b border-gray-200">
+          <div className="p-2 border-b border-(--nb-color-border)">
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-2">
-                <Search size={16} className="text-gray-400" />
+                <Search size={16} className="text-(--nb-color-muted)" />
               </span>
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={resolvedSearchPlaceholder}
                 className={cn(
-                  'w-full pl-8 pr-2 py-2 text-sm',
-                  'border border-gray-300 rounded-md',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                  'w-full pl-8 pr-2 py-2 text-sm text-(--nb-color-fg) placeholder:text-(--nb-color-muted)',
+                  'border border-(--nb-color-border) rounded-md bg-(--nb-color-bg-card)',
+                  'focus:outline-none focus:border-(--nb-color-focus)',
+                  'focus-visible:outline-none focus-visible:border-(--nb-color-focus)'
                 )}
                 autoFocus
               />
@@ -137,7 +140,7 @@ export default function SearchableSelect({
             {canClear ? (
               <button
                 type="button"
-                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="w-full text-left px-3 py-2 text-sm text-(--nb-color-fg) hover:bg-(--nb-color-brand-50)"
                 onClick={() => onPick('')}
               >
                 {resolvedClearLabel}
@@ -145,7 +148,7 @@ export default function SearchableSelect({
             ) : null}
 
             {listOptions.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500">{resolvedNoOptionsFound}</div>
+              <div className="px-3 py-2 text-sm text-(--nb-color-muted)">{resolvedNoOptionsFound}</div>
             ) : (
               listOptions.map((o) => {
                 const active = String(value || '') === o.value;
@@ -154,8 +157,8 @@ export default function SearchableSelect({
                     key={o.value}
                     type="button"
                     className={
-                      `w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ` +
-                      (active ? 'bg-gray-100 text-gray-900' : 'text-gray-700')
+                      `w-full text-left px-3 py-2 text-sm hover:bg-(--nb-color-brand-50) ` +
+                      (active ? 'bg-(--nb-color-brand-100) text-(--nb-color-fg)' : 'text-(--nb-color-fg)')
                     }
                     onClick={() => onPick(o.value)}
                   >
@@ -166,7 +169,7 @@ export default function SearchableSelect({
             )}
 
             {String(query || '').trim() === '' && safeOptions.length > (Number(maxVisible) || 5) ? (
-              <div className="px-3 py-2 text-xs text-gray-500">{resolvedTypeToSearchMore}</div>
+              <div className="px-3 py-2 text-xs text-(--nb-color-muted)">{resolvedTypeToSearchMore}</div>
             ) : null}
           </div>
         </div>

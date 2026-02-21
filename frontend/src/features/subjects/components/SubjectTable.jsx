@@ -3,6 +3,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
+import Chip from '../../../shared/components/ui/Chip.jsx';
 import { useAuth } from '../../../auth/AuthContext';
 import { useI18n } from '../../../i18n/I18nProvider';
 
@@ -37,19 +38,16 @@ export default function SubjectTable({
             label: t('subjects.table.columns.subjectName', { defaultValue: 'Subject Name' }),
             sortable: true,
             field: 'subjectName',
-            tdClassName: 'px-6 py-4 whitespace-nowrap font-medium text-gray-900 border-x border-gray-200',
         },
         {
             key: 'subjectCode',
             label: t('subjects.table.columns.subjectCode', { defaultValue: 'Subject Code' }),
             sortable: true,
             field: 'subjectCode',
-            tdClassName: 'px-6 py-4 whitespace-nowrap text-gray-600 border-x border-gray-200',
         },
         {
             key: 'grades',
             label: t('subjects.table.columns.grades', { defaultValue: 'Associated Grades' }),
-            tdClassName: 'px-6 py-4 text-gray-600 border-x border-gray-200',
         },
         {
             key: 'actions',
@@ -57,7 +55,7 @@ export default function SubjectTable({
             align: 'right',
             noPrint: true,
             locked: false,
-            tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium border-x border-gray-200',
+            tdClassName: 'px-6 py-4 whitespace-nowrap text-right font-medium border-x border-(--nb-color-border)',
         },
     ]), [t]);
 
@@ -102,9 +100,9 @@ export default function SubjectTable({
                         return (
                             <div className="flex flex-wrap gap-1 max-w-xs">
                                 {(subject.grades || []).map((grade) => (
-                                    <span key={grade._id} className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded-md">
+                                    <Chip key={grade._id} variant="neutral">
                                         {grade.gradeName}
-                                    </span>
+                                    </Chip>
                                 ))}
                             </div>
                         );

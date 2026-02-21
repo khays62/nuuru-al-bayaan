@@ -3,11 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import financeService from '../api/finance';
 import { categoryKeys, feeTypeKeys } from '../queryKeys';
 
-export function useFinanceCategoriesQuery({ type, includePreviousBalance } = {}, options = {}) {
+export function useFinanceCategoriesQuery({ type, includePreviousBalance, includeInactive } = {}, options = {}) {
   return useQuery({
-    queryKey: categoryKeys.list({ type, includePreviousBalance }),
+    queryKey: categoryKeys.list({ type, includePreviousBalance, includeInactive }),
     queryFn: async () => {
-      const res = await financeService.getFinanceCategories(type, { includePreviousBalance });
+      const res = await financeService.getFinanceCategories(type, { includePreviousBalance, includeInactive });
       return Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : (res?.data || []));
     },
     ...options,
