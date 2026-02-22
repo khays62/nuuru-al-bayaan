@@ -1,7 +1,12 @@
 import FeeInvoice from '../../models/FeeInvoice.js';
 import FeeTransaction from '../../models/FeeTransaction.js';
+import FinanceCategory from '../../models/FinanceCategory.js';
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+
+function escapeRegex(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function parseMonthRange(month) {
   if (!/^\d{4}-\d{2}$/.test(month)) return null;
@@ -77,9 +82,7 @@ export async function printMonthlyInvoices(req, res) {
     ];
 
     const query = {
-      $and: [
-        { status: { $ne: 'Cancelled' } },
-      ],
+      $and: [{ status: { $ne: 'Cancelled' } }],
       __monthFilter: monthFilter,
       __statusOrPaid: statusOrPaidFilter,
     };
@@ -91,6 +94,7 @@ export async function printMonthlyInvoices(req, res) {
     if (academicYearId) {
       if (!isValidObjectId(academicYearId)) return res.status(400).json({ message: 'Invalid academicYearId' });
       query.$and = [
+        { status: { $ne: 'Cancelled' } },
         { $or: query.__statusOrPaid },
         { $or: query.__monthFilter },
         { $or: [
@@ -102,9 +106,51 @@ export async function printMonthlyInvoices(req, res) {
       delete query.__statusOrPaid;
       delete query.__monthFilter;
     }
+    let categoryNameForFallback = null;
     if (categoryId) {
       if (!isValidObjectId(categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
-      query['items.category'] = categoryId;
+
+      // Legacy safety: some invoices may have items with a name but missing items.category.
+      // In that case, allow matching by the category name.
+      const cat = await FinanceCategory.findById(categoryId).select('name').lean();
+      categoryNameForFallback = cat?.name ? String(cat.name).trim() : null;
+
+      const categoryMatchOr = [
+        { 'items.category': categoryId },
+      ];
+
+      if (categoryNameForFallback) {
+        const safe = escapeRegex(categoryNameForFallback);
+        const titlePrefix = new RegExp(`^\\s*${safe}(?:\\b|\\s|$)`, 'i');
+
+        categoryMatchOr.push({
+          items: {
+            $elemMatch: {
+              name: categoryNameForFallback,
+              $or: [
+                { category: { $exists: false } },
+                { category: null },
+              ],
+            },
+          },
+        });
+
+        // Extra legacy fallback: older invoices may not have items at all, but their title
+        // was generated as `${category.name} ${YYYY-MM}`.
+        categoryMatchOr.push({
+          $and: [
+            {
+              $or: [
+                { items: { $exists: false } },
+                { items: { $size: 0 } },
+              ],
+            },
+            { title: titlePrefix },
+          ],
+        });
+      }
+
+      query.$and = [...(query.$and || []), { $or: categoryMatchOr }];
     }
 
     if (query.__monthFilter || query.__statusOrPaid) {
@@ -166,7 +212,21 @@ export async function printMonthlyInvoices(req, res) {
     if (categoryId) {
       transactions = transactions.filter(t => {
         const items = Array.isArray(t?.invoice?.items) ? t.invoice.items : [];
-        return items.some(i => String(i?.category?._id || i?.category || '') === String(categoryId));
+        const byCategoryId = items.some(i => String(i?.category?._id || i?.category || '') === String(categoryId));
+        if (byCategoryId) return true;
+
+        if (!categoryNameForFallback) return false;
+        const title = String(t?.invoice?.title || '').trim();
+        if (!items.length && title) {
+          const safe = escapeRegex(categoryNameForFallback);
+          const titlePrefix = new RegExp(`^\\s*${safe}(?:\\b|\\s|$)`, 'i');
+          if (titlePrefix.test(title)) return true;
+        }
+        return items.some(i => {
+          const hasCategory = !!(i?.category?._id || i?.category);
+          if (hasCategory) return false;
+          return String(i?.name || '').trim() === categoryNameForFallback;
+        });
       });
     }
 

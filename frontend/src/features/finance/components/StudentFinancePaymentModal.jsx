@@ -13,6 +13,7 @@ import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { printHtmlDocument } from '../../../utils/exportTable';
 import {
     useInvoicesQuery,
     useStudentMonthHistoryQuery,
@@ -225,6 +226,20 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
         }
     };
 
+    const getPayAmountStatus = (inv, computedBalance) => {
+        const raw = editingPaid?.[inv?._id];
+        const entered = raw === '' || raw == null ? 0 : Number(raw);
+        const remaining = Number(computedBalance || 0);
+
+        if (!Number.isFinite(entered) || entered <= 0) return { kind: 'none', remaining };
+        if (!Number.isFinite(remaining) || remaining <= 0) return { kind: 'exact', remaining };
+
+        const eps = 0.01;
+        if (entered > remaining + eps) return { kind: 'over', remaining };
+        if (Math.abs(entered - remaining) <= eps) return { kind: 'exact', remaining };
+        return { kind: 'under', remaining };
+    };
+
     const handleToggleHormarisMonth = (month) => {
         setSelectedHormarisMonths((prev) => {
             const set = new Set(prev);
@@ -340,7 +355,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                         .voucher-note { font-size: 9px; font-weight: 700; font-style: italic; color: #64748b; margin-top: 5px; }
                     </style>
                 </head>
-                <body onload="window.print()">
+                <body>
                     <div class="voucher-card">
                         <div class="header-main">
                             <img src="${meta.headerImg || ''}" class="header-logo" />
@@ -448,20 +463,16 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                 txByInvoice.set(String(invId), (txByInvoice.get(String(invId)) || 0) + Number(t.amount || 0));
             }
 
-            const win = window.open('', '_blank');
-            if (win) {
-                const html = renderMultiRV(invoicesToPrint, {
-                    headerImg: headerBase64,
-                    account: accounts.find(a => a._id === accountId)?.name || 'CASH',
-                    student,
-                    academicYear: row?.academicYear?.yearName || '2024-2025',
-                    paymentType,
-                    paymentGroupId: payRes?.paymentGroupId || payRes?.print?.paymentGroupId || null,
-                    txByInvoice,
-                });
-                win.document.write(html);
-                win.document.close();
-            }
+            const html = renderMultiRV(invoicesToPrint, {
+                headerImg: headerBase64,
+                account: accounts.find(a => a._id === accountId)?.name || 'CASH',
+                student,
+                academicYear: row?.academicYear?.yearName || '2024-2025',
+                paymentType,
+                paymentGroupId: payRes?.paymentGroupId || payRes?.print?.paymentGroupId || null,
+                txByInvoice,
+            });
+            await printHtmlDocument(html, { title: `SYD ERP Receipt - ${student?.fullName || ''}` });
 
             setSelectedHormarisMonths([]);
             setSelectedHormarisAmounts({});
@@ -501,7 +512,6 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                 Number(i?.balance || 0) > 0
             ));
 
-            const win = window.open('', '_blank');
             const html = renderRV(inv, {
                 headerImg: headerBase64,
                 account: (() => {
@@ -515,8 +525,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                 unpaid
             });
 
-            win.document.write(html);
-            win.document.close();
+            await printHtmlDocument(html, { title: `SYD ERP Receipt - ${student?.fullName || ''}` });
             toast.dismiss();
         } catch {
             toast.error(t('finance.studentFinance.paymentModal.toasts.printFailed', { defaultValue: 'Print failed' }));
@@ -608,7 +617,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                         .voucher-note { font-size: 9px; font-weight: 700; font-style: italic; color: #64748b; margin-top: 5px; }
                     </style>
                 </head>
-                <body onload="window.print()">
+                <body>
                     <div class="voucher-card">
                         <div class="header-main">
                             <img src="${meta.headerImg || ''}" class="header-logo" />
@@ -928,33 +937,47 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                     />
                                                 );
                                             case 'actions':
-                                                return (
-                                                    <RowActionButtons
-                                                        actions={[
-                                                            {
-                                                                key: 'save',
-                                                                label: t('finance.studentFinance.paymentModal.actions.save', { defaultValue: 'Save' }),
-                                                                tone: 'neutral',
-                                                                showLabel: false,
-                                                                icon: <Save size={16} />,
-                                                                disabled: paymentLocked,
-                                                                onClick: () => handleSavePayment(inv),
-                                                            },
-                                                            {
-                                                                key: 'print',
-                                                                label: t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' }),
-                                                                tone: 'view',
-                                                                showLabel: false,
-                                                                icon: <Printer size={16} />,
-                                                                disabled: !canPrint,
-                                                                title: !canPrint
+                                                {
+                                                    const status = getPayAmountStatus(inv, balance);
+                                                    const saveColorClass = status.kind === 'over'
+                                                        ? '!bg-red-600 hover:!bg-red-700'
+                                                        : status.kind === 'exact'
+                                                            ? '!bg-green-600 hover:!bg-green-700'
+                                                            : status.kind === 'under'
+                                                                ? '!bg-yellow-500 hover:!bg-yellow-600 !text-(--nb-color-fg)'
+                                                                : '';
+
+                                                    const raw = editingPaid?.[inv?._id];
+                                                    const entered = raw === '' || raw == null ? 0 : Number(raw);
+                                                    const hasValidAmount = Number.isFinite(entered) && entered > 0;
+                                                    const isOverpay = status.kind === 'over';
+
+                                                    return (
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="brand"
+                                                                className={saveColorClass}
+                                                                disabled={paymentLocked || !hasValidAmount || isOverpay}
+                                                                onClick={() => handleSavePayment(inv)}
+                                                                title={isOverpay
+                                                                    ? t('finance.studentFinance.paymentModal.validation.amountExceedsBalance', { defaultValue: 'Amount exceeds balance' })
+                                                                    : t('finance.studentFinance.paymentModal.actions.save', { defaultValue: 'Save' })}
+                                                                icon={<Save size={16} />}
+                                                            />
+                                                            <Button
+                                                                size="sm"
+                                                                variant="neutral"
+                                                                disabled={!canPrint}
+                                                                title={!canPrint
                                                                     ? t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' })
-                                                                    : t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' }),
-                                                                onClick: () => handlePrintRV(inv),
-                                                            },
-                                                        ]}
-                                                    />
-                                                );
+                                                                    : t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' })}
+                                                                onClick={() => handlePrintRV(inv)}
+                                                                icon={<Printer size={16} />}
+                                                            />
+                                                        </div>
+                                                    );
+                                                }
                                             case 'balance':
                                                 return (
                                                     <div className="flex flex-col items-end leading-tight">

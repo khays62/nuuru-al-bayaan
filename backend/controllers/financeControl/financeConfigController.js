@@ -2,6 +2,7 @@ import FinanceCategory from '../../models/FinanceCategory.js';
 import Account from '../../models/Account.js';
 import AuditLog from '../../models/AuditLog.js';
 import FeeType from '../../models/FeeType.js';
+import FeeInvoice from '../../models/FeeInvoice.js';
 import Expense from '../../models/Expense.js';
 import { publishRealtime } from '../../utils/realtimeBus.js';
 
@@ -178,25 +179,34 @@ export const deleteCategory = async (req, res) => {
 
 export const createFeeType = async (req, res) => {
     try {
-        const { code, name } = req.body || {};
-        const normalizedCode = String(code || '').toLowerCase().trim();
+        const { code, name, mode, discountPercent, status } = req.body || {};
         const normalizedName = String(name || '').trim();
 
-        if (!normalizedCode) return res.status(400).json({ message: 'code is required' });
-        if (!['personal', 'free'].includes(normalizedCode)) {
-            return res.status(400).json({ message: 'code must be personal or free' });
-        }
         if (!normalizedName) return res.status(400).json({ message: 'name is required' });
 
-        // Upsert so admin can "create" missing defaults or reactivate inactive ones.
-        const feeType = await FeeType.findOneAndUpdate(
-            { code: normalizedCode },
-            {
-                $set: { name: normalizedName, status: 'active' },
-                $setOnInsert: { code: normalizedCode }
-            },
-            { new: true, upsert: true, runValidators: true }
-        );
+        // Determine code: prefer provided code (sanitized), otherwise generate from name
+        const slugify = (s) => String(s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        let normalizedCode = code ? String(code || '').toLowerCase().trim() : slugify(normalizedName) || 'fee';
+
+        // Ensure unique code by appending suffix if needed
+        let candidate = normalizedCode;
+        let suffix = 1;
+        while (await FeeType.exists({ code: candidate })) {
+            candidate = `${normalizedCode}-${suffix++}`;
+            if (suffix > 1000) break;
+        }
+        normalizedCode = candidate;
+
+        const payload = {
+            code: normalizedCode,
+            name: normalizedName,
+            mode: ['charge', 'waive', 'discount'].includes(String(mode || 'charge')) ? String(mode || 'charge') : 'charge',
+            discountPercent: Number(discountPercent || 0) || 0,
+            status: status || 'active'
+        };
+
+        const feeType = new FeeType(payload);
+        await feeType.save();
         await logAction(req.user, 'CREATE_FEE_TYPE', `Created fee type: ${feeType.code}`, req, {
             id: feeType._id,
             model: 'FeeType',
@@ -245,6 +255,8 @@ export const updateFeeType = async (req, res) => {
 
         const update = {};
         if (req.body?.name !== undefined) update.name = String(req.body.name || '').trim();
+        if (req.body?.mode !== undefined) update.mode = req.body.mode;
+        if (req.body?.discountPercent !== undefined) update.discountPercent = Number(req.body.discountPercent || 0);
         if (req.body?.status !== undefined) update.status = req.body.status;
 
         if (update.name !== undefined && !update.name) {
@@ -271,21 +283,68 @@ export const updateFeeType = async (req, res) => {
 export const deleteFeeType = async (req, res) => {
     try {
         const { id } = req.params;
-        const feeType = await FeeType.findByIdAndUpdate(id, { status: 'inactive' }, { new: true });
+        if (!id || !/^[0-9a-fA-F]{24}$/.test(String(id))) {
+            return res.status(400).json({ code: 'FIN_INVALID_FEE_TYPE_ID', message: 'Invalid fee type id' });
+        }
+
+        const feeType = await FeeType.findById(id).lean();
         if (!feeType) return res.status(404).json({ message: 'Fee type not found' });
 
-        await logAction(req.user, 'DELETE_FEE_TYPE', `Deactivated fee type: ${feeType.code}`, req, {
-            id: feeType._id,
-            model: 'FeeType'
+        // Check for references:
+        // - FinanceCategory.feeType (string)
+        // - FeeInvoice.discounts.name
+        const codeVal = String(feeType.code || '').trim();
+        const nameVal = String(feeType.name || '').trim();
+
+        const inCategory = await FinanceCategory.exists({ feeType: { $in: [codeVal, nameVal] } });
+        const inInvoiceDiscount = await FeeInvoice.exists({ 'discounts.name': { $in: [nameVal, codeVal] } });
+
+        if (inCategory || inInvoiceDiscount) {
+            return res.status(400).json({ code: 'FEE_TYPE_IN_USE', message: 'Cannot delete — this fee type is referenced by other records.' });
+        }
+
+        // Safe to delete
+        await FeeType.deleteOne({ _id: id });
+
+        await logAction(req.user, 'DELETE_FEE_TYPE', `Deleted fee type: ${feeType.code}`, req, {
+            id: id,
+            model: 'FeeType',
+            changes: { before: feeType, after: null }
         });
 
         try {
-            publishRealtime({ type: 'feeTypes:changed', id: String(feeType._id), code: feeType.code, ts: Date.now() });
+            publishRealtime({ type: 'feeTypes:changed', id: String(id), code: feeType.code, ts: Date.now() });
         } catch { /* ignore */ }
 
-        res.json({ message: 'Fee type deactivated successfully' });
+        res.json({ message: 'Fee type deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+export const canDeleteFeeType = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id || !/^[0-9a-fA-F]{24}$/.test(String(id))) {
+            return res.status(400).json({ code: 'FIN_INVALID_FEE_TYPE_ID', message: 'Invalid fee type id' });
+        }
+
+        const feeType = await FeeType.findById(id).lean();
+        if (!feeType) return res.status(404).json({ message: 'Fee type not found' });
+
+        const codeVal = String(feeType.code || '').trim();
+        const nameVal = String(feeType.name || '').trim();
+
+        const inCategory = await FinanceCategory.exists({ feeType: { $in: [codeVal, nameVal] } });
+        const inInvoiceDiscount = await FeeInvoice.exists({ 'discounts.name': { $in: [nameVal, codeVal] } });
+
+        if (inCategory || inInvoiceDiscount) {
+            return res.status(400).json({ code: 'FEE_TYPE_IN_USE', message: 'Cannot delete — this fee type is referenced by other records.' });
+        }
+
+        return res.json({ canDelete: true });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
     }
 };
 

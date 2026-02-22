@@ -3,6 +3,7 @@ import FinanceCategory from '../../models/FinanceCategory.js';
 import Student from '../../models/Student.js';
 import AuditLog from '../../models/AuditLog.js';
 import { publishRealtime } from '../../utils/realtimeBus.js';
+import FeeType from '../../models/FeeType.js';
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 
@@ -124,9 +125,17 @@ export async function chargeStudentFees(req, res) {
 
     if (!chargeType) return res.status(400).json({ message: 'chargeType is required' });
     if (!categoryId || !isValidObjectId(categoryId)) return res.status(400).json({ message: 'categoryId is required' });
-    if (!feeType || !['personal', 'free'].includes(String(feeType).toLowerCase())) {
-      return res.status(400).json({ message: 'feeType must be personal or free' });
+    if (!feeType) return res.status(400).json({ message: 'feeType is required' });
+
+    // Resolve fee type record (accept id, code, or name)
+    let feeTypeRecord = null;
+    if (isValidObjectId(feeType)) {
+      feeTypeRecord = await FeeType.findById(feeType).lean();
+    } else {
+      feeTypeRecord = await FeeType.findOne({ $or: [{ code: String(feeType).toLowerCase() }, { name: String(feeType) }] }).lean();
     }
+
+    if (!feeTypeRecord) return res.status(400).json({ message: 'feeType not found' });
 
     const monthListRaw = Array.isArray(months) ? months : (month ? [month] : []);
     const monthList = Array.from(
@@ -218,11 +227,19 @@ export async function chargeStudentFees(req, res) {
           }
         }
 
-        const waived = String(feeType).toLowerCase() === 'free' || t.isFree;
+        const feeTypeMode = String(feeTypeRecord.mode || 'charge').toLowerCase();
+        const feeTypeDiscountPercent = Number(feeTypeRecord.discountPercent || 0);
+        const waived = feeTypeMode === 'waive' || t.isFree;
+
+        // Fee type percentage discount (applied before other discounts)
+        let feeTypeDiscountAmount = 0;
+        if (feeTypeMode === 'discount' && feeTypeDiscountPercent > 0) {
+          feeTypeDiscountAmount = (resolvedAmount * feeTypeDiscountPercent) / 100;
+        }
         const title = `${category.name} ${m}`;
         const isHormarisCharge = m > createdMonth;
         // IMPORTANT: insertMany() does NOT run pre-save hooks, so we must compute final math here.
-        const netAmount = Math.max(0, resolvedAmount - studentDiscount);
+        const netAmount = Math.max(0, resolvedAmount - studentDiscount - feeTypeDiscountAmount);
         const finalBalance = waived ? 0 : netAmount;
 
         toCreate.push({
@@ -232,12 +249,20 @@ export async function chargeStudentFees(req, res) {
           billingMonth: m,
           title,
           items: [{ name: category.name, amount: resolvedAmount, category: categoryId }],
-          discounts: studentDiscount > 0 ? [{
-            name: 'Permanent Scholarship',
-            type: t.overallDiscount.type,
-            value: t.overallDiscount.amount,
-            amountOff: studentDiscount
-          }] : [],
+          discounts: [
+            ...(studentDiscount > 0 ? [{
+              name: 'Permanent Scholarship',
+              type: t.overallDiscount.type,
+              value: t.overallDiscount.amount,
+              amountOff: studentDiscount
+            }] : []),
+            ...(feeTypeDiscountAmount > 0 ? [{
+              name: feeTypeRecord.name || feeTypeRecord.code || 'Fee Type Discount',
+              type: 'percentage',
+              value: feeTypeDiscountPercent,
+              amountOff: feeTypeDiscountAmount
+            }] : []),
+          ],
           isWaived: waived,
           waiverReason: waived ? 'Free Student / Scholarship' : undefined,
           isHormaris: isHormarisCharge,

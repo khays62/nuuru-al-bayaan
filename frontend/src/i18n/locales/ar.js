@@ -3220,5 +3220,58 @@ export default {
         },
       },
     },
+
+    feeTypes: {
+      title: 'إعداد أنواع الرسوم',
+      subtitle: 'Personal vs Free',
+      create: 'إنشاء نوع الرسوم',
+      modal: {
+        create: 'إنشاء نوع الرسوم',
+        edit: 'تعديل نوع الرسوم',
+      },
+      labels: {
+        displayName: 'الاسم الظاهر',
+        behavior: 'السلوك',
+        status: 'الحالة',
+        discountPercent: 'نسبة الخصم',
+      },
+      table: {
+        type: 'نوع الرسوم',
+        behavior: 'السلوك',
+        status: 'الحالة',
+        actions: 'الإجراءات',
+      },
+      behaviors: {
+        charge: 'عادي',
+        waive: 'مجاني / إعفاء',
+        discount: 'خصم',
+      },
+      status: {
+        active: 'نشط',
+        inactive: 'غير نشط',
+      },
+      actions: {
+        edit: 'تعديل',
+        delete: 'حذف',
+        save: 'حفظ',
+      },
+      saving: 'جارٍ الحفظ…',
+      emptyTitle: 'No fee types defined.',
+      confirms: {
+        deactivate: 'هل تريد إلغاء تفعيل هذا النوع؟',
+        permanentDelete: 'هل تريد حذف هذا النوع نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.',
+      },
+      toasts: {
+        loadFailed: 'فشل تحميل أنواع الرسوم',
+        nameRequired: 'الاسم مطلوب',
+        discountInvalid: 'يجب أن تكون نسبة الخصم بين 1 و 100',
+        created: 'تم إنشاء نوع الرسوم',
+        updated: 'تم تحديث نوع الرسوم',
+        deleted: 'تم حذف نوع الرسوم',
+        deactivated: 'تم إلغاء تفعيل نوع الرسوم',
+        deleteBlocked: 'Cannot delete — this fee type is referenced by other records.',
+        operationFailed: 'فشل الإجراء',
+      },
+    },
   },
 };

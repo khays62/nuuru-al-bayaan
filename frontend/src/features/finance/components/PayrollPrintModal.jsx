@@ -15,6 +15,7 @@ import {
     exportTableToExcel,
     exportTableToCSV,
     exportTableToClipboard,
+    printHtmlDocument,
 } from '../../../utils/exportTable';
 
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect.jsx';
@@ -68,10 +69,7 @@ export default function PayrollPrintModal({
 
     const printPdf = ({ title, tableHtml }) => {
         const logoUrl = getLogoUrl();
-        const win = window.open('', '_blank');
-        if (!win) return toast.error(t('finance.payroll.print.errors.popupBlocked', { defaultValue: 'Popup blocked' }));
-
-        win.document.write(`
+                const html = `
       <html>
         <head>
           <title>${title}</title>
@@ -91,10 +89,9 @@ export default function PayrollPrintModal({
           ${tableHtml}
         </body>
       </html>
-    `);
-        win.document.close();
-        win.focus();
-        win.print();
+        `;
+
+                printHtmlDocument(html, { title });
     };
 
     const formatMonthLong = (monthValue) => {

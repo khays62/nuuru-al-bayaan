@@ -12,9 +12,21 @@ import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
+import {
+    printHtmlDocument,
+} from '../../../utils/exportTable';
 
 // Reusable Print Modal Wrapper (DS-aligned)
-const PrintModalWrapper = ({ title, subtitle, onClose, onPrint, children, loading }) => (
+const PrintModalWrapper = ({
+    title,
+    subtitle,
+    onClose,
+    onPrint,
+    children,
+    loading,
+    primaryActionLabel = 'Print',
+    primaryActionIcon = <Printer size={16} />,
+}) => (
     <Modal isOpen onClose={onClose} title={title}>
         {subtitle ? (
             <p className="text-sm text-(--nb-color-muted) -mt-1 mb-4">{subtitle}</p>
@@ -31,9 +43,9 @@ const PrintModalWrapper = ({ title, subtitle, onClose, onPrint, children, loadin
                 disabled={loading}
                 variant="primary"
                 size="md"
-                icon={<Printer size={16} />}
+                icon={primaryActionIcon}
             >
-                {loading ? 'Generating…' : 'Print'}
+                {loading ? 'Generating…' : primaryActionLabel}
             </Button>
         </div>
     </Modal>
@@ -41,20 +53,39 @@ const PrintModalWrapper = ({ title, subtitle, onClose, onPrint, children, loadin
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+const parseAcademicYearYears = (yearRange) => {
+    const s = String(yearRange || '').trim();
+    if (!s) return [new Date().getFullYear().toString()];
+
+    // Common patterns: "2025-2026", "2025/2026", "2025-26"
+    const full = s.match(/(\d{4})\s*[-\/]\s*(\d{4})/);
+    if (full) return [full[1], full[2]];
+
+    const short = s.match(/(\d{4})\s*[-\/]\s*(\d{2})/);
+    if (short) {
+        const y1 = Number(short[1]);
+        const y2 = Math.floor(y1 / 100) * 100 + Number(short[2]);
+        // handle century rollover (rare but safe)
+        const y2Fixed = y2 < y1 ? y2 + 100 : y2;
+        return [String(y1), String(y2Fixed)];
+    }
+
+    const single = s.match(/\d{4}/);
+    if (single) return [single[0]];
+    return [new Date().getFullYear().toString()];
+};
+
 const toYYYYMM = (monthName, yearRange) => {
     const idx = months.indexOf(monthName);
     if (idx === -1) return null;
 
-    // Extract all 4-digit years (e.g., "2025-2026" -> ["2025", "2026"])
-    const years = (yearRange || '').match(/\d{4}/g) || [new Date().getFullYear().toString()];
+    const years = parseAcademicYearYears(yearRange);
 
     let yearToUse = years[0];
-    // In a split academic year (e.g. 2025-2026), 
+    // In a split academic year (e.g. 2025-2026),
     // Jan-Aug (0-7) usually belong to the second year (2026).
     // Sep-Dec (8-11) usually belong to the first year (2025).
-    if (years.length > 1 && idx < 8) {
-        yearToUse = years[1];
-    }
+    if (years.length > 1 && idx < 8) yearToUse = years[1];
 
     return `${yearToUse}-${(idx + 1).toString().padStart(2, '0')}`;
 };
@@ -249,8 +280,6 @@ export function openMonthlyInvoicesPreview({ month, invoices, students }) {
         toast.error('No invoices found to print');
         return;
     }
-    const win = window.open('', '_blank');
-    if (!win) return;
 
     const cardsHtml = (eligible || []).map((inv) => {
         const dateNow = new Date().toLocaleString();
@@ -297,19 +326,25 @@ export function openMonthlyInvoicesPreview({ month, invoices, students }) {
             feeMetaHtml,
             arrearsHtml: '',
         });
-    }).join('<div class="page-break"></div>');
+    }).join('');
 
-    win.document.open();
-    win.document.write(`
+    const html = `
         <html>
             <head>
                 <title>SYD ERP - Monthly Vouchers</title>
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                 <style>
-                    @page { size: portrait; margin: 0; }
+                    @page { size: A4 portrait; margin: 10mm; }
                     body { font-family: 'Inter', sans-serif; background: #fff; margin: 0; padding: 0; }
-                    .page-break { page-break-after: always; }
-                    .voucher-card { padding: 26px; display: flex; flex-direction: column; position: relative; }
+                    .voucher-card {
+                        padding: 22px;
+                        display: flex;
+                        flex-direction: column;
+                        position: relative;
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                        margin: 0 0 10mm 0;
+                    }
 
                     .header-main { text-align: center; margin-bottom: 6px; width: 100%; }
                     .header-logo { display: block; margin: 0 auto; width: 100%; height: auto; max-height: 28mm; object-fit: contain; }
@@ -325,10 +360,11 @@ export function openMonthlyInvoicesPreview({ month, invoices, students }) {
                     .voucher-note { font-size: 9px; font-weight: 700; font-style: italic; color: #64748b; margin-top: 8px; }
                 </style>
             </head>
-            <body onload="window.print()">${cardsHtml}</body>
+            <body>${cardsHtml}</body>
         </html>
-    `);
-    win.document.close();
+    `;
+
+    printHtmlDocument(html, { title: 'SYD ERP - Monthly Vouchers' });
 }
 
 export function openDailyAuditPreview({ transactions }) {
@@ -336,8 +372,6 @@ export function openDailyAuditPreview({ transactions }) {
         toast.error('No transactions found to print');
         return;
     }
-    const win = window.open('', '_blank');
-    if (!win) return;
 
     const groups = new Map();
     const singles = [];
@@ -540,19 +574,25 @@ export function openDailyAuditPreview({ transactions }) {
         });
     });
 
-    const cardsHtml = [...groupCards, ...singleCards].join('<div class="page-break"></div>');
+    const cardsHtml = [...groupCards, ...singleCards].join('');
 
-    win.document.open();
-    win.document.write(`
+    const html = `
         <html>
             <head>
                 <title>SYD ERP - Daily Audit</title>
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                 <style>
-                    @page { size: portrait; margin: 0; }
+                    @page { size: A4 portrait; margin: 10mm; }
                     body { font-family: 'Inter', sans-serif; background: #fff; margin: 0; padding: 0; }
-                    .page-break { page-break-after: always; }
-                    .voucher-card { padding: 26px; display: flex; flex-direction: column; position: relative; }
+                    .voucher-card {
+                        padding: 22px;
+                        display: flex;
+                        flex-direction: column;
+                        position: relative;
+                        break-inside: avoid;
+                        page-break-inside: avoid;
+                        margin: 0 0 10mm 0;
+                    }
 
                     .header-main { text-align: center; margin-bottom: 6px; width: 100%; }
                     .header-logo { display: block; margin: 0 auto; width: 100%; height: auto; max-height: 28mm; object-fit: contain; }
@@ -572,12 +612,13 @@ export function openDailyAuditPreview({ transactions }) {
                     .items th { background: #f8fafc; text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
                 </style>
             </head>
-            <body onload="window.print()">
+            <body>
                 ${cardsHtml}
             </body>
         </html>
-    `);
-    win.document.close();
+    `;
+
+    printHtmlDocument(html, { title: 'SYD ERP - Daily Audit' });
 }
 
 export function openPasscardsPreview({ cards, examType, academicYear, validFrom, layout = 'portrait' }) {
@@ -619,10 +660,14 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
         toast.error('No cards found to print');
         return;
     }
-    const win = window.open('', '_blank');
-    if (!win) return;
 
     const isPortrait = layout === 'portrait';
+    const cardsPerPage = isPortrait ? 4 : 2;
+    const pageSizeCss = isPortrait ? 'A4 portrait' : 'A4 landscape';
+    const sheetColumnsCss = isPortrait ? 'repeat(2, minmax(0, 1fr))' : 'repeat(1, minmax(0, 1fr))';
+    const sheetGapPx = isPortrait ? 12 : 14;
+    const cardHeightCss = isPortrait ? '132mm' : '92mm';
+    const cardPaddingPx = isPortrait ? 10 : 10;
 
     const formatDate = (d) => {
         try {
@@ -644,7 +689,13 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
     const yearLabel = academicYear || '';
     const validityLabel = `Valid from ${formatDate(fromDate)} to ${formatDate(toDate)}`;
 
-    const cardsHtml = (normalized || []).map(c => `
+    const chunk = (arr, size) => {
+        const out = [];
+        for (let i = 0; i < (arr || []).length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+    };
+
+    const renderCard = (c) => `
         <div class="card ${isPortrait ? 'portrait' : 'landscape'}">
             <div class="card-inner">
                 <div class="header-main">
@@ -687,30 +738,52 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
                 </div>
             </div>
         </div>
-    `).join('');
+    `;
 
-    win.document.write(`
+    // Portrait: 4 cards per page (2x2)
+    // Landscape: 2 cards per page (stacked)
+    const pagesHtml = chunk(normalized || [], cardsPerPage).map((pageCards) => {
+        const inner = (pageCards || []).map(renderCard).join('');
+        return `
+            <div class="page">
+                <div class="sheet">
+                    ${inner}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const html = `
         <html>
             <head>
                 <title>Academic Passcards - ${examType}</title>
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                 <style>
-                    body { font-family: 'Inter', sans-serif; background: #f8fafc; padding: 20px; }
+                    @page { size: ${pageSizeCss}; margin: 10mm; }
+                    body { font-family: 'Inter', sans-serif; background: #f8fafc; padding: 12px; margin: 0; }
+
+                    .page { margin-bottom: 14px; }
+                    .page:last-child { margin-bottom: 0; }
+                    .sheet {
+                        display: grid;
+                        grid-template-columns: ${sheetColumnsCss};
+                        gap: ${sheetGapPx}px;
+                        align-items: stretch;
+                    }
+
                     .card { 
                         background: white; 
                         border: 1px solid #000; 
-                        margin: 10px; 
-                        display: inline-block; 
-                        vertical-align: top;
                         box-sizing: border-box;
                         border-radius: 10px;
                         overflow: hidden;
                         box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08);
+                        width: 100%;
+                        height: ${cardHeightCss};
                     }
-                    .portrait { width: 340px; height: 520px; }
-                    .landscape { width: 520px; height: 340px; }
+                    .portrait, .landscape { aspect-ratio: auto; }
                     
-                    .card-inner { padding: 15px; height: 100%; display: flex; flex-direction: column; }
+                    .card-inner { padding: ${cardPaddingPx}px; height: 100%; display: flex; flex-direction: column; }
                     
                     .header-main { width: 100%; margin-bottom: 6px; }
                     .card-logo { display: block; width: 100%; height: auto; max-height: 22mm; object-fit: contain; }
@@ -718,7 +791,7 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
                     .meta-bar { display: flex; justify-content: space-between; font-size: 8px; font-weight: 800; color: #111; }
                     .meta-lbl { color: #475569; font-weight: 900; }
                     
-                    .blue-line { background: #000; height: 2px; margin: 8px -15px 10px; }
+                    .blue-line { background: #000; height: 2px; margin: 8px -${cardPaddingPx}px 10px; }
                     
                     .title-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
                     .title { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
@@ -729,41 +802,37 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
                     .landscape .main-grid { flex-direction: row; }
 
                     .info-box { flex: 1; border: 1px solid #000; border-radius: 6px; overflow: hidden; }
-                    .row { display: grid; grid-template-columns: 110px 1fr; border-bottom: 1px solid #000; }
+                    .row { display: grid; grid-template-columns: ${isPortrait ? '96px' : '110px'} 1fr; border-bottom: 1px solid #000; }
                     .row:last-child { border-bottom: none; }
-                    .lbl { padding: 8px 10px; font-size: 10px; font-weight: 900; color: #111; background: #fff; }
-                    .val { padding: 8px 10px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+                    .lbl { padding: ${isPortrait ? '6px 8px' : '6px 8px'}; font-size: ${isPortrait ? '9px' : '9px'}; font-weight: 900; color: #111; background: #fff; }
+                    .val { padding: ${isPortrait ? '6px 8px' : '6px 8px'}; font-size: ${isPortrait ? '9px' : '9px'}; font-weight: 900; text-transform: uppercase; }
 
                     .landscape .lbl { padding: 6px 8px; font-size: 9px; }
                     .landscape .val { padding: 6px 8px; font-size: 9px; }
 
                     .photo-box { width: 140px; display: flex; justify-content: center; }
                     .portrait .photo-box { width: 100%; justify-content: flex-end; }
-                    .photo-frame { width: 120px; height: 140px; border: 1px solid #000; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-                    .photo-placeholder { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+                    .photo-frame { width: ${isPortrait ? '104px' : '116px'}; height: ${isPortrait ? '110px' : '100px'}; border: 1px solid #000; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+                    .photo-placeholder { font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
 
-                    .landscape .photo-frame { height: 110px; }
-
-                    .footer { margin-top: 10px; }
-                    .validity { font-size: 9px; font-weight: 900; color: #111; text-align: center; margin-bottom: 6px; }
-                    .notice { font-size: 7px; font-weight: 800; color: #475569; text-align: center; margin-bottom: 8px; font-style: italic; }
-                    .stamp { border: 1px dashed #cbd5e1; height: 46px; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 900; color: #94a3b8; text-transform: uppercase; }
-
-                    .landscape .footer { margin-top: 6px; }
-                    .landscape .validity { font-size: 8px; margin-bottom: 4px; }
-                    .landscape .notice { font-size: 6px; margin-bottom: 6px; }
-                    .landscape .stamp { height: 36px; font-size: 7px; }
+                    .footer { margin-top: ${isPortrait ? '8px' : '6px'}; }
+                    .validity { font-size: ${isPortrait ? '8px' : '7px'}; font-weight: 900; color: #111; text-align: center; margin-bottom: ${isPortrait ? '4px' : '3px'}; }
+                    .notice { font-size: ${isPortrait ? '6px' : '6px'}; font-weight: 800; color: #475569; text-align: center; margin-bottom: ${isPortrait ? '6px' : '5px'}; font-style: italic; }
+                    .stamp { border: 1px dashed #cbd5e1; height: ${isPortrait ? '36px' : '30px'}; display: flex; align-items: center; justify-content: center; font-size: ${isPortrait ? '7px' : '6px'}; font-weight: 900; color: #94a3b8; text-transform: uppercase; }
                     
                     @media print { 
                         body { background: white; padding: 0; } 
-                        .card { margin: 5px; page-break-inside: avoid; box-shadow: none; border-width: 1px; }
+                        .page { break-after: page; }
+                        .sheet { gap: ${isPortrait ? '10px' : '12px'}; }
+                        .card { page-break-inside: avoid; box-shadow: none; border-width: 1px; }
                     }
                 </style>
             </head>
-            <body onload="window.print()">${cardsHtml}</body>
+            <body>${pagesHtml}</body>
         </html>
-    `);
-    win.document.close();
+    `;
+
+    printHtmlDocument(html, { title: `Academic Passcards - ${examType}` });
 }
 
 // 1. Monthly Invoice Modal
@@ -794,10 +863,15 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                 });
                 setAmountTypes(filteredCategories);
 
-                // Set default to most recent year if no "active" status exists in schema
+                // Prefer an academic year that contains the current calendar year (reduces month/year mismatch).
                 if (yearsData.length > 0) {
-                    const latestYear = yearsData[0]?._id || '';
-                    setSelectedYear(latestYear);
+                    const nowYear = new Date().getFullYear();
+                    const preferred = yearsData.find((y) => {
+                        const yn = String(y?.yearName || '');
+                        return yn.includes(String(nowYear));
+                    });
+                    const fallback = yearsData[0];
+                    setSelectedYear((preferred || fallback)?._id || '');
                 }
             } catch (e) {
                 console.error("Monthly Invoice Sync Error:", e);
@@ -807,10 +881,17 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
         load();
     }, []);
 
-    const handlePrint = async () => {
-        const selectedYearObj = years.find(y => y._id === selectedYear);
-        const yearName = selectedYearObj?.yearName || '';
+    const selectedYearObj = years.find(y => y._id === selectedYear);
+    const yearName = selectedYearObj?.yearName || '';
 
+    const getMonthLabelWithYear = (monthName) => {
+        const ym = toYYYYMM(monthName, yearName);
+        if (!ym) return monthName;
+        const y = ym.slice(0, 4);
+        return `${monthName} ${y}`;
+    };
+
+    const handlePrint = async () => {
         const ym = toYYYYMM(month, yearName);
         if (!ym) return toast.error('Check month field');
         if (!selectedYear) return toast.error('Select Academic Year');
@@ -823,17 +904,44 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                 classId: selectedClass || undefined,
                 categoryId: selectedCategory || undefined
             });
-            const txs = Array.isArray(data?.transactions) ? data.transactions : [];
+
+            const shouldClientFilterByGradeShift = !selectedClass && (!!gradeId || !!shiftId);
+            const matchesGradeShift = (invLike) => {
+                if (!shouldClientFilterByGradeShift) return true;
+                const inv = invLike?.invoice || invLike;
+                const rawGrade = inv?.class?.grade?._id || inv?.class?.gradeId || inv?.grade?._id || inv?.gradeId || '';
+                const rawShift = inv?.class?.shift?._id || inv?.class?.shiftId || inv?.shift?._id || inv?.shiftId || '';
+
+                const wantGrade = String(gradeId || '');
+                const wantShift = String(shiftId || '');
+                const wantGradeIsId = isMongoObjectIdString(wantGrade);
+                const wantShiftIsId = isMongoObjectIdString(wantShift);
+
+                const haveGrade = typeof rawGrade === 'string' ? rawGrade : '';
+                const haveShift = typeof rawShift === 'string' ? rawShift : '';
+
+                // Only enforce match when both sides are comparable IDs.
+                if (wantGrade && wantGradeIsId && isMongoObjectIdString(haveGrade) && haveGrade !== wantGrade) return false;
+                if (wantShift && wantShiftIsId && isMongoObjectIdString(haveShift) && haveShift !== wantShift) return false;
+
+                return true;
+            };
+
+            const txsRaw = Array.isArray(data?.transactions) ? data.transactions : [];
+            const invRaw = Array.isArray(data?.invoices) ? data.invoices : [];
+
+            const txs = shouldClientFilterByGradeShift ? txsRaw.filter(matchesGradeShift) : txsRaw;
+            const invoices = shouldClientFilterByGradeShift ? invRaw.filter(matchesGradeShift) : invRaw;
+
             if (txs.length > 0) {
                 openDailyAuditPreview({ transactions: txs });
             } else {
                 openMonthlyInvoicesPreview({
                     month: `${month} ${yearName}`,
-                    title: 'Official Academic Monthly Statement',
-                    invoices: data?.invoices || [],
-                    totals: data?.totals || null
+                    invoices,
                 });
             }
+
             onClose();
         } catch (e) {
             const msg = e?.response?.data?.message || e?.message || 'Report generation failed';
@@ -844,7 +952,13 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
     };
 
     return (
-        <PrintModalWrapper title="Batch Billing" subtitle="Generate Monthly Statement" onClose={onClose} onPrint={handlePrint} loading={loading}>
+        <PrintModalWrapper
+            title="Batch Billing"
+            subtitle="Generate Monthly Statement"
+            onClose={onClose}
+            onPrint={handlePrint}
+            loading={loading}
+        >
             <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -861,7 +975,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                         <DropdownSelect
                             value={month}
                             onChange={setMonth}
-                            options={months.map((m) => ({ value: m, label: m }))}
+                                options={months.map((m) => ({ value: m, label: getMonthLabelWithYear(m) }))}
                             placeholder="Choose Month"
                             clearable={false}
                         />
@@ -947,8 +1061,10 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
         setLoading(true);
         try {
             const data = await financeService.printDailyInvoices({ from: fromDate, to: toDate });
+            const txs = Array.isArray(data?.transactions) ? data.transactions : [];
+
             openDailyAuditPreview({
-                transactions: data?.transactions || [],
+                transactions: txs,
                 totals: data?.totals || {},
                 title: 'Professional Daily Financial Audit'
             });
@@ -958,7 +1074,13 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
     };
 
     return (
-        <PrintModalWrapper title="Audit Journal" subtitle="Chronological Daily Closeout" onClose={onClose} onPrint={handlePrint} loading={loading}>
+        <PrintModalWrapper
+            title="Audit Journal"
+            subtitle="Chronological Daily Closeout"
+            onClose={onClose}
+            onPrint={handlePrint}
+            loading={loading}
+        >
             <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -1051,6 +1173,7 @@ export const PrintPassCardModal = ({ onClose }) => {
                 };
             });
 
+
             openPasscardsPreview({ cards: normalizedCards, examType, academicYear: yearName, layout });
             onClose();
         } catch (e) {
@@ -1062,7 +1185,13 @@ export const PrintPassCardModal = ({ onClose }) => {
     };
 
     return (
-        <PrintModalWrapper title="Academic Hub" subtitle="Student Clearance Passcards" onClose={onClose} onPrint={handlePrint} loading={loading}>
+        <PrintModalWrapper
+            title="Academic Hub"
+            subtitle="Student Clearance Passcards"
+            onClose={onClose}
+            onPrint={handlePrint}
+            loading={loading}
+        >
             <div className="space-y-5">
                 <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Target Academic Year</label>

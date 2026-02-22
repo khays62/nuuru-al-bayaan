@@ -32,6 +32,7 @@ import {
   getFeeTypes,
   updateFeeType,
   deleteFeeType,
+  canDeleteFeeType,
   createAccount,
   getAccounts,
   updateAccount,
@@ -134,6 +135,7 @@ router.delete('/config/categories/:id', protect, authorizeRoles('admin'), delete
 router.post('/config/fee-types', protect, authorizeRoles('admin'), createFeeType);
 router.get('/config/fee-types', protect, authorizeRoles('admin', 'staff'), getFeeTypes);
 router.put('/config/fee-types/:id', protect, authorizeRoles('admin'), updateFeeType);
+router.get('/config/fee-types/:id/can-delete', protect, authorizeRoles('admin'), canDeleteFeeType);
 router.delete('/config/fee-types/:id', protect, authorizeRoles('admin'), deleteFeeType);
 
 // --- ACCOUNTS (General Ledger) ---

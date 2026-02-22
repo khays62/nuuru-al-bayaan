@@ -3188,5 +3188,58 @@ export default {
         },
       },
     },
+
+    feeTypes: {
+      title: 'Qaabeynta Noocyada Lacagta',
+      subtitle: 'Personal vs Free',
+      create: 'Abuur Nooca Fee-ga',
+      modal: {
+        create: 'Abuur Nooca Fee-ga',
+        edit: 'Tafatir Nooca Fee-ga',
+      },
+      labels: {
+        displayName: 'Magaca Muujinta',
+        behavior: 'Hab-dhaqan',
+        status: 'Xaalad',
+        discountPercent: 'Boqolkiiba Dhimista',
+      },
+      table: {
+        type: 'Nooca Fee-ga',
+        behavior: 'Hab-dhaqan',
+        status: 'Xaalad',
+        actions: 'Howlgallo',
+      },
+      behaviors: {
+        charge: 'Regular',
+        waive: 'Free / Waive',
+        discount: 'Discount',
+      },
+      status: {
+        active: 'Firfircoon',
+        inactive: 'Aan firfircoonayn',
+      },
+      actions: {
+        edit: 'Tafatir',
+        delete: 'Tirtir',
+        save: 'Kaydi',
+      },
+      saving: 'Waa la kaydinayaa…',
+      emptyTitle: 'No fee types defined.',
+      confirms: {
+        deactivate: 'Ma joojinaysaa noocan fee-ga?',
+        permanentDelete: 'Ma tirtiraysaa noocan fee-ga si joogto ah? Ficilkaani dib looma celin karo.',
+      },
+      toasts: {
+        loadFailed: 'Lama soo dejin noocyada fee-ga',
+        nameRequired: 'Magaca waa qasab',
+        discountInvalid: 'Boqolkiiba dhimistu waa inay noqotaa 1 ilaa 100',
+        created: 'Nooca fee-ga waa la abuuray',
+        updated: 'Nooca fee-ga waa la cusbooneysiiyay',
+        deleted: 'Nooca fee-ga waa la tirtiray',
+        deactivated: 'Nooca fee-ga waa la joojiyay',
+        deleteBlocked: 'Cannot delete — this fee type is referenced by other records.',
+        operationFailed: 'Hawshu way fashilantay',
+      },
+    },
   },
 };

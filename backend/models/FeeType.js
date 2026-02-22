@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 
+
 const FeeTypeSchema = new mongoose.Schema({
   code: {
     type: String,
-    enum: ['personal', 'free'],
     required: true,
     unique: true,
     lowercase: true,
@@ -13,6 +13,17 @@ const FeeTypeSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true
+  },
+  mode: {
+    type: String,
+    enum: ['charge', 'waive', 'discount'],
+    default: 'charge'
+  },
+  discountPercent: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
   },
   status: {
     type: String,

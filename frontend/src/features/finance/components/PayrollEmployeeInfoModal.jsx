@@ -14,6 +14,7 @@ import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { printHtmlDocument } from '../../../utils/exportTable';
 
 export default function PayrollEmployeeInfoModal({
     onClose,
@@ -257,8 +258,6 @@ export default function PayrollEmployeeInfoModal({
     };
 
     const doPrint = (row) => {
-        const w = window.open('', '_blank', 'width=900,height=700');
-        if (!w) return;
         const safe = (v) => String(v ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         const receiptTitle = t('finance.payroll.employeeInfo.receipt.title', { defaultValue: 'Payroll Receipt' });
@@ -270,7 +269,7 @@ export default function PayrollEmployeeInfoModal({
         const labelPaid = t('finance.payroll.employeeInfo.receipt.paid', { defaultValue: 'Paid' });
         const labelBalance = t('finance.payroll.employeeInfo.receipt.balance', { defaultValue: 'Balance' });
 
-        w.document.write(`
+        const html = `
             <html>
             <head>
                 <title>${safe(receiptTitle)}</title>
@@ -295,11 +294,11 @@ export default function PayrollEmployeeInfoModal({
                     <tr><th>${safe(labelPaid)}</th><td>${safe(row.paid)}</td></tr>
                     <tr><th>${safe(labelBalance)}</th><td>${safe(row.balance)}</td></tr>
                 </table>
-                <script>window.print();</script>
             </body>
             </html>
-        `);
-        w.document.close();
+        `;
+
+        printHtmlDocument(html, { title: safe(receiptTitle) });
     };
 
     const staffOptions = (staffList || []).map((s) => ({ value: s._id, label: String(s?.fullName || s?.username || s?._id) }));
@@ -451,7 +450,7 @@ export default function PayrollEmployeeInfoModal({
                                         <Input
                                             value={r.sendNumber}
                                             onChange={(e) => onRowChange(r._id, 'sendNumber', e.target.value)}
-                                            className="w-52"
+                                            className="w-full min-w-45 h-9 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded text-xs font-bold text-(--nb-color-fg) outline-none focus:ring-2 focus:ring-blue-500/10 transition-all"
                                         />
                                     ) : (
                                         <div
@@ -517,13 +516,14 @@ export default function PayrollEmployeeInfoModal({
                                 case 'paid':
                                     {
                                         const status = getPaidStatus(r);
+                                        const basePaidInputClass = 'h-9 w-full max-w-35 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded text-xs font-black text-(--nb-color-fg) outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-center';
                                         const paidInputClass = status.kind === 'over'
-                                            ? '!w-28 !px-2 !border-red-300 !text-red-700 text-center'
+                                            ? `${basePaidInputClass} !border-red-300 !text-red-700`
                                             : status.kind === 'exact'
-                                                ? '!w-28 !px-2 !border-green-300 !text-green-700 text-center'
+                                                ? `${basePaidInputClass} !border-green-300 !text-green-700`
                                                 : status.kind === 'under'
-                                                    ? '!w-28 !px-2 !border-yellow-300 !text-yellow-700 text-center'
-                                                    : '!w-28 !px-2 text-center';
+                                                    ? `${basePaidInputClass} !border-yellow-300 !text-yellow-700`
+                                                    : basePaidInputClass;
 
                                         return (
                                             <div

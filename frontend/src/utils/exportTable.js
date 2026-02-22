@@ -71,6 +71,119 @@ const getCssVar = (name, fallback = '') => {
   }
 };
 
+// Print an HTML document without opening a new tab/window.
+// Uses a hidden iframe, writes the provided HTML into it, waits for fonts/images (best-effort), then triggers print.
+export async function printHtmlDocument(html, {
+  title,
+  waitForImages = true,
+  cleanupDelayMs = 1000,
+} = {}) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  const srcdoc = String(html || '');
+
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.tabIndex = -1;
+
+  iframe.style.position = 'fixed';
+  iframe.style.left = '0';
+  iframe.style.top = '0';
+  // Some browsers won't print reliably if the iframe has 0x0 size.
+  iframe.style.width = '1px';
+  iframe.style.height = '1px';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+
+  const cleanup = () => {
+    try {
+      iframe.remove();
+    } catch {
+      // ignore
+    }
+  };
+
+  document.body.appendChild(iframe);
+  // Use about:blank + document.write for maximum compatibility.
+  const ready = new Promise((resolve) => {
+    const done = () => resolve(true);
+    iframe.onload = done;
+    setTimeout(done, 3000);
+  });
+  iframe.src = 'about:blank';
+  await ready;
+
+  const win = iframe.contentWindow;
+  const doc = iframe.contentDocument;
+
+  if (!win || !doc) {
+    cleanup();
+    return;
+  }
+
+  try {
+    doc.open();
+    doc.write(srcdoc);
+    doc.close();
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (title) doc.title = String(title);
+  } catch {
+    // ignore
+  }
+
+  try {
+    // eslint-disable-next-line no-unused-expressions
+    await doc.fonts?.ready;
+  } catch {
+    // ignore
+  }
+
+  if (waitForImages) {
+    try {
+      const images = Array.from(doc.images || []);
+      await Promise.all(images.map((img) => {
+        if (!img) return Promise.resolve();
+        if (img.complete) return Promise.resolve();
+        return new Promise((res) => {
+          img.onload = () => res();
+          img.onerror = () => res();
+        });
+      }));
+    } catch {
+      // ignore
+    }
+  }
+
+  try {
+    const onAfterPrint = () => {
+      win.removeEventListener('afterprint', onAfterPrint);
+      setTimeout(cleanup, cleanupDelayMs);
+    };
+    win.addEventListener('afterprint', onAfterPrint);
+  } catch {
+    // ignore
+  }
+
+  try {
+    win.focus();
+  } catch {
+    // ignore
+  }
+
+  try {
+    // Give the browser a tick to layout before printing.
+    await new Promise((r) => setTimeout(r, 50));
+    win.print();
+  } finally {
+    setTimeout(cleanup, 15000);
+  }
+}
+
 const parseCssColorToRgb = (raw, fallback = { r: 31, g: 41, b: 55 }) => {
   const s = String(raw || '').trim();
   if (!s) return fallback;
@@ -107,8 +220,10 @@ const buildTableImageDataUrl = async ({ headers = [], rows = [], theme, rtl = fa
 
   const container = document.createElement('div');
   container.style.position = 'fixed';
-  container.style.left = '-10000px';
+  container.style.left = '0';
   container.style.top = '0';
+  container.style.zIndex = '-9999';
+  container.style.pointerEvents = 'none';
   container.style.width = `${Number(theme?.containerPx) || 1120}px`;
   container.style.background = '#FFFFFF';
   container.style.padding = '12px';
@@ -167,7 +282,13 @@ const buildTableImageDataUrl = async ({ headers = [], rows = [], theme, rtl = fa
 
     // Prefer PNG for jsPDF reliability.
     try {
-      const pngUrl = await toPng(container, { pixelRatio, cacheBust: true, backgroundColor: '#FFFFFF' });
+      const pngUrl = await toPng(container, {
+        pixelRatio,
+        cacheBust: true,
+        backgroundColor: '#FFFFFF',
+        // Ensure the cloned node renders at (0,0) to avoid blank captures.
+        style: { position: 'fixed', left: '0px', top: '0px' },
+      });
       const { w: pw, h: ph } = await getImageSize(pngUrl);
       if (!pw || !ph) throw new Error('PNG image render failed');
       // Avoid extremely large data URLs that some browsers/jsPDF builds struggle with.
@@ -180,7 +301,13 @@ const buildTableImageDataUrl = async ({ headers = [], rows = [], theme, rtl = fa
     }
 
     const quality = Math.min(1, Math.max(0.5, Number(theme?.jpegQuality) || 0.84));
-    const jpgUrl = await toJpeg(container, { pixelRatio: Math.max(1, pixelRatio - 0.4), quality, cacheBust: true, backgroundColor: '#FFFFFF' });
+    const jpgUrl = await toJpeg(container, {
+      pixelRatio: Math.max(1, pixelRatio - 0.4),
+      quality,
+      cacheBust: true,
+      backgroundColor: '#FFFFFF',
+      style: { position: 'fixed', left: '0px', top: '0px' },
+    });
     const { w, h } = await getImageSize(jpgUrl);
     if (!w || !h) throw new Error('JPEG image render failed');
     return { dataUrl: jpgUrl, format: 'JPEG', w, h };
@@ -207,6 +334,57 @@ const buildTableImagePages = async ({ headers = [], rows = [], theme, rtl = fals
     urls.push(u);
   }
   return urls;
+};
+
+const buildTextBlockImage = async ({ lines = [], theme, rtl = false, fontSize = 11, fontWeight = 600 }) => {
+  const safeLines = Array.isArray(lines) ? lines.map(toText).filter((x) => String(x).trim()) : [];
+  if (safeLines.length === 0) return null;
+
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '0';
+  container.style.top = '0';
+  container.style.zIndex = '-9999';
+  container.style.pointerEvents = 'none';
+  container.style.width = `${Number(theme?.containerPx) || 1120}px`;
+  container.style.background = '#FFFFFF';
+  container.style.padding = '0';
+  container.style.margin = '0';
+  container.style.boxSizing = 'border-box';
+  container.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Arial, sans-serif';
+  container.style.color = '#111827';
+  container.style.direction = rtl ? 'rtl' : 'ltr';
+
+  const block = document.createElement('div');
+  block.style.fontSize = `${Number(fontSize) || 11}px`;
+  block.style.fontWeight = String(fontWeight || 600);
+  block.style.lineHeight = '1.25';
+  block.style.whiteSpace = 'normal';
+  block.style.wordBreak = 'break-word';
+  block.style.textAlign = rtl ? 'right' : 'left';
+
+  for (const line of safeLines) {
+    const div = document.createElement('div');
+    div.textContent = line;
+    block.appendChild(div);
+  }
+
+  container.appendChild(block);
+  document.body.appendChild(container);
+  try {
+    const pixelRatio = Math.max(1, Number(theme?.pixelRatio) || 2);
+    const dataUrl = await toPng(container, {
+      pixelRatio,
+      cacheBust: true,
+      backgroundColor: '#FFFFFF',
+      style: { position: 'fixed', left: '0px', top: '0px' },
+    });
+    const { w, h } = await getImageSize(dataUrl);
+    if (!w || !h) return null;
+    return { dataUrl, format: 'PNG', w, h };
+  } finally {
+    document.body.removeChild(container);
+  }
 };
 
 const addTallImageToPdf = async ({ doc, dataUrl, format = 'PNG', imgWpx: _imgWpxIn = 0, imgHpx: _imgHpxIn = 0, x, y, maxW, maxHFirst, marginTop = 40 }) => {
@@ -585,6 +763,40 @@ export async function exportTableToPDF({
     }
   })();
 
+  const shouldRenderTextAsImage = (s) => Boolean(isRtlDoc || containsArabic(toText(s)));
+
+  const renderTextLine = async ({ text, fontSize = 10, bold = false, color = '#111827' }) => {
+    const line = String(text || '').trim();
+    if (!line) return;
+
+    if (shouldRenderTextAsImage(line)) {
+      const img = await buildTextBlockImage({
+        lines: [line],
+        theme: { ...pdfTheme, pixelRatio: 2 },
+        rtl: true,
+        fontSize,
+        fontWeight: bold ? 700 : 500,
+      });
+      if (!img) return;
+
+      const pageW = doc.internal.pageSize.getWidth();
+      const maxW = pageW - marginX * 2;
+      const scale = maxW / (img.w || 1);
+      const drawW = maxW;
+      const drawH = Math.max(1, Math.floor((img.h || 1) * scale));
+      doc.addImage(img.dataUrl, img.format || 'PNG', marginX, cursorY, drawW, drawH);
+      cursorY += drawH;
+      return;
+    }
+
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(fontSize);
+    if (color) doc.setTextColor(color);
+    doc.text(line, marginX, cursorY);
+    doc.setTextColor('#000000');
+    cursorY += Math.max(12, Math.ceil(fontSize * 1.25));
+  };
+
   const marginX = 40;
   let cursorY = 32;
 
@@ -609,18 +821,14 @@ export async function exportTableToPDF({
 
   const safeTitle = String(title || '').trim();
   if (showTitle && safeTitle) {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text(toText(safeTitle), marginX, cursorY);
-    cursorY += 16;
+    await renderTextLine({ text: safeTitle, fontSize: 14, bold: true });
+    cursorY += 2;
   }
 
   const safeSubtitle = String(subtitle || '').trim();
   if (safeSubtitle) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(toText(safeSubtitle), marginX, cursorY);
-    cursorY += 12;
+    await renderTextLine({ text: safeSubtitle, fontSize: 10, bold: false, color: '#374151' });
+    cursorY += 2;
   }
 
 
@@ -645,17 +853,13 @@ export async function exportTableToPDF({
     ensureSpace(Math.max(120, metaH + tableMinH));
 
     if (tTitle) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(12);
-      doc.text(toText(tTitle), marginX, cursorY);
-      cursorY += 14;
+      await renderTextLine({ text: tTitle, fontSize: 12, bold: true });
+      cursorY += 2;
     }
 
     if (tSubtitle) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.text(toText(tSubtitle), marginX, cursorY);
-      cursorY += 12;
+      await renderTextLine({ text: tSubtitle, fontSize: 9, bold: false, color: '#374151' });
+      cursorY += 2;
     }
 
     const hasArabic = tableHasArabic(safeHeaders, safeRows);

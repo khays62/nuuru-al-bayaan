@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import headerImg from '../../../assets/nuuruBayaan.png';
+import { printHtmlDocument } from '../../../../utils/exportTable';
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -46,7 +47,6 @@ export default function PayrollPrintModal({ onClose, payrolls, month, academicYe
     const total = (payrolls || []).reduce((sum, p) => sum + Number(p.netSalary || 0), 0);
 
     const handlePdf = () => {
-        const win = window.open('', '_blank');
         const rowsHtml = rows
             .map(
                 (r) => `
@@ -62,7 +62,7 @@ export default function PayrollPrintModal({ onClose, payrolls, month, academicYe
             )
             .join('');
 
-        win.document.write(`
+                const html = `
             <html>
               <head>
                 <title>Payroll - ${escapeHtml(month)}</title>
@@ -105,10 +105,9 @@ export default function PayrollPrintModal({ onClose, payrolls, month, academicYe
                 </table>
               </body>
             </html>
-        `);
-        win.document.close();
-        win.focus();
-        win.print();
+                `;
+
+                printHtmlDocument(html, { title: `Payroll - ${escapeHtml(month)}` });
     };
 
     const handleExcel = () => {

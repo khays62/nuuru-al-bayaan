@@ -7,6 +7,7 @@ import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
+import { printHtmlDocument } from '../../../utils/exportTable';
 
 const paymentMethods = ['Cash', 'Bank', 'Mobile Money', 'Cheque'];
 
@@ -502,12 +503,8 @@ export default function FinanceAppointments() {
     const handlePrintSlip = async (appt) => {
         try {
             const data = await financeService.getAppointmentSlip(appt._id);
-            const win = window.open('', '_blank');
-            if (!win) return;
-            win.document.open();
-            win.document.write(AppointmentSlip({ appointment: data?.appointment || appt }));
-            win.document.close();
-            win.print();
+            const html = AppointmentSlip({ appointment: data?.appointment || appt });
+            await printHtmlDocument(html, { title: 'Appointment Slip' });
         } catch {
             toast.error('Failed to print slip');
         }

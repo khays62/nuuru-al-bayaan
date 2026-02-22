@@ -52,6 +52,10 @@ const financeService = {
         const response = await axios.delete(`/finance/config/fee-types/${id}`);
         return response.data;
     },
+    getCanDeleteFeeType: async (id) => {
+        const response = await axios.get(`/finance/config/fee-types/${id}/can-delete`);
+        return response.data;
+    },
     getAcademicYears: async () => {
         const response = await axios.get('/lookups/academic-years');
         return response.data;
