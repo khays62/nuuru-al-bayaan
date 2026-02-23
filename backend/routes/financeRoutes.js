@@ -123,29 +123,240 @@ import { getAuditLogs } from '../controllers/financeControl/auditController.js';
 import { backfillInvoiceBillingMonth } from '../controllers/financeControl/financeMaintenanceController.js';
 
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
-import { checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+import { checkAnyPermission, checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+
+import mongoose from 'mongoose';
+import FinanceCategory from '../models/FinanceCategory.js';
 
 const router = express.Router();
 
-// --- CONFIGURATION (Admin) ---
-router.post('/config/categories', protect, authorizeRoles('admin', 'staff'), checkPermission('financeConfig', 'add'), createCategory);
-router.get('/config/categories', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeConfig'), getCategories);
-router.put('/config/categories/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeConfig', 'edit'), updateCategory);
-router.delete('/config/categories/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeConfig', 'delete'), deleteCategory);
+const isPreviousBalanceCategoryName = (name) => {
+  const n = String(name || '').trim().toLowerCase();
+  if (!n) return false;
+  if (n === 'previous balance') return true;
+  return n.includes('previous') && n.includes('balance');
+};
 
-router.post('/config/fee-types', protect, authorizeRoles('admin', 'staff'), checkPermission('financeConfig', 'add'), createFeeType);
-router.get('/config/fee-types', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeConfig'), getFeeTypes);
-router.put('/config/fee-types/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeConfig', 'edit'), updateFeeType);
-router.get('/config/fee-types/:id/can-delete', protect, authorizeRoles('admin', 'staff'), checkPermission('financeConfig', 'view'), canDeleteFeeType);
-router.delete('/config/fee-types/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeConfig', 'delete'), deleteFeeType);
+// Some endpoints (fees/charge, fees/update, etc.) are shared by Receipt and Previous Balance tabs.
+// We decide which permission to enforce based on the target category.
+const checkStudentFeesByCategory = (action) => {
+  const act = String(action || '');
+
+  return async (req, res, next) => {
+    if (!req?.user) return next(); // auth handled by protect
+    if (String(req.user.role || '').toLowerCase() === 'admin') return next();
+
+    // Try to resolve categoryId from request body.
+    const rawCategoryId = req?.body?.categoryId || req?.body?.category || req?.body?.categoryRef;
+    const categoryId = rawCategoryId ? String(rawCategoryId) : '';
+
+    // If we can't resolve categoryId, default to Receipt permissions (most common).
+    if (!categoryId || !mongoose.Types.ObjectId.isValid(categoryId)) {
+      return checkPermission('financeStudentReceipt', act)(req, res, next);
+    }
+
+    try {
+      const cat = await FinanceCategory.findById(categoryId).select('name type').lean();
+      const isPrev = cat?.type === 'fee' && isPreviousBalanceCategoryName(cat?.name);
+      const module = isPrev ? 'financeStudentPreviousBalance' : 'financeStudentReceipt';
+      return checkPermission(module, act)(req, res, next);
+    } catch (err) {
+      // Fail closed: if we can't inspect the category, require Receipt permission.
+      return checkPermission('financeStudentReceipt', act)(req, res, next);
+    }
+  };
+};
+
+const isExpenseCategoryType = (type) => {
+  const t = String(type || '').trim().toLowerCase();
+  return t === 'expense' || t === 'expenses';
+};
+
+// Finance categories are shared between Student Finance and Expenses.
+// Enforce the correct module based on category type.
+const checkCategoryByQueryType = (action) => {
+  const act = String(action || '');
+  return async (req, res, next) => {
+    if (!req?.user) return next();
+    if (String(req.user.role || '').toLowerCase() === 'admin') return next();
+
+    const type = req?.query?.type;
+    if (isExpenseCategoryType(type)) {
+      if (act === 'view') {
+        return checkAnyPermission([
+          { module: 'financeExpensesLedger', action: 'view' },
+          { module: 'financeExpensesCategories', action: 'view' },
+          { module: 'financeConfig', action: 'view' },
+        ])(req, res, next);
+      }
+      return checkPermission('financeExpensesCategories', act)(req, res, next);
+    }
+
+    // Non-expense: fall back to existing financeConfig / Student Finance tab rules.
+    if (act === 'add') {
+      return checkAnyPermission([
+        { module: 'financeConfig', action: 'add' },
+        { module: 'financeStudentAmountType', action: 'add' },
+      ])(req, res, next);
+    }
+    if (act === 'view') {
+      return checkAnyPermission([
+        { module: 'financeConfig', action: 'view' },
+        { module: 'financeStudentReceipt', action: 'view' },
+        { module: 'financeStudentPreviousBalance', action: 'view' },
+        { module: 'financeStudentAmountType', action: 'view' },
+      ])(req, res, next);
+    }
+    if (act === 'edit') {
+      return checkAnyPermission([
+        { module: 'financeConfig', action: 'edit' },
+        { module: 'financeStudentAmountType', action: 'edit' },
+      ])(req, res, next);
+    }
+    if (act === 'delete') {
+      return checkAnyPermission([
+        { module: 'financeConfig', action: 'delete' },
+        { module: 'financeStudentAmountType', action: 'delete' },
+      ])(req, res, next);
+    }
+
+    return checkPermission('financeConfig', act)(req, res, next);
+  };
+};
+
+const checkCategoryByBodyType = (action) => {
+  const act = String(action || '');
+  return async (req, res, next) => {
+    if (!req?.user) return next();
+    if (String(req.user.role || '').toLowerCase() === 'admin') return next();
+
+    const type = req?.body?.type;
+    if (isExpenseCategoryType(type)) {
+      return checkPermission('financeExpensesCategories', act)(req, res, next);
+    }
+
+    return checkCategoryByQueryType(act)(req, res, next);
+  };
+};
+
+const checkCategoryById = (action) => {
+  const act = String(action || '');
+  return async (req, res, next) => {
+    if (!req?.user) return next();
+    if (String(req.user.role || '').toLowerCase() === 'admin') return next();
+
+    const id = req?.params?.id ? String(req.params.id) : '';
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: req.t('finance.invalidCategoryId', null, 'Invalid category id'),
+      });
+    }
+
+    try {
+      const cat = await FinanceCategory.findById(id).select('type').lean();
+      const type = cat?.type;
+      if (isExpenseCategoryType(type)) {
+        return checkPermission('financeExpensesCategories', act)(req, res, next);
+      }
+      // Fee/other types fall back to financeConfig / Student Finance rules.
+      return checkCategoryByQueryType(act)(req, res, next);
+    } catch {
+      // Fail closed: require financeConfig path.
+      return checkCategoryByQueryType(act)(req, res, next);
+    }
+  };
+};
+
+// --- CONFIGURATION (Admin) ---
+router.post(
+  '/config/categories',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkCategoryByBodyType('add'),
+  createCategory
+);
+router.get(
+  '/config/categories',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkCategoryByQueryType('view'),
+  getCategories
+);
+router.put(
+  '/config/categories/:id',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkCategoryById('edit'),
+  updateCategory
+);
+router.delete(
+  '/config/categories/:id',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkCategoryById('delete'),
+  deleteCategory
+);
+
+router.post(
+  '/config/fee-types',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    { module: 'financeConfig', action: 'add' },
+    { module: 'financeStudentFeeType', action: 'add' },
+  ]),
+  createFeeType
+);
+router.get(
+  '/config/fee-types',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    { module: 'financeConfig', action: 'view' },
+    { module: 'financeStudentAmountType', action: 'view' },
+    { module: 'financeStudentFeeType', action: 'view' },
+  ]),
+  getFeeTypes
+);
+router.put(
+  '/config/fee-types/:id',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    { module: 'financeConfig', action: 'edit' },
+    { module: 'financeStudentFeeType', action: 'edit' },
+  ]),
+  updateFeeType
+);
+router.get(
+  '/config/fee-types/:id/can-delete',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    { module: 'financeConfig', action: 'view' },
+    { module: 'financeStudentFeeType', action: 'view' },
+  ]),
+  canDeleteFeeType
+);
+router.delete(
+  '/config/fee-types/:id',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    { module: 'financeConfig', action: 'delete' },
+    { module: 'financeStudentFeeType', action: 'delete' },
+  ]),
+  deleteFeeType
+);
 
 // --- ACCOUNTS (General Ledger) ---
-router.post('/accounts', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccounts', 'add'), createAccount);
-router.get('/accounts', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeAccounts'), getAccounts);
-router.put('/accounts/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccounts', 'edit'), updateAccount);
-router.delete('/accounts/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccounts', 'delete'), deleteAccount);
-router.post('/accounts/transfer', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccounts', 'transfer'), transferFunds);
-router.post('/accounts/income', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccounts', 'income'), recordIncome);
+router.post('/accounts', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'add'), createAccount);
+router.get('/accounts', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeAccountsInstitution'), getAccounts);
+router.put('/accounts/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'edit'), updateAccount);
+router.delete('/accounts/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'delete'), deleteAccount);
+router.post('/accounts/transfer', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'transfer'), transferFunds);
+router.post('/accounts/income', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'income'), recordIncome);
 
 // --- FOUNDATION (Donations) ---
 router.post('/foundation/donors', protect, authorizeRoles('admin', 'staff'), checkPermission('financeFoundation', 'add'), createDonor);
@@ -157,49 +368,67 @@ router.get('/foundation/donations', protect, authorizeRoles('admin', 'staff'), c
 router.get('/stats', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeDashboard'), getFinanceStats);
 
 // Finance Audit Logs (Student Finance Edit)
-router.get('/audit', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeAudit'), getAuditLogs);
+router.get('/audit', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeAccountsLedger'), getAuditLogs);
 
 // Maintenance (Admin)
 router.post('/maintenance/backfill-billing-month', protect, authorizeRoles('admin', 'staff'), checkPermission('financeMaintenance', 'run'), backfillInvoiceBillingMonth);
 
 // Fee Management
-router.get('/invoices', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudent'), getInvoices);
-router.post('/invoices', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'add'), createInvoice);
-router.post('/invoices/bulk', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'add'), createBulkInvoice);
-router.put('/invoices/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), updateInvoice);
-router.delete('/invoices/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'delete'), deleteInvoice);
-router.post('/payments', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'add'), recordPayment);
-router.put('/payments/:transactionId', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), editPaymentTransaction);
-router.get('/defaulters', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'view'), getDefaulters);
-router.get('/clearance/:studentId', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'view'), checkClearance);
+router.get('/invoices', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), getInvoices);
+router.post('/invoices', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), createInvoice);
+router.post('/invoices/bulk', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), createBulkInvoice);
+router.put('/invoices/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), updateInvoice);
+router.delete('/invoices/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'delete'), deleteInvoice);
+router.post('/payments', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), recordPayment);
+router.put('/payments/:transactionId', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), editPaymentTransaction);
+router.get('/defaulters', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'view'), getDefaulters);
+router.get('/clearance/:studentId', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'view'), checkClearance);
 
 // Student Finance - Receipt workflows
-router.get('/receipt/students', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudent'), listReceiptStudents);
-router.get('/receipt/ledger', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudent'), getStudentReceiptLedger);
-router.post('/receipt/payment-group/revert', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), revertPaymentGroup);
+router.get('/receipt/students', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), listReceiptStudents);
+router.get('/receipt/ledger', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), getStudentReceiptLedger);
+router.post('/receipt/payment-group/revert', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), revertPaymentGroup);
 
-// Student Finance - Students summary (Receipt tab search)
-router.get('/students/summary', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudent'), getFinanceStudentsSummary);
+// Student Finance - Students summary (shared by Receipt + Previous Balance tabs)
+router.get(
+  '/students/summary',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  // Allow either tab to load the shared student list.
+  checkAnyPermission([
+    { module: 'financeStudentReceipt', action: 'view' },
+    { module: 'financeStudentReceipt', action: 'add' },
+    { module: 'financeStudentReceipt', action: 'edit' },
+    { module: 'financeStudentReceipt', action: 'delete' },
+    { module: 'financeStudentReceipt', action: 'download' },
+
+    { module: 'financeStudentPreviousBalance', action: 'view' },
+    { module: 'financeStudentPreviousBalance', action: 'add' },
+    { module: 'financeStudentPreviousBalance', action: 'edit' },
+    { module: 'financeStudentPreviousBalance', action: 'delete' },
+  ]),
+  getFinanceStudentsSummary
+);
 
 // Student Finance - Previous Balance summary (Previous Balance tab)
-router.get('/previous-balance/summary', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudent'), getPreviousBalanceSummary);
+router.get('/previous-balance/summary', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentPreviousBalance'), getPreviousBalanceSummary);
 
 // Student Finance - Show/Pay/History
-router.get('/receipt/show', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudent'), listChargedMonthSummary);
-router.post('/receipt/pay', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'add'), payChargedMonth);
-router.post('/receipt/pay-selected-months', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'add'), paySelectedMonths);
-router.get('/receipt/history', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudent'), getStudentMonthHistory);
-router.post('/receipt/discount', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), discountChargedMonth);
-router.post('/receipt/payment-group/edit', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), editPaymentGroup);
+router.get('/receipt/show', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), listChargedMonthSummary);
+router.post('/receipt/pay', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), payChargedMonth);
+router.post('/receipt/pay-selected-months', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), paySelectedMonths);
+router.get('/receipt/history', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), getStudentMonthHistory);
+router.post('/receipt/discount', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), discountChargedMonth);
+router.post('/receipt/payment-group/edit', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), editPaymentGroup);
 
 // Student Finance - Charge / Update / Delete
-router.post('/fees/charge', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'add'), chargeStudentFees);
-router.post('/fees/discount', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), applyMonthlyDiscount);
-router.post('/fees/bulk-discount', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), applyBulkDiscount);
-router.post('/fees/correction', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), recordCorrection);
-router.post('/fees/update', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), updateChargeAmount);
-router.post('/fees/overall-discount', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'edit'), applyOverallDiscount);
-router.delete('/fees/charges', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudent', 'delete'), deleteMonthlyCharges);
+router.post('/fees/charge', protect, authorizeRoles('admin', 'staff'), checkStudentFeesByCategory('add'), chargeStudentFees);
+router.post('/fees/discount', protect, authorizeRoles('admin', 'staff'), checkStudentFeesByCategory('edit'), applyMonthlyDiscount);
+router.post('/fees/bulk-discount', protect, authorizeRoles('admin', 'staff'), checkStudentFeesByCategory('edit'), applyBulkDiscount);
+router.post('/fees/correction', protect, authorizeRoles('admin', 'staff'), checkStudentFeesByCategory('edit'), recordCorrection);
+router.post('/fees/update', protect, authorizeRoles('admin', 'staff'), checkStudentFeesByCategory('edit'), updateChargeAmount);
+router.post('/fees/overall-discount', protect, authorizeRoles('admin', 'staff'), checkStudentFeesByCategory('edit'), applyOverallDiscount);
+router.delete('/fees/charges', protect, authorizeRoles('admin', 'staff'), checkStudentFeesByCategory('delete'), deleteMonthlyCharges);
 
 // Printing
 router.get('/print/monthly-invoices', protect, authorizeRoles('admin', 'staff'), checkPermission('financePrint', 'print'), printMonthlyInvoices);
@@ -221,14 +450,14 @@ router.post('/appointments/:id/start-payment', protect, authorizeRoles('admin', 
 router.get('/appointments/:id/print', protect, authorizeRoles('admin', 'staff'), checkPermission('financePrint', 'print'), getAppointmentSlip);
 
 // Expense Management
-router.get('/expenses', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpenses'), getExpenses);
-router.post('/expenses', protect, authorizeRoles('admin', 'staff'), checkPermission('financeExpenses', 'add'), createExpense);
-router.get('/expenses/ledger', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpenses'), getExpenseLedger);
-router.get('/expenses/range', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpenses'), getExpenseChargesByDate);
-router.put('/expenses/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeExpenses', 'edit'), updateExpenseCharge);
-router.delete('/expenses/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeExpenses', 'delete'), deleteExpenseCharge);
-router.get('/expenses/budget/report', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpenses'), getExpenseBudgetReport);
-router.get('/expenses/budget/over', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpenses'), getOverBudgetExpenses);
+router.get('/expenses', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpensesLedger'), getExpenses);
+router.post('/expenses', protect, authorizeRoles('admin', 'staff'), checkPermission('financeExpensesLedger', 'add'), createExpense);
+router.get('/expenses/ledger', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpensesLedger'), getExpenseLedger);
+router.get('/expenses/range', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpensesLedger'), getExpenseChargesByDate);
+router.put('/expenses/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeExpensesLedger', 'edit'), updateExpenseCharge);
+router.delete('/expenses/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeExpensesLedger', 'delete'), deleteExpenseCharge);
+router.get('/expenses/budget/report', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpensesLedger'), getExpenseBudgetReport);
+router.get('/expenses/budget/over', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeExpensesLedger'), getOverBudgetExpenses);
 
 // Payroll Management
 router.get('/payroll', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financePayroll'), getPayrolls);

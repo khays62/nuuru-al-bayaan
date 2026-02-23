@@ -34,12 +34,40 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
 
     const actions = Array.isArray(MODULE_PERMISSIONS?.[module]) ? MODULE_PERMISSIONS[module] : [];
 
+    const hasAny = (mod, actionList) => {
+      const list = Array.isArray(actionList) ? actionList : [];
+      return list.some((action) => hasPermission(mod, action));
+    };
+
     // Backward compatibility: older setups used `attendance.*` for Attendance Reports
     if (module === 'attendanceReports') {
       const reportActions = Array.isArray(MODULE_PERMISSIONS?.attendanceReports) ? MODULE_PERMISSIONS.attendanceReports : actions;
       const attendanceActions = Array.isArray(MODULE_PERMISSIONS?.attendance) ? MODULE_PERMISSIONS.attendance : [];
       return reportActions.some((action) => hasPermission('attendanceReports', action))
         || attendanceActions.some((action) => hasPermission('attendance', action));
+    }
+
+    // Finance reverse-aliasing (UI visibility): finance pages are split into sub-tab modules.
+    // If a staff user only has a sub-tab permission, they should still see the main page in the sidebar.
+    if (module === 'financeStudent') {
+      return hasAny('financeStudent', actions)
+        || hasAny('financeStudentReceipt', MODULE_PERMISSIONS?.financeStudentReceipt)
+        || hasAny('financeStudentPreviousBalance', MODULE_PERMISSIONS?.financeStudentPreviousBalance)
+        || hasAny('financeStudentAmountType', MODULE_PERMISSIONS?.financeStudentAmountType)
+        || hasAny('financeStudentFeeType', MODULE_PERMISSIONS?.financeStudentFeeType);
+    }
+
+    if (module === 'financeAccounts') {
+      return hasAny('financeAccounts', actions)
+        || hasAny('financeAccountsInstitution', MODULE_PERMISSIONS?.financeAccountsInstitution)
+        || hasAny('financeAccountsOverview', MODULE_PERMISSIONS?.financeAccountsOverview)
+        || hasAny('financeAccountsLedger', MODULE_PERMISSIONS?.financeAccountsLedger);
+    }
+
+    if (module === 'financeExpenses') {
+      return hasAny('financeExpenses', actions)
+        || hasAny('financeExpensesLedger', MODULE_PERMISSIONS?.financeExpensesLedger)
+        || hasAny('financeExpensesCategories', MODULE_PERMISSIONS?.financeExpensesCategories);
     }
 
     return actions.some((action) => hasPermission(module, action));

@@ -9,7 +9,7 @@ import { useAuth } from '../../../auth/AuthContext';
 export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
-    const canAddPayment = hasPermission('financeStudent', 'add');
+    const canAddPayment = hasPermission('financeStudentReceipt', 'add');
 
     const [paymentMethods, setPaymentMethods] = useState(['Cash']);
     const [paymentType, setPaymentType] = useState('Invoice'); // Invoice or Hormaris

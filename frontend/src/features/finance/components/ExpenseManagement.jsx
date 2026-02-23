@@ -33,24 +33,44 @@ export default function ExpenseManagement() {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
 
-    const canAddExpense = hasPermission('financeExpenses', 'add');
-    const canEditExpense = hasPermission('financeExpenses', 'edit');
-    const canDeleteExpense = hasPermission('financeExpenses', 'delete');
-    const canDownloadExpenses = hasPermission('financeExpenses', 'download');
+    const hasAny = useCallback((module, actions) => {
+        const list = Array.isArray(actions) ? actions : [];
+        return list.some((a) => hasPermission(module, a));
+    }, [hasPermission]);
+
+    const canAccessLedgerTab = hasAny('financeExpensesLedger', ['view', 'add', 'edit', 'delete', 'download']);
+    const canAccessCategoriesTab = hasAny('financeExpensesCategories', ['view', 'add', 'edit', 'delete']);
+
+    const canAddExpense = hasPermission('financeExpensesLedger', 'add');
+    const canEditExpense = hasPermission('financeExpensesLedger', 'edit');
+    const canDeleteExpense = hasPermission('financeExpensesLedger', 'delete');
+    const canDownloadExpenses = hasPermission('financeExpensesLedger', 'download');
     const canPrint = hasPermission('financePrint', 'print');
 
-    const canViewConfig = hasPermission('financeConfig', 'view');
-    const canAddCategory = hasPermission('financeConfig', 'add');
-    const canEditCategory = hasPermission('financeConfig', 'edit');
-    const canDeleteCategory = hasPermission('financeConfig', 'delete');
+    const canViewConfig = hasPermission('financeExpensesCategories', 'view');
+    const canAddCategory = hasPermission('financeExpensesCategories', 'add');
+    const canEditCategory = hasPermission('financeExpensesCategories', 'edit');
+    const canDeleteCategory = hasPermission('financeExpensesCategories', 'delete');
 
     const [expandedSection, setExpandedSection] = useState('ledger');
 
     useEffect(() => {
         if (expandedSection !== 'categories') return;
-        if (canViewConfig) return;
-        setExpandedSection('ledger');
-    }, [expandedSection, canViewConfig]);
+        if (canAccessCategoriesTab) return;
+        if (canAccessLedgerTab) setExpandedSection('ledger');
+    }, [expandedSection, canAccessCategoriesTab, canAccessLedgerTab]);
+
+    useEffect(() => {
+        const allowed = [
+            canAccessLedgerTab ? 'ledger' : null,
+            canAccessCategoriesTab ? 'categories' : null,
+        ].filter(Boolean);
+
+        const current = String(expandedSection || '');
+        if (!allowed.length) return;
+        if (allowed.includes(current)) return;
+        setExpandedSection(allowed[0]);
+    }, [expandedSection, canAccessLedgerTab, canAccessCategoriesTab]);
 
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const d = new Date();
@@ -91,7 +111,7 @@ export default function ExpenseManagement() {
 
     const expensesQuery = useQuery({
         queryKey: expenseKeys.list({ from: monthRange?.from, to: monthRange?.to }),
-        enabled: expandedSection === 'ledger' || expandedSection === 'categories',
+        enabled: expandedSection === 'ledger' && canAccessLedgerTab,
         queryFn: async ({ signal }) => {
             const res = await listExpensesApi({ from: monthRange?.from, to: monthRange?.to }, { signal });
             const list = Array.isArray(res) ? res : (res?.rows || res?.data || []);
@@ -105,7 +125,7 @@ export default function ExpenseManagement() {
 
     const categoriesQuery = useQuery({
         queryKey: categoryKeys.list({ type: 'expense' }),
-        enabled: expandedSection === 'categories',
+        enabled: expandedSection === 'categories' && canAccessCategoriesTab,
         queryFn: async ({ signal }) => {
             // financeService methods don't accept signal; use api axios directly is heavier.
             // We'll keep it simple and rely on React Query cancellation semantics here.
@@ -472,7 +492,7 @@ export default function ExpenseManagement() {
                 onChange={setExpandedSection}
                 tone="blue"
                 options={[
-                    {
+                    canAccessLedgerTab ? {
                         value: 'ledger',
                         label: (
                             <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
@@ -480,8 +500,8 @@ export default function ExpenseManagement() {
                                 {t('finance.expenses.tabs.ledger', { defaultValue: 'Expense Ledger' })}
                             </span>
                         ),
-                    },
-                    canViewConfig ? {
+                    } : null,
+                    canAccessCategoriesTab ? {
                         value: 'categories',
                         label: (
                             <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">

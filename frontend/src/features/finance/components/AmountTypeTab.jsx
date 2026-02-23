@@ -23,9 +23,9 @@ export default function AmountTypeTab() {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
 
-    const canAdd = hasPermission('financeConfig', 'add');
-    const canEdit = hasPermission('financeConfig', 'edit');
-    const canDelete = hasPermission('financeConfig', 'delete');
+    const canAdd = hasPermission('financeStudentAmountType', 'add');
+    const canEdit = hasPermission('financeStudentAmountType', 'edit');
+    const canDelete = hasPermission('financeStudentAmountType', 'delete');
 
     const categoriesQuery = useFinanceCategoriesQuery(
         { type: 'fee', includePreviousBalance: true, includeInactive: true },

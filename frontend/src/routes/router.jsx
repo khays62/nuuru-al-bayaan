@@ -68,10 +68,12 @@ import {
   transcriptAny,
   transfersAny,
   financeAccountsAny,
+  financeAccountsPageAny,
   financeDashboardAny,
   financeExpensesAny,
+  financeExpensesPageAny,
   financePayrollAny,
-  financeStudentAny,
+  financeStudentFinanceAny,
 } from './permissions';
 
 export const router = createBrowserRouter([
@@ -329,7 +331,7 @@ export const router = createBrowserRouter([
       {
         path: 'finance/accounts',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeAccountsAny}>
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeAccountsPageAny}>
             <FinanceAccountsPage />
           </ProtectedRoute>
         ),
@@ -337,7 +339,10 @@ export const router = createBrowserRouter([
       {
         path: 'finance/student-finance',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeStudentAny}>
+          <ProtectedRoute
+            allowedRoles={['admin', 'staff']}
+            allowedPermissions={financeStudentFinanceAny}
+          >
             <FinanceStudentFinancePage />
           </ProtectedRoute>
         ),
@@ -353,7 +358,7 @@ export const router = createBrowserRouter([
       {
         path: 'finance/expenses',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeExpensesAny}>
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeExpensesPageAny}>
             <FinanceExpensesPage />
           </ProtectedRoute>
         ),

@@ -29,8 +29,8 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     // Note: role checks handled server-side; keep auth available for future UI rules
     void auth;
 
-    const canPayPerm = hasPermission('financeStudent', 'edit');
-    const canRevertPerm = hasPermission('financeStudent', 'delete');
+    const canPayPerm = hasPermission('financeStudentReceipt', 'edit');
+    const canRevertPerm = hasPermission('financeStudentReceipt', 'delete');
     const canPrintPerm = hasPermission('financePrint', 'print');
 
     const [loading, setLoading] = useState(true);

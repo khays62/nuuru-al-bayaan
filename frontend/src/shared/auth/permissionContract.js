@@ -48,9 +48,21 @@ export const MODULE_PERMISSIONS = Object.freeze({
   // Finance (granular tab-based permissions)
   financeDashboard: ['view', 'full'],
   financeAccounts: ['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'print', 'full'],
+  // Accounts (sub-tabs)
+  financeAccountsInstitution: ['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'full'],
+  financeAccountsOverview: ['view', 'full'],
+  financeAccountsLedger: ['view', 'download', 'full'],
   financeStudent: ['view', 'add', 'edit', 'delete', 'download', 'print', 'full'],
+  // Student Finance (sub-tabs)
+  financeStudentReceipt: ['view', 'add', 'edit', 'delete', 'download', 'full'],
+  financeStudentPreviousBalance: ['view', 'add', 'edit', 'delete', 'full'],
+  financeStudentAmountType: ['view', 'add', 'edit', 'delete', 'full'],
+  financeStudentFeeType: ['view', 'add', 'edit', 'delete', 'full'],
   financePayroll: ['view', 'add', 'edit', 'delete', 'download', 'print', 'full'],
   financeExpenses: ['view', 'add', 'edit', 'delete', 'download', 'print', 'full'],
+  // Expenses (sub-tabs)
+  financeExpensesLedger: ['view', 'add', 'edit', 'delete', 'download', 'full'],
+  financeExpensesCategories: ['view', 'add', 'edit', 'delete', 'full'],
   financeConfig: ['view', 'add', 'edit', 'delete', 'full'],
   financeFoundation: ['view', 'add', 'full'],
   financeAppointments: ['view', 'add', 'edit', 'delete', 'print', 'full'],

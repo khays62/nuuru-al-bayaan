@@ -1,14 +1,56 @@
 const isAuthenticated = (req) => Boolean(req?.user);
 
+// Backward-compatible permission aliases.
+// If a new module is checked, we can fall back to one or more legacy modules.
+// This prevents breaking existing staff accounts that still have the old keys.
+const PERMISSION_ALIASES = Object.freeze({
+  // Student Finance tab split (legacy was financeStudent.*)
+  financeStudentReceipt: Object.freeze(['financeStudent']),
+  financeStudentPreviousBalance: Object.freeze(['financeStudent']),
+
+  // Student Finance config tabs (legacy was financeConfig.*)
+  financeStudentAmountType: Object.freeze(['financeConfig']),
+  financeStudentFeeType: Object.freeze(['financeConfig']),
+
+  // Accounts tab split (legacy was financeAccounts.*)
+  financeAccountsInstitution: Object.freeze(['financeAccounts']),
+  financeAccountsOverview: Object.freeze(['financeAccounts']),
+  // Ledger used to be protected by financeAudit; keep both for backward compatibility.
+  financeAccountsLedger: Object.freeze(['financeAccounts', 'financeAudit']),
+
+  // Expenses tab split (legacy was financeExpenses.*, and categories used financeConfig.*)
+  financeExpensesLedger: Object.freeze(['financeExpenses']),
+  financeExpensesCategories: Object.freeze(['financeConfig']),
+});
+
+const getAliasModules = (moduleName) => {
+  const m = String(moduleName || '');
+  const list = PERMISSION_ALIASES[m];
+  return Array.isArray(list) ? list : [];
+};
+
 const hasPermission = (user, module, action) => {
   if (!user) return false;
   if (user.role === "admin") return true;
 
-  const modulePerm = user.permissions?.[module];
-  if (!modulePerm) return false;
+  const mod = String(module || '');
+  const act = String(action || '');
 
-  if (modulePerm.full === true) return true;
-  return modulePerm?.[action] === true;
+  const modulePerm = user.permissions?.[mod];
+  if (modulePerm) {
+    if (modulePerm.full === true) return true;
+    return modulePerm?.[act] === true;
+  }
+
+  // Alias fallback (legacy module grants new module).
+  for (const alias of getAliasModules(mod)) {
+    const aliasPerm = user.permissions?.[alias];
+    if (!aliasPerm) continue;
+    if (aliasPerm.full === true) return true;
+    if (aliasPerm?.[act] === true) return true;
+  }
+
+  return false;
 };
 
 export const checkPermission = (module, action) => {
@@ -105,14 +147,20 @@ export const checkModuleAnyPermission = (module, actions = []) => {
     // ADMIN ALWAYS ALLOWED
     if (req.user.role === "admin") return next();
 
-    const modulePerm = req.user?.permissions?.[module];
+    const mod = String(module || '');
+    const direct = req.user?.permissions?.[mod];
+    const aliasModules = getAliasModules(mod);
+    const aliasPerms = aliasModules.map((m) => ({ module: m, perm: req.user?.permissions?.[m] }))
+      .filter((x) => Boolean(x.perm));
+
+    const modulePerm = direct || aliasPerms?.[0]?.perm;
     if (!modulePerm) {
       return res.status(403).json({
         success: false,
         message: req.t(
           'permissions.noPermissionsForModule',
-          { module },
-          `No permissions found for module: ${module}`
+          { module: mod },
+          `No permissions found for module: ${mod}`
         ),
       });
     }
@@ -122,27 +170,40 @@ export const checkModuleAnyPermission = (module, actions = []) => {
     const permObj = typeof modulePerm?.toObject === 'function' ? modulePerm.toObject() : modulePerm;
 
     if (permObj?.full === true) {
-      req.audit = { module, action: 'full' };
+      // Prefer the direct module name for audit even if alias is used.
+      req.audit = { module: mod, action: 'full' };
       return next();
     }
 
-    const allow = Array.isArray(actions) && actions.length
-      ? actions.some((a) => permObj?.[a] === true)
-      : Object.entries(permObj || {}).some(([k, v]) => k !== 'full' && v === true);
+    const allowForPerm = (obj) => {
+      if (!obj) return false;
+      const o = typeof obj?.toObject === 'function' ? obj.toObject() : obj;
+      if (o?.full === true) return true;
+      return Array.isArray(actions) && actions.length
+        ? actions.some((a) => o?.[a] === true)
+        : Object.entries(o || {}).some(([k, v]) => k !== 'full' && v === true);
+    };
+
+    let allow = allowForPerm(modulePerm);
+
+    // If direct module didn't match (or wasn't present), try aliases.
+    if (!allow && aliasPerms.length) {
+      allow = aliasPerms.some((x) => allowForPerm(x.perm));
+    }
 
     if (!allow) {
       return res.status(403).json({
         success: false,
         message: req.t(
           'permissions.noPermissionAccessModule',
-          { module },
-          `You do not have permission to access ${module}`
+          { module: mod },
+          `You do not have permission to access ${mod}`
         ),
       });
     }
 
     // We don't know which specific action was intended; mark as module access.
-    req.audit = { module, action: 'access' };
+    req.audit = { module: mod, action: 'access' };
 
     return next();
   };

@@ -32,14 +32,23 @@ export default function AccountManagement() {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
 
-    const canCreateAccount = hasPermission('financeAccounts', 'add');
-    const canEditAccount = hasPermission('financeAccounts', 'edit');
-    const canDeleteAccount = hasPermission('financeAccounts', 'delete');
-    const canTransfer = hasPermission('financeAccounts', 'transfer');
-    const canRecordIncome = hasPermission('financeAccounts', 'income');
-    const canAccountsDownload = hasPermission('financeAccounts', 'download');
+    const hasAny = useCallback((module, actions) => {
+        const list = Array.isArray(actions) ? actions : [];
+        return list.some((a) => hasPermission(module, a));
+    }, [hasPermission]);
+
+    const canAccessInstitutionTab = hasAny('financeAccountsInstitution', ['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download']);
+    const canAccessOverviewTab = hasAny('financeAccountsOverview', ['view']);
+    const canAccessLedgerTab = hasAny('financeAccountsLedger', ['view', 'download']);
+
+    const canCreateAccount = hasPermission('financeAccountsInstitution', 'add');
+    const canEditAccount = hasPermission('financeAccountsInstitution', 'edit');
+    const canDeleteAccount = hasPermission('financeAccountsInstitution', 'delete');
+    const canTransfer = hasPermission('financeAccountsInstitution', 'transfer');
+    const canRecordIncome = hasPermission('financeAccountsInstitution', 'income');
+
+    const canLedgerDownload = hasPermission('financeAccountsLedger', 'download');
     const canPrint = hasPermission('financePrint', 'print');
-    const canViewAudit = hasPermission('financeAudit', 'view');
 
     const getAccountTypeLabel = useCallback((raw) => {
         const v = String(raw || '');
@@ -73,6 +82,7 @@ export default function AccountManagement() {
 
     const accountsQuery = useQuery({
         queryKey: accountKeys.list({ includeInactive: true }),
+        enabled: canAccessInstitutionTab || canAccessOverviewTab,
         queryFn: async ({ signal }) => {
             const res = await listAccountsApi({ includeInactive: true }, { signal });
             return Array.isArray(res) ? res : [];
@@ -87,7 +97,7 @@ export default function AccountManagement() {
 
     const ledgerQuery = useQuery({
         queryKey: ['finance', 'audit', 'accounts'],
-        enabled: expandedSection === 'ledger',
+        enabled: expandedSection === 'ledger' && canAccessLedgerTab,
         queryFn: async ({ signal }) => {
             const response = await axios.get('/finance/audit', { params: { q: 'account' }, signal });
             const payload = response.data;
@@ -103,6 +113,20 @@ export default function AccountManagement() {
 
     const accounts = accountsQuery.data || [];
     const ledgerLogs = ledgerQuery.data || [];
+
+    // If the current tab becomes unavailable (or user only has one tab), move to the first available one.
+    useEffect(() => {
+        const allowed = [
+            canAccessInstitutionTab ? 'list' : null,
+            canAccessOverviewTab ? 'overview' : null,
+            canAccessLedgerTab ? 'ledger' : null,
+        ].filter(Boolean);
+
+        const current = String(expandedSection || '');
+        if (!allowed.length) return;
+        if (allowed.includes(current)) return;
+        setExpandedSection(allowed[0]);
+    }, [expandedSection, canAccessInstitutionTab, canAccessOverviewTab, canAccessLedgerTab]);
 
     const getFinanceAccountsErrorText = (error, fallbackKey, fallbackDefaultValue) => {
         const code = error?.response?.data?.code;
@@ -401,7 +425,7 @@ export default function AccountManagement() {
                 onChange={setExpandedSection}
                 tone="blue"
                 options={[
-                    {
+                    canAccessInstitutionTab ? {
                         value: 'list',
                         label: (
                             <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
@@ -409,8 +433,8 @@ export default function AccountManagement() {
                                 {t('finance.accounts.tabs.institutionAccounts', { defaultValue: 'Institution Accounts' })}
                             </span>
                         )
-                    },
-                    {
+                    } : null,
+                    canAccessOverviewTab ? {
                         value: 'overview',
                         label: (
                             <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
@@ -418,8 +442,8 @@ export default function AccountManagement() {
                                 {t('finance.accounts.tabs.balanceOverview', { defaultValue: 'Balance Overview & Projects' })}
                             </span>
                         )
-                    },
-                    canViewAudit ? {
+                    } : null,
+                    canAccessLedgerTab ? {
                         value: 'ledger',
                         label: (
                             <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
@@ -441,7 +465,7 @@ export default function AccountManagement() {
 
             <div className="min-h-150">
                 {/* 1. Account List & Actions */}
-                {expandedSection === 'list' && (
+                {expandedSection === 'list' && canAccessInstitutionTab && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="flex justify-between items-center mb-8">
                             <div>
@@ -560,7 +584,7 @@ export default function AccountManagement() {
                 )}
 
                 {/* 2. Balance Overview */}
-                {expandedSection === 'overview' && (
+                {expandedSection === 'overview' && canAccessOverviewTab && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="bg-gray-900 rounded-[3rem] p-16 text-center shadow-2xl relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-blue-600/20 transition-all duration-700" />
@@ -591,7 +615,7 @@ export default function AccountManagement() {
                 )}
 
                 {/* 3. Ledger History */}
-                {expandedSection === 'ledger' && (
+                {expandedSection === 'ledger' && canAccessLedgerTab && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="space-y-4">
                             <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 flex items-center justify-between gap-4 no-print">
@@ -613,7 +637,7 @@ export default function AccountManagement() {
                                         </ActionButton>
                                     ) : null}
 
-                                    {canAccountsDownload ? (
+                                    {canLedgerDownload ? (
                                         <>
                                             <PdfDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
                                             <ExcelDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />

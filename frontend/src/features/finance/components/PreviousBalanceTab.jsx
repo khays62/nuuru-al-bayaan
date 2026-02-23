@@ -16,9 +16,19 @@ import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 import { useI18n } from '../../../i18n/I18nProvider';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function PreviousBalanceTab() {
     const { t } = useI18n();
+    const { hasPermission } = useAuth();
+
+    const canAdd = hasPermission('financeStudentPreviousBalance', 'add');
+    const canEdit = hasPermission('financeStudentPreviousBalance', 'edit');
+    const canSave = canAdd || canEdit;
+
+    // This modal relies on Receipt endpoints (ledger/history/invoices), so gate it by Receipt permissions.
+    const canViewInfo = ['view', 'add', 'edit', 'delete', 'download'].some((a) => hasPermission('financeStudentReceipt', a));
+
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
     const [gradeId, setGradeId] = useState('');
@@ -149,6 +159,7 @@ export default function PreviousBalanceTab() {
     };
 
     const handleEditRow = (row) => {
+        if (!canEdit) return;
         if (!row?._id) return;
         setAddMode(true);
         const suggested = row?.prevInvoiceId
@@ -162,6 +173,10 @@ export default function PreviousBalanceTab() {
 
 
     const handleSavePreviousBalances = async () => {
+        if (!canSave) {
+            return toast.error(t('permissions.noPermissionAccessModule', { module: 'financeStudentPreviousBalance' }, 'You do not have permission to access Previous Balance'));
+        }
+
         if (!previousBalanceCategoryId) {
             return toast.error(t('finance.studentFinance.previousBalanceTab.toasts.noPreviousBalanceCategory', { defaultValue: 'Create an Amount Type named "Previous Balance" first' }));
         }
@@ -181,11 +196,14 @@ export default function PreviousBalanceTab() {
             setLoading(true);
             toast.loading(t('finance.studentFinance.previousBalanceTab.toasts.saving', { defaultValue: 'Saving previous balances...' }));
 
+            let processed = 0;
+
             for (const { student, raw } of entries) {
                 const amount = Number(raw);
 
                 // Upsert for CURRENT month only
                 if (student?.prevInvoiceId) {
+                    if (!canEdit) continue;
                     const alreadyPaid = Number(student?.prevPaidAmount || 0);
                     if (alreadyPaid > amount) {
                         throw new Error(`Cannot set ${student?.fullName || 'student'} below already paid ($${alreadyPaid.toFixed(2)})`);
@@ -197,7 +215,9 @@ export default function PreviousBalanceTab() {
                         amount,
                         reason: 'Previous Balance edit',
                     });
+                    processed += 1;
                 } else {
+                    if (!canAdd) continue;
                     await financeService.chargeStudentFees({
                         chargeType: 'single',
                         studentId: student._id,
@@ -207,7 +227,13 @@ export default function PreviousBalanceTab() {
                         feeType: 'personal',
                         amount,
                     });
+                    processed += 1;
                 }
+            }
+
+            if (processed === 0) {
+                toast.dismiss();
+                return toast.error(t('permissions.missingRequiredPermission', null, 'Missing required permission'));
             }
 
             setEditingPrevBalance({});
@@ -346,25 +372,29 @@ export default function PreviousBalanceTab() {
                     />
 
                     <div className="flex gap-2">
-                        <Button
-                            onClick={handleSavePreviousBalances}
-                            variant="primary"
-                            size="lg"
-                            className="h-11 px-8 font-black text-sm uppercase tracking-widest"
-                        >
-                            {t('finance.studentFinance.previousBalanceTab.actions.save', { defaultValue: 'Save' })}
-                        </Button>
-                        <Button
-                            onClick={() => {
-                                setAddMode(true);
-                                handleSearch();
-                            }}
-                            variant="brand"
-                            size="lg"
-                            className="h-11 px-8 font-black text-sm uppercase tracking-widest"
-                        >
-                            {t('finance.studentFinance.previousBalanceTab.actions.add', { defaultValue: 'Add' })}
-                        </Button>
+                        {canSave ? (
+                            <Button
+                                onClick={handleSavePreviousBalances}
+                                variant="primary"
+                                size="lg"
+                                className="h-11 px-8 font-black text-sm uppercase tracking-widest"
+                            >
+                                {t('finance.studentFinance.previousBalanceTab.actions.save', { defaultValue: 'Save' })}
+                            </Button>
+                        ) : null}
+                        {(canAdd || canEdit) ? (
+                            <Button
+                                onClick={() => {
+                                    setAddMode(true);
+                                    handleSearch();
+                                }}
+                                variant="brand"
+                                size="lg"
+                                className="h-11 px-8 font-black text-sm uppercase tracking-widest"
+                            >
+                                {t('finance.studentFinance.previousBalanceTab.actions.add', { defaultValue: 'Add' })}
+                            </Button>
+                        ) : null}
                         <Button
                             onClick={resetFilters}
                             variant="neutral"
@@ -454,27 +484,31 @@ export default function PreviousBalanceTab() {
                                 return (
                                     <RowActionButtons
                                         actions={[
-                                            {
-                                                key: 'info',
-                                                label: t('finance.studentFinance.previousBalanceTab.actions.viewInfo', { defaultValue: 'View Info' }),
-                                                title: t('finance.studentFinance.previousBalanceTab.actions.viewInfo', { defaultValue: 'View Info' }),
-                                                tone: 'view',
-                                                showLabel: true,
-                                                icon: null,
-                                                onClick: () => {
-                                                    setSelectedStudentRow({ student: raw, totalBalance: Number(raw?.balance || 0) });
-                                                    setShowInfoModal(true);
+                                            ...(canViewInfo ? [
+                                                {
+                                                    key: 'info',
+                                                    label: t('finance.studentFinance.previousBalanceTab.actions.viewInfo', { defaultValue: 'View Info' }),
+                                                    title: t('finance.studentFinance.previousBalanceTab.actions.viewInfo', { defaultValue: 'View Info' }),
+                                                    tone: 'view',
+                                                    showLabel: true,
+                                                    icon: null,
+                                                    onClick: () => {
+                                                        setSelectedStudentRow({ student: raw, totalBalance: Number(raw?.balance || 0) });
+                                                        setShowInfoModal(true);
+                                                    },
                                                 },
-                                            },
-                                            {
-                                                key: 'edit',
-                                                label: t('common.actions.edit', { defaultValue: 'Edit' }),
-                                                title: t('common.actions.edit', { defaultValue: 'Edit' }),
-                                                tone: 'edit',
-                                                showLabel: true,
-                                                icon: <Pencil size={16} />,
-                                                onClick: () => handleEditRow(raw),
-                                            },
+                                            ] : []),
+                                            ...(canEdit ? [
+                                                {
+                                                    key: 'edit',
+                                                    label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                                    title: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                                    tone: 'edit',
+                                                    showLabel: true,
+                                                    icon: <Pencil size={16} />,
+                                                    onClick: () => handleEditRow(raw),
+                                                },
+                                            ] : []),
                                         ]}
                                     />
                                 );

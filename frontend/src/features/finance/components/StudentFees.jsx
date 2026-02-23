@@ -33,11 +33,12 @@ const ReceiptTab = () => {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
 
-    const canCharge = hasPermission('financeStudent', 'add');
-    const canUpdateCharge = hasPermission('financeStudent', 'edit');
-    const canDeleteCharge = hasPermission('financeStudent', 'delete');
-    const canDownload = hasPermission('financeStudent', 'download');
+    const canCharge = hasPermission('financeStudentReceipt', 'add');
+    const canUpdateCharge = hasPermission('financeStudentReceipt', 'edit');
+    const canDeleteCharge = hasPermission('financeStudentReceipt', 'delete');
+    const canDownload = hasPermission('financeStudentReceipt', 'download');
     const canPrint = hasPermission('financePrint', 'print');
+    const canSeePreviousBalanceData = ['view', 'add', 'edit', 'delete'].some((a) => hasPermission('financeStudentPreviousBalance', a));
 
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
@@ -75,29 +76,43 @@ const ReceiptTab = () => {
         refetchOnReconnect: false,
     };
 
+    const prevQueryUX = {
+        ...queryUX,
+        enabled: Boolean(queryUX.enabled) && Boolean(canSeePreviousBalanceData),
+    };
+
     const summaryQuery = useFinanceStudentsSummaryQuery(submittedParams, queryUX);
-    const prevQuery = usePreviousBalanceSummaryQuery({ ...submittedParams, month: currentMonth }, queryUX);
+    const prevQuery = usePreviousBalanceSummaryQuery({ ...submittedParams, month: currentMonth }, prevQueryUX);
 
     useEffect(() => {
         // Only show skeleton on first load. Background refetches (isFetching)
         // should keep the current rows visible to avoid tab-switch flicker.
-        setLoading(Boolean(summaryQuery.isLoading || prevQuery.isLoading));
-    }, [summaryQuery.isLoading, prevQuery.isLoading]);
+        setLoading(Boolean(summaryQuery.isLoading || (prevQueryUX.enabled && prevQuery.isLoading)));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [summaryQuery.isLoading, prevQuery.isLoading, prevQueryUX.enabled]);
 
     useEffect(() => {
-        if (!summaryQuery.isError && !prevQuery.isError) return;
-        toast.error(t('finance.studentFinance.receiptTab.toasts.searchFailed', { defaultValue: 'Search failed' }));
+        if (summaryQuery.isError) {
+            toast.error(t('finance.studentFinance.receiptTab.toasts.searchFailed', { defaultValue: 'Search failed' }));
+            return;
+        }
+
+        // Receipt tab optionally includes Previous Balance. If the user doesn't have that permission,
+        // do not fetch it and do not show error toasts.
+        if (prevQueryUX.enabled && prevQuery.isError) {
+            toast.error(t('finance.studentFinance.receiptTab.toasts.previousBalanceLoadFailed', { defaultValue: 'Failed to fetch student balance data' }));
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [summaryQuery.isError, prevQuery.isError]);
+    }, [summaryQuery.isError, prevQuery.isError, prevQueryUX.enabled]);
 
     const students = useMemo(() => {
         const baseRows = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
-        const prevRows = Array.isArray(prevQuery.data?.rows) ? prevQuery.data.rows : [];
+        const prevRows = (canSeePreviousBalanceData && Array.isArray(prevQuery.data?.rows)) ? prevQuery.data.rows : [];
         const prevByStudent = new Map(prevRows.map(r => [String(r.studentObjectId), r]));
 
         return baseRows.map(r => {
             const p = prevByStudent.get(String(r._id));
-            const prevOutstanding = Number(p?.balance || 0);
+            const prevOutstanding = canSeePreviousBalanceData ? Number(p?.balance || 0) : 0;
             const baseBalance = Number(r?.balance || 0);
             return {
                 ...r,
@@ -105,7 +120,7 @@ const ReceiptTab = () => {
                 balanceWithPrevious: baseBalance + prevOutstanding,
             };
         });
-    }, [summaryQuery.data, prevQuery.data]);
+    }, [summaryQuery.data, prevQuery.data, canSeePreviousBalanceData]);
 
     // Removal of broken fetchStats - stats should be handled at parent level if needed
 
@@ -571,15 +586,25 @@ export default function StudentFees() {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
 
-    const [activeTab, setActiveTab] = useState('receipt');
+    const canSeeReceiptTab = ['view', 'add', 'edit', 'delete', 'download'].some((a) => hasPermission('financeStudentReceipt', a));
+    const canSeePreviousBalanceTab = ['view', 'add', 'edit', 'delete'].some((a) => hasPermission('financeStudentPreviousBalance', a));
+    const canSeeAmountTypeTab = ['view', 'add', 'edit', 'delete'].some((a) => hasPermission('financeStudentAmountType', a));
+    const canSeeFeeTypeTab = ['view', 'add', 'edit', 'delete'].some((a) => hasPermission('financeStudentFeeType', a));
 
-    const canViewConfig = hasPermission('financeConfig', 'view');
+    const initialTab = (
+        canSeeReceiptTab ? 'receipt'
+            : (canSeePreviousBalanceTab ? 'previousBalance'
+                : (canSeeAmountTypeTab ? 'amountType'
+                    : (canSeeFeeTypeTab ? 'feeType' : 'receipt')))
+    );
+
+    const [activeTab, setActiveTab] = useState(initialTab);
 
     const tabs = [
-        { id: 'receipt', label: t('finance.studentFinance.tabs.receipt', { defaultValue: 'Receipt' }), icon: Receipt },
-        { id: 'previousBalance', label: t('finance.studentFinance.tabs.previousBalance', { defaultValue: 'Previous Balance' }), icon: Wallet },
-        canViewConfig ? { id: 'amountType', label: t('finance.studentFinance.tabs.amountType', { defaultValue: 'Amount Type' }), icon: Settings } : null,
-        canViewConfig ? { id: 'feeType', label: t('finance.studentFinance.tabs.feeType', { defaultValue: 'Fee Type' }), icon: Settings } : null,
+        canSeeReceiptTab ? { id: 'receipt', label: t('finance.studentFinance.tabs.receipt', { defaultValue: 'Receipt' }), icon: Receipt } : null,
+        canSeePreviousBalanceTab ? { id: 'previousBalance', label: t('finance.studentFinance.tabs.previousBalance', { defaultValue: 'Previous Balance' }), icon: Wallet } : null,
+        canSeeAmountTypeTab ? { id: 'amountType', label: t('finance.studentFinance.tabs.amountType', { defaultValue: 'Amount Type' }), icon: Settings } : null,
+        canSeeFeeTypeTab ? { id: 'feeType', label: t('finance.studentFinance.tabs.feeType', { defaultValue: 'Fee Type' }), icon: Settings } : null,
     ];
 
     const visibleTabs = useMemo(() => tabs.filter(Boolean), [tabs]);
@@ -616,18 +641,10 @@ export default function StudentFees() {
             </div>
 
             <div className="min-h-125">
-                <div className={activeTab === 'receipt' ? 'block' : 'hidden'}>
-                    <ReceiptTab />
-                </div>
-                <div className={activeTab === 'previousBalance' ? 'block' : 'hidden'}>
-                    <PreviousBalanceTab />
-                </div>
-                <div className={activeTab === 'amountType' ? 'block' : 'hidden'}>
-                    <AmountTypeTab />
-                </div>
-                <div className={activeTab === 'feeType' ? 'block' : 'hidden'}>
-                    {canViewConfig ? <FeeTypeTab /> : null}
-                </div>
+                {activeTab === 'receipt' && canSeeReceiptTab ? <ReceiptTab /> : null}
+                {activeTab === 'previousBalance' && canSeePreviousBalanceTab ? <PreviousBalanceTab /> : null}
+                {activeTab === 'amountType' && canSeeAmountTypeTab ? <AmountTypeTab /> : null}
+                {activeTab === 'feeType' && canSeeFeeTypeTab ? <FeeTypeTab /> : null}
             </div>
         </div>
     );

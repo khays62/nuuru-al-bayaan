@@ -15,6 +15,7 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
 import { printHtmlDocument } from '../../../utils/exportTable';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function PayrollEmployeeInfoModal({
     onClose,
@@ -24,6 +25,10 @@ export default function PayrollEmployeeInfoModal({
     initialStaffId,
 }) {
     const { t } = useI18n();
+    const { hasPermission } = useAuth();
+
+    const canSave = hasPermission('financePayroll', 'edit');
+    const canPrint = hasPermission('financePrint', 'print');
 
     const [staffList, setStaffList] = useState([]);
     const [accounts, setAccounts] = useState([]);
@@ -225,6 +230,11 @@ export default function PayrollEmployeeInfoModal({
     };
 
     const doSave = async (row) => {
+        if (!canSave) {
+            toast.error(t('finance.payroll.employeeInfo.errors.noEditPermission', { defaultValue: 'You do not have permission to edit payroll' }));
+            return;
+        }
+
         const edit = rowEdits[row._id] || {};
         const sendNumberValue = String(edit.sendNumber ?? row.sendNumber ?? '').trim();
         if (!sendNumberValue) {
@@ -258,6 +268,11 @@ export default function PayrollEmployeeInfoModal({
     };
 
     const doPrint = (row) => {
+        if (!canPrint) {
+            toast.error(t('finance.payroll.employeeInfo.errors.noPrintPermission', { defaultValue: 'You do not have permission to print' }));
+            return;
+        }
+
         const safe = (v) => String(v ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         const receiptTitle = t('finance.payroll.employeeInfo.receipt.title', { defaultValue: 'Payroll Receipt' });
@@ -312,7 +327,7 @@ export default function PayrollEmployeeInfoModal({
         ? (ledgerQuery.error?.response?.data?.message || ledgerQuery.error?.message || t('finance.payroll.employeeInfo.errors.loadFailed', { defaultValue: 'Failed to load employee info' }))
         : null;
 
-    const canEditRow = (r) => r?.payroll?.status !== 'Paid';
+    const canEditRow = (r) => canSave && r?.payroll?.status !== 'Paid';
     const requestEdit = (r) => {
         if (!r?._id) return;
         if (!canEditRow(r)) return;
@@ -383,6 +398,7 @@ export default function PayrollEmployeeInfoModal({
                             onChange={(v) => setSelected((prev) => ({ ...prev, accountId: v }))}
                             options={accountOptions}
                             placeholder={t('finance.payroll.placeholders.account', { defaultValue: 'Select account…' })}
+                            disabled={!canSave}
                         />
                     </FormField>
                 </div>
@@ -398,6 +414,7 @@ export default function PayrollEmployeeInfoModal({
                             type="date"
                             value={selected.date}
                             onChange={(e) => setSelected((prev) => ({ ...prev, date: e.target.value }))}
+                            disabled={!canSave}
                         />
                     </FormField>
 
@@ -565,23 +582,28 @@ export default function PayrollEmployeeInfoModal({
 
                                         return (
                                             <div className="flex justify-end gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="brand"
-                                                    className={saveColorClass}
-                                                    disabled={saveLoadingId === r._id || r.payroll.status === 'Paid' || !isRowDirty(r)}
-                                                    onClick={() => doSave(r)}
-                                                    title={t('common.actions.save', { defaultValue: 'Save' })}
-                                                    icon={<Save size={16} />}
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    variant="neutral"
-                                                    disabled={isRowDirty(r) || editingRowId === r._id}
-                                                    onClick={() => doPrint(r)}
-                                                    title={t('common.actions.print', { defaultValue: 'Print' })}
-                                                    icon={<Printer size={16} />}
-                                                />
+                                                {canSave ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="brand"
+                                                        className={saveColorClass}
+                                                        disabled={saveLoadingId === r._id || r.payroll.status === 'Paid' || !isRowDirty(r)}
+                                                        onClick={() => doSave(r)}
+                                                        title={t('common.actions.save', { defaultValue: 'Save' })}
+                                                        icon={<Save size={16} />}
+                                                    />
+                                                ) : null}
+
+                                                {canPrint ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="neutral"
+                                                        disabled={isRowDirty(r) || editingRowId === r._id}
+                                                        onClick={() => doPrint(r)}
+                                                        title={t('common.actions.print', { defaultValue: 'Print' })}
+                                                        icon={<Printer size={16} />}
+                                                    />
+                                                ) : null}
                                             </div>
                                         );
                                     }

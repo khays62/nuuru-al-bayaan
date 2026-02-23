@@ -143,6 +143,43 @@ export const AuthProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Backward-compatible permission aliases (keep frontend gating in sync with backend).
+  // If a new module is checked, we can fall back to one or more legacy modules.
+  const PERMISSION_ALIASES = React.useMemo(
+    () => Object.freeze({
+      // Student Finance tab split (legacy was financeStudent.*)
+      financeStudentReceipt: Object.freeze(['financeStudent']),
+      financeStudentPreviousBalance: Object.freeze(['financeStudent']),
+
+      // Student Finance config tabs (legacy was financeConfig.*)
+      financeStudentAmountType: Object.freeze(['financeConfig']),
+      financeStudentFeeType: Object.freeze(['financeConfig']),
+
+      // Accounts tab split (legacy was financeAccounts.*)
+      financeAccountsInstitution: Object.freeze(['financeAccounts']),
+      financeAccountsOverview: Object.freeze(['financeAccounts']),
+      // Ledger used to be protected by financeAudit; keep both for backward compatibility.
+      financeAccountsLedger: Object.freeze(['financeAccounts', 'financeAudit']),
+
+      // Expenses tab split (legacy was financeExpenses.*, and categories used financeConfig.*)
+      financeExpensesLedger: Object.freeze(['financeExpenses']),
+      financeExpensesCategories: Object.freeze(['financeConfig']),
+    }),
+    []
+  );
+
+  const getAliasModules = (moduleName) => {
+    const m = String(moduleName || '');
+    const list = PERMISSION_ALIASES[m];
+    return Array.isArray(list) ? list : [];
+  };
+
+  const hasPermissionOnModule = (moduleName, actionName) => {
+    const perm = user?.permissions?.[moduleName];
+    if (!perm) return false;
+    return perm.full === true || perm?.[actionName] === true;
+  };
+
   // Cross-tab logout: if any tab logs out, all tabs should log out.
   useEffect(() => {
     const onStorage = (e) => {
@@ -248,9 +285,19 @@ export const AuthProvider = ({ children }) => {
   const hasPermission = (module, action) => {
     if (!user) return false;
     if (String(user.role || '').toLowerCase() === 'admin') return true;
-    const perm = user.permissions?.[module];
-    if (!perm) return false;
-    return perm.full === true || perm[action] === true;
+
+    const mod = String(module || '');
+    const act = String(action || '');
+    if (!mod || !act) return false;
+
+    if (hasPermissionOnModule(mod, act)) return true;
+
+    // Alias fallback (legacy module grants new module).
+    for (const alias of getAliasModules(mod)) {
+      if (hasPermissionOnModule(alias, act)) return true;
+    }
+
+    return false;
   };
 
   const login = async (username, password) => {

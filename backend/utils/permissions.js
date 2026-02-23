@@ -50,9 +50,24 @@ export const PERMISSION_CONTRACT = Object.freeze({
   // Finance (granular tab-based permissions)
   financeDashboard: Object.freeze(['view', 'full']),
   financeAccounts: Object.freeze(['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'print', 'full']),
+  // Accounts (sub-tabs)
+  // NOTE: Enforced per-tab in financeRoutes.js and backward-compatible with legacy financeAccounts.* via middleware aliases.
+  financeAccountsInstitution: Object.freeze(['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'full']),
+  financeAccountsOverview: Object.freeze(['view', 'full']),
+  financeAccountsLedger: Object.freeze(['view', 'download', 'full']),
   financeStudent: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
+  // Student Finance (sub-tabs)
+  // NOTE: These are used to allow admin to grant access per Student Finance tab.
+  // They are enforced in financeRoutes.js and are backward-compatible with legacy financeStudent.* via middleware aliases.
+  financeStudentReceipt: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'full']),
+  financeStudentPreviousBalance: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
+  financeStudentAmountType: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
+  financeStudentFeeType: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
   financePayroll: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
   financeExpenses: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
+  // Expenses (sub-tabs)
+  financeExpensesLedger: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'full']),
+  financeExpensesCategories: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
   financeConfig: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
   financeFoundation: Object.freeze(['view', 'add', 'full']),
   financeAppointments: Object.freeze(['view', 'add', 'edit', 'delete', 'print', 'full']),

@@ -31,9 +31,9 @@ export default function FeeTypeTab() {
   const { t } = useI18n();
   const { hasPermission } = useAuth();
 
-  const canAdd = hasPermission('financeConfig', 'add');
-  const canEdit = hasPermission('financeConfig', 'edit');
-  const canDelete = hasPermission('financeConfig', 'delete');
+  const canAdd = hasPermission('financeStudentFeeType', 'add');
+  const canEdit = hasPermission('financeStudentFeeType', 'edit');
+  const canDelete = hasPermission('financeStudentFeeType', 'delete');
 
   const isSaving = Boolean(createMutation.isPending || updateMutation.isPending);
   const loading = Boolean(feeTypesQuery.isLoading);

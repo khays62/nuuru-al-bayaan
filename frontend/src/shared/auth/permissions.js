@@ -25,6 +25,42 @@ export const transcriptAny = permsAny('transcript', actionsFor('transcript'));
 // Finance
 export const financeDashboardAny = permsAny('financeDashboard', actionsFor('financeDashboard'));
 export const financeAccountsAny = permsAny('financeAccounts', actionsFor('financeAccounts'));
+export const financeAccountsInstitutionAny = permsAny('financeAccountsInstitution', actionsFor('financeAccountsInstitution'));
+export const financeAccountsOverviewAny = permsAny('financeAccountsOverview', actionsFor('financeAccountsOverview'));
+export const financeAccountsLedgerAny = permsAny('financeAccountsLedger', actionsFor('financeAccountsLedger'));
 export const financeStudentAny = permsAny('financeStudent', actionsFor('financeStudent'));
+export const financeStudentReceiptAny = permsAny('financeStudentReceipt', actionsFor('financeStudentReceipt'));
+export const financeStudentPreviousBalanceAny = permsAny('financeStudentPreviousBalance', actionsFor('financeStudentPreviousBalance'));
+export const financeStudentAmountTypeAny = permsAny('financeStudentAmountType', actionsFor('financeStudentAmountType'));
+export const financeStudentFeeTypeAny = permsAny('financeStudentFeeType', actionsFor('financeStudentFeeType'));
+
+// Student Finance page should be accessible if the user has any Student Finance sub-tab permission
+// or legacy financeStudent permission.
+export const financeStudentFinanceAny = Object.freeze([
+	...financeStudentAny,
+	...financeStudentReceiptAny,
+	...financeStudentPreviousBalanceAny,
+	...financeStudentAmountTypeAny,
+	...financeStudentFeeTypeAny,
+]);
+
+// Accounts page should be accessible if the user has any Accounts tab permission
+// or legacy financeAccounts permission.
+export const financeAccountsPageAny = Object.freeze([
+	...financeAccountsAny,
+	...financeAccountsInstitutionAny,
+	...financeAccountsOverviewAny,
+	...financeAccountsLedgerAny,
+]);
 export const financePayrollAny = permsAny('financePayroll', actionsFor('financePayroll'));
 export const financeExpensesAny = permsAny('financeExpenses', actionsFor('financeExpenses'));
+export const financeExpensesLedgerAny = permsAny('financeExpensesLedger', actionsFor('financeExpensesLedger'));
+export const financeExpensesCategoriesAny = permsAny('financeExpensesCategories', actionsFor('financeExpensesCategories'));
+
+// Expenses page should be accessible if the user has any Expenses tab permission
+// or legacy financeExpenses permission.
+export const financeExpensesPageAny = Object.freeze([
+	...financeExpensesAny,
+	...financeExpensesLedgerAny,
+	...financeExpensesCategoriesAny,
+]);

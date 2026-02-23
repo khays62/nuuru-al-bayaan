@@ -16,8 +16,8 @@ import { useAuth } from '../../../auth/AuthContext';
 
 export default function FeeManagement() {
     const { hasPermission } = useAuth();
-    const canAdd = hasPermission('financeStudent', 'add');
-    const canView = hasPermission('financeStudent', 'view');
+    const canAdd = hasPermission('financeStudentReceipt', 'add');
+    const canView = hasPermission('financeStudentReceipt', 'view');
 
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
