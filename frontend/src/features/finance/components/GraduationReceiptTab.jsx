@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, GraduationCap, Info, RotateCcw } from 'lucide-react';
-import financeService from '../api/finance';
 import toast from 'react-hot-toast';
 import GraduationPaymentModal from './GraduationPaymentModal';
+import { useInvoicesQuery } from '../hooks/studentFinanceHooks';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
@@ -13,51 +13,86 @@ export default function GraduationReceiptTab() {
     const [classId, setClassId] = useState('');
     const [gradeId, setGradeId] = useState('');
     const [shiftId, setShiftId] = useState('');
-    const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [submittedParams, setSubmittedParams] = useState({});
     const [selectedStudentRow, setSelectedStudentRow] = useState(null);
     const [showGradModal, setShowGradModal] = useState(false);
+
+    const invoicesQuery = useInvoicesQuery(submittedParams, {
+        enabled: Boolean(submittedParams?.search || submittedParams?.classId),
+        staleTime: 60_000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+    });
+
+    useEffect(() => {
+        // Only show skeleton on first load; keep rows visible on background refetch.
+        setLoading(Boolean(invoicesQuery.isLoading));
+    }, [invoicesQuery.isLoading]);
+
+    useEffect(() => {
+        if (!invoicesQuery.isError) return;
+        toast.error('Failed to fetch graduation records');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [invoicesQuery.isError]);
+
+    const students = React.useMemo(() => {
+        const response = invoicesQuery.data;
+        const data = Array.isArray(response)
+            ? response
+            : (Array.isArray(response?.data) ? response.data : (response?.data?.data || []));
+
+        // Group by student for the list view
+        // Only include students who have 1 or more graduation related invoices
+        const studentMap = {};
+        (data || []).forEach((inv) => {
+            const isGrad = inv?.title?.toLowerCase().includes('graduat') || inv?.category?.name?.toLowerCase().includes('graduat');
+            if (!isGrad) return;
+
+            const sid = inv?.student?._id;
+            if (!sid) return;
+            if (!studentMap[sid]) {
+                studentMap[sid] = {
+                    student: inv.student,
+                    gradBalance: 0,
+                    invoices: [],
+                };
+            }
+            studentMap[sid].gradBalance += (Number(inv.amount || 0) - Number(inv.paidAmount || 0));
+            studentMap[sid].invoices.push(inv);
+        });
+
+        return Object.values(studentMap);
+    }, [invoicesQuery.data]);
 
     const resetFilters = () => {
         setSearch('');
         setGradeId('');
         setShiftId('');
         setClassId('');
-        setStudents([]);
+        setSubmittedParams({});
     };
 
     const handleSearch = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
-        setLoading(true);
+        const params = {};
+        if (search) params.search = search;
+        if (classId) params.classId = classId;
+
+        if (!params.search && !params.classId) {
+            toast.error('Select a section or enter a search term');
+            return;
+        }
+        setSubmittedParams(params);
+    };
+
+    const refreshSubmitted = async () => {
+        if (!submittedParams?.search && !submittedParams?.classId) return;
         try {
-            const params = { search, classId };
-            const response = await financeService.getInvoices(params);
-            const data = response.data || [];
-
-            // Group by student for the list view
-            // Only include students who have 1 or more graduation related invoices
-            const studentMap = {};
-            data.forEach(inv => {
-                const isGrad = inv.title?.toLowerCase().includes('graduat') || inv.category?.name?.toLowerCase().includes('graduat');
-                if (!isGrad) return;
-
-                const sid = inv.student._id;
-                if (!studentMap[sid]) {
-                    studentMap[sid] = {
-                        student: inv.student,
-                        gradBalance: 0,
-                        invoices: []
-                    };
-                }
-                studentMap[sid].gradBalance += (inv.amount - inv.paidAmount);
-                studentMap[sid].invoices.push(inv);
-            });
-
-            setStudents(Object.values(studentMap));
+            await invoicesQuery.refetch();
         } catch {
-            toast.error("Failed to fetch graduation records");
-        } finally {
-            setLoading(false);
+            // ignore
         }
     };
 
@@ -201,7 +236,7 @@ export default function GraduationReceiptTab() {
                     student={selectedStudentRow?.student}
                     row={selectedStudentRow}
                     onClose={() => setShowGradModal(false)}
-                    onSuccess={handleSearch}
+                    onSuccess={refreshSubmitted}
                 />
             )}
         </div>

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import financeService from '../api/finance';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Trash2, AlertCircle, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useDeleteMonthlyChargesMutation } from '../hooks/studentFinanceHooks';
+import { useFinanceCategoriesQuery } from '../hooks/financeConfigHooks';
+import { useI18n } from '../../../i18n/I18nProvider';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
@@ -14,8 +15,18 @@ import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 
 export default function DeleteChargeModal({ onClose, onSuccess }) {
+    const { lang, t } = useI18n();
     const [loading, setLoading] = useState(false);
-    const [amountTypes, setAmountTypes] = useState([]);
+
+    const categoriesQuery = useFinanceCategoriesQuery(
+        { type: 'fee', includePreviousBalance: false, includeInactive: false },
+        { staleTime: 30_000, refetchOnWindowFocus: false }
+    );
+
+    const amountTypes = useMemo(() => {
+        const rawCats = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
+        return rawCats.filter(c => c?.type === 'fee' && c?.status !== 'inactive');
+    }, [categoriesQuery.data]);
 
     const [scope, setScope] = useState('all'); // all, single, class
     const [targetId, setTargetId] = useState(''); // studentId or classId
@@ -24,28 +35,31 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
     const [amountTypeId, setAmountTypeId] = useState('');
     const [date, setDate] = useState('');
     const [useCreatedDate, setUseCreatedDate] = useState(false);
-    const [month, setMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
+    const [monthIndex, setMonthIndex] = useState(new Date().getMonth());
     const [year, setYear] = useState(new Date().getFullYear().toString());
     const [useMultipleMonths, setUseMultipleMonths] = useState(false);
     const [selectedMonths, setSelectedMonths] = useState(() => new Set());
 
     const deleteChargesMutation = useDeleteMonthlyChargesMutation();
 
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const months = useMemo(() => {
+        const locale = lang || undefined;
+        return Array.from({ length: 12 }, (_, idx) => new Date(2020, idx, 1).toLocaleString(locale, { month: 'long' }));
+    }, [lang]);
 
-    const scopeOptions = [
-        { value: 'all', label: 'Delete All Charges' },
-        { value: 'single', label: 'Single Student' },
-        { value: 'class', label: 'By Class/Grade' },
-    ];
+    const scopeOptions = useMemo(() => ([
+        { value: 'all', label: t('finance.studentFinance.deleteChargesModal.scopes.all', { defaultValue: 'Delete All Charges' }) },
+        { value: 'single', label: t('finance.studentFinance.deleteChargesModal.scopes.single', { defaultValue: 'Single Student' }) },
+        { value: 'class', label: t('finance.studentFinance.deleteChargesModal.scopes.class', { defaultValue: 'By Class/Grade' }) },
+    ]), [t]);
 
     const amountTypeOptions = amountTypes.map((t) => ({ value: t._id, label: t.name }));
-    const monthOptions = months.map((m) => ({ value: m, label: m }));
+    const monthOptions = months.map((m, idx) => ({ value: idx, label: m }));
 
-    const toYYYYMM = (monthName, yearStr) => {
-        const idx = months.indexOf(monthName);
+    const toYYYYMM = (monthIdx, yearStr) => {
+        const idx = Number(monthIdx);
         const yearNum = Number(yearStr);
-        if (idx === -1 || !Number.isFinite(yearNum) || yearNum < 1970) return null;
+        if (!Number.isFinite(idx) || idx < 0 || idx > 11 || !Number.isFinite(yearNum) || yearNum < 1970) return null;
         return `${yearNum}-${String(idx + 1).padStart(2, '0')}`;
     };
 
@@ -59,37 +73,26 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
     };
 
     useEffect(() => {
-        const loadData = async () => {
-            try {
-                const [catsRes] = await Promise.all([
-                    financeService.getFinanceCategories('fee'),
-                ]);
-
-                const rawCats = Array.isArray(catsRes?.data) ? catsRes.data : (Array.isArray(catsRes) ? catsRes : []);
-                const cats = rawCats.filter(c => c.type === 'fee' && c.status !== 'inactive');
-                setAmountTypes(cats);
-            } catch {
-                toast.error("Failed to load configuration data");
-            }
-        };
-        loadData();
-    }, []);
+        if (!categoriesQuery.isError) return;
+        toast.error(t('finance.studentFinance.deleteChargesModal.toasts.loadConfigFailed', { defaultValue: 'Failed to load configuration data' }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [categoriesQuery.isError]);
 
     const handleDelete = async () => {
-        if (!window.confirm("CRITICAL: This action will permanently remove charge records. Are you absolutely sure?")) return;
+        if (!window.confirm(t('finance.studentFinance.deleteChargesModal.confirms.critical', { defaultValue: 'CRITICAL: This action will permanently remove charge records. Are you absolutely sure?' }))) return;
 
-        const billingMonth = toYYYYMM(month, year);
+        const billingMonth = toYYYYMM(monthIndex, year);
         const monthsPayload = useMultipleMonths
             ? Array.from(selectedMonths).map(m => toYYYYMM(m, year)).filter(Boolean)
             : null;
         if (useMultipleMonths) {
             if (monthsPayload.length === 0) {
-                toast.error('Select at least one billing month');
+                toast.error(t('finance.studentFinance.deleteChargesModal.toasts.selectAtLeastOneMonth', { defaultValue: 'Select at least one billing month' }));
                 return;
             }
         } else {
             if (!billingMonth) {
-                toast.error('Invalid billing month/year');
+                toast.error(t('finance.studentFinance.deleteChargesModal.toasts.invalidBillingMonthYear', { defaultValue: 'Invalid billing month/year' }));
                 return;
             }
         }
@@ -97,7 +100,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
         setLoading(true);
         try {
             if (!amountTypeId) {
-                toast.error('Select an Amount Type to delete');
+                toast.error(t('finance.studentFinance.deleteChargesModal.toasts.selectAmountType', { defaultValue: 'Select an Amount Type to delete' }));
                 return;
             }
 
@@ -113,32 +116,46 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
             const res = await deleteChargesMutation.mutateAsync(params);
             const cancelledCount = Number(res?.cancelledCount || 0);
             if (cancelledCount > 0) {
-                toast.success(`Charges deleted successfully (${cancelledCount})`);
+                toast.success(
+                    t('finance.studentFinance.deleteChargesModal.toasts.deletedSuccess', {
+                        defaultValue: 'Charges deleted successfully ({{count}})',
+                        count: cancelledCount,
+                    })
+                );
             } else {
-                toast.error('No matching unpaid charges found to delete');
+                toast.error(t('finance.studentFinance.deleteChargesModal.toasts.noneFound', { defaultValue: 'No matching unpaid charges found to delete' }));
             }
             onSuccess?.();
             onClose();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Deletion failed");
+            toast.error(error.response?.data?.message || t('finance.studentFinance.deleteChargesModal.toasts.deletionFailed', { defaultValue: 'Deletion failed' }));
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <Modal isOpen onClose={onClose} closeOnBackdrop={false} title="Delete Charges">
+        <Modal
+            isOpen
+            onClose={onClose}
+            closeOnBackdrop={false}
+            title={t('finance.studentFinance.deleteChargesModal.title', { defaultValue: 'Delete Charges' })}
+        >
             <div className="space-y-5">
                     <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-xl text-red-800">
                         <AlertCircle className="shrink-0 mt-0.5" size={18} />
                         <p className="text-xs font-bold leading-snug">
-                            This will cancel unpaid invoices from student ledgers for the selected criteria.
+                            {t('finance.studentFinance.deleteChargesModal.warning', {
+                                defaultValue: 'This will cancel unpaid invoices from student ledgers for the selected criteria.',
+                            })}
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2 space-y-2">
-                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Deletion Scope</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                {t('finance.studentFinance.deleteChargesModal.labels.deletionScope', { defaultValue: 'Deletion Scope' })}
+                            </label>
                             <DropdownSelect
                                 value={scope}
                                 onChange={(v) => {
@@ -155,11 +172,13 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
 
                         {scope === 'single' && (
                             <div className="sm:col-span-2 space-y-2 animate-in slide-in-from-top-2">
-                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Student Registration ID</label>
+                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                    {t('finance.studentFinance.deleteChargesModal.labels.studentRegistrationId', { defaultValue: 'Student Registration ID' })}
+                                </label>
                                 <Input
                                     type="text"
                                     className="w-full h-11 font-bold text-sm"
-                                    placeholder="Ex: STU-1001"
+                                    placeholder={t('finance.studentFinance.deleteChargesModal.placeholders.studentRegistrationId', { defaultValue: 'Ex: STU-1001' })}
                                     value={targetId}
                                     onChange={e => setTargetId(e.target.value)}
                                 />
@@ -168,7 +187,9 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
 
                         {scope === 'class' && (
                             <div className="sm:col-span-2 space-y-2 animate-in slide-in-from-top-2">
-                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Select Target Class</label>
+                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                    {t('finance.studentFinance.deleteChargesModal.labels.selectTargetClass', { defaultValue: 'Select Target Class' })}
+                                </label>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                     <GradeSelect
                                         value={gradeId}
@@ -176,7 +197,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                                             setGradeId(v || '');
                                             setTargetId('');
                                         }}
-                                        placeholder="Grade"
+                                        placeholder={t('finance.studentFinance.deleteChargesModal.placeholders.grade', { defaultValue: 'Grade' })}
                                         className="h-11 font-bold text-sm"
                                     />
                                     <ShiftSelect
@@ -185,7 +206,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                                             setShiftId(v || '');
                                             setTargetId('');
                                         }}
-                                        placeholder="Shift"
+                                        placeholder={t('finance.studentFinance.deleteChargesModal.placeholders.shift', { defaultValue: 'Shift' })}
                                         className="h-11 font-bold text-sm"
                                     />
                                     <GradeSectionSelect
@@ -195,8 +216,8 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                                         onChange={(v) => setTargetId(v || '')}
                                         searchable
                                         maxVisible={6}
-                                        placeholder="Section"
-                                        searchPlaceholder="Search…"
+                                        placeholder={t('finance.studentFinance.deleteChargesModal.placeholders.section', { defaultValue: 'Section' })}
+                                        searchPlaceholder={t('finance.studentFinance.deleteChargesModal.placeholders.search', { defaultValue: 'Search…' })}
                                         className="h-11 font-bold text-sm"
                                     />
                                 </div>
@@ -212,27 +233,31 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                                             setTargetId('');
                                         }}
                                     >
-                                        Reset
+                                        {t('finance.studentFinance.deleteChargesModal.actions.reset', { defaultValue: 'Reset' })}
                                     </Button>
                                 </div>
                             </div>
                         )}
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Amount Type</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                {t('finance.studentFinance.deleteChargesModal.labels.amountType', { defaultValue: 'Amount Type' })}
+                            </label>
                             <SearchableSelect
                                 value={amountTypeId}
                                 onChange={(v) => setAmountTypeId(v)}
                                 options={amountTypeOptions}
-                                placeholder="-- All Types --"
-                                searchPlaceholder="Search amount types…"
+                                placeholder={t('finance.studentFinance.deleteChargesModal.placeholders.allTypes', { defaultValue: '-- All Types --' })}
+                                searchPlaceholder={t('finance.studentFinance.deleteChargesModal.placeholders.searchAmountTypes', { defaultValue: 'Search amount types…' })}
                                 maxVisible={6}
                                 className="h-11 font-bold text-sm"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Year</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                {t('finance.studentFinance.deleteChargesModal.labels.year', { defaultValue: 'Year' })}
+                            </label>
                             <Input
                                 type="number"
                                 className="w-full h-11 font-bold text-sm"
@@ -243,7 +268,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
 
                         <div className="space-y-2">
                             <label className="flex items-center justify-between gap-3 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1 select-none">
-                                <span>Billing Month</span>
+                                <span>{t('finance.studentFinance.deleteChargesModal.labels.billingMonth', { defaultValue: 'Billing Month' })}</span>
                                 <span className="flex items-center gap-2">
                                     <Checkbox
                                         checked={useMultipleMonths}
@@ -253,16 +278,16 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                                             if (!checked) {
                                                 setSelectedMonths(new Set());
                                             } else {
-                                                setSelectedMonths(new Set([month]));
+                                                setSelectedMonths(new Set([Number(monthIndex)]));
                                             }
                                         }}
                                     />
-                                    Multiple months
+                                    {t('finance.studentFinance.deleteChargesModal.labels.multipleMonths', { defaultValue: 'Multiple months' })}
                                 </span>
                             </label>
                             <DropdownSelect
-                                value={month}
-                                onChange={(v) => setMonth(v)}
+                                value={monthIndex}
+                                onChange={(v) => setMonthIndex(Number(v))}
                                 options={monthOptions}
                                 clearable={false}
                                 disabled={useMultipleMonths}
@@ -272,7 +297,9 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
 
                         <div className="space-y-2">
                             <div className="flex items-center gap-3">
-                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Created Date</label>
+                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                    {t('finance.studentFinance.deleteChargesModal.labels.createdDate', { defaultValue: 'Created Date' })}
+                                </label>
                                 <label className="flex items-center gap-2 text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">
                                     <Checkbox
                                         checked={useCreatedDate}
@@ -284,7 +311,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                                             }
                                         }}
                                     />
-                                    Use Date Filter
+                                    {t('finance.studentFinance.deleteChargesModal.labels.useDateFilter', { defaultValue: 'Use Date Filter' })}
                                 </label>
                             </div>
                             <Input
@@ -299,13 +326,13 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                         {useMultipleMonths && (
                             <div className="sm:col-span-2">
                                 <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-xl p-3">
-                                    {months.map(m => {
-                                        const active = selectedMonths.has(m);
+                                    {months.map((m, idx) => {
+                                        const active = selectedMonths.has(idx);
                                         return (
                                             <Button
                                                 type="button"
                                                 key={m}
-                                                onClick={() => toggleSelectedMonth(m)}
+                                                onClick={() => toggleSelectedMonth(idx)}
                                                 variant="neutral"
                                                 size="sm"
                                                 className={`px-2 py-2 shadow-none rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${active ? 'bg-(--nb-color-accent)! text-white! border-(--nb-color-accent)!' : 'bg-(--nb-color-bg-card)! text-(--nb-color-fg)! border-(--nb-color-border)! hover:bg-(--nb-color-accent-50)! hover:text-(--nb-color-brand)!'}`}
@@ -321,7 +348,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
 
                 <div className="flex items-center justify-end gap-2 pt-4 border-t border-(--nb-color-border)">
                     <Button type="button" onClick={onClose} variant="neutral" size="md">
-                        Close
+                        {t('finance.studentFinance.deleteChargesModal.actions.close', { defaultValue: 'Close' })}
                     </Button>
 
                     <Button
@@ -331,7 +358,9 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                         variant="danger"
                         size="md"
                     >
-                        {loading ? 'Deleting...' : 'Delete Charges'}
+                        {loading
+                            ? t('finance.studentFinance.deleteChargesModal.actions.deleting', { defaultValue: 'Deleting...' })
+                            : t('finance.studentFinance.deleteChargesModal.actions.deleteCharges', { defaultValue: 'Delete Charges' })}
                         {!loading && <Trash2 size={16} />}
                     </Button>
                 </div>

@@ -12,8 +12,13 @@ import toast from 'react-hot-toast';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function FeeManagement() {
+    const { hasPermission } = useAuth();
+    const canAdd = hasPermission('financeStudent', 'add');
+    const canView = hasPermission('financeStudent', 'view');
+
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [meta, setMeta] = useState({ page: 1, limit: 10, total: 0, totalPages: 1 });
@@ -125,7 +130,7 @@ export default function FeeManagement() {
             label: 'Actions',
             render: (row) => (
                 <div className="flex justify-end gap-2">
-                    {row.status !== 'Paid' && (
+                    {canAdd && row.status !== 'Paid' && (
                         <button
                             onClick={() => setSelectedInvoice(row)}
                             className="text-green-600 hover:bg-green-50 p-1 rounded"
@@ -147,13 +152,37 @@ export default function FeeManagement() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
                     <h2 className="text-2xl font-bold">Fee Management</h2>
                     <div className="flex gap-2">
-                        <button onClick={() => setShowGenerateModal(true)} className="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-amber-200">
+                        <button
+                            onClick={() => {
+                                if (!canAdd) return toast.error('You do not have permission to generate invoices');
+                                setShowGenerateModal(true);
+                            }}
+                            disabled={!canAdd}
+                            title={!canAdd ? 'You do not have permission to generate invoices' : undefined}
+                            className="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-amber-200 disabled:opacity-60 disabled:hover:bg-amber-100"
+                        >
                             <Layers size={18} /> Bulk Generate
                         </button>
-                        <button onClick={() => setShowClearanceModal(true)} className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-indigo-200">
+                        <button
+                            onClick={() => {
+                                if (!canView) return toast.error('You do not have permission to view clearance');
+                                setShowClearanceModal(true);
+                            }}
+                            disabled={!canView}
+                            title={!canView ? 'You do not have permission to view clearance' : undefined}
+                            className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-indigo-200 disabled:opacity-60 disabled:hover:bg-indigo-100"
+                        >
                             <GraduationCap size={18} /> Clearance
                         </button>
-                        <button onClick={() => setShowChargeModal(true)} className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-primary-dark shadow-sm">
+                        <button
+                            onClick={() => {
+                                if (!canAdd) return toast.error('You do not have permission to create invoices');
+                                setShowChargeModal(true);
+                            }}
+                            disabled={!canAdd}
+                            title={!canAdd ? 'You do not have permission to create invoices' : undefined}
+                            className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-primary-dark shadow-sm disabled:opacity-60 disabled:hover:bg-primary"
+                        >
                             <Plus size={18} /> New Invoice
                         </button>
                     </div>

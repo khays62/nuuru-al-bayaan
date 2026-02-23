@@ -15,8 +15,10 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function PreviousBalanceTab() {
+    const { t } = useI18n();
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
     const [gradeId, setGradeId] = useState('');
@@ -94,7 +96,7 @@ export default function PreviousBalanceTab() {
 
     useEffect(() => {
         if (!summaryQuery.isError && !prevCurrentQuery.isError && !prevAnyQuery.isError) return;
-        toast.error('Failed to fetch student balance data');
+        toast.error(t('finance.studentFinance.previousBalanceTab.toasts.fetchFailed', { defaultValue: 'Failed to fetch student balance data' }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [summaryQuery.isError, prevCurrentQuery.isError, prevAnyQuery.isError]);
 
@@ -161,23 +163,23 @@ export default function PreviousBalanceTab() {
 
     const handleSavePreviousBalances = async () => {
         if (!previousBalanceCategoryId) {
-            return toast.error('Create an Amount Type named "Previous Balance" first');
+            return toast.error(t('finance.studentFinance.previousBalanceTab.toasts.noPreviousBalanceCategory', { defaultValue: 'Create an Amount Type named "Previous Balance" first' }));
         }
 
         const entries = (students || [])
             .map(s => ({ student: s, raw: String(editingPrevBalance?.[s?._id] ?? '').trim() }))
             .filter(x => x.student?._id && x.raw);
 
-        if (entries.length === 0) return toast.error('Enter at least one balance amount');
+        if (entries.length === 0) return toast.error(t('finance.studentFinance.previousBalanceTab.validation.enterAtLeastOne', { defaultValue: 'Enter at least one balance amount' }));
 
         for (const { raw } of entries) {
             const amt = Number(raw);
-            if (!Number.isFinite(amt) || amt <= 0) return toast.error('Enter valid amounts (greater than 0)');
+            if (!Number.isFinite(amt) || amt <= 0) return toast.error(t('finance.studentFinance.previousBalanceTab.validation.validAmountGreaterThanZero', { defaultValue: 'Enter valid amounts (greater than 0)' }));
         }
 
         try {
             setLoading(true);
-            toast.loading('Saving previous balances...');
+            toast.loading(t('finance.studentFinance.previousBalanceTab.toasts.saving', { defaultValue: 'Saving previous balances...' }));
 
             for (const { student, raw } of entries) {
                 const amount = Number(raw);
@@ -211,11 +213,11 @@ export default function PreviousBalanceTab() {
             setEditingPrevBalance({});
             setAddMode(false);
             toast.dismiss();
-            toast.success('Previous balances saved');
+            toast.success(t('finance.studentFinance.previousBalanceTab.toasts.saved', { defaultValue: 'Previous balances saved' }));
             await handleSearch();
         } catch (err) {
             toast.dismiss();
-            toast.error(err?.response?.data?.message || err?.message || 'Failed to save previous balances');
+            toast.error(err?.response?.data?.message || err?.message || t('finance.studentFinance.previousBalanceTab.toasts.saveFailed', { defaultValue: 'Failed to save previous balances' }));
         } finally {
             setLoading(false);
         }
@@ -284,7 +286,7 @@ export default function PreviousBalanceTab() {
                             <Input
                                 type="text"
                                 className="h-11 pl-10 pr-4 font-medium"
-                                placeholder="Search Student ID, Name or Phone..."
+                                placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.search', { defaultValue: 'Search Student ID, Name or Phone...' })}
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                             />
@@ -298,7 +300,7 @@ export default function PreviousBalanceTab() {
                             setClassId('');
                             setAddMode(false);
                         }}
-                        placeholder="Grade"
+                        placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.grade', { defaultValue: 'Grade' })}
                         className="h-11 min-w-40 font-bold text-sm"
                     />
 
@@ -309,7 +311,7 @@ export default function PreviousBalanceTab() {
                             setClassId('');
                             setAddMode(false);
                         }}
-                        placeholder="Shift"
+                        placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.shift', { defaultValue: 'Shift' })}
                         className="h-11 min-w-40 font-bold text-sm"
                     />
 
@@ -324,8 +326,8 @@ export default function PreviousBalanceTab() {
                         }}
                         searchable
                         maxVisible={6}
-                        placeholder="Section"
-                        searchPlaceholder="Search…"
+                        placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.section', { defaultValue: 'Section' })}
+                        searchPlaceholder={t('finance.studentFinance.previousBalanceTab.placeholders.searchShort', { defaultValue: 'Search…' })}
                         className="h-11 min-w-50 font-bold text-sm"
                     />
 
@@ -336,8 +338,8 @@ export default function PreviousBalanceTab() {
                             setAddMode(false);
                         }}
                         options={[
-                            { value: 'all', label: 'Show All' },
-                            { value: 'withPrev', label: 'Show Previous Balance' },
+                            { value: 'all', label: t('finance.studentFinance.previousBalanceTab.filters.showAll', { defaultValue: 'Show All' }) },
+                            { value: 'withPrev', label: t('finance.studentFinance.previousBalanceTab.filters.showPrev', { defaultValue: 'Show Previous Balance' }) },
                         ]}
                         clearable={false}
                         className="h-11 min-w-50 font-bold text-sm"
@@ -350,7 +352,7 @@ export default function PreviousBalanceTab() {
                             size="lg"
                             className="h-11 px-8 font-black text-sm uppercase tracking-widest"
                         >
-                            Save
+                            {t('finance.studentFinance.previousBalanceTab.actions.save', { defaultValue: 'Save' })}
                         </Button>
                         <Button
                             onClick={() => {
@@ -361,7 +363,7 @@ export default function PreviousBalanceTab() {
                             size="lg"
                             className="h-11 px-8 font-black text-sm uppercase tracking-widest"
                         >
-                            Add
+                            {t('finance.studentFinance.previousBalanceTab.actions.add', { defaultValue: 'Add' })}
                         </Button>
                         <Button
                             onClick={resetFilters}
@@ -369,9 +371,9 @@ export default function PreviousBalanceTab() {
                             size="lg"
                             icon={<RotateCcw size={16} />}
                             className="h-11 px-6 font-black text-sm uppercase tracking-widest"
-                            title="Reset filters"
+                            title={t('finance.studentFinance.previousBalanceTab.actions.resetTitle', { defaultValue: 'Reset filters' })}
                         >
-                            Reset
+                            {t('finance.studentFinance.previousBalanceTab.actions.reset', { defaultValue: 'Reset' })}
                         </Button>
                     </div>
                 </div>
@@ -382,21 +384,21 @@ export default function PreviousBalanceTab() {
                     isLoading={loading}
                     error={null}
                     items={sortedItems}
-                    loadingMessage="Opening Archives..."
+                    loadingMessage={t('finance.studentFinance.previousBalanceTab.loading.openingArchives', { defaultValue: 'Opening Archives...' })}
                     loadingVariant="table"
                     loadingRows={8}
                     loadingColumns={6}
-                    emptyTitle="No records found for this selection."
+                    emptyTitle={t('finance.studentFinance.previousBalanceTab.empty.title', { defaultValue: 'No records found for this selection.' })}
                     emptyDescription=""
 
                     rows={currentRows}
                     columns={[
-                        { key: 'studentId', label: 'ID', sortable: true, field: 'studentId' },
-                        { key: 'fullName', label: 'Student Name', sortable: true, field: 'fullName' },
-                        { key: 'contact', label: 'Contact', sortable: true, field: 'contact' },
-                        { key: 'className', label: 'Class', sortable: true, field: 'className' },
-                        { key: 'prevBalance', label: 'Balance', sortable: true, field: 'prevBalance', align: 'right' },
-                        { key: 'actions', label: 'Actions', sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
+                        { key: 'studentId', label: t('finance.studentFinance.previousBalanceTab.table.columns.studentId', { defaultValue: 'ID' }), sortable: true, field: 'studentId' },
+                        { key: 'fullName', label: t('finance.studentFinance.previousBalanceTab.table.columns.fullName', { defaultValue: 'Student Name' }), sortable: true, field: 'fullName' },
+                        { key: 'contact', label: t('finance.studentFinance.previousBalanceTab.table.columns.contact', { defaultValue: 'Contact' }), sortable: true, field: 'contact' },
+                        { key: 'className', label: t('finance.studentFinance.previousBalanceTab.table.columns.class', { defaultValue: 'Class' }), sortable: true, field: 'className' },
+                        { key: 'prevBalance', label: t('finance.studentFinance.previousBalanceTab.table.columns.balance', { defaultValue: 'Balance' }), sortable: true, field: 'prevBalance', align: 'right' },
+                        { key: 'actions', label: t('finance.studentFinance.previousBalanceTab.table.columns.actions', { defaultValue: 'Actions' }), sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
                     ]}
                     storageKey="finance:previous-balance:columns:v1"
                     controlsProps={{
@@ -421,7 +423,7 @@ export default function PreviousBalanceTab() {
                                 return (
                                     <div className="flex flex-col items-start">
                                         <span className="font-bold text-(--nb-color-fg)">{row?.fullName || '—'}</span>
-                                        <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-widest">B/F ACCOUNT</span>
+                                        <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-widest">{t('finance.studentFinance.previousBalanceTab.table.bfAccount', { defaultValue: 'B/F ACCOUNT' })}</span>
                                     </div>
                                 );
                             case 'contact':
@@ -438,14 +440,14 @@ export default function PreviousBalanceTab() {
                                         <Input
                                             type="text"
                                             inputMode="decimal"
-                                            placeholder="0.00"
+                                            placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.amount', { defaultValue: '0.00' })}
                                             value={getInputValue(raw)}
                                             onChange={(e) => handlePrevBalanceChange(raw?._id, e.target.value)}
                                             disabled={!addMode}
                                             readOnly={!addMode}
                                             className={`h-9 w-32 font-black text-xs text-right ${addMode ? 'bg-(--nb-color-bg)' : 'bg-(--nb-color-bg-card) cursor-not-allowed opacity-75'}`}
                                         />
-                                        <span className="text-[10px] font-bold text-(--nb-color-muted)">Current: ${Number(raw?.prevBalance || 0).toFixed(2)}</span>
+                                        <span className="text-[10px] font-bold text-(--nb-color-muted)">{t('finance.studentFinance.previousBalanceTab.table.currentBalance', { defaultValue: 'Current: {{amount}}', amount: `$${Number(raw?.prevBalance || 0).toFixed(2)}` })}</span>
                                     </div>
                                 );
                             case 'actions':
@@ -454,8 +456,8 @@ export default function PreviousBalanceTab() {
                                         actions={[
                                             {
                                                 key: 'info',
-                                                label: 'View Info',
-                                                title: 'View Info',
+                                                label: t('finance.studentFinance.previousBalanceTab.actions.viewInfo', { defaultValue: 'View Info' }),
+                                                title: t('finance.studentFinance.previousBalanceTab.actions.viewInfo', { defaultValue: 'View Info' }),
                                                 tone: 'view',
                                                 showLabel: true,
                                                 icon: null,
@@ -466,8 +468,8 @@ export default function PreviousBalanceTab() {
                                             },
                                             {
                                                 key: 'edit',
-                                                label: 'Edit',
-                                                title: 'Edit',
+                                                label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                                title: t('common.actions.edit', { defaultValue: 'Edit' }),
                                                 tone: 'edit',
                                                 showLabel: true,
                                                 icon: <Pencil size={16} />,

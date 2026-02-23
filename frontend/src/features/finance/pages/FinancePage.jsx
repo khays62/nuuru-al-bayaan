@@ -1,47 +1,54 @@
 import React, { useState, useMemo } from 'react';
 import { Banknote, ReceiptText, Wallet, Briefcase, LayoutDashboard } from 'lucide-react';
 
+import { useI18n } from '../../../i18n/I18nProvider';
+
 import FinanceDashboard from '../components/FinanceDashboard.jsx';
 import AccountManagement from '../components/AccountManagement.jsx';
 import StudentFees from '../components/StudentFees.jsx';
 import PayrollManagement from '../components/PayrollManagement.jsx';
 import ExpenseManagement from '../components/ExpenseManagement.jsx';
+import { useFinanceRealtimeInvalidation } from '../useFinanceRealtimeInvalidation';
 
 export default function FinancePage() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { t } = useI18n();
+
+  // Realtime → Events → Invalidate Queries → UI updated (Finance)
+  useFinanceRealtimeInvalidation();
 
   const tabs = useMemo(() => ([
     {
       id: 'dashboard',
-      label: 'Dashboard',
+      label: t('finance.page.tabs.dashboard', { defaultValue: 'Dashboard' }),
       icon: LayoutDashboard,
       component: <FinanceDashboard />,
     },
     {
       id: 'accounts',
-      label: 'Accounts',
+      label: t('finance.page.tabs.accounts', { defaultValue: 'Accounts' }),
       icon: Banknote,
       component: <AccountManagement />,
     },
     {
       id: 'student-finance',
-      label: 'Student Finance',
+      label: t('finance.page.tabs.studentFinance', { defaultValue: 'Student Finance' }),
       icon: ReceiptText,
       component: <StudentFees />,
     },
     {
       id: 'payroll',
-      label: 'Payroll',
+      label: t('finance.page.tabs.payroll', { defaultValue: 'Payroll' }),
       icon: Wallet,
       component: <PayrollManagement />,
     },
     {
       id: 'expenses',
-      label: 'Expenses',
+      label: t('finance.page.tabs.expenses', { defaultValue: 'Expenses' }),
       icon: Briefcase,
       component: <ExpenseManagement />,
     },
-  ]), []);
+  ]), [t]);
 
   const ActiveComponent = tabs.find(t => t.id === activeTab)?.component || <FinanceDashboard />;
 
@@ -49,8 +56,12 @@ export default function FinancePage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Finance Management</h1>
-        <p className="text-sm text-slate-500 mt-1">Manage accounts, fees, payroll, and expenses.</p>
+        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          {t('finance.page.title', { defaultValue: 'Finance Management' })}
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">
+          {t('finance.page.subtitle', { defaultValue: 'Manage accounts, fees, payroll, and expenses.' })}
+        </p>
       </div>
 
       {/* Tabs Navigation */}

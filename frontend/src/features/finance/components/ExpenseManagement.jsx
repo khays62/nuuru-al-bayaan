@@ -27,11 +27,30 @@ import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 import NewExpenseModal from './NewExpenseModal';
 
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function ExpenseManagement() {
     const { t } = useI18n();
+    const { hasPermission } = useAuth();
+
+    const canAddExpense = hasPermission('financeExpenses', 'add');
+    const canEditExpense = hasPermission('financeExpenses', 'edit');
+    const canDeleteExpense = hasPermission('financeExpenses', 'delete');
+    const canDownloadExpenses = hasPermission('financeExpenses', 'download');
+    const canPrint = hasPermission('financePrint', 'print');
+
+    const canViewConfig = hasPermission('financeConfig', 'view');
+    const canAddCategory = hasPermission('financeConfig', 'add');
+    const canEditCategory = hasPermission('financeConfig', 'edit');
+    const canDeleteCategory = hasPermission('financeConfig', 'delete');
 
     const [expandedSection, setExpandedSection] = useState('ledger');
+
+    useEffect(() => {
+        if (expandedSection !== 'categories') return;
+        if (canViewConfig) return;
+        setExpandedSection('ledger');
+    }, [expandedSection, canViewConfig]);
 
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const d = new Date();
@@ -306,6 +325,7 @@ export default function ExpenseManagement() {
     };
 
     const openEditExpense = (row) => {
+        if (!canEditExpense) return;
         if (!row?._id) return;
         setEditingExpense(row);
         setShowEditExpenseModal(true);
@@ -320,7 +340,9 @@ export default function ExpenseManagement() {
     };
 
     const isLoading = Boolean(expensesQuery.isLoading && expensesQuery.data == null);
-    const canExport = Boolean(!isLoading && Array.isArray(sortedItems) && sortedItems.length > 0);
+    const hasExportData = Boolean(!isLoading && Array.isArray(sortedItems) && sortedItems.length > 0);
+    const canExport = Boolean(hasExportData && canDownloadExpenses);
+    const canPrintExport = Boolean(hasExportData && canPrint);
     const buildExportPayload = useCallback(async () => {
         if (!canExport) return null;
 
@@ -459,7 +481,7 @@ export default function ExpenseManagement() {
                             </span>
                         ),
                     },
-                    {
+                    canViewConfig ? {
                         value: 'categories',
                         label: (
                             <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
@@ -467,8 +489,8 @@ export default function ExpenseManagement() {
                                 {t('finance.expenses.tabs.categories', { defaultValue: 'Expense Categories' })}
                             </span>
                         ),
-                    },
-                ]}
+                    } : null,
+                ].filter(Boolean)}
             />
         </div>
     );
@@ -507,28 +529,36 @@ export default function ExpenseManagement() {
                                     aria-label={t('finance.expenses.ledger.monthAria', { defaultValue: 'Select month' })}
                                 />
 
-                                <ActionButton
-                                    variant="brand"
-                                    icon={<Plus size={16} />}
-                                    onClick={() => setShowModal(true)}
-                                >
-                                    {t('finance.expenses.actions.newExpense', { defaultValue: 'Record New Expense' })}
-                                </ActionButton>
+                                {canAddExpense ? (
+                                    <ActionButton
+                                        variant="brand"
+                                        icon={<Plus size={16} />}
+                                        onClick={() => setShowModal(true)}
+                                    >
+                                        {t('finance.expenses.actions.newExpense', { defaultValue: 'Record New Expense' })}
+                                    </ActionButton>
+                                ) : null}
 
-                                <ActionButton
-                                    variant="outline"
-                                    icon={<Printer size={16} />}
-                                    disabled={!canExport}
-                                    onClick={() => { if (canExport) setTimeout(() => window.print(), 0); }}
-                                    title={t('common.actions.print', { defaultValue: 'Print' })}
-                                >
-                                    {t('common.actions.print', { defaultValue: 'Print' })}
-                                </ActionButton>
+                                {canPrint ? (
+                                    <ActionButton
+                                        variant="outline"
+                                        icon={<Printer size={16} />}
+                                        disabled={!canPrintExport}
+                                        onClick={() => { if (canPrintExport) setTimeout(() => window.print(), 0); }}
+                                        title={t('common.actions.print', { defaultValue: 'Print' })}
+                                    >
+                                        {t('common.actions.print', { defaultValue: 'Print' })}
+                                    </ActionButton>
+                                ) : null}
 
-                                <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
-                                <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
-                                <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
-                                <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                {canDownloadExpenses ? (
+                                    <>
+                                        <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                        <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                        <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                        <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                    </>
+                                ) : null}
                             </div>
                         </div>
 
@@ -586,7 +616,7 @@ export default function ExpenseManagement() {
                                         return (
                                             <RowActionButtons
                                                 actions={[
-                                                    {
+                                                    canEditExpense ? {
                                                         key: 'edit',
                                                         label: t('common.actions.edit', { defaultValue: 'Edit' }),
                                                         title: t('common.actions.edit', { defaultValue: 'Edit' }),
@@ -594,16 +624,16 @@ export default function ExpenseManagement() {
                                                         icon: <Pencil size={16} />,
                                                         disabled: updateExpenseMutation.isPending,
                                                         onClick: () => openEditExpense(row),
-                                                    },
-                                                    {
+                                                    } : null,
+                                                    canDeleteExpense ? {
                                                         key: 'delete',
                                                         label: t('common.actions.delete', { defaultValue: 'Delete' }),
                                                         title: t('common.actions.delete', { defaultValue: 'Delete' }),
                                                         tone: 'delete',
                                                         icon: <Trash2 size={16} />,
                                                         onClick: () => handleDelete(row?._id),
-                                                    },
-                                                ]}
+                                                    } : null,
+                                                ].filter(Boolean)}
                                             />
                                         );
                                     default:
@@ -620,7 +650,7 @@ export default function ExpenseManagement() {
                     </div>
                 )}
 
-                {expandedSection === 'categories' && (
+                {expandedSection === 'categories' && canViewConfig && (
                     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="bg-(--nb-color-bg-card) rounded-3xl border border-(--nb-color-border) shadow-(--nb-shadow-md) p-6 flex flex-wrap items-center justify-between gap-4 no-print">
                             <div className="min-w-0">
@@ -630,34 +660,36 @@ export default function ExpenseManagement() {
                                 </p>
                             </div>
 
-                            <div className="shrink-0 flex flex-wrap gap-2 items-center">
-                                <input
-                                    type="text"
-                                    value={newCategoryName}
-                                    onChange={(e) => setNewCategoryName(e.target.value)}
-                                    placeholder={t('finance.expenses.categories.newPlaceholder', { defaultValue: 'New category name' })}
-                                    className="h-10 w-64 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
-                                />
-                                <input
-                                    type="number"
-                                    value={newCategoryBudget}
-                                    onChange={(e) => setNewCategoryBudget(e.target.value)}
-                                    placeholder={t('finance.expenses.categories.budgetPlaceholder', { defaultValue: 'Budget (optional)' })}
-                                    className="h-10 w-44 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
-                                    min="0"
-                                    step="0.01"
-                                />
-                                <ActionButton
-                                    type="button"
-                                    variant="brand"
-                                    onClick={handleCreateCategory}
-                                    disabled={createCategoryMutation.isPending}
-                                >
-                                    {createCategoryMutation.isPending
-                                        ? t('common.working', { defaultValue: 'WORKING…' })
-                                        : t('finance.expenses.actions.createCategory', { defaultValue: 'Create Category' })}
-                                </ActionButton>
-                            </div>
+                            {canAddCategory ? (
+                                <div className="shrink-0 flex flex-wrap gap-2 items-center">
+                                    <input
+                                        type="text"
+                                        value={newCategoryName}
+                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                        placeholder={t('finance.expenses.categories.newPlaceholder', { defaultValue: 'New category name' })}
+                                        className="h-10 w-64 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                    />
+                                    <input
+                                        type="number"
+                                        value={newCategoryBudget}
+                                        onChange={(e) => setNewCategoryBudget(e.target.value)}
+                                        placeholder={t('finance.expenses.categories.budgetPlaceholder', { defaultValue: 'Budget (optional)' })}
+                                        className="h-10 w-44 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                        min="0"
+                                        step="0.01"
+                                    />
+                                    <ActionButton
+                                        type="button"
+                                        variant="brand"
+                                        onClick={handleCreateCategory}
+                                        disabled={createCategoryMutation.isPending}
+                                    >
+                                        {createCategoryMutation.isPending
+                                            ? t('common.working', { defaultValue: 'WORKING…' })
+                                            : t('finance.expenses.actions.createCategory', { defaultValue: 'Create Category' })}
+                                    </ActionButton>
+                                </div>
+                            ) : null}
                         </div>
 
                         <div className="bg-(--nb-color-bg-card) rounded-3xl border border-(--nb-color-border) shadow-(--nb-shadow-md) p-6">
@@ -702,7 +734,7 @@ export default function ExpenseManagement() {
                                                     <div className="shrink-0 flex justify-end">
                                                         <RowActionButtons
                                                             actions={[
-                                                                {
+                                                                canEditCategory ? {
                                                                     key: 'edit',
                                                                     label: t('common.actions.edit', { defaultValue: 'Edit' }),
                                                                     title: t('common.actions.edit', { defaultValue: 'Edit' }),
@@ -710,8 +742,8 @@ export default function ExpenseManagement() {
                                                                     icon: <Pencil size={16} />,
                                                                     disabled: updateCategoryMutation.isPending,
                                                                     onClick: () => openEditCategory(c),
-                                                                },
-                                                                {
+                                                                } : null,
+                                                                canDeleteCategory ? {
                                                                     key: 'delete',
                                                                     label: t('common.actions.delete', { defaultValue: 'Delete' }),
                                                                     title: t('common.actions.delete', { defaultValue: 'Delete' }),
@@ -719,8 +751,8 @@ export default function ExpenseManagement() {
                                                                     icon: <Trash2 size={16} />,
                                                                     disabled: deleteCategoryMutation.isPending || count > 0,
                                                                     onClick: () => handleDeleteCategory(c),
-                                                                },
-                                                            ]}
+                                                                } : null,
+                                                            ].filter(Boolean)}
                                                         />
                                                     </div>
                                                 </div>
@@ -760,54 +792,56 @@ export default function ExpenseManagement() {
                 )}
             </div>
 
-            <Modal
-                isOpen={showEditCategoryModal}
-                onClose={() => { setShowEditCategoryModal(false); setEditingCategory(null); }}
-                title={t('finance.expenses.categories.editTitle', { defaultValue: 'Edit Category' })}
-                panelClassName="max-w-md"
-            >
-                <form onSubmit={handleSaveCategory} className="space-y-4">
-                    <FormField
-                        label={t('finance.expenses.categories.fields.name', { defaultValue: 'Name' })}
-                        required
-                        hint={
-                            editingCategory?.inUse
-                                ? t('finance.expenses.categories.renameLockedHint', { defaultValue: 'This category already has recorded expenses. Renaming is locked.' })
-                                : undefined
-                        }
-                    >
-                        <Input
-                            value={editingCategory?.name || ''}
-                            onChange={(e) => setEditingCategory((prev) => ({ ...(prev || {}), name: e.target.value }))}
-                            placeholder={t('finance.expenses.categories.newPlaceholder', { defaultValue: 'New category name' })}
+            {canEditCategory ? (
+                <Modal
+                    isOpen={showEditCategoryModal}
+                    onClose={() => { setShowEditCategoryModal(false); setEditingCategory(null); }}
+                    title={t('finance.expenses.categories.editTitle', { defaultValue: 'Edit Category' })}
+                    panelClassName="max-w-md"
+                >
+                    <form onSubmit={handleSaveCategory} className="space-y-4">
+                        <FormField
+                            label={t('finance.expenses.categories.fields.name', { defaultValue: 'Name' })}
                             required
-                            disabled={Boolean(editingCategory?.inUse) || updateCategoryMutation.isPending}
-                        />
-                    </FormField>
+                            hint={
+                                editingCategory?.inUse
+                                    ? t('finance.expenses.categories.renameLockedHint', { defaultValue: 'This category already has recorded expenses. Renaming is locked.' })
+                                    : undefined
+                            }
+                        >
+                            <Input
+                                value={editingCategory?.name || ''}
+                                onChange={(e) => setEditingCategory((prev) => ({ ...(prev || {}), name: e.target.value }))}
+                                placeholder={t('finance.expenses.categories.newPlaceholder', { defaultValue: 'New category name' })}
+                                required
+                                disabled={Boolean(editingCategory?.inUse) || updateCategoryMutation.isPending}
+                            />
+                        </FormField>
 
-                    <FormField label={t('finance.expenses.categories.fields.budget', { defaultValue: 'Budget' })}>
-                        <Input
-                            type="number"
-                            value={String(editingCategory?.budget ?? '')}
-                            onChange={(e) => setEditingCategory((prev) => ({ ...(prev || {}), budget: e.target.value }))}
-                            placeholder={t('finance.expenses.categories.budgetPlaceholder', { defaultValue: 'Budget (optional)' })}
-                            min="0"
-                            step="0.01"
-                        />
-                    </FormField>
+                        <FormField label={t('finance.expenses.categories.fields.budget', { defaultValue: 'Budget' })}>
+                            <Input
+                                type="number"
+                                value={String(editingCategory?.budget ?? '')}
+                                onChange={(e) => setEditingCategory((prev) => ({ ...(prev || {}), budget: e.target.value }))}
+                                placeholder={t('finance.expenses.categories.budgetPlaceholder', { defaultValue: 'Budget (optional)' })}
+                                min="0"
+                                step="0.01"
+                            />
+                        </FormField>
 
-                    <div className="flex justify-end gap-2 pt-2">
-                        <Button type="button" variant="neutral" onClick={() => { setShowEditCategoryModal(false); setEditingCategory(null); }} disabled={updateCategoryMutation.isPending}>
-                            {t('common.actions.cancel', { defaultValue: 'Cancel' })}
-                        </Button>
-                        <Button type="submit" variant="brand" disabled={updateCategoryMutation.isPending}>
-                            {updateCategoryMutation.isPending ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.save', { defaultValue: 'Save' })}
-                        </Button>
-                    </div>
-                </form>
-            </Modal>
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button type="button" variant="neutral" onClick={() => { setShowEditCategoryModal(false); setEditingCategory(null); }} disabled={updateCategoryMutation.isPending}>
+                                {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                            </Button>
+                            <Button type="submit" variant="brand" disabled={updateCategoryMutation.isPending}>
+                                {updateCategoryMutation.isPending ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+                            </Button>
+                        </div>
+                    </form>
+                </Modal>
+            ) : null}
 
-            {showModal && (
+            {showModal && canAddExpense && (
                 <NewExpenseModal
                     isOpen={showModal}
                     onClose={() => setShowModal(false)}
@@ -822,7 +856,7 @@ export default function ExpenseManagement() {
                 />
             )}
 
-            {showEditExpenseModal && (
+            {showEditExpenseModal && canEditExpense && (
                 <NewExpenseModal
                     mode="edit"
                     initialExpense={editingExpense}

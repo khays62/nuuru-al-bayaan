@@ -3,8 +3,11 @@ import financeService from '../api/finance';
 import { X, ChevronRight, Check, Search, ArrowLeft, Users, Calendar, Calculator, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from '../api/axios';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function RunPayrollModal({ onClose, onSuccess }) {
+    const { t } = useI18n();
+
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [staffList, setStaffList] = useState([]);
@@ -27,7 +30,7 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
             const res = await axios.get('/users', { params: { status: 'active', includeTeachers: true } });
             setStaffList((res.data || []).filter(u => u.status !== 'inactive'));
         } catch {
-            toast.error("Failed to load staff list");
+            toast.error(t('finance.payroll.runModal.toasts.staffLoadFailed', { defaultValue: 'Failed to load staff list' }));
         }
     };
 
@@ -42,11 +45,11 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                     staffId: formData.staffId
                 });
             }
-            toast.success("Payroll Pipeline Initiated Successfully");
+            toast.success(t('finance.payroll.runModal.toasts.pipelineStarted', { defaultValue: 'Payroll Pipeline Initiated Successfully' }));
             onSuccess();
             onClose();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to initiate payroll");
+            toast.error(error.response?.data?.message || t('finance.payroll.runModal.toasts.pipelineStartFailed', { defaultValue: 'Failed to initiate payroll' }));
         } finally {
             setLoading(false);
         }
@@ -72,8 +75,10 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                     02
                                 </span>
                             </div>
-                            <h3 className="text-2xl font-black text-(--nb-color-fg) tracking-tight uppercase">Payroll Pipeline</h3>
-                            <p className="text-sm text-(--nb-color-muted) font-medium font-mono uppercase tracking-widest">Process Salaries Period: {formData.month}</p>
+                            <h3 className="text-2xl font-black text-(--nb-color-fg) tracking-tight uppercase">{t('finance.payroll.runModal.title', { defaultValue: 'Payroll Pipeline' })}</h3>
+                            <p className="text-sm text-(--nb-color-muted) font-medium font-mono uppercase tracking-widest">
+                                {t('finance.payroll.runModal.subtitle', { defaultValue: 'Process Salaries Period: {{month}}', month: formData.month })}
+                            </p>
                         </div>
                         <button onClick={onClose} className="p-2 hover:bg-(--nb-color-bg-card) rounded-xl transition-all shadow-(--nb-shadow-sm)">
                             <X size={22} className="text-(--nb-color-muted)" />
@@ -87,7 +92,7 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                         <div className="space-y-8 animate-in slide-in-from-right-4 duration-300">
                             <div className="space-y-3">
                                 <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1 flex items-center gap-2">
-                                    <Calendar size={12} className="text-blue-600" /> Target Fiscal Month
+                                    <Calendar size={12} className="text-blue-600" /> {t('finance.payroll.runModal.labels.targetMonth', { defaultValue: 'Target Fiscal Month' })}
                                 </label>
                                 <input
                                     type="month"
@@ -99,12 +104,12 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
 
                             <div className="space-y-4">
                                 <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1 flex items-center gap-2">
-                                    <Users size={12} className="text-blue-600" /> Scope of Operation
+                                    <Users size={12} className="text-blue-600" /> {t('finance.payroll.runModal.labels.scope', { defaultValue: 'Scope of Operation' })}
                                 </label>
                                 <div className="grid grid-cols-1 gap-4">
                                     {[
-                                        { id: 'all', label: 'Institutional Wide', desc: 'Process salaries for all active faculty and staff.', icon: Users },
-                                        { id: 'single', label: 'Single Staff Member', desc: 'Process payroll for a specific individual record.', icon: CheckCircle2 }
+                                        { id: 'all', label: t('finance.payroll.runModal.scopes.all.label', { defaultValue: 'Institutional Wide' }), desc: t('finance.payroll.runModal.scopes.all.desc', { defaultValue: 'Process salaries for all active faculty and staff.' }), icon: Users },
+                                        { id: 'single', label: t('finance.payroll.runModal.scopes.single.label', { defaultValue: 'Single Staff Member' }), desc: t('finance.payroll.runModal.scopes.single.desc', { defaultValue: 'Process payroll for a specific individual record.' }), icon: CheckCircle2 }
                                     ].map(opt => (
                                         <button
                                             key={opt.id}
@@ -133,7 +138,7 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-(--nb-color-muted)" size={20} />
                                         <input
                                             type="text"
-                                            placeholder="Search directory..."
+                                            placeholder={t('finance.payroll.runModal.placeholders.search', { defaultValue: 'Search directory...' })}
                                             className="w-full pl-12 pr-6 py-4 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-2xl font-bold outline-none focus:ring-4 focus:ring-blue-600/10 transition-all text-lg text-(--nb-color-fg)"
                                             value={search}
                                             onChange={e => setSearch(e.target.value)}
@@ -142,7 +147,7 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                     <div className="space-y-3 pr-2">
                                         <div className="grid grid-cols-1 gap-2">
                                             {filteredStaff.length === 0 ? (
-                                                <p className="text-center py-10 text-(--nb-color-muted) font-bold italic">No matching records found.</p>
+                                                <p className="text-center py-10 text-(--nb-color-muted) font-bold italic">{t('finance.payroll.runModal.empty.search', { defaultValue: 'No matching records found.' })}</p>
                                             ) : filteredStaff.map(staff => (
                                                 <button
                                                     key={staff._id}
@@ -155,7 +160,7 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                                         </div>
                                                         <div className="text-left">
                                                             <p className="font-black text-(--nb-color-fg) leading-tight">{staff.fullName}</p>
-                                                            <p className="text-[10px] text-(--nb-color-muted) uppercase tracking-widest font-bold">{staff.role || 'Personnel'}</p>
+                                                            <p className="text-[10px] text-(--nb-color-muted) uppercase tracking-widest font-bold">{staff.role || t('finance.payroll.runModal.fallbacks.personnel', { defaultValue: 'Personnel' })}</p>
                                                         </div>
                                                     </div>
                                                     {formData.staffId === staff._id && (
@@ -174,14 +179,14 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                                         <Calculator size={48} className="stroke-[1.5]" />
                                     </div>
                                     <div>
-                                        <h4 className="text-2xl font-black text-(--nb-color-fg) tracking-tight uppercase">Bulk Initialization</h4>
+                                        <h4 className="text-2xl font-black text-(--nb-color-fg) tracking-tight uppercase">{t('finance.payroll.runModal.bulk.title', { defaultValue: 'Bulk Initialization' })}</h4>
                                         <p className="text-(--nb-color-muted) font-medium max-w-xs mx-auto mt-2 leading-relaxed">
-                                            The system will generate draft payroll records for <span className="text-blue-600 font-bold">all active faculty members</span> for the fiscal period <span className="font-black underline">{formData.month}</span>.
+                                            {t('finance.payroll.runModal.bulk.desc', { defaultValue: 'The system will generate draft payroll records for {{staff}} for the fiscal period {{month}}.', staff: t('finance.payroll.runModal.bulk.staffAllActive', { defaultValue: 'all active faculty members' }), month: formData.month })}
                                         </p>
                                     </div>
                                     <div className="flex justify-center gap-3">
-                                        <span className="px-4 py-1.5 bg-green-50 text-green-600 text-[10px] font-black uppercase rounded-full border border-green-100">Auto-Apply Allowances</span>
-                                        <span className="px-4 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-black uppercase rounded-full border border-blue-100">Filing Metadata</span>
+                                        <span className="px-4 py-1.5 bg-green-50 text-green-600 text-[10px] font-black uppercase rounded-full border border-green-100">{t('finance.payroll.runModal.bulk.tags.autoApply', { defaultValue: 'Auto-Apply Allowances' })}</span>
+                                        <span className="px-4 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-black uppercase rounded-full border border-blue-100">{t('finance.payroll.runModal.bulk.tags.metadata', { defaultValue: 'Filing Metadata' })}</span>
                                     </div>
                                 </div>
                             )}
@@ -193,11 +198,11 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                 <div className="p-10 border-t border-(--nb-color-border) bg-(--nb-color-bg) flex items-center justify-between">
                     {step === 2 ? (
                         <button onClick={() => setStep(1)} className="px-6 py-4 text-(--nb-color-muted) font-black uppercase text-[10px] tracking-widest hover:text-(--nb-color-fg) flex items-center gap-3 transition-all">
-                            <ArrowLeft size={16} /> Previous Step
+                            <ArrowLeft size={16} /> {t('finance.payroll.runModal.actions.previous', { defaultValue: 'Previous Step' })}
                         </button>
                     ) : (
                         <button onClick={onClose} className="px-6 py-4 text-(--nb-color-muted) font-black uppercase text-[10px] tracking-widest hover:text-(--nb-color-fg) transition-all">
-                            Discard Pipeline
+                            {t('finance.payroll.runModal.actions.discard', { defaultValue: 'Discard Pipeline' })}
                         </button>
                     )}
 
@@ -206,7 +211,11 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
                         disabled={loading || (step === 2 && formData.scope === 'single' && !formData.staffId)}
                         className="bg-(--nb-color-brand) hover:bg-(--nb-color-brand) text-white px-10 py-5 rounded-3xl font-black uppercase text-[10px] tracking-[0.2em] shadow-(--nb-shadow-md) transition-all disabled:opacity-50 flex items-center gap-3"
                     >
-                        {loading ? 'Processing Pipeline...' : step === 1 ? 'Configure Strategy' : 'Execute Generation'}
+                        {loading
+                            ? t('finance.payroll.runModal.actions.processing', { defaultValue: 'Processing Pipeline...' })
+                            : step === 1
+                                ? t('finance.payroll.runModal.actions.configure', { defaultValue: 'Configure Strategy' })
+                                : t('finance.payroll.runModal.actions.execute', { defaultValue: 'Execute Generation' })}
                         {!loading && <ChevronRight size={16} />}
                     </button>
                 </div>

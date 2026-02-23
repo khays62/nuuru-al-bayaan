@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Save, Info, Printer, Wallet, Users, Search, History, Calendar, Check, CreditCard } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Save, Info, Printer, Wallet, Users, Search, History, Calendar, Check, CreditCard, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../auth/AuthContext';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
@@ -24,10 +24,14 @@ import {
 import { getInvoices } from '../api/studentFinanceApi';
 
 export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
-    const { auth } = useAuth();
-    const { t } = useI18n();
+    const { auth, hasPermission } = useAuth();
+    const { t, lang } = useI18n();
     // Note: role checks handled server-side; keep auth available for future UI rules
     void auth;
+
+    const canPayPerm = hasPermission('financeStudent', 'edit');
+    const canRevertPerm = hasPermission('financeStudent', 'delete');
+    const canPrintPerm = hasPermission('financePrint', 'print');
 
     const [loading, setLoading] = useState(true);
     const [accounts, setAccounts] = useState([]);
@@ -50,8 +54,23 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     const [editingPaid, setEditingPaid] = useState({}); // { invoiceId: amount }
     const [editingReference, setEditingReference] = useState({}); // { invoiceId: reference/phone }
     const [processingId, setProcessingId] = useState(null);
+    const [printingId, setPrintingId] = useState(null);
+    const [cachedHeaderBase64, setCachedHeaderBase64] = useState('');
 
     const student = row?.student;
+
+    const printDir = useMemo(() => (lang === 'ar' ? 'rtl' : 'ltr'), [lang]);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const next = headerImg ? await getBase64Image(headerImg) : '';
+            if (!cancelled) setCachedHeaderBase64(next || '');
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const accountsQuery = useQuery({
         queryKey: accountKeys.list({ includeInactive: false }),
@@ -269,6 +288,23 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
         const firstInv = invList[0];
         const showDiscount = meta?.paymentType === 'receipt';
 
+        const voucherTitle = t('finance.printModals.voucher.title', { defaultValue: 'Payment Receipt' });
+        const lblDate = t('finance.printModals.voucher.labels.date', { defaultValue: 'Date' });
+        const lblRv = t('finance.printModals.voucher.labels.rv', { defaultValue: 'RV' });
+        const lblClass = t('finance.printModals.voucher.labels.class', { defaultValue: 'Class' });
+        const lblId = t('finance.printModals.voucher.labels.id', { defaultValue: 'ID' });
+        const lblStudentName = t('finance.printModals.voucher.labels.studentName', { defaultValue: 'Student name' });
+        const lblShift = t('finance.printModals.voucher.labels.shift', { defaultValue: 'Shift' });
+        const lblDescription = t('finance.printModals.voucher.labels.description', { defaultValue: 'Description' });
+        const lblMonth = t('finance.printModals.voucher.labels.month', { defaultValue: 'Month' });
+        const lblBalance = t('finance.printModals.voucher.labels.balance', { defaultValue: 'Balance' });
+        const lblPaid = t('finance.printModals.voucher.labels.paid', { defaultValue: 'Paid' });
+        const lblFee = t('finance.printModals.voucher.labels.fee', { defaultValue: 'Fee' });
+        const lblDiscount = t('finance.printModals.voucher.labels.discount', { defaultValue: 'Discount' });
+        const note = t('finance.printModals.voucher.note', { defaultValue: '* Note: This receipt represents the level-agreed amount.' });
+        const monthlyFeeFallback = t('finance.printModals.voucher.defaults.monthlyFee', { defaultValue: 'Monthly fee' });
+        const hormarisSuffix = t('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Hormaris)' });
+
         const recNo = meta?.paymentGroupId
             ? `RV-${String(meta.paymentGroupId).slice(-6).toUpperCase()}`
             : `RV-${String(firstInv?._id || '').slice(-6).toUpperCase()}`;
@@ -309,13 +345,13 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                 const isHormaris = typeof inv?.isHormaris === 'boolean'
                     ? inv.isHormaris
                     : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-                const billingMonthLabel = `${inv.billingMonth || '—'}${isHormaris ? ' (Hormaris)' : ''}`;
+                const billingMonthLabel = `${inv.billingMonth || '—'}${isHormaris ? hormarisSuffix : ''}`;
 
                 const paidInThisGroup = Number(txByInvoice.get(String(inv._id)) || 0);
 
                 return `
                     <tr>
-                        <td>${inv.title || 'Monthly fee'}</td>
+                        <td>${inv.title || monthlyFeeFallback}</td>
                         <td>${billingMonthLabel}</td>
                         ${showDiscount ? `<td style="text-align:right">${isFree ? '—' : fmtMoney(totalDiscount)}</td>` : ''}
                         <td style="text-align:right">${isFree ? '—' : fmtMoney(paidInThisGroup)}</td>
@@ -329,9 +365,9 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
         const totalPaid = Array.from(txByInvoice.values()).reduce((s, v) => s + Number(v || 0), 0);
 
         return `
-            <html>
+            <html dir="${printDir}">
                 <head>
-                    <title>SYD ERP Receipt - ${meta.student.fullName}</title>
+                    <title>${voucherTitle} - ${meta.student.fullName}</title>
                     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                     <style>
                         @page { size: portrait; margin: 0; }
@@ -362,28 +398,28 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                         </div>
 
                         <div class="top-meta">
-                            <div>Date: ${dateNow}</div>
+                            <div>${lblDate}: ${dateNow}</div>
                             <div>${meta.academicYear || ''}</div>
                         </div>
-                        <h2 class="voucher-title">RECEIPT VOUCHER</h2>
+                        <h2 class="voucher-title">${voucherTitle}</h2>
 
                         <table class="voucher-table">
                             <tbody>
                                 <tr>
-                                    <td><span class="cell-muted">RV:</span> ${recNo}</td>
-                                    <td><span class="cell-muted">Class:</span> ${classLabel} &nbsp;&nbsp; <span class="cell-muted">ID:</span> ${studentId}</td>
+                                    <td><span class="cell-muted">${lblRv}:</span> ${recNo}</td>
+                                    <td><span class="cell-muted">${lblClass}:</span> ${classLabel} &nbsp;&nbsp; <span class="cell-muted">${lblId}:</span> ${studentId}</td>
                                 </tr>
                                 <tr>
-                                    <td>Student name</td>
+                                    <td>${lblStudentName}</td>
                                     <td>${meta.student.fullName}</td>
                                 </tr>
                                 <tr>
-                                    <td>Shift</td>
+                                    <td>${lblShift}</td>
                                     <td>${shiftLabel}</td>
                                 </tr>
                                 <tr>
-                                    <td>Description</td>
-                                    <td>Hormaris payment (${invList.length} month${invList.length === 1 ? '' : 's'}) &nbsp;&nbsp; <span class="cell-muted">Paid:</span> ${fmtMoney(totalPaid)}</td>
+                                    <td>${lblDescription}</td>
+                                    <td>${t('finance.printModals.voucher.hormarisPayment', { defaultValue: 'Hormaris payment ({{count}} month)', count: invList.length })} &nbsp;&nbsp; <span class="cell-muted">${lblPaid}:</span> ${fmtMoney(totalPaid)}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -391,12 +427,12 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                         <table class="items">
                             <thead>
                                 <tr>
-                                    <th style="text-align:left">Description</th>
-                                    <th style="text-align:left">Month</th>
-                                    ${showDiscount ? '<th style="text-align:right">Discount</th>' : ''}
-                                    <th style="text-align:right">Paid</th>
-                                    <th style="text-align:right">Balance</th>
-                                    <th style="text-align:right">Fee</th>
+                                    <th style="text-align:left">${lblDescription}</th>
+                                    <th style="text-align:left">${lblMonth}</th>
+                                    ${showDiscount ? `<th style="text-align:right">${lblDiscount}</th>` : ''}
+                                    <th style="text-align:right">${lblPaid}</th>
+                                    <th style="text-align:right">${lblBalance}</th>
+                                    <th style="text-align:right">${lblFee}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -404,7 +440,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                             </tbody>
                         </table>
 
-                        <p class="voucher-note">* Note: This receipt represents the level-agreed amount.</p>
+                        <p class="voucher-note">${note}</p>
                     </div>
                 </body>
             </html>
@@ -453,7 +489,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
 
             // Print only invoices that match selected months
             const invoicesToPrint = updatedInvoices.filter(i => months.includes(normalizeMonth(i.billingMonth) || ''));
-            const headerBase64 = headerImg ? await getBase64Image(headerImg) : '';
+            const headerB64 = cachedHeaderBase64 || (headerImg ? await getBase64Image(headerImg) : '');
 
             const txByInvoice = new Map();
             const txs = Array.isArray(payRes?.transactions) ? payRes.transactions : [];
@@ -464,7 +500,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
             }
 
             const html = renderMultiRV(invoicesToPrint, {
-                headerImg: headerBase64,
+                headerImg: headerB64,
                 account: accounts.find(a => a._id === accountId)?.name || 'CASH',
                 student,
                 academicYear: row?.academicYear?.yearName || '2024-2025',
@@ -488,32 +524,49 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     };
 
     const handlePrintRV = async (row) => {
+        const id = row?._id || null;
+        if (id && printingId === id) return;
+
         try {
-            toast.loading(t('finance.studentFinance.paymentModal.toasts.preparingStatement', { defaultValue: 'Preparing statement...' }));
-            const headerBase64 = headerImg ? await getBase64Image(headerImg) : '';
-            const invRes = await getInvoices({ _id: row._id });
-            const invList = Array.isArray(invRes)
-                ? invRes
-                : (Array.isArray(invRes?.data) ? invRes.data : (invRes?.data?.data || []));
-            const inv = invList[0];
+            if (id) setPrintingId(id);
+
+            const headerB64 = cachedHeaderBase64 || (headerImg ? await getBase64Image(headerImg) : '');
+
+            const looksLikeInvoice = Boolean(row && (
+                row?.billingMonth ||
+                row?.title ||
+                row?.amount != null ||
+                row?.paidAmount != null ||
+                row?.balance != null
+            ));
+
+            let inv = looksLikeInvoice ? row : null;
+            if (!inv && row?._id) {
+                const invRes = await getInvoices({ _id: row._id });
+                const invList = Array.isArray(invRes)
+                    ? invRes
+                    : (Array.isArray(invRes?.data) ? invRes.data : (invRes?.data?.data || []));
+                inv = invList?.[0] || null;
+            }
+
+            if (!inv) {
+                throw new Error('missing invoice');
+            }
 
             const isFree = !!inv?.isWaived || !!inv?.student?.isFree || !!student?.isFree;
             const hasPayment = Number(inv?.paidAmount || 0) > 0;
             if (!isFree && !hasPayment) {
-                toast.dismiss();
                 return toast.error(t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' }));
             }
 
-            // Get all other unpaid invoices for the statement of arrears
-            // Use stored invoice.balance (already accounts for discounts + payments).
             const unpaid = (invoices || []).filter(i => (
-                i?._id !== row._id &&
+                i?._id !== inv?._id &&
                 i?.status !== 'Cancelled' &&
                 Number(i?.balance || 0) > 0
             ));
 
             const html = renderRV(inv, {
-                headerImg: headerBase64,
+                headerImg: headerB64,
                 account: (() => {
                     const acc = accounts.find(a => a._id === accountId);
                     if (!acc) return 'CASH';
@@ -522,13 +575,16 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                 student: student,
                 academicYear: row?.academicYear?.yearName || '2024-2025',
                 paymentType,
-                unpaid
+                unpaid,
+                dir: printDir,
             });
 
             await printHtmlDocument(html, { title: `SYD ERP Receipt - ${student?.fullName || ''}` });
-            toast.dismiss();
-        } catch {
+        } catch (err) {
             toast.error(t('finance.studentFinance.paymentModal.toasts.printFailed', { defaultValue: 'Print failed' }));
+            void err;
+        } finally {
+            if (id) setPrintingId(null);
         }
     };
 
@@ -544,6 +600,23 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
 
     const renderRV = (inv, meta) => {
         const dateNow = new Date().toLocaleString();
+        const voucherTitle = t('finance.printModals.voucher.title', { defaultValue: 'Payment Receipt' });
+        const lblDate = t('finance.printModals.voucher.labels.date', { defaultValue: 'Date' });
+        const lblRv = t('finance.printModals.voucher.labels.rv', { defaultValue: 'RV' });
+        const lblClass = t('finance.printModals.voucher.labels.class', { defaultValue: 'Class' });
+        const lblId = t('finance.printModals.voucher.labels.id', { defaultValue: 'ID' });
+        const lblStudentName = t('finance.printModals.voucher.labels.studentName', { defaultValue: 'Student name' });
+        const lblShift = t('finance.printModals.voucher.labels.shift', { defaultValue: 'Shift' });
+        const lblDescription = t('finance.printModals.voucher.labels.description', { defaultValue: 'Description' });
+        const lblMonth = t('finance.printModals.voucher.labels.month', { defaultValue: 'Month' });
+        const lblBalance = t('finance.printModals.voucher.labels.balance', { defaultValue: 'Balance' });
+        const lblPaid = t('finance.printModals.voucher.labels.paid', { defaultValue: 'Paid' });
+        const lblFee = t('finance.printModals.voucher.labels.fee', { defaultValue: 'Fee' });
+        const lblDiscount = t('finance.printModals.voucher.labels.discount', { defaultValue: 'Discount' });
+        const note = t('finance.printModals.voucher.note', { defaultValue: '* Note: This receipt represents the level-agreed amount.' });
+        const monthlyFeeFallback = t('finance.printModals.voucher.defaults.monthlyFee', { defaultValue: 'Monthly fee' });
+        const hormarisSuffix = t('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Hormaris)' });
+        const arrearsLabel = t('finance.studentFinance.paymentModal.print.arrears', { defaultValue: 'Arrears' });
         const totalDiscount = inv.discounts?.reduce((s, d) => s + (d.amountOff || 0), 0) || 0;
         const isFree = !!inv.isWaived || !!inv.student?.isFree || !!meta.student?.isFree;
         const baseFee = isFree ? Number(inv.class?.fee ?? inv.fee ?? inv.amount ?? 0) : Number(inv.amount || 0);
@@ -567,7 +640,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
         const isHormaris = typeof inv?.isHormaris === 'boolean'
             ? inv.isHormaris
             : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-        const billingMonthLabel = `${inv.billingMonth || '—'}${isHormaris ? ' (Hormaris)' : ''}`;
+        const billingMonthLabel = `${inv.billingMonth || '—'}${isHormaris ? hormarisSuffix : ''}`;
 
         const recNo = `RV-${String(inv?._id || '').slice(-6).toUpperCase()}`;
         const gradeName = inv.class?.grade?.gradeName || inv.class?.grade?.name || inv.class?.gradeName || '';
@@ -581,7 +654,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
             '—'
         );
         const studentId = meta.student.studentId || '—';
-        const description = inv.title || 'Monthly fee';
+        const description = inv.title || monthlyFeeFallback;
         const isMongoObjectIdString = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
         const rawShift = inv.class?.shift ?? inv.shift ?? meta.student.shift ?? meta.student.currentShift;
         const shiftLabel =
@@ -590,12 +663,12 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                 : (rawShift?.name || rawShift?.shiftName || rawShift?.label)) ||
             '—';
 
-        const paidSpan = isFree ? '' : `<span class="money">Paid $${Number(displayPaid || 0).toFixed(2)}</span>`;
+        const paidSpan = isFree ? '' : `<span class="money">${lblPaid} $${Number(displayPaid || 0).toFixed(2)}</span>`;
 
         return `
-            <html>
+            <html dir="${meta?.dir || printDir}">
                 <head>
-                    <title>SYD ERP Receipt - ${meta.student.fullName}</title>
+                    <title>${voucherTitle} - ${meta.student.fullName}</title>
                     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                     <style>
                         @page { size: portrait; margin: 0; }
@@ -624,27 +697,27 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                         </div>
 
                         <div class="top-meta">
-                            <div>Date: ${dateNow}</div>
+                            <div>${lblDate}: ${dateNow}</div>
                             <div>${meta.academicYear || ''}</div>
                         </div>
-                        <h2 class="voucher-title">RECEIPT VOUCHER</h2>
+                        <h2 class="voucher-title">${voucherTitle}</h2>
 
                         <table class="voucher-table">
                             <tbody>
                                 <tr>
-                                    <td><span class="cell-muted">RV:</span> ${recNo}</td>
-                                    <td><span class="cell-muted">Class:</span> ${classLabel} &nbsp;&nbsp; <span class="cell-muted">ID:</span> ${studentId}</td>
+                                    <td><span class="cell-muted">${lblRv}:</span> ${recNo}</td>
+                                    <td><span class="cell-muted">${lblClass}:</span> ${classLabel} &nbsp;&nbsp; <span class="cell-muted">${lblId}:</span> ${studentId}</td>
                                 </tr>
                                 <tr>
-                                    <td>Student name</td>
+                                    <td>${lblStudentName}</td>
                                     <td>${meta.student.fullName}</td>
                                 </tr>
                                 <tr>
-                                    <td>Shift</td>
+                                    <td>${lblShift}</td>
                                     <td>${shiftLabel}</td>
                                 </tr>
                                 <tr>
-                                    <td>Description</td>
+                                    <td>${lblDescription}</td>
                                     <td>
                                         <div class="cell-flex">
                                             <span>${description}</span>
@@ -653,13 +726,13 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td><span class="cell-muted">Month:</span> ${billingMonthLabel}</td>
+                                    <td><span class="cell-muted">${lblMonth}:</span> ${billingMonthLabel}</td>
                                     <td>
                                         <div class="cell-flex">
-                                            <span><span class="cell-muted">Balance:</span> $${Number(currentBalance || 0).toFixed(2)}</span>
+                                            <span><span class="cell-muted">${lblBalance}:</span> $${Number(currentBalance || 0).toFixed(2)}</span>
                                             ${isLevelMode
-                ? `<span class="cell-muted">(Fee $${Number(grossFee || 0).toFixed(2)})</span>`
-                : `<span class="cell-muted">(Fee $${Number(grossFee || 0).toFixed(2)}, Discount $${Number(totalDiscount || 0).toFixed(2)})</span>`
+                ? `<span class="cell-muted">(${lblFee} $${Number(grossFee || 0).toFixed(2)})</span>`
+                : `<span class="cell-muted">(${lblFee} $${Number(grossFee || 0).toFixed(2)}, ${lblDiscount} $${Number(totalDiscount || 0).toFixed(2)})</span>`
             }
                                         </div>
                                     </td>
@@ -667,8 +740,8 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                             </tbody>
                         </table>
 
-                        ${unpaidMonthsList ? `<p class="voucher-note" style="color:#ef4444; font-size:12px; margin-bottom: 10px;">Arrears: ${unpaidMonthsList}</p>` : ''}
-                        <p class="voucher-note">* Note: This receipt represents the level-agreed amount.</p>
+                        ${unpaidMonthsList ? `<p class="voucher-note" style="color:#ef4444; font-size:12px; margin-bottom: 10px;">${arrearsLabel}: ${unpaidMonthsList}</p>` : ''}
+                        <p class="voucher-note">${note}</p>
                     </div>
                 </body>
             </html>
@@ -951,30 +1024,38 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                     const entered = raw === '' || raw == null ? 0 : Number(raw);
                                                     const hasValidAmount = Number.isFinite(entered) && entered > 0;
                                                     const isOverpay = status.kind === 'over';
+                                                    const isPrinting = printingId === inv?._id;
 
                                                     return (
                                                         <div className="flex justify-end gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="brand"
-                                                                className={saveColorClass}
-                                                                disabled={paymentLocked || !hasValidAmount || isOverpay}
-                                                                onClick={() => handleSavePayment(inv)}
-                                                                title={isOverpay
-                                                                    ? t('finance.studentFinance.paymentModal.validation.amountExceedsBalance', { defaultValue: 'Amount exceeds balance' })
-                                                                    : t('finance.studentFinance.paymentModal.actions.save', { defaultValue: 'Save' })}
-                                                                icon={<Save size={16} />}
-                                                            />
-                                                            <Button
-                                                                size="sm"
-                                                                variant="neutral"
-                                                                disabled={!canPrint}
-                                                                title={!canPrint
-                                                                    ? t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' })
-                                                                    : t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' })}
-                                                                onClick={() => handlePrintRV(inv)}
-                                                                icon={<Printer size={16} />}
-                                                            />
+                                                            {canPayPerm ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="brand"
+                                                                    className={saveColorClass}
+                                                                    disabled={paymentLocked || !hasValidAmount || isOverpay}
+                                                                    onClick={() => handleSavePayment(inv)}
+                                                                    title={isOverpay
+                                                                        ? t('finance.studentFinance.paymentModal.validation.amountExceedsBalance', { defaultValue: 'Amount exceeds balance' })
+                                                                        : t('finance.studentFinance.paymentModal.actions.save', { defaultValue: 'Save' })}
+                                                                    icon={<Save size={16} />}
+                                                                />
+                                                            ) : null}
+
+                                                            {canPrintPerm ? (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="neutral"
+                                                                    disabled={!canPrint || isPrinting}
+                                                                    title={isPrinting
+                                                                        ? t('finance.printModals.actions.generating', { defaultValue: 'Generating…' })
+                                                                        : (!canPrint
+                                                                        ? t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' })
+                                                                        : t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' }))}
+                                                                    onClick={() => handlePrintRV(inv)}
+                                                                    icon={isPrinting ? <Loader2 size={16} className="animate-spin" /> : <Printer size={16} />}
+                                                                />
+                                                            ) : null}
                                                         </div>
                                                     );
                                                 }
@@ -1048,33 +1129,36 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                 return (
                                                     <RowActionButtons
                                                         actions={[
-                                                            {
+                                                            canRevertPerm ? {
                                                                 key: 'revert',
                                                                 label: t('finance.studentFinance.paymentModal.history.actions.revert', { defaultValue: 'Revert' }),
                                                                 tone: 'delete',
                                                                 showLabel: true,
                                                                 icon: null,
                                                                 onClick: () => handleRevertHistoryPayments(h),
-                                                            },
-                                                            {
+                                                            } : null,
+                                                            canPrintPerm ? {
                                                                 key: 'print',
                                                                 label: t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' }),
                                                                 tone: 'view',
                                                                 showLabel: true,
                                                                 icon: null,
-                                                                disabled: Number(h?.paid || 0) <= 0,
-                                                                title: Number(h?.paid || 0) <= 0
-                                                                    ? t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' })
-                                                                    : t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' }),
+                                                                disabled: Number(h?.paid || 0) <= 0 || Boolean(printingId),
+                                                                title: Boolean(printingId)
+                                                                    ? t('finance.printModals.actions.generating', { defaultValue: 'Generating…' })
+                                                                    : (Number(h?.paid || 0) <= 0
+                                                                        ? t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' })
+                                                                        : t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' })),
                                                                 onClick: () => handlePrintRV({
+                                                                    _id: h?._id || h?.id || h?.month,
                                                                     ...h,
                                                                     title: h?.description,
                                                                     paidAmount: h?.paid,
                                                                     amount: h?.amount,
                                                                     discounts: [{ amountOff: h?.discount }],
                                                                 }),
-                                                            },
-                                                        ]}
+                                                            } : null,
+                                                        ].filter(Boolean)}
                                                     />
                                                 );
                                             default:

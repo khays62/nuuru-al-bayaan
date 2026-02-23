@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { X, GraduationCap, DollarSign, Receipt, Printer, History } from 'lucide-react';
 import financeService from '../api/finance';
 import toast from 'react-hot-toast';
+import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function GraduationPaymentModal({ student, row, onClose, onSuccess }) {
+    const { t } = useI18n();
+
     const [loading, setLoading] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [paidAmount, setPaidAmount] = useState(0);
@@ -11,8 +14,8 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
     const [accountId] = useState('67756f125aed30282b0f4ef5'); // Default Cash Account
 
     const handlePay = async () => {
-        if (!selectedInvoice) return toast.error("Select an invoice to pay");
-        if (paidAmount <= 0) return toast.error("Enter a valid amount");
+        if (!selectedInvoice) return toast.error(t('finance.graduationPaymentModal.toasts.selectInvoiceRequired', { defaultValue: 'Select an invoice to pay' }));
+        if (paidAmount <= 0) return toast.error(t('finance.graduationPaymentModal.toasts.amountInvalid', { defaultValue: 'Enter a valid amount' }));
 
         setLoading(true);
         try {
@@ -23,13 +26,13 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
                 accountId,
                 amount: paidAmount,
                 paymentType,
-                description: `Graduation Fee Payment: ${selectedInvoice.title}`
+                description: t('finance.graduationPaymentModal.description', { defaultValue: 'Graduation Fee Payment: {{title}}', title: selectedInvoice.title })
             });
-            toast.success("Graduation Receipt Generated");
+            toast.success(t('finance.graduationPaymentModal.toasts.receiptGenerated', { defaultValue: 'Graduation Receipt Generated' }));
             onSuccess();
             onClose();
         } catch {
-            toast.error("Payment registration failed");
+            toast.error(t('finance.graduationPaymentModal.toasts.paymentFailed', { defaultValue: 'Payment registration failed' }));
         } finally {
             setLoading(false);
         }
@@ -44,7 +47,7 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
                             <GraduationCap size={24} />
                         </div>
                         <div>
-                            <h3 className="text-xl font-black text-(--nb-color-fg) uppercase tracking-tighter">Graduation Payment</h3>
+                            <h3 className="text-xl font-black text-(--nb-color-fg) uppercase tracking-tighter">{t('finance.graduationPaymentModal.title', { defaultValue: 'Graduation Payment' })}</h3>
                             <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest">{student.fullName}</p>
                         </div>
                     </div>
@@ -55,7 +58,7 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
 
                 <div className="p-8 space-y-6">
                     <div className="space-y-4">
-                        <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em] ml-1">Select Graduation Invoice</label>
+                        <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-[0.2em] ml-1">{t('finance.graduationPaymentModal.labels.selectInvoice', { defaultValue: 'Select Graduation Invoice' })}</label>
                         <div className="grid grid-cols-1 gap-3">
                             {row.invoices.map(inv => (
                                 <button
@@ -68,11 +71,11 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
                                 >
                                     <div>
                                         <p className="font-bold text-(--nb-color-fg)">{inv.title}</p>
-                                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">Balance: ${Number(inv.amount - inv.paidAmount).toLocaleString()}</p>
+                                        <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">{t('finance.graduationPaymentModal.labels.balance', { defaultValue: 'Balance' })}: ${Number(inv.amount - inv.paidAmount).toLocaleString()}</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="font-black text-lg text-(--nb-color-fg) tabular-nums">${Number(inv.amount).toLocaleString()}</p>
-                                        {inv.paidAmount > 0 && <p className="text-[10px] text-green-600 font-bold uppercase tracking-tight">Paid: ${inv.paidAmount}</p>}
+                                        {inv.paidAmount > 0 && <p className="text-[10px] text-green-600 font-bold uppercase tracking-tight">{t('finance.graduationPaymentModal.labels.paid', { defaultValue: 'Paid' })}: ${inv.paidAmount}</p>}
                                     </div>
                                 </button>
                             ))}
@@ -82,7 +85,7 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
                     {selectedInvoice && (
                         <div className="grid grid-cols-2 gap-6 animate-in slide-in-from-bottom-4 duration-500">
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Payment Amount</label>
+                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{t('finance.graduationPaymentModal.labels.paymentAmount', { defaultValue: 'Payment Amount' })}</label>
                                 <div className="relative">
                                     <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-(--nb-color-muted)" size={18} />
                                     <input
@@ -94,16 +97,16 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
                                 </div>
                             </div>
                             <div className="space-y-3">
-                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Payment Method</label>
+                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{t('finance.graduationPaymentModal.labels.paymentMethod', { defaultValue: 'Payment Method' })}</label>
                                 <select
                                     className="w-full h-14 px-6 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-2xl font-black text-xs uppercase text-(--nb-color-fg) outline-none focus:ring-4 focus:ring-primary/10 transition-all"
                                     value={paymentType}
                                     onChange={e => setPaymentType(e.target.value)}
                                 >
-                                    <option value="Cash">Cash</option>
-                                    <option value="Bank">Bank Transfer</option>
-                                    <option value="E-Dahab">E-Dahab</option>
-                                    <option value="Sahay">Sahal / Zaad</option>
+                                    <option value="Cash">{t('finance.graduationPaymentModal.methods.cash', { defaultValue: 'Cash' })}</option>
+                                    <option value="Bank">{t('finance.graduationPaymentModal.methods.bank', { defaultValue: 'Bank Transfer' })}</option>
+                                    <option value="E-Dahab">{t('finance.graduationPaymentModal.methods.edahab', { defaultValue: 'E-Dahab' })}</option>
+                                    <option value="Sahay">{t('finance.graduationPaymentModal.methods.sahay', { defaultValue: 'Sahal / Zaad' })}</option>
                                 </select>
                             </div>
                         </div>
@@ -115,16 +118,16 @@ export default function GraduationPaymentModal({ student, row, onClose, onSucces
                         onClick={onClose}
                         className="flex-1 h-14 rounded-2xl font-black text-[10px] uppercase tracking-widest text-(--nb-color-muted) hover:bg-(--nb-color-bg-card) transition-all border border-(--nb-color-border)"
                     >
-                        Cancel
+                        {t('finance.graduationPaymentModal.actions.cancel', { defaultValue: 'Cancel' })}
                     </button>
                     <button
                         onClick={handlePay}
                         disabled={loading || !selectedInvoice}
                         className="flex-2 h-14 bg-purple-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-purple-200 hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all flex items-center justify-center gap-3"
                     >
-                        {loading ? 'Processing...' : (
+                        {loading ? t('finance.graduationPaymentModal.actions.processing', { defaultValue: 'Processing...' }) : (
                             <>
-                                <Printer size={18} /> Process & Print Receipt
+                                <Printer size={18} /> {t('finance.graduationPaymentModal.actions.processAndPrint', { defaultValue: 'Process & Print Receipt' })}
                             </>
                         )}
                     </button>

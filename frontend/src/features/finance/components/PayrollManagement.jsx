@@ -6,6 +6,7 @@ import financeService from '../api/finance';
 import { usePayrollsQuery } from '../hooks/payrollHooks';
 
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
@@ -26,6 +27,12 @@ import PayrollShowModal from './PayrollShowModal';
 
 export default function PayrollManagement() {
     const { t } = useI18n();
+    const { hasPermission } = useAuth();
+
+    const canCharge = hasPermission('financePayroll', 'add');
+    const canUpdate = hasPermission('financePayroll', 'edit');
+    const canDelete = hasPermission('financePayroll', 'delete');
+    const canPrint = hasPermission('financePrint', 'print');
 
     const queryClient = useQueryClient();
     const cachedAcademicYears = queryClient.getQueryData(['academicYears']);
@@ -210,44 +217,52 @@ export default function PayrollManagement() {
                         <FilterItem className="sm:ml-auto">
                             <div className="flex items-center justify-end gap-3 flex-wrap">
                                 <div className="flex items-center justify-end gap-2 flex-wrap">
-                                    <Button variant="brand" size="lg" onClick={() => setShowCharge(true)} className="w-full sm:w-auto justify-center">
-                                        {t('finance.payroll.actions.charge', { defaultValue: 'Charge' })}
-                                    </Button>
+                                    {canCharge ? (
+                                        <Button variant="brand" size="lg" onClick={() => setShowCharge(true)} className="w-full sm:w-auto justify-center">
+                                            {t('finance.payroll.actions.charge', { defaultValue: 'Charge' })}
+                                        </Button>
+                                    ) : null}
                                     <Button variant="neutral" size="lg" onClick={() => setShowUnpaid(true)} className="w-full sm:w-auto justify-center">
                                         {t('finance.payroll.actions.show', { defaultValue: 'Show' })}
                                     </Button>
-                                    <ActionButton
-                                        variant="outline"
-                                        icon={<Printer size={16} />}
-                                        onClick={() => setShowPrint(true)}
-                                        title={t('common.actions.print', { defaultValue: 'Print' })}
-                                    >
-                                        {t('common.actions.print', { defaultValue: 'Print' })}
-                                    </ActionButton>
+                                    {canPrint ? (
+                                        <ActionButton
+                                            variant="outline"
+                                            icon={<Printer size={16} />}
+                                            onClick={() => setShowPrint(true)}
+                                            title={t('common.actions.print', { defaultValue: 'Print' })}
+                                        >
+                                            {t('common.actions.print', { defaultValue: 'Print' })}
+                                        </ActionButton>
+                                    ) : null}
 
-                                    <ActionButton
-                                        variant="outline"
-                                        icon={<Pencil size={16} />}
-                                        onClick={() => {
-                                            setUpdateContext(null);
-                                            setShowUpdate(true);
-                                        }}
-                                        title={t('common.actions.update', { defaultValue: 'Update' })}
-                                    >
-                                        {t('common.actions.update', { defaultValue: 'Update' })}
-                                    </ActionButton>
+                                    {canUpdate ? (
+                                        <ActionButton
+                                            variant="outline"
+                                            icon={<Pencil size={16} />}
+                                            onClick={() => {
+                                                setUpdateContext(null);
+                                                setShowUpdate(true);
+                                            }}
+                                            title={t('common.actions.update', { defaultValue: 'Update' })}
+                                        >
+                                            {t('common.actions.update', { defaultValue: 'Update' })}
+                                        </ActionButton>
+                                    ) : null}
 
-                                    <ActionButton
-                                        variant="danger"
-                                        icon={<Trash2 size={16} />}
-                                        onClick={() => {
-                                            setUpdateContext(null);
-                                            setShowDelete(true);
-                                        }}
-                                        title={t('common.actions.delete', { defaultValue: 'Delete' })}
-                                    >
-                                        {t('common.actions.delete', { defaultValue: 'Delete' })}
-                                    </ActionButton>
+                                    {canDelete ? (
+                                        <ActionButton
+                                            variant="danger"
+                                            icon={<Trash2 size={16} />}
+                                            onClick={() => {
+                                                setUpdateContext(null);
+                                                setShowDelete(true);
+                                            }}
+                                            title={t('common.actions.delete', { defaultValue: 'Delete' })}
+                                        >
+                                            {t('common.actions.delete', { defaultValue: 'Delete' })}
+                                        </ActionButton>
+                                    ) : null}
 
                                     <ActionButton
                                         variant="outline"
@@ -367,7 +382,7 @@ export default function PayrollManagement() {
                 />
             </Card>
 
-            {showCharge && (
+            {showCharge && canCharge && (
                 <PayrollChargeModal
                     onClose={() => setShowCharge(false)}
                     onSuccess={() => { payrollQuery.refetch(); }}
@@ -377,7 +392,7 @@ export default function PayrollManagement() {
                 />
             )}
 
-            {showUpdate && (
+            {showUpdate && canUpdate && (
                 <PayrollUpdateModal
                     onClose={() => { setShowUpdate(false); setUpdateContext(null); }}
                     onSuccess={() => { payrollQuery.refetch(); }}
@@ -390,7 +405,7 @@ export default function PayrollManagement() {
                 />
             )}
 
-            {showDelete && (
+            {showDelete && canDelete && (
                 <PayrollDeleteModal
                     onClose={() => { setShowDelete(false); setUpdateContext(null); }}
                     onSuccess={() => { payrollQuery.refetch(); }}
@@ -433,7 +448,7 @@ export default function PayrollManagement() {
                 />
             )}
 
-            {showPrint && (
+            {showPrint && canPrint && (
                 <PayrollPrintModal
                     onClose={() => setShowPrint(false)}
                     defaultMonth={month}

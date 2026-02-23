@@ -44,6 +44,19 @@ export const MODULE_PERMISSIONS = Object.freeze({
   grades: ['view', 'add', 'edit', 'delete', 'full'],
   exams: ['view', 'input', 'full'],
   results: ['view', 'print', 'download', 'full'],
+
+  // Finance (granular tab-based permissions)
+  financeDashboard: ['view', 'full'],
+  financeAccounts: ['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'print', 'full'],
+  financeStudent: ['view', 'add', 'edit', 'delete', 'download', 'print', 'full'],
+  financePayroll: ['view', 'add', 'edit', 'delete', 'download', 'print', 'full'],
+  financeExpenses: ['view', 'add', 'edit', 'delete', 'download', 'print', 'full'],
+  financeConfig: ['view', 'add', 'edit', 'delete', 'full'],
+  financeFoundation: ['view', 'add', 'full'],
+  financeAppointments: ['view', 'add', 'edit', 'delete', 'print', 'full'],
+  financeAudit: ['view', 'full'],
+  financeMaintenance: ['run', 'full'],
+  financePrint: ['print', 'full'],
 });
 
 export const MODULES = Object.freeze(Object.keys(MODULE_PERMISSIONS));

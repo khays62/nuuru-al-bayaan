@@ -9,9 +9,13 @@ import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function StudentFinancePrintTab() {
-    const { t } = useI18n();
+    const { t, lang } = useI18n();
+    const { hasPermission } = useAuth();
+
+    const canPrint = hasPermission('financePrint', 'print');
 
     const [classId, setClassId] = useState('');
     const [gradeId, setGradeId] = useState('');
@@ -108,21 +112,66 @@ export default function StudentFinancePrintTab() {
     }, [hasUserSelection, selectedStudents, students]);
 
     const handlePrintDailyAudit = () => {
+        if (!canPrint) {
+            toast.error(t('finance.studentFinance.printTab.toasts.noPrintPermission', { defaultValue: 'You do not have permission to print' }));
+            return;
+        }
         const selectedData = students.filter(s => selectedStudentIds.includes(s.student._id));
         if (selectedData.length === 0) return toast.error(t('finance.studentFinance.printTab.toasts.selectAtLeastOne', { defaultValue: 'Select at least one student' }));
-        openDailyAuditPreview({ students: selectedData });
+        // This tab doesn't collect transactions/dates; keep behavior consistent but localized.
+        openDailyAuditPreview({ transactions: [], i18n: { t, lang } });
     };
 
     const handlePrintMonthlyInvoices = () => {
+        if (!canPrint) {
+            toast.error(t('finance.studentFinance.printTab.toasts.noPrintPermission', { defaultValue: 'You do not have permission to print' }));
+            return;
+        }
         const selectedData = students.filter(s => selectedStudentIds.includes(s.student._id));
         if (selectedData.length === 0) return toast.error(t('finance.studentFinance.printTab.toasts.selectAtLeastOne', { defaultValue: 'Select at least one student' }));
-        openMonthlyInvoicesPreview({ students: selectedData });
+        openMonthlyInvoicesPreview({ students: selectedData, i18n: { t, lang } });
     };
 
     const handlePrintPasscards = () => {
+        if (!canPrint) {
+            toast.error(t('finance.studentFinance.printTab.toasts.noPrintPermission', { defaultValue: 'You do not have permission to print' }));
+            return;
+        }
         const selectedData = students.filter(s => selectedStudentIds.includes(s.student._id));
         if (selectedData.length === 0) return toast.error(t('finance.studentFinance.printTab.toasts.selectAtLeastOne', { defaultValue: 'Select at least one student' }));
-        openPasscardsPreview({ students: selectedData });
+
+        const cards = (selectedData || []).map((s) => {
+            const student = s?.student || {};
+            const inv0 = Array.isArray(s?.invoices) ? s.invoices[0] : null;
+            const gradeName = inv0?.class?.grade?.gradeName || inv0?.class?.grade?.name || inv0?.class?.gradeName || '';
+            const section = inv0?.class?.section || inv0?.class?.sectionName || '';
+            const classLabel = (
+                inv0?.classLabel ||
+                inv0?.class?.name ||
+                `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
+                student?.currentClass ||
+                student?.classLabel ||
+                '—'
+            );
+
+            const shift =
+                inv0?.class?.shift?.name ||
+                inv0?.class?.shift?.shiftName ||
+                inv0?.class?.shift?.label ||
+                inv0?.shiftLabel ||
+                (typeof inv0?.shift === 'string' ? inv0.shift : (inv0?.shift?.name || inv0?.shift?.shiftName || inv0?.shift?.label)) ||
+                'MAIN';
+
+            return {
+                fullName: student?.fullName || '',
+                studentId: student?.studentId || '',
+                classLabel,
+                shift,
+            };
+        });
+
+        const examType = t('finance.studentFinance.printTab.defaults.passcardsExamType', { defaultValue: 'Enrollment' });
+        openPasscardsPreview({ cards, examType, i18n: { t, lang } });
     };
 
     const renderPrintCell = (row, col) => {
@@ -353,9 +402,11 @@ export default function StudentFinancePrintTab() {
 
                         <Button
                             onClick={handlePrintMonthlyInvoices}
+                            disabled={!canPrint}
                             variant="neutral"
                             size="lg"
                             className="w-full group mt-4 h-24 border-2 border-transparent rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-(--nb-shadow-md) hover:-translate-y-1"
+                            title={!canPrint ? t('finance.studentFinance.printTab.toasts.noPrintPermission', { defaultValue: 'You do not have permission to print' }) : undefined}
                         >
                             <FileText className="text-blue-600 group-hover:scale-110 transition-transform" size={24} />
                             <span className="text-[10px] font-black uppercase tracking-widest">
@@ -365,9 +416,11 @@ export default function StudentFinancePrintTab() {
 
                         <Button
                             onClick={handlePrintDailyAudit}
+                            disabled={!canPrint}
                             variant="neutral"
                             size="lg"
                             className="w-full group h-24 border-2 border-transparent rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-(--nb-shadow-md) hover:-translate-y-1"
+                            title={!canPrint ? t('finance.studentFinance.printTab.toasts.noPrintPermission', { defaultValue: 'You do not have permission to print' }) : undefined}
                         >
                             <ShieldCheck className="text-amber-500 group-hover:scale-110 transition-transform" size={24} />
                             <span className="text-[10px] font-black uppercase tracking-widest">
@@ -377,9 +430,11 @@ export default function StudentFinancePrintTab() {
 
                         <Button
                             onClick={handlePrintPasscards}
+                            disabled={!canPrint}
                             variant="neutral"
                             size="lg"
                             className="w-full group h-24 border-2 border-transparent rounded-4xl flex flex-col items-center justify-center gap-2 transition-all hover:shadow-(--nb-shadow-md) hover:-translate-y-1"
+                            title={!canPrint ? t('finance.studentFinance.printTab.toasts.noPrintPermission', { defaultValue: 'You do not have permission to print' }) : undefined}
                         >
                             <Download className="text-purple-600 group-hover:scale-110 transition-transform" size={24} />
                             <span className="text-[10px] font-black uppercase tracking-widest">

@@ -8,6 +8,8 @@ import FeeInvoice from '../../models/FeeInvoice.js';
 import FeeTransaction from '../../models/FeeTransaction.js';
 import Account from '../../models/Account.js';
 
+import { publishRealtime } from '../../utils/realtimeBus.js';
+
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 
 const generateAppointmentId = () => `APT-${Date.now().toString(36).toUpperCase()}`;
@@ -103,6 +105,10 @@ export async function createAppointment(req, res) {
                 by: req.user?._id
             }]
         });
+
+        try {
+            publishRealtime({ type: 'financeAppointments:changed', id: String(appointment._id), status: appointment.status, ts: Date.now() });
+        } catch { /* ignore */ }
 
         res.status(201).json(appointment);
     } catch (error) {
@@ -305,6 +311,11 @@ export async function updateAppointment(req, res) {
         });
 
         await appt.save();
+
+        try {
+            publishRealtime({ type: 'financeAppointments:changed', id: String(appt._id), status: appt.status, ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json(appt);
     } catch (error) {
         console.error('updateAppointment Error:', error);
@@ -331,6 +342,10 @@ export async function cancelAppointment(req, res) {
             by: req.user?._id
         });
         await appt.save();
+
+        try {
+            publishRealtime({ type: 'financeAppointments:changed', id: String(appt._id), status: appt.status, ts: Date.now() });
+        } catch { /* ignore */ }
 
         res.json({ message: 'Appointment cancelled' });
     } catch (error) {
@@ -369,6 +384,11 @@ export async function rescheduleAppointment(req, res) {
         });
 
         await appt.save();
+
+        try {
+            publishRealtime({ type: 'financeAppointments:changed', id: String(appt._id), status: appt.status, ts: Date.now() });
+        } catch { /* ignore */ }
+
         res.json(appt);
     } catch (error) {
         console.error('rescheduleAppointment Error:', error);
@@ -467,6 +487,18 @@ export async function startAppointmentPayment(req, res) {
             by: req.user?._id
         });
         await appt.save();
+
+        try {
+            publishRealtime({ type: 'financeAppointments:changed', id: String(appt._id), status: appt.status, ts: Date.now() });
+        } catch { /* ignore */ }
+
+        try {
+            if (appt?.student?._id) publishRealtime({ type: 'studentFinance:changed', studentId: String(appt.student._id), ts: Date.now() });
+        } catch { /* ignore */ }
+
+        try {
+            publishRealtime({ type: 'accounts:changed', ts: Date.now() });
+        } catch { /* ignore */ }
 
         res.json({ appointment: appt, receipt: transaction, invoice });
     } catch (error) {

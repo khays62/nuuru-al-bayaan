@@ -12,6 +12,7 @@ import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 import {
     printHtmlDocument,
 } from '../../../utils/exportTable';
@@ -26,6 +27,8 @@ const PrintModalWrapper = ({
     loading,
     primaryActionLabel = 'Print',
     primaryActionIcon = <Printer size={16} />,
+    closeLabel = 'Close',
+    generatingLabel = 'Generating…',
 }) => (
     <Modal isOpen onClose={onClose} title={title}>
         {subtitle ? (
@@ -36,7 +39,7 @@ const PrintModalWrapper = ({
 
         <div className="mt-6 pt-4 border-t border-(--nb-color-border) flex items-center justify-end gap-3">
             <Button onClick={onClose} variant="neutral" size="md">
-                Close
+                {closeLabel}
             </Button>
             <Button
                 onClick={onPrint}
@@ -45,7 +48,7 @@ const PrintModalWrapper = ({
                 size="md"
                 icon={primaryActionIcon}
             >
-                {loading ? 'Generating…' : primaryActionLabel}
+                {loading ? generatingLabel : primaryActionLabel}
             </Button>
         </div>
     </Modal>
@@ -144,6 +147,7 @@ const getShiftLabelForInvoice = (inv, fallbackShift) => {
 
 const renderViewInfoStyleVoucherCard = ({
     headerSrc,
+    labels,
     dateNow,
     academicYear,
     recNo,
@@ -158,6 +162,7 @@ const renderViewInfoStyleVoucherCard = ({
     feeMetaHtml,
     arrearsHtml,
 }) => {
+    const l = labels || {};
     return `
         <div class="voucher-card">
             <div class="header-main">
@@ -165,28 +170,28 @@ const renderViewInfoStyleVoucherCard = ({
             </div>
 
             <div class="top-meta">
-                <div>Date: ${dateNow}</div>
+                <div>${l.date || 'Date'}: ${dateNow}</div>
                 <div>${academicYear || ''}</div>
             </div>
 
-            <h2 class="voucher-title">RECEIPT VOUCHER</h2>
+            <h2 class="voucher-title">${l.voucherTitle || 'RECEIPT VOUCHER'}</h2>
 
             <table class="voucher-table">
                 <tbody>
                     <tr>
-                        <td><span class="cell-muted">RV:</span> ${recNo}</td>
-                        <td><span class="cell-muted">Class:</span> ${classLabel} &nbsp;&nbsp; <span class="cell-muted">ID:</span> ${studentId}</td>
+                        <td><span class="cell-muted">${l.rv || 'RV'}:</span> ${recNo}</td>
+                        <td><span class="cell-muted">${l.classLabel || 'Class'}:</span> ${classLabel} &nbsp;&nbsp; <span class="cell-muted">${l.id || 'ID'}:</span> ${studentId}</td>
                     </tr>
                     <tr>
-                        <td>Student name</td>
+                        <td>${l.studentName || 'Student name'}</td>
                         <td>${studentName}</td>
                     </tr>
                     <tr>
-                        <td>Shift</td>
+                        <td>${l.shift || 'Shift'}</td>
                         <td>${shiftLabel}</td>
                     </tr>
                     <tr>
-                        <td>Description</td>
+                        <td>${l.description || 'Description'}</td>
                         <td>
                             <div class="cell-flex">
                                 <span>${description}</span>
@@ -195,10 +200,10 @@ const renderViewInfoStyleVoucherCard = ({
                         </td>
                     </tr>
                     <tr>
-                        <td><span class="cell-muted">Month:</span> ${billingMonthLabel}</td>
+                        <td><span class="cell-muted">${l.month || 'Month'}:</span> ${billingMonthLabel}</td>
                         <td>
                             <div class="cell-flex">
-                                <span><span class="cell-muted">Balance:</span> $${Number(balance || 0).toFixed(2)}</span>
+                                <span><span class="cell-muted">${l.balance || 'Balance'}:</span> $${Number(balance || 0).toFixed(2)}</span>
                                 ${feeMetaHtml || ''}
                             </div>
                         </td>
@@ -207,12 +212,13 @@ const renderViewInfoStyleVoucherCard = ({
             </table>
 
             ${arrearsHtml || ''}
-            <p class="voucher-note">* Note: This receipt represents the level-agreed amount.</p>
+            <p class="voucher-note">${l.note || '* Note: This receipt represents the level-agreed amount.'}</p>
         </div>
     `;
 };
 
-const renderViewInfoStyleMultiVoucher = ({ headerSrc, dateNow, academicYear, recNo, classLabel, studentId, studentName, shiftLabel, monthsCount, rowsHtml }) => {
+const renderViewInfoStyleMultiVoucher = ({ headerSrc, labels, dateNow, academicYear, recNo, classLabel, studentId, studentName, shiftLabel, monthsCount, rowsHtml, hormarisDescription }) => {
+    const l = labels || {};
     return `
         <div class="voucher-card">
             <div class="header-main">
@@ -220,28 +226,28 @@ const renderViewInfoStyleMultiVoucher = ({ headerSrc, dateNow, academicYear, rec
             </div>
 
             <div class="top-meta">
-                <div>Date: ${dateNow}</div>
+                <div>${l.date || 'Date'}: ${dateNow}</div>
                 <div>${academicYear || ''}</div>
             </div>
-            <h2 class="voucher-title">RECEIPT VOUCHER</h2>
+            <h2 class="voucher-title">${l.voucherTitle || 'RECEIPT VOUCHER'}</h2>
 
             <table class="voucher-table">
                 <tbody>
                     <tr>
-                        <td><span class="cell-muted">RV:</span> ${recNo}</td>
-                        <td><span class="cell-muted">Class:</span> ${classLabel} &nbsp;&nbsp; <span class="cell-muted">ID:</span> ${studentId}</td>
+                        <td><span class="cell-muted">${l.rv || 'RV'}:</span> ${recNo}</td>
+                        <td><span class="cell-muted">${l.classLabel || 'Class'}:</span> ${classLabel} &nbsp;&nbsp; <span class="cell-muted">${l.id || 'ID'}:</span> ${studentId}</td>
                     </tr>
                     <tr>
-                        <td>Student name</td>
+                        <td>${l.studentName || 'Student name'}</td>
                         <td>${studentName}</td>
                     </tr>
                     <tr>
-                        <td>Shift</td>
+                        <td>${l.shift || 'Shift'}</td>
                         <td>${shiftLabel}</td>
                     </tr>
                     <tr>
-                        <td>Description</td>
-                        <td>Hormaris payment (${monthsCount} month${monthsCount === 1 ? '' : 's'})</td>
+                        <td>${l.description || 'Description'}</td>
+                        <td>${hormarisDescription || `Hormaris payment (${monthsCount} month${monthsCount === 1 ? '' : 's'})`}</td>
                     </tr>
                 </tbody>
             </table>
@@ -249,11 +255,11 @@ const renderViewInfoStyleMultiVoucher = ({ headerSrc, dateNow, academicYear, rec
             <table class="items">
                 <thead>
                     <tr>
-                        <th style="text-align:left">Description</th>
-                        <th style="text-align:left">Month</th>
-                        <th style="text-align:right">Paid</th>
-                        <th style="text-align:right">Balance</th>
-                        <th style="text-align:right">Fee</th>
+                        <th style="text-align:left">${l.description || 'Description'}</th>
+                        <th style="text-align:left">${l.month || 'Month'}</th>
+                        <th style="text-align:right">${l.paid || 'Paid'}</th>
+                        <th style="text-align:right">${l.balance || 'Balance'}</th>
+                        <th style="text-align:right">${l.fee || 'Fee'}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -261,12 +267,36 @@ const renderViewInfoStyleMultiVoucher = ({ headerSrc, dateNow, academicYear, rec
                 </tbody>
             </table>
 
-            <p class="voucher-note">* Note: This receipt represents the level-agreed amount.</p>
+            <p class="voucher-note">${l.note || '* Note: This receipt represents the level-agreed amount.'}</p>
         </div>
     `;
 };
 
-export function openMonthlyInvoicesPreview({ month, invoices, students }) {
+export function openMonthlyInvoicesPreview({ month, invoices, students, i18n }) {
+    const t = i18n?.t;
+    const lang = i18n?.lang;
+    const dir = lang === 'ar' ? 'rtl' : 'ltr';
+    const tr = (key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue);
+
+    const labels = {
+        date: tr('finance.printModals.voucher.labels.date', { defaultValue: 'Date' }),
+        voucherTitle: tr('finance.printModals.voucher.title', { defaultValue: 'RECEIPT VOUCHER' }),
+        rv: tr('finance.printModals.voucher.labels.rv', { defaultValue: 'RV' }),
+        classLabel: tr('finance.printModals.voucher.labels.class', { defaultValue: 'Class' }),
+        id: tr('finance.printModals.voucher.labels.id', { defaultValue: 'ID' }),
+        studentName: tr('finance.printModals.voucher.labels.studentName', { defaultValue: 'Student name' }),
+        shift: tr('finance.printModals.voucher.labels.shift', { defaultValue: 'Shift' }),
+        description: tr('finance.printModals.voucher.labels.description', { defaultValue: 'Description' }),
+        month: tr('finance.printModals.voucher.labels.month', { defaultValue: 'Month' }),
+        balance: tr('finance.printModals.voucher.labels.balance', { defaultValue: 'Balance' }),
+        paid: tr('finance.printModals.voucher.labels.paid', { defaultValue: 'Paid' }),
+        fee: tr('finance.printModals.voucher.labels.fee', { defaultValue: 'Fee' }),
+        discount: tr('finance.printModals.voucher.labels.discount', { defaultValue: 'Discount' }),
+        note: tr('finance.printModals.voucher.note', { defaultValue: '* Note: This receipt represents the level-agreed amount.' }),
+        hormarisSuffix: tr('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Hormaris)' }),
+        monthlyFeeFallback: tr('finance.printModals.voucher.defaults.monthlyFee', { defaultValue: 'Monthly fee' }),
+    };
+
     const derivedInvoices = Array.isArray(invoices)
         ? invoices
         : (students || []).flatMap((s) => s?.invoices || []);
@@ -277,12 +307,12 @@ export function openMonthlyInvoicesPreview({ month, invoices, students }) {
     });
 
     if (!eligible || eligible.length === 0) {
-        toast.error('No invoices found to print');
+        toast.error(tr('finance.printModals.toasts.noInvoices', { defaultValue: 'No invoices found to print' }));
         return;
     }
 
     const cardsHtml = (eligible || []).map((inv) => {
-        const dateNow = new Date().toLocaleString();
+        const dateNow = new Date().toLocaleString(lang || undefined);
         const recNo = `RV-${String(inv?._id || '').slice(-6).toUpperCase()}`;
         const studentName = inv.student?.fullName || '—';
         const studentId = inv.student?.studentId || '—';
@@ -298,20 +328,21 @@ export function openMonthlyInvoicesPreview({ month, invoices, students }) {
         );
         const shiftLabel = getShiftLabelForInvoice(inv, inv?.shiftLabel);
         const billingMonth = inv.billingMonth || month || '—';
-        const billingMonthLabel = `${billingMonth}${isInvoiceHormaris(inv) ? ' (Hormaris)' : ''}`;
-        const description = inv.title || inv.items?.[0]?.category?.name || 'Monthly fee';
+        const billingMonthLabel = `${billingMonth}${isInvoiceHormaris(inv) ? labels.hormarisSuffix : ''}`;
+        const description = inv.title || inv.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
         const { totalDiscount, isFree, grossFee, isLevelMode, displayPaid, balance } = calcInvoiceTotalsForPrint(inv, 'level');
 
         const paidHtml = (!isFree && Number(displayPaid || 0) > 0)
-            ? `<span class="money">Paid $${Number(displayPaid || 0).toFixed(2)}</span>`
+            ? `<span class="money">${labels.paid} $${Number(displayPaid || 0).toFixed(2)}</span>`
             : '';
         const feeMetaHtml = isLevelMode
-            ? `<span class="cell-muted">(Fee $${Number(grossFee || 0).toFixed(2)})</span>`
-            : `<span class="cell-muted">(Fee $${Number(grossFee || 0).toFixed(2)}, Discount $${Number(totalDiscount || 0).toFixed(2)})</span>`;
+            ? `<span class="cell-muted">(${labels.fee} $${Number(grossFee || 0).toFixed(2)})</span>`
+            : `<span class="cell-muted">(${labels.fee} $${Number(grossFee || 0).toFixed(2)}, ${labels.discount} $${Number(totalDiscount || 0).toFixed(2)})</span>`;
 
         return renderViewInfoStyleVoucherCard({
             headerSrc: logoUrl,
+            labels,
             dateNow,
             academicYear: inv.academicYear?.yearName || '—',
             recNo,
@@ -329,13 +360,19 @@ export function openMonthlyInvoicesPreview({ month, invoices, students }) {
     }).join('');
 
     const html = `
-        <html>
+        <html dir="${dir}" lang="${lang || 'en'}">
             <head>
-                <title>SYD ERP - Monthly Vouchers</title>
+                <title>${tr('finance.printModals.titles.monthlyVouchers', { defaultValue: 'SYD ERP - Monthly Vouchers' })}</title>
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                 <style>
                     @page { size: A4 portrait; margin: 10mm; }
                     body { font-family: 'Inter', sans-serif; background: #fff; margin: 0; padding: 0; }
+
+                    /* RTL support */
+                    html[dir="rtl"] body { direction: rtl; }
+                    html[dir="rtl"] .top-meta { flex-direction: row-reverse; }
+                    html[dir="rtl"] .cell-flex { flex-direction: row-reverse; }
+                    html[dir="rtl"] .voucher-table td { text-align: right; }
                     .voucher-card {
                         padding: 22px;
                         display: flex;
@@ -364,12 +401,36 @@ export function openMonthlyInvoicesPreview({ month, invoices, students }) {
         </html>
     `;
 
-    printHtmlDocument(html, { title: 'SYD ERP - Monthly Vouchers' });
+    printHtmlDocument(html, { title: tr('finance.printModals.titles.monthlyVouchers', { defaultValue: 'SYD ERP - Monthly Vouchers' }) });
 }
 
-export function openDailyAuditPreview({ transactions }) {
+export function openDailyAuditPreview({ transactions, i18n }) {
+    const t = i18n?.t;
+    const lang = i18n?.lang;
+    const dir = lang === 'ar' ? 'rtl' : 'ltr';
+    const tr = (key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue);
+
+    const labels = {
+        date: tr('finance.printModals.voucher.labels.date', { defaultValue: 'Date' }),
+        voucherTitle: tr('finance.printModals.voucher.title', { defaultValue: 'RECEIPT VOUCHER' }),
+        rv: tr('finance.printModals.voucher.labels.rv', { defaultValue: 'RV' }),
+        classLabel: tr('finance.printModals.voucher.labels.class', { defaultValue: 'Class' }),
+        id: tr('finance.printModals.voucher.labels.id', { defaultValue: 'ID' }),
+        studentName: tr('finance.printModals.voucher.labels.studentName', { defaultValue: 'Student name' }),
+        shift: tr('finance.printModals.voucher.labels.shift', { defaultValue: 'Shift' }),
+        description: tr('finance.printModals.voucher.labels.description', { defaultValue: 'Description' }),
+        month: tr('finance.printModals.voucher.labels.month', { defaultValue: 'Month' }),
+        balance: tr('finance.printModals.voucher.labels.balance', { defaultValue: 'Balance' }),
+        paid: tr('finance.printModals.voucher.labels.paid', { defaultValue: 'Paid' }),
+        fee: tr('finance.printModals.voucher.labels.fee', { defaultValue: 'Fee' }),
+        discount: tr('finance.printModals.voucher.labels.discount', { defaultValue: 'Discount' }),
+        note: tr('finance.printModals.voucher.note', { defaultValue: '* Note: This receipt represents the level-agreed amount.' }),
+        hormarisSuffix: tr('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Hormaris)' }),
+        monthlyFeeFallback: tr('finance.printModals.voucher.defaults.monthlyFee', { defaultValue: 'Monthly fee' }),
+    };
+
     if (!transactions || transactions.length === 0) {
-        toast.error('No transactions found to print');
+        toast.error(tr('finance.printModals.toasts.noTransactions', { defaultValue: 'No transactions found to print' }));
         return;
     }
 
@@ -388,7 +449,7 @@ export function openDailyAuditPreview({ transactions }) {
 
     const groupCards = Array.from(groups.entries()).flatMap(([groupId, txs]) => {
         const first = txs?.[0];
-        const dateNow = new Date(first?.createdAt || Date.now()).toLocaleString();
+        const dateNow = new Date(first?.createdAt || Date.now()).toLocaleString(lang || undefined);
         const recNo = `RV-${String(groupId).slice(-6).toUpperCase()}`;
 
         const studentName = first?.student?.fullName || '—';
@@ -429,8 +490,8 @@ export function openDailyAuditPreview({ transactions }) {
             const isHormaris = typeof inv?.isHormaris === 'boolean'
                 ? inv.isHormaris
                 : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-            const monthLabel = `${inv?.billingMonth || '—'}${isHormaris ? ' (Hormaris)' : ''}`;
-            const desc = inv?.title || inv?.items?.[0]?.category?.name || 'Monthly fee';
+            const monthLabel = `${inv?.billingMonth || '—'}${isHormaris ? labels.hormarisSuffix : ''}`;
+            const desc = inv?.title || inv?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
             return `
                 <tr>
@@ -455,17 +516,18 @@ export function openDailyAuditPreview({ transactions }) {
             const inv = invoices[0];
             const paidInGroup = Number(txByInvoice.get(String(inv._id)) || 0);
             const billingMonth = inv?.billingMonth || '—';
-            const billingMonthLabel = `${billingMonth}${isInvoiceHormaris(inv) ? ' (Hormaris)' : ''}`;
-            const description = inv?.title || inv?.items?.[0]?.category?.name || 'Monthly fee';
-            const paidHtml = `<span class="money">Paid $${Number(paidInGroup || 0).toFixed(2)}</span>`;
+            const billingMonthLabel = `${billingMonth}${isInvoiceHormaris(inv) ? labels.hormarisSuffix : ''}`;
+            const description = inv?.title || inv?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
+            const paidHtml = `<span class="money">${labels.paid} $${Number(paidInGroup || 0).toFixed(2)}</span>`;
 
             const { totalDiscount, grossFee, isLevelMode, balance } = calcInvoiceTotalsForPrint(inv, 'level');
             const feeMetaHtml = isLevelMode
-                ? `<span class="cell-muted">(Fee $${Number(grossFee || 0).toFixed(2)})</span>`
-                : `<span class="cell-muted">(Fee $${Number(grossFee || 0).toFixed(2)}, Discount $${Number(totalDiscount || 0).toFixed(2)})</span>`;
+                ? `<span class="cell-muted">(${labels.fee} $${Number(grossFee || 0).toFixed(2)})</span>`
+                : `<span class="cell-muted">(${labels.fee} $${Number(grossFee || 0).toFixed(2)}, ${labels.discount} $${Number(totalDiscount || 0).toFixed(2)})</span>`;
 
             return [renderViewInfoStyleVoucherCard({
                 headerSrc: logoUrl,
+                labels,
                 dateNow,
                 academicYear: inv?.academicYear?.yearName || '—',
                 recNo,
@@ -482,8 +544,14 @@ export function openDailyAuditPreview({ transactions }) {
             })];
         }
 
+        const hormarisDescription = tr('finance.printModals.voucher.hormarisPayment', {
+            defaultValue: `Hormaris payment (${invoices.length} month${invoices.length === 1 ? '' : 's'})`,
+            count: invoices.length,
+        });
+
         return [renderViewInfoStyleMultiVoucher({
             headerSrc: logoUrl,
+            labels,
             dateNow,
             academicYear: firstInv?.academicYear?.yearName || '—',
             recNo,
@@ -493,11 +561,12 @@ export function openDailyAuditPreview({ transactions }) {
             shiftLabel,
             monthsCount: invoices.length,
             rowsHtml,
+            hormarisDescription,
         })];
     });
 
     const singleCards = (singles || []).map((t) => {
-        const dateNow = new Date(t?.createdAt || Date.now()).toLocaleString();
+        const dateNow = new Date(t?.createdAt || Date.now()).toLocaleString(lang || undefined);
         const recNo = `RV-${String(t?._id || '').slice(-6).toUpperCase()}`;
 
         const studentName = t.student?.fullName || '—';
@@ -522,18 +591,19 @@ export function openDailyAuditPreview({ transactions }) {
         const isHormaris = typeof t.invoice?.isHormaris === 'boolean'
             ? t.invoice.isHormaris
             : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-        const monthLabel = `${t.invoice?.billingMonth || '—'}${isHormaris ? ' (Hormaris)' : ''}`;
-        const desc = t.invoice?.title || t.invoice?.items?.[0]?.category?.name || 'Monthly fee';
+        const monthLabel = `${t.invoice?.billingMonth || '—'}${isHormaris ? labels.hormarisSuffix : ''}`;
+        const desc = t.invoice?.title || t.invoice?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
         if (!isHormaris) {
-            const paidHtml = `<span class="money">Paid $${Number(t.amount || 0).toFixed(2)}</span>`;
+            const paidHtml = `<span class="money">${labels.paid} $${Number(t.amount || 0).toFixed(2)}</span>`;
             const { totalDiscount, isLevelMode } = calcInvoiceTotalsForPrint(t?.invoice, 'level');
             const feeMetaHtml = isLevelMode
-                ? `<span class="cell-muted">(Fee $${Number(grossFee || 0).toFixed(2)})</span>`
-                : `<span class="cell-muted">(Fee $${Number(grossFee || 0).toFixed(2)}, Discount $${Number(totalDiscount || 0).toFixed(2)})</span>`;
+                ? `<span class="cell-muted">(${labels.fee} $${Number(grossFee || 0).toFixed(2)})</span>`
+                : `<span class="cell-muted">(${labels.fee} $${Number(grossFee || 0).toFixed(2)}, ${labels.discount} $${Number(totalDiscount || 0).toFixed(2)})</span>`;
 
             return renderViewInfoStyleVoucherCard({
                 headerSrc: logoUrl,
+                labels,
                 dateNow,
                 academicYear: t.invoice?.academicYear?.yearName || '—',
                 recNo,
@@ -560,8 +630,14 @@ export function openDailyAuditPreview({ transactions }) {
             </tr>
         `;
 
+        const hormarisDescription = tr('finance.printModals.voucher.hormarisPayment', {
+            defaultValue: `Hormaris payment (${1} month)`,
+            count: 1,
+        });
+
         return renderViewInfoStyleMultiVoucher({
             headerSrc: logoUrl,
+            labels,
             dateNow,
             academicYear: t.invoice?.academicYear?.yearName || '—',
             recNo,
@@ -571,19 +647,28 @@ export function openDailyAuditPreview({ transactions }) {
             shiftLabel,
             monthsCount: 1,
             rowsHtml,
+            hormarisDescription,
         });
     });
 
     const cardsHtml = [...groupCards, ...singleCards].join('');
 
     const html = `
-        <html>
+        <html dir="${dir}" lang="${lang || 'en'}">
             <head>
-                <title>SYD ERP - Daily Audit</title>
+                <title>${tr('finance.printModals.titles.dailyAudit', { defaultValue: 'SYD ERP - Daily Audit' })}</title>
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                 <style>
                     @page { size: A4 portrait; margin: 10mm; }
                     body { font-family: 'Inter', sans-serif; background: #fff; margin: 0; padding: 0; }
+
+                    /* RTL support */
+                    html[dir="rtl"] body { direction: rtl; }
+                    html[dir="rtl"] .top-meta { flex-direction: row-reverse; }
+                    html[dir="rtl"] .cell-flex { flex-direction: row-reverse; }
+                    html[dir="rtl"] .voucher-table td { text-align: right; }
+                    html[dir="rtl"] .items th,
+                    html[dir="rtl"] .items td { text-align: right !important; }
                     .voucher-card {
                         padding: 22px;
                         display: flex;
@@ -618,10 +703,30 @@ export function openDailyAuditPreview({ transactions }) {
         </html>
     `;
 
-    printHtmlDocument(html, { title: 'SYD ERP - Daily Audit' });
+    printHtmlDocument(html, { title: tr('finance.printModals.titles.dailyAudit', { defaultValue: 'SYD ERP - Daily Audit' }) });
 }
 
-export function openPasscardsPreview({ cards, examType, academicYear, validFrom, layout = 'portrait' }) {
+export function openPasscardsPreview({ cards, examType, academicYear, validFrom, layout = 'portrait', i18n }) {
+    const t = i18n?.t;
+    const lang = i18n?.lang;
+    const dir = lang === 'ar' ? 'rtl' : 'ltr';
+    const tr = (key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue);
+
+    const labels = {
+        academicYear: tr('finance.printModals.passcards.labels.academicYear', { defaultValue: 'ACADEMIC YEAR' }),
+        date: tr('finance.printModals.passcards.labels.date', { defaultValue: 'DATE' }),
+        clearanceCard: tr('finance.printModals.passcards.labels.clearanceCard', { defaultValue: 'CLEARANCE CARD' }),
+        studentName: tr('finance.printModals.passcards.labels.studentName', { defaultValue: 'Student Name' }),
+        classLabel: tr('finance.printModals.passcards.labels.class', { defaultValue: 'Class' }),
+        shift: tr('finance.printModals.passcards.labels.shift', { defaultValue: 'Shift' }),
+        id: tr('finance.printModals.passcards.labels.id', { defaultValue: 'ID' }),
+        room: tr('finance.printModals.passcards.labels.room', { defaultValue: 'Room' }),
+        hall: tr('finance.printModals.passcards.labels.hall', { defaultValue: 'Hall' }),
+        photo: tr('finance.printModals.passcards.labels.photo', { defaultValue: 'PHOTO' }),
+        notice: tr('finance.printModals.passcards.notice', { defaultValue: 'Any student who attempts fabrication has no right to continue his / her education at School' }),
+        stamp: tr('finance.printModals.passcards.stamp', { defaultValue: 'REGISTRAR OFFICIAL STAMP' }),
+    };
+
     const shiftToLabel = (rawShift) => {
         if (!rawShift) return '';
         if (typeof rawShift === 'string') return isMongoObjectIdString(rawShift) ? '' : rawShift;
@@ -657,7 +762,7 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
     });
 
     if (!normalized || normalized.length === 0) {
-        toast.error('No cards found to print');
+        toast.error(tr('finance.printModals.toasts.noPasscards', { defaultValue: 'No cards found to print' }));
         return;
     }
 
@@ -671,7 +776,7 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
 
     const formatDate = (d) => {
         try {
-            return new Date(d).toLocaleDateString(undefined, {
+            return new Date(d).toLocaleDateString(lang || undefined, {
                 day: '2-digit',
                 month: 'long',
                 year: 'numeric',
@@ -685,9 +790,13 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
     const toDate = new Date(fromDate);
     toDate.setDate(toDate.getDate() + 7);
 
-    const nowLabel = new Date().toLocaleString();
+    const nowLabel = new Date().toLocaleString(lang || undefined);
     const yearLabel = academicYear || '';
-    const validityLabel = `Valid from ${formatDate(fromDate)} to ${formatDate(toDate)}`;
+    const validityLabel = tr('finance.printModals.passcards.validity', {
+        defaultValue: `Valid from ${formatDate(fromDate)} to ${formatDate(toDate)}`,
+        from: formatDate(fromDate),
+        to: formatDate(toDate),
+    });
 
     const chunk = (arr, size) => {
         const out = [];
@@ -703,38 +812,38 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
                 </div>
 
                 <div class="meta-bar">
-                    <div><span class="meta-lbl">ACADEMIC YEAR:</span> ${yearLabel || '—'}</div>
-                    <div><span class="meta-lbl">DATE:</span> ${nowLabel}</div>
+                    <div><span class="meta-lbl">${labels.academicYear}:</span> ${yearLabel || '—'}</div>
+                    <div><span class="meta-lbl">${labels.date}:</span> ${nowLabel}</div>
                 </div>
 
                 <div class="blue-line"></div>
 
                 <div class="title-row">
-                    <div class="title">CLEARANCE CARD</div>
+                    <div class="title">${labels.clearanceCard}</div>
                     <div class="exam">${String(examType || '').toUpperCase()}</div>
                 </div>
 
                 <div class="main-grid">
                     <div class="info-box">
-                        <div class="row"><div class="lbl">Student Name</div><div class="val">${c.fullName || '—'}</div></div>
-                        <div class="row"><div class="lbl">Class</div><div class="val">${c.classLabel || '—'}</div></div>
-                        <div class="row"><div class="lbl">Shift</div><div class="val">${(typeof c.shift === 'string' ? c.shift : shiftToLabel(c.shift)) || 'MAIN'}</div></div>
-                        <div class="row"><div class="lbl">ID</div><div class="val" style="font-family:monospace">${c.studentId || '—'}</div></div>
-                        <div class="row"><div class="lbl">Room</div><div class="val">${c.room || '—'}</div></div>
-                        <div class="row"><div class="lbl">Hall</div><div class="val">${c.hall || '—'}</div></div>
+                        <div class="row"><div class="lbl">${labels.studentName}</div><div class="val">${c.fullName || '—'}</div></div>
+                        <div class="row"><div class="lbl">${labels.classLabel}</div><div class="val">${c.classLabel || '—'}</div></div>
+                        <div class="row"><div class="lbl">${labels.shift}</div><div class="val">${(typeof c.shift === 'string' ? c.shift : shiftToLabel(c.shift)) || 'MAIN'}</div></div>
+                        <div class="row"><div class="lbl">${labels.id}</div><div class="val" style="font-family:monospace">${c.studentId || '—'}</div></div>
+                        <div class="row"><div class="lbl">${labels.room}</div><div class="val">${c.room || '—'}</div></div>
+                        <div class="row"><div class="lbl">${labels.hall}</div><div class="val">${c.hall || '—'}</div></div>
                     </div>
 
                     <div class="photo-box">
                         <div class="photo-frame">
-                            <div class="photo-placeholder">PHOTO</div>
+                            <div class="photo-placeholder">${labels.photo}</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="footer">
                     <div class="validity">${validityLabel}</div>
-                    <div class="notice">Any student who attempts fabrication has no right to continue his / her education at School</div>
-                    <div class="stamp">REGISTRAR OFFICIAL STAMP</div>
+                    <div class="notice">${labels.notice}</div>
+                    <div class="stamp">${labels.stamp}</div>
                 </div>
             </div>
         </div>
@@ -754,13 +863,20 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
     }).join('');
 
     const html = `
-        <html>
+        <html dir="${dir}" lang="${lang || 'en'}">
             <head>
-                <title>Academic Passcards - ${examType}</title>
+                <title>${tr('finance.printModals.titles.passcards', { defaultValue: `Academic Passcards - ${examType}`, examType })}</title>
                 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
                 <style>
                     @page { size: ${pageSizeCss}; margin: 10mm; }
                     body { font-family: 'Inter', sans-serif; background: #f8fafc; padding: 12px; margin: 0; }
+
+                    /* RTL support */
+                    html[dir="rtl"] body { direction: rtl; }
+                    html[dir="rtl"] .meta-bar { flex-direction: row-reverse; }
+                    html[dir="rtl"] .title-row { flex-direction: row-reverse; }
+                    html[dir="rtl"] .lbl,
+                    html[dir="rtl"] .val { text-align: right; }
 
                     .page { margin-bottom: 14px; }
                     .page:last-child { margin-bottom: 0; }
@@ -832,11 +948,24 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
         </html>
     `;
 
-    printHtmlDocument(html, { title: `Academic Passcards - ${examType}` });
+    printHtmlDocument(html, { title: tr('finance.printModals.titles.passcards', { defaultValue: `Academic Passcards - ${examType}`, examType }) });
 }
 
 // 1. Monthly Invoice Modal
 export const PrintMonthlyInvoiceModal = ({ onClose }) => {
+    const { t, lang } = useI18n();
+    const tr = (key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue);
+
+    const getApiErrorToast = (err) => {
+        const code = err?.response?.data?.code;
+        const rawMsg = err?.response?.data?.message || err?.message;
+        if (code) {
+            const translated = tr(`finance.apiErrors.${code}`, { defaultValue: '' });
+            if (translated) return translated;
+        }
+        return rawMsg;
+    };
+
     const [month, setMonth] = useState(months[new Date().getMonth()]);
     const [years, setYears] = useState([]);
     const [amountTypes, setAmountTypes] = useState([]);
@@ -875,7 +1004,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                 }
             } catch (e) {
                 console.error("Monthly Invoice Sync Error:", e);
-                toast.error("Report sync failed");
+                toast.error(tr('finance.printModals.monthly.toasts.syncFailed', { defaultValue: 'Report sync failed' }));
             }
         };
         load();
@@ -885,16 +1014,20 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
     const yearName = selectedYearObj?.yearName || '';
 
     const getMonthLabelWithYear = (monthName) => {
+        const idx = months.indexOf(monthName);
+        const localizedMonth = idx >= 0
+            ? new Date(2000, idx, 1).toLocaleString(lang || undefined, { month: 'long' })
+            : monthName;
         const ym = toYYYYMM(monthName, yearName);
         if (!ym) return monthName;
         const y = ym.slice(0, 4);
-        return `${monthName} ${y}`;
+        return `${localizedMonth} ${y}`;
     };
 
     const handlePrint = async () => {
         const ym = toYYYYMM(month, yearName);
-        if (!ym) return toast.error('Check month field');
-        if (!selectedYear) return toast.error('Select Academic Year');
+        if (!ym) return toast.error(tr('finance.printModals.monthly.toasts.checkMonth', { defaultValue: 'Check month field' }));
+        if (!selectedYear) return toast.error(tr('finance.printModals.monthly.toasts.selectAcademicYear', { defaultValue: 'Select Academic Year' }));
 
         setLoading(true);
         try {
@@ -934,18 +1067,19 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
             const invoices = shouldClientFilterByGradeShift ? invRaw.filter(matchesGradeShift) : invRaw;
 
             if (txs.length > 0) {
-                openDailyAuditPreview({ transactions: txs });
+                openDailyAuditPreview({ transactions: txs, i18n: { t, lang } });
             } else {
                 openMonthlyInvoicesPreview({
                     month: `${month} ${yearName}`,
                     invoices,
+                    i18n: { t, lang },
                 });
             }
 
             onClose();
         } catch (e) {
-            const msg = e?.response?.data?.message || e?.message || 'Report generation failed';
-            toast.error(msg);
+            const msg = getApiErrorToast(e);
+            toast.error(msg || tr('finance.printModals.monthly.toasts.generationFailed', { defaultValue: 'Report generation failed' }));
             console.error('Monthly invoice generation failed:', e);
         }
         finally { setLoading(false); }
@@ -953,43 +1087,46 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
 
     return (
         <PrintModalWrapper
-            title="Batch Billing"
-            subtitle="Generate Monthly Statement"
+            title={tr('finance.printModals.monthly.title', { defaultValue: 'Batch Billing' })}
+            subtitle={tr('finance.printModals.monthly.subtitle', { defaultValue: 'Generate Monthly Statement' })}
             onClose={onClose}
             onPrint={handlePrint}
             loading={loading}
+            primaryActionLabel={tr('finance.printModals.actions.print', { defaultValue: 'Print' })}
+            closeLabel={tr('finance.printModals.actions.close', { defaultValue: 'Close' })}
+            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generating…' })}
         >
             <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Academic Year</label>
+                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{tr('finance.printModals.monthly.fields.academicYear', { defaultValue: 'Academic Year' })}</label>
                         <DropdownSelect
                             value={selectedYear}
                             onChange={setSelectedYear}
                             options={(years || []).map((y) => ({ value: y?._id, label: y?.yearName }))}
-                            placeholder="Choose Year"
+                            placeholder={tr('finance.printModals.common.placeholders.chooseYear', { defaultValue: 'Choose Year' })}
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Billing Month</label>
+                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{tr('finance.printModals.monthly.fields.billingMonth', { defaultValue: 'Billing Month' })}</label>
                         <DropdownSelect
                             value={month}
                             onChange={setMonth}
                                 options={months.map((m) => ({ value: m, label: getMonthLabelWithYear(m) }))}
-                            placeholder="Choose Month"
+                            placeholder={tr('finance.printModals.common.placeholders.chooseMonth', { defaultValue: 'Choose Month' })}
                             clearable={false}
                         />
                     </div>
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Fee Category / Amount Type</label>
+                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{tr('finance.printModals.monthly.fields.feeCategory', { defaultValue: 'Fee Category / Amount Type' })}</label>
                     <SearchableSelect
                         value={selectedCategory}
                         onChange={setSelectedCategory}
                         options={(amountTypes || []).map((t) => ({ value: t?._id, label: t?.name }))}
-                        placeholder="All Fee Types"
-                        searchPlaceholder="Search…"
+                        placeholder={tr('finance.printModals.common.placeholders.allFeeTypes', { defaultValue: 'All Fee Types' })}
+                        searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Search…' })}
                         maxVisible={7}
                     />
                 </div>
@@ -997,7 +1134,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                 <div className="space-y-1.5 pt-2 border-t border-(--nb-color-border)">
                     <div className="flex items-center gap-2 mb-2">
                         <Users size={12} className="text-(--nb-color-muted)" />
-                        <span className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest">Class Filtering (Optional)</span>
+                        <span className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest">{tr('finance.printModals.monthly.fields.classFiltering', { defaultValue: 'Class Filtering (Optional)' })}</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <GradeSelect
@@ -1006,7 +1143,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                                 setGradeId(v || '');
                                 setSelectedClass('');
                             }}
-                            placeholder="Grade"
+                            placeholder={tr('finance.printModals.common.placeholders.grade', { defaultValue: 'Grade' })}
                             className="h-11 font-bold"
                         />
                         <ShiftSelect
@@ -1015,7 +1152,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                                 setShiftId(v || '');
                                 setSelectedClass('');
                             }}
-                            placeholder="Shift"
+                            placeholder={tr('finance.printModals.common.placeholders.shift', { defaultValue: 'Shift' })}
                             className="h-11 font-bold"
                         />
                         <GradeSectionSelect
@@ -1025,8 +1162,8 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                             onChange={(v) => setSelectedClass(v || '')}
                             searchable
                             maxVisible={7}
-                            placeholder="Campus Wide (Default)"
-                            searchPlaceholder="Search…"
+                            placeholder={tr('finance.printModals.common.placeholders.campusWide', { defaultValue: 'Campus Wide (Default)' })}
+                            searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Search…' })}
                             className="h-11 font-bold"
                         />
                     </div>
@@ -1042,7 +1179,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                             size="sm"
                             icon={<RotateCcw size={16} />}
                         >
-                            Reset
+                            {tr('finance.printModals.actions.reset', { defaultValue: 'Reset' })}
                         </Button>
                     </div>
                 </div>
@@ -1053,6 +1190,19 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
 
 // 2. Daily Invoice Modal
 export const PrintDailyInvoiceModal = ({ onClose }) => {
+    const { t, lang } = useI18n();
+    const tr = (key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue);
+
+    const getApiErrorToast = (err) => {
+        const code = err?.response?.data?.code;
+        const rawMsg = err?.response?.data?.message || err?.message;
+        if (code) {
+            const translated = tr(`finance.apiErrors.${code}`, { defaultValue: '' });
+            if (translated) return translated;
+        }
+        return rawMsg;
+    };
+
     const [loading, setLoading] = useState(false);
     const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
     const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1066,29 +1216,36 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
             openDailyAuditPreview({
                 transactions: txs,
                 totals: data?.totals || {},
-                title: 'Professional Daily Financial Audit'
+                title: tr('finance.printModals.dailyAudit.auditTitle', { defaultValue: 'Professional Daily Financial Audit' }),
+                i18n: { t, lang },
             });
             onClose();
-        } catch { toast.error("Audit generation failed"); }
+        } catch (e) {
+            const msg = getApiErrorToast(e);
+            toast.error(msg || tr('finance.printModals.dailyAudit.toasts.generationFailed', { defaultValue: 'Audit generation failed' }));
+        }
         finally { setLoading(false); }
     };
 
     return (
         <PrintModalWrapper
-            title="Audit Journal"
-            subtitle="Chronological Daily Closeout"
+            title={tr('finance.printModals.dailyAudit.title', { defaultValue: 'Audit Journal' })}
+            subtitle={tr('finance.printModals.dailyAudit.subtitle', { defaultValue: 'Chronological Daily Closeout' })}
             onClose={onClose}
             onPrint={handlePrint}
             loading={loading}
+            primaryActionLabel={tr('finance.printModals.actions.print', { defaultValue: 'Print' })}
+            closeLabel={tr('finance.printModals.actions.close', { defaultValue: 'Close' })}
+            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generating…' })}
         >
             <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">From Date</label>
+                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{tr('finance.printModals.dailyAudit.fields.fromDate', { defaultValue: 'From Date' })}</label>
                         <Input type="date" className="h-11 font-bold" value={fromDate} onChange={e => setFromDate(e.target.value)} />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">To Date</label>
+                        <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{tr('finance.printModals.dailyAudit.fields.toDate', { defaultValue: 'To Date' })}</label>
                         <Input type="date" className="h-11 font-bold" value={toDate} onChange={e => setToDate(e.target.value)} />
                     </div>
                 </div>
@@ -1100,6 +1257,19 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
 
 // 3. Pass Card Modal
 export const PrintPassCardModal = ({ onClose }) => {
+    const { t, lang } = useI18n();
+    const tr = (key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue);
+
+    const getApiErrorToast = (err) => {
+        const code = err?.response?.data?.code;
+        const rawMsg = err?.response?.data?.message || err?.message;
+        if (code) {
+            const translated = tr(`finance.apiErrors.${code}`, { defaultValue: '' });
+            if (translated) return translated;
+        }
+        return rawMsg;
+    };
+
     const [loading, setLoading] = useState(false);
     const [years, setYears] = useState([]);
     const [selectedClass, setSelectedClass] = useState('');
@@ -1109,7 +1279,16 @@ export const PrintPassCardModal = ({ onClose }) => {
     const [examType, setExamType] = useState('Midterm Examination');
     const [layout, setLayout] = useState('portrait');
 
-    const examTypes = ['Midterm Examination', 'Final Examination'];
+    const examTypeOptions = [
+        {
+            value: 'Midterm Examination',
+            label: tr('finance.printModals.passcards.examTypes.midterm', { defaultValue: 'Midterm Examination' }),
+        },
+        {
+            value: 'Final Examination',
+            label: tr('finance.printModals.passcards.examTypes.final', { defaultValue: 'Final Examination' }),
+        },
+    ];
 
     useEffect(() => {
         const load = async () => {
@@ -1127,7 +1306,7 @@ export const PrintPassCardModal = ({ onClose }) => {
                 }
             } catch (err) {
                 console.error("Passcard Sync Error:", err);
-                toast.error("Passcard sync failed");
+                toast.error(tr('finance.printModals.passcards.toasts.syncFailed', { defaultValue: 'Passcard sync failed' }));
             }
         };
         load();
@@ -1174,11 +1353,11 @@ export const PrintPassCardModal = ({ onClose }) => {
             });
 
 
-            openPasscardsPreview({ cards: normalizedCards, examType, academicYear: yearName, layout });
+            openPasscardsPreview({ cards: normalizedCards, examType, academicYear: yearName, layout, i18n: { t, lang } });
             onClose();
         } catch (e) {
-            const msg = e?.response?.data?.message || e?.message || "Passcard generation failed";
-            toast.error(msg);
+            const msg = getApiErrorToast(e);
+            toast.error(msg || tr('finance.printModals.passcards.toasts.generationFailed', { defaultValue: 'Passcard generation failed' }));
             console.error('Passcard generation failed:', e);
         }
         finally { setLoading(false); }
@@ -1186,25 +1365,28 @@ export const PrintPassCardModal = ({ onClose }) => {
 
     return (
         <PrintModalWrapper
-            title="Academic Hub"
-            subtitle="Student Clearance Passcards"
+            title={tr('finance.printModals.passcards.title', { defaultValue: 'Academic Hub' })}
+            subtitle={tr('finance.printModals.passcards.subtitle', { defaultValue: 'Student Clearance Passcards' })}
             onClose={onClose}
             onPrint={handlePrint}
             loading={loading}
+            primaryActionLabel={tr('finance.printModals.actions.print', { defaultValue: 'Print' })}
+            closeLabel={tr('finance.printModals.actions.close', { defaultValue: 'Close' })}
+            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generating…' })}
         >
             <div className="space-y-5">
                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Target Academic Year</label>
+                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{tr('finance.printModals.passcards.fields.academicYear', { defaultValue: 'Target Academic Year' })}</label>
                     <DropdownSelect
                         value={selectedYear}
                         onChange={setSelectedYear}
                         options={(years || []).map((y) => ({ value: y?._id, label: y?.yearName }))}
-                        placeholder="Choose Year"
+                        placeholder={tr('finance.printModals.common.placeholders.chooseYear', { defaultValue: 'Choose Year' })}
                     />
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Choose Class</label>
+                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{tr('finance.printModals.passcards.fields.chooseClass', { defaultValue: 'Choose Class' })}</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <GradeSelect
                             value={gradeId}
@@ -1212,7 +1394,7 @@ export const PrintPassCardModal = ({ onClose }) => {
                                 setGradeId(v || '');
                                 setSelectedClass('');
                             }}
-                            placeholder="Grade"
+                            placeholder={tr('finance.printModals.common.placeholders.grade', { defaultValue: 'Grade' })}
                             className="h-11 font-bold"
                         />
                         <ShiftSelect
@@ -1221,7 +1403,7 @@ export const PrintPassCardModal = ({ onClose }) => {
                                 setShiftId(v || '');
                                 setSelectedClass('');
                             }}
-                            placeholder="Shift"
+                            placeholder={tr('finance.printModals.common.placeholders.shift', { defaultValue: 'Shift' })}
                             className="h-11 font-bold"
                         />
                         <GradeSectionSelect
@@ -1231,8 +1413,8 @@ export const PrintPassCardModal = ({ onClose }) => {
                             onChange={(v) => setSelectedClass(v || '')}
                             searchable
                             maxVisible={7}
-                            placeholder="All Classes"
-                            searchPlaceholder="Search…"
+                            placeholder={tr('finance.printModals.common.placeholders.allClasses', { defaultValue: 'All Classes' })}
+                            searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Search…' })}
                             className="h-11 font-bold"
                         />
                     </div>
@@ -1248,18 +1430,18 @@ export const PrintPassCardModal = ({ onClose }) => {
                             size="sm"
                             icon={<RotateCcw size={16} />}
                         >
-                            Reset
+                            {tr('finance.printModals.actions.reset', { defaultValue: 'Reset' })}
                         </Button>
                     </div>
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Examination Type</label>
+                    <label className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">{tr('finance.printModals.passcards.fields.examType', { defaultValue: 'Examination Type' })}</label>
                     <DropdownSelect
                         value={examType}
                         onChange={setExamType}
-                        options={examTypes.map((t) => ({ value: t, label: t }))}
-                        placeholder="Choose Exam"
+                        options={examTypeOptions}
+                        placeholder={tr('finance.printModals.passcards.placeholders.chooseExam', { defaultValue: 'Choose Exam' })}
                         clearable={false}
                     />
                 </div>
@@ -1271,7 +1453,7 @@ export const PrintPassCardModal = ({ onClose }) => {
                         size="md"
                         className={`w-full justify-center gap-2 p-3! rounded-xl border-2 shadow-none font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'portrait' ? 'border-blue-600! bg-blue-50! text-blue-600!' : 'border-(--nb-color-border)! text-(--nb-color-muted)! bg-(--nb-color-bg-card)!'}`}
                     >
-                        Portrait
+                        {tr('finance.printModals.passcards.layout.portrait', { defaultValue: 'Portrait' })}
                     </Button>
                     <Button
                         onClick={() => setLayout('landscape')}
@@ -1279,7 +1461,7 @@ export const PrintPassCardModal = ({ onClose }) => {
                         size="md"
                         className={`w-full justify-center gap-2 p-3! rounded-xl border-2 shadow-none font-black text-[10px] uppercase tracking-widest transition-all ${layout === 'landscape' ? 'border-blue-600! bg-blue-50! text-blue-600!' : 'border-(--nb-color-border)! text-(--nb-color-muted)! bg-(--nb-color-bg-card)!'}`}
                     >
-                        Landscape
+                        {tr('finance.printModals.passcards.layout.landscape', { defaultValue: 'Landscape' })}
                     </Button>
                 </div>
             </div>

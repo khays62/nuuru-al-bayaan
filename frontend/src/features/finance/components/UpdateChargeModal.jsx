@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import financeService from '../api/finance';
+import React, { useMemo, useState, useEffect } from 'react';
 import { RefreshCcw, Percent, DollarSign, Calendar, Hash, ShieldCheck, AlertCircle, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -8,6 +7,9 @@ import {
     useApplyOverallDiscountMutation,
     useDeleteMonthlyChargesMutation,
 } from '../hooks/studentFinanceHooks';
+import { useFinanceCategoriesQuery } from '../hooks/financeConfigHooks';
+
+import { useI18n } from '../../../i18n/I18nProvider';
 
 import Input from '../../../shared/components/ui/Input.jsx';
 import Textarea from '../../../shared/components/ui/Textarea.jsx';
@@ -18,6 +20,7 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 
 export default function UpdateChargeModal({ onClose, onSuccess }) {
+    const { lang, t } = useI18n();
     const [loading, setLoading] = useState(false);
     const [step, setStep] = useState(1); // 1: Type Selection, 2: Form, 3: Success/Summary
     const [updateType, setUpdateType] = useState('correction'); // correction, monthly_discount, overall_discount, undo_charge
@@ -25,8 +28,15 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
     const [useMultipleMonths, setUseMultipleMonths] = useState(false);
     const [selectedMonths, setSelectedMonths] = useState(() => new Set());
 
-    // Config Data
-    const [amountTypes, setAmountTypes] = useState([]);
+    const categoriesQuery = useFinanceCategoriesQuery(
+        { type: 'fee', includePreviousBalance: false, includeInactive: false },
+        { staleTime: 30_000, refetchOnWindowFocus: false }
+    );
+
+    const amountTypes = useMemo(() => {
+        const rawCats = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
+        return rawCats.filter(c => c?.type === 'fee' && c?.status !== 'inactive');
+    }, [categoriesQuery.data]);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -39,12 +49,14 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
         reason: ''
     });
 
-    const months = [
-        { label: 'January', val: '01' }, { label: 'February', val: '02' }, { label: 'March', val: '03' },
-        { label: 'April', val: '04' }, { label: 'May', val: '05' }, { label: 'June', val: '06' },
-        { label: 'July', val: '07' }, { label: 'August', val: '08' }, { label: 'September', val: '09' },
-        { label: 'October', val: '10' }, { label: 'November', val: '11' }, { label: 'December', val: '12' }
-    ];
+    const months = useMemo(() => {
+        const locale = lang || undefined;
+        return Array.from({ length: 12 }, (_, idx) => {
+            const label = new Date(2020, idx, 1).toLocaleString(locale, { month: 'long' });
+            const val = String(idx + 1).padStart(2, '0');
+            return { label, val };
+        });
+    }, [lang]);
 
     const currentYear = String(formData.month || '').slice(0, 4);
     const toYm = (mm) => `${currentYear}-${mm}`;
@@ -58,18 +70,10 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
     };
 
     useEffect(() => {
-        const loadData = async () => {
-            try {
-                const catsRes = await financeService.getFinanceCategories('fee');
-                const rawCats = Array.isArray(catsRes?.data) ? catsRes.data : (Array.isArray(catsRes) ? catsRes : []);
-                const cats = rawCats.filter(c => c.type === 'fee' && c.status !== 'inactive');
-                setAmountTypes(cats);
-            } catch {
-                toast.error("Failed to load configuration data");
-            }
-        };
-        loadData();
-    }, []);
+        if (!categoriesQuery.isError) return;
+        toast.error(t('finance.studentFinance.updateChargeModal.toasts.loadConfigFailed', { defaultValue: 'Failed to load configuration data' }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [categoriesQuery.isError]);
 
     const correctionMutation = useUpdateChargeAmountMutation();
     const monthlyDiscountMutation = useApplyMonthlyDiscountMutation();
@@ -80,26 +84,32 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
         if (e) e.preventDefault();
 
         const sId = formData.studentId.trim();
-        if (!sId) return toast.error("Please enter a valid Student ID");
+        if (!sId) {
+            return toast.error(t('finance.studentFinance.updateChargeModal.toasts.enterValidStudentId', { defaultValue: 'Please enter a valid Student ID' }));
+        }
 
         if (updateType !== 'overall_discount' && (!formData.amountTypeId || !formData.month)) {
-            return toast.error("Fee Category and Month are required");
+            return toast.error(t('finance.studentFinance.updateChargeModal.toasts.feeCategoryAndMonthRequired', { defaultValue: 'Fee Category and Month are required' }));
         }
 
         if (updateType !== 'overall_discount' && useMultipleMonths && selectedMonths.size === 0) {
-            return toast.error('Select at least one billing month');
+            return toast.error(t('finance.studentFinance.updateChargeModal.toasts.selectAtLeastOneMonth', { defaultValue: 'Select at least one billing month' }));
         }
 
         if (updateType === 'correction' && !formData.amount) {
-            return toast.error("Please enter an amount");
+            return toast.error(t('finance.studentFinance.updateChargeModal.toasts.enterAmount', { defaultValue: 'Please enter an amount' }));
         }
 
         if ((updateType === 'monthly_discount' || updateType === 'overall_discount') && !formData.discountValue) {
-            return toast.error("Please enter a discount value");
+            return toast.error(t('finance.studentFinance.updateChargeModal.toasts.enterDiscountValue', { defaultValue: 'Please enter a discount value' }));
         }
 
         if (!formData.reason || formData.reason.trim().length < 5) {
-            return toast.error("Please provide a meaningful reason for the audit log (min 5 chars)");
+            return toast.error(
+                t('finance.studentFinance.updateChargeModal.toasts.reasonMinLength', {
+                    defaultValue: 'Please provide a meaningful reason for the audit log (min 5 chars)',
+                })
+            );
         }
 
         setLoading(true);
@@ -125,7 +135,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                     discountAmount: Number(formData.discountValue)
                 });
             } else if (updateType === 'undo_charge') {
-                if (!window.confirm('This will cancel unpaid charges for the selected month(s). Continue?')) return;
+                if (!window.confirm(t('finance.studentFinance.updateChargeModal.confirms.undoCharges', { defaultValue: 'This will cancel unpaid charges for the selected month(s). Continue?' }))) return;
                 res = await undoChargesMutation.mutateAsync({
                     scope: 'single',
                     studentId: sId,
@@ -143,61 +153,100 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
 
             if (updateType === 'undo_charge') {
                 const cancelledCount = Number(res?.cancelledCount || 0);
-                if (cancelledCount > 0) toast.success(`Charges cancelled successfully (${cancelledCount})`);
-                else toast.error('No matching unpaid charges found to cancel');
+                if (cancelledCount > 0) {
+                    toast.success(
+                        t('finance.studentFinance.updateChargeModal.toasts.cancelledSuccess', {
+                            defaultValue: 'Charges cancelled successfully ({{count}})',
+                            count: cancelledCount,
+                        })
+                    );
+                } else {
+                    toast.error(t('finance.studentFinance.updateChargeModal.toasts.noneFoundToCancel', { defaultValue: 'No matching unpaid charges found to cancel' }));
+                }
             } else {
-                toast.success("Update successful and audit log created");
+                toast.success(t('finance.studentFinance.updateChargeModal.toasts.updateSuccess', { defaultValue: 'Update successful and audit log created' }));
             }
             onSuccess?.();
             onClose();
         } catch (error) {
-            toast.error(error.response?.data?.message || "Operation failed");
+            toast.error(error.response?.data?.message || t('finance.studentFinance.updateChargeModal.toasts.operationFailed', { defaultValue: 'Operation failed' }));
         } finally {
             setLoading(false);
         }
     };
 
-    const workflowTypes = [
-        { id: 'correction', title: 'Update Charge Amount', desc: 'Correct human error in fee amount', icon: DollarSign, color: 'blue' },
-        { id: 'monthly_discount', title: 'Apply Monthly Discount', desc: 'One-time scholarship for a specific month', icon: Percent, color: 'amber' },
-        { id: 'undo_charge', title: 'Undo Charges', desc: 'Cancel unpaid charges for selected month(s)', icon: Trash2, color: 'red' },
-        { id: 'overall_discount', title: 'Apply Overall Discount', desc: 'Permanent scholarship for all future charges', icon: ShieldCheck, color: 'green' }
-    ];
+    const workflowTypes = useMemo(() => ([
+        {
+            id: 'correction',
+            title: t('finance.studentFinance.updateChargeModal.workflows.correction.title', { defaultValue: 'Update Charge Amount' }),
+            desc: t('finance.studentFinance.updateChargeModal.workflows.correction.desc', { defaultValue: 'Correct human error in fee amount' }),
+            icon: DollarSign,
+            color: 'blue',
+        },
+        {
+            id: 'monthly_discount',
+            title: t('finance.studentFinance.updateChargeModal.workflows.monthlyDiscount.title', { defaultValue: 'Apply Monthly Discount' }),
+            desc: t('finance.studentFinance.updateChargeModal.workflows.monthlyDiscount.desc', { defaultValue: 'One-time scholarship for a specific month' }),
+            icon: Percent,
+            color: 'amber',
+        },
+        {
+            id: 'undo_charge',
+            title: t('finance.studentFinance.updateChargeModal.workflows.undoCharges.title', { defaultValue: 'Undo Charges' }),
+            desc: t('finance.studentFinance.updateChargeModal.workflows.undoCharges.desc', { defaultValue: 'Cancel unpaid charges for selected month(s)' }),
+            icon: Trash2,
+            color: 'red',
+        },
+        {
+            id: 'overall_discount',
+            title: t('finance.studentFinance.updateChargeModal.workflows.overallDiscount.title', { defaultValue: 'Apply Overall Discount' }),
+            desc: t('finance.studentFinance.updateChargeModal.workflows.overallDiscount.desc', { defaultValue: 'Permanent scholarship for all future charges' }),
+            icon: ShieldCheck,
+            color: 'green',
+        },
+    ]), [t]);
 
-    const amountTypeOptions = amountTypes.map((t) => ({ value: t._id, label: t.name }));
+    const amountTypeOptions = amountTypes.map((amountType) => ({ value: amountType._id, label: amountType.name }));
     const discountTypeOptions = [
-        { value: 'fixed', label: 'Fixed Amount ($)' },
-        { value: 'percentage', label: 'Percentage (%)' },
+        { value: 'fixed', label: t('finance.studentFinance.updateChargeModal.discountTypes.fixed', { defaultValue: 'Fixed Amount ($)' }) },
+        { value: 'percentage', label: t('finance.studentFinance.updateChargeModal.discountTypes.percentage', { defaultValue: 'Percentage (%)' }) },
     ];
 
     return (
-        <Modal isOpen onClose={onClose} closeOnBackdrop={false} title="Finance Update Workflow">
+        <Modal
+            isOpen
+            onClose={onClose}
+            closeOnBackdrop={false}
+            title={t('finance.studentFinance.updateChargeModal.title', { defaultValue: 'Finance Update Workflow' })}
+        >
             <div className="space-y-6">
                 {step === 1 ? (
                     <div className="space-y-4">
                         <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex gap-3 mb-6">
                             <AlertCircle className="text-blue-600 shrink-0" size={20} />
                             <p className="text-xs font-medium text-blue-800 leading-relaxed">
-                                Every update made here is recorded in the permanent audit logs with before/after values.
-                                Balance recalculations happen automatically.
+                                {t('finance.studentFinance.updateChargeModal.auditNotice', {
+                                    defaultValue:
+                                        'Every update made here is recorded in the permanent audit logs with before/after values. Balance recalculations happen automatically.',
+                                })}
                             </p>
                         </div>
 
                         <div className="grid gap-3">
-                            {workflowTypes.map((t) => (
+                            {workflowTypes.map((workflow) => (
                                 <Button
-                                    key={t.id}
-                                    onClick={() => { setUpdateType(t.id); setStep(2); }}
+                                    key={workflow.id}
+                                    onClick={() => { setUpdateType(workflow.id); setStep(2); }}
                                     variant="neutral"
                                     size="md"
-                                    className={`w-full whitespace-normal justify-start flex items-center gap-4 p-4 rounded-xl border-2 shadow-none transition-all text-left ${updateType === t.id ? 'border-amber-500! bg-amber-50/50!' : 'border-(--nb-color-border)! hover:border-(--nb-color-focus)! bg-(--nb-color-bg-card)!'} `}
+                                    className={`w-full whitespace-normal justify-start flex items-center gap-4 p-4 rounded-xl border-2 shadow-none transition-all text-left ${updateType === workflow.id ? 'border-amber-500! bg-amber-50/50!' : 'border-(--nb-color-border)! hover:border-(--nb-color-focus)! bg-(--nb-color-bg-card)!'} `}
                                 >
-                                    <div className={`p-3 rounded-xl bg-${t.color}-100 text-${t.color}-700`}>
-                                        <t.icon size={24} />
+                                    <div className={`p-3 rounded-xl bg-${workflow.color}-100 text-${workflow.color}-700`}>
+                                        <workflow.icon size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="font-black text-(--nb-color-fg) text-sm uppercase tracking-tight">{t.title}</h4>
-                                        <p className="text-[11px] font-medium text-(--nb-color-muted)">{t.desc}</p>
+                                        <h4 className="font-black text-(--nb-color-fg) text-sm uppercase tracking-tight">{workflow.title}</h4>
+                                        <p className="text-[11px] font-medium text-(--nb-color-muted)">{workflow.desc}</p>
                                     </div>
                                 </Button>
                             ))}
@@ -208,24 +257,28 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                         {/* Form Fields */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Student ID</label>
+                                <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                    {t('finance.studentFinance.updateChargeModal.labels.studentId', { defaultValue: 'Student ID' })}
+                                </label>
                                 <Input
                                     type="text"
                                     className="h-11 font-bold text-sm"
-                                    placeholder="Ex: DU1S1A62"
+                                    placeholder={t('finance.studentFinance.updateChargeModal.placeholders.studentId', { defaultValue: 'Ex: DU1S1A62' })}
                                     value={formData.studentId}
                                     onChange={e => setFormData({ ...formData, studentId: e.target.value })}
                                 />
                             </div>
                             {updateType !== 'overall_discount' && (
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Fee Category</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                        {t('finance.studentFinance.updateChargeModal.labels.feeCategory', { defaultValue: 'Fee Category' })}
+                                    </label>
                                     <SearchableSelect
                                         value={formData.amountTypeId}
                                         onChange={(v) => setFormData({ ...formData, amountTypeId: v })}
                                         options={amountTypeOptions}
-                                        placeholder="Choose Fee..."
-                                        searchPlaceholder="Search fee categories…"
+                                        placeholder={t('finance.studentFinance.updateChargeModal.placeholders.chooseFee', { defaultValue: 'Choose Fee...' })}
+                                        searchPlaceholder={t('finance.studentFinance.updateChargeModal.placeholders.searchFeeCategories', { defaultValue: 'Search fee categories…' })}
                                         maxVisible={6}
                                         className="h-11 font-bold text-sm"
                                     />
@@ -233,7 +286,9 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                             )}
                             {updateType === 'overall_discount' && (
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Discount Type</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                        {t('finance.studentFinance.updateChargeModal.labels.discountType', { defaultValue: 'Discount Type' })}
+                                    </label>
                                     <DropdownSelect
                                         value={formData.discountType}
                                         onChange={(v) => setFormData({ ...formData, discountType: v })}
@@ -248,7 +303,9 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                         <div className="grid grid-cols-2 gap-4">
                             {updateType !== 'overall_discount' && (
                                 <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Billing Month</label>
+                                    <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                        {t('finance.studentFinance.updateChargeModal.labels.billingMonth', { defaultValue: 'Billing Month' })}
+                                    </label>
                                     <div className="space-y-2">
                                         <Input
                                             type="month"
@@ -277,7 +334,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                                                     }
                                                 }}
                                             />
-                                            Multiple months
+                                            {t('finance.studentFinance.updateChargeModal.labels.multipleMonths', { defaultValue: 'Multiple months' })}
                                         </label>
 
                                         {useMultipleMonths && /^\d{4}$/.test(currentYear) && (
@@ -305,7 +362,9 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                             )}
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
-                                    {updateType === 'correction' ? 'New Correct Amount ($)' : (updateType === 'undo_charge' ? ' ' : 'Discount Value')}
+                                    {updateType === 'correction'
+                                        ? t('finance.studentFinance.updateChargeModal.labels.newCorrectAmount', { defaultValue: 'New Correct Amount ($)' })
+                                        : (updateType === 'undo_charge' ? ' ' : t('finance.studentFinance.updateChargeModal.labels.discountValue', { defaultValue: 'Discount Value' }))}
                                 </label>
                                 {updateType === 'undo_charge' ? (
                                     <div className="w-full h-11" />
@@ -313,7 +372,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                                     <Input
                                         type="number"
                                         className="w-full h-11 font-bold text-sm"
-                                        placeholder="0.00"
+                                        placeholder={t('finance.studentFinance.updateChargeModal.placeholders.amount', { defaultValue: '0.00' })}
                                         value={updateType === 'correction' ? formData.amount : formData.discountValue}
                                         onChange={e => setFormData({ ...formData, [updateType === 'correction' ? 'amount' : 'discountValue']: e.target.value })}
                                     />
@@ -322,10 +381,12 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Reason for Adjustment</label>
+                            <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
+                                {t('finance.studentFinance.updateChargeModal.labels.reason', { defaultValue: 'Reason for Adjustment' })}
+                            </label>
                             <Textarea
                                 className="min-h-20"
-                                placeholder="Explain why this adjustment is being made (Audit Required)"
+                                placeholder={t('finance.studentFinance.updateChargeModal.placeholders.reason', { defaultValue: 'Explain why this adjustment is being made (Audit Required)' })}
                                 value={formData.reason}
                                 onChange={e => setFormData({ ...formData, reason: e.target.value })}
                             />
@@ -340,7 +401,9 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                         variant="neutral"
                         size="md"
                     >
-                        {step === 1 ? 'Cancel' : 'Back'}
+                        {step === 1
+                            ? t('finance.studentFinance.updateChargeModal.actions.cancel', { defaultValue: 'Cancel' })
+                            : t('finance.studentFinance.updateChargeModal.actions.back', { defaultValue: 'Back' })}
                     </Button>
 
                     {step === 2 ? (
@@ -351,7 +414,9 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                             variant="brand"
                             size="md"
                         >
-                            {loading ? 'Processing…' : 'Execute'}
+                            {loading
+                                ? t('finance.studentFinance.updateChargeModal.actions.processing', { defaultValue: 'Processing…' })
+                                : t('finance.studentFinance.updateChargeModal.actions.execute', { defaultValue: 'Execute' })}
                         </Button>
                     ) : null}
                 </div>

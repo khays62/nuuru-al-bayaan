@@ -5,6 +5,7 @@ import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRi
 import financeService from '../api/finance';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
+import { useI18n } from '../../../i18n/I18nProvider.jsx';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
     PieChart, Pie, Cell, BarChart, Bar, Legend
@@ -162,6 +163,8 @@ const StatWidget = ({ title, value, subtext, icon: Icon, trend }) => (
 );
 
 export default function FinanceDashboard() {
+    const { t, lang } = useI18n();
+    const dir = lang === 'ar' ? 'rtl' : 'ltr';
     const emptyStats = {
         revenue: 0,
         expenses: 0,
@@ -184,7 +187,21 @@ export default function FinanceDashboard() {
     const stats = statsQuery.data || emptyStats;
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        const locale = lang === 'ar' ? 'ar' : (lang === 'so' ? 'so' : 'en-US');
+        return new Intl.NumberFormat(locale, { style: 'currency', currency: 'USD' }).format(amount);
+    };
+
+    const tFeeStatus = (name) => {
+        const raw = String(name || '').trim();
+        const key = raw.toLowerCase();
+        if (!key) return raw;
+        const mapped = {
+            paid: t('finance.dashboard.feeStatus.paid', { defaultValue: 'Paid' }),
+            partial: t('finance.dashboard.feeStatus.partial', { defaultValue: 'Partial' }),
+            unpaid: t('finance.dashboard.feeStatus.unpaid', { defaultValue: 'Unpaid' }),
+            cancelled: t('finance.dashboard.feeStatus.cancelled', { defaultValue: 'Cancelled' }),
+        };
+        return mapped[key] || raw;
     };
 
     const COLORS = [
@@ -194,52 +211,54 @@ export default function FinanceDashboard() {
         'var(--nb-color-brand-200)',
     ];
 
-    if (statsQuery.isLoading) return <FinanceDashboardSkeleton />;
+    if (statsQuery.isLoading) return <div dir={dir}><FinanceDashboardSkeleton /></div>;
 
     if (statsQuery.isError) {
         return (
-            <Alert
-                variant="error"
-                title="Failed to load dashboard"
-                description="Please refresh the page or try again in a moment."
-            />
+            <div dir={dir}>
+                <Alert
+                    variant="error"
+                    title={t('finance.dashboard.errors.loadFailedTitle', { defaultValue: 'Failed to load dashboard' })}
+                    description={t('finance.dashboard.errors.loadFailedDesc', { defaultValue: 'Please refresh the page or try again in a moment.' })}
+                />
+            </div>
         );
     }
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4" dir={dir}>
             <div className="rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) bg-linear-to-r from-(--nb-color-bg-card) to-(--nb-color-accent-50) p-5 shadow-md">
-                <div className="text-xl md:text-2xl font-semibold text-(--nb-color-text)">Finance Dashboard</div>
-                <div className="text-sm text-(--nb-color-muted) mt-1">Overview of revenue, expenses, and fee status.</div>
+                <div className="text-xl md:text-2xl font-semibold text-(--nb-color-text)">{t('finance.dashboard.header.title', { defaultValue: 'Finance Dashboard' })}</div>
+                <div className="text-sm text-(--nb-color-muted) mt-1">{t('finance.dashboard.header.subtitle', { defaultValue: 'Overview of revenue, expenses, and fee status.' })}</div>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatWidget
-                    title="Total Revenue"
+                    title={t('finance.dashboard.cards.totalRevenue', { defaultValue: 'Total Revenue' })}
                     value={formatCurrency(stats.revenue)}
-                    subtext="Collected fees this year"
+                    subtext={t('finance.dashboard.cardsSubtext.collectedFeesThisYear', { defaultValue: 'Collected fees this year' })}
                     icon={DollarSign}
                     trend={12.5}
                 />
                 <StatWidget
-                    title="Total Expenses"
+                    title={t('finance.dashboard.cards.totalExpenses', { defaultValue: 'Total Expenses' })}
                     value={formatCurrency(stats.expenses)}
-                    subtext="Operational costs"
+                    subtext={t('finance.dashboard.cardsSubtext.operationalCosts', { defaultValue: 'Operational costs' })}
                     icon={TrendingDown}
                     trend={-2.4}
                 />
                 <StatWidget
-                    title="Net Income"
+                    title={t('finance.dashboard.cards.netIncome', { defaultValue: 'Net Income' })}
                     value={formatCurrency(stats.revenue - stats.expenses)}
-                    subtext="Revenue - Expenses"
+                    subtext={t('finance.dashboard.cardsSubtext.revenueMinusExpenses', { defaultValue: 'Revenue - Expenses' })}
                     icon={Wallet}
                     trend={15.3}
                 />
                 <StatWidget
-                    title="Pending Fees"
+                    title={t('finance.dashboard.cards.pendingFees', { defaultValue: 'Pending Fees' })}
                     value={formatCurrency(stats.pendingFees)}
-                    subtext="Unpaid invoices"
+                    subtext={t('finance.dashboard.cardsSubtext.unpaidInvoices', { defaultValue: 'Unpaid invoices' })}
                     icon={CreditCard}
                     trend={-5.0}
                 />
@@ -249,8 +268,8 @@ export default function FinanceDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Income vs Expense Area Chart */}
                 <SectionCard
-                    title="Income vs Expenses"
-                    subtitle="Monthly trend for the last 6 months"
+                    title={t('finance.dashboard.charts.incomeVsExpenses.title', { defaultValue: 'Income vs Expenses' })}
+                    subtitle={t('finance.dashboard.charts.incomeVsExpenses.subtitle', { defaultValue: 'Monthly trend for the last 6 months' })}
                 >
                     <ChartSlot heightClass="h-80">
                         {({ width, height }) => (
@@ -273,8 +292,8 @@ export default function FinanceDashboard() {
                                         labelStyle={{ fontWeight: 'bold', color: 'var(--nb-color-fg)' }}
                                     />
                                     <Legend />
-                                    <Area type="monotone" dataKey="income" name="Income" stroke="var(--nb-color-accent)" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
-                                    <Area type="monotone" dataKey="expense" name="Expenses" stroke="var(--nb-color-brand)" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
+                                    <Area type="monotone" dataKey="income" name={t('finance.dashboard.legends.income', { defaultValue: 'Income' })} stroke="var(--nb-color-accent)" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
+                                    <Area type="monotone" dataKey="expense" name={t('finance.dashboard.legends.expenses', { defaultValue: 'Expenses' })} stroke="var(--nb-color-brand)" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
                             </AreaChart>
                         )}
                     </ChartSlot>
@@ -283,14 +302,17 @@ export default function FinanceDashboard() {
                 <div className="grid grid-rows-2 gap-6">
                     {/* Fee Status Pie Chart */}
                     <SectionCard
-                        title="Fee Collection Status"
-                        subtitle="Paid vs pending invoice distribution"
+                        title={t('finance.dashboard.charts.feeCollectionStatus.title', { defaultValue: 'Fee Collection Status' })}
+                        subtitle={t('finance.dashboard.charts.feeCollectionStatus.subtitle', { defaultValue: 'Paid vs pending invoice distribution' })}
                     >
                         <ChartSlot heightClass="h-48">
                             {({ width, height }) => (
                                 <PieChart width={width} height={height}>
                                             <Pie
-                                                data={stats.feeStatusDistribution}
+                                                data={(stats.feeStatusDistribution || []).map((e) => ({
+                                                    ...e,
+                                                    name: tFeeStatus(e?.name),
+                                                }))}
                                                 cx="50%"
                                                 cy="50%"
                                                 innerRadius={60}
@@ -299,7 +321,7 @@ export default function FinanceDashboard() {
                                                 paddingAngle={5}
                                                 dataKey="value"
                                             >
-                                                {stats.feeStatusDistribution.map((entry, index) => (
+                                                {(stats.feeStatusDistribution || []).map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                 ))}
                                             </Pie>
@@ -315,8 +337,8 @@ export default function FinanceDashboard() {
 
                     {/* Expense Breakdown Bar Chart */}
                     <SectionCard
-                        title="Expenses by Category"
-                        subtitle="Top expense categories (current period)"
+                        title={t('finance.dashboard.charts.expensesByCategory.title', { defaultValue: 'Expenses by Category' })}
+                        subtitle={t('finance.dashboard.charts.expensesByCategory.subtitle', { defaultValue: 'Top expense categories (current period)' })}
                     >
                         <ChartSlot heightClass="h-48">
                             {({ width, height }) => (
@@ -336,8 +358,8 @@ export default function FinanceDashboard() {
             {/* Recent Transactions */}
             <Card className="rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden">
                 <div className="px-5 py-4 bg-(--nb-color-brand) text-white border-b border-(--nb-color-brand)">
-                    <div className="text-base font-semibold">Recent Transactions</div>
-                    <div className="text-sm text-white/80 mt-1">Latest recorded fee payments and activity</div>
+                    <div className="text-base font-semibold">{t('finance.dashboard.recent.title', { defaultValue: 'Recent Transactions' })}</div>
+                    <div className="text-sm text-white/80 mt-1">{t('finance.dashboard.recent.subtitle', { defaultValue: 'Latest recorded fee payments and activity' })}</div>
                 </div>
                 <div className="p-5">
                     <StandardTable
@@ -345,15 +367,15 @@ export default function FinanceDashboard() {
                         items={stats.recentTransactions}
                         rows={stats.recentTransactions}
                         columns={[
-                            { key: 'student', label: 'Student' },
-                            { key: 'amount', label: 'Amount' },
-                            { key: 'method', label: 'Method' },
-                            { key: 'date', label: 'Date' },
-                            { key: 'status', label: 'Status' },
+                            { key: 'student', label: t('finance.dashboard.recent.columns.student', { defaultValue: 'Student' }) },
+                            { key: 'amount', label: t('finance.dashboard.recent.columns.amount', { defaultValue: 'Amount' }) },
+                            { key: 'method', label: t('finance.dashboard.recent.columns.method', { defaultValue: 'Method' }) },
+                            { key: 'date', label: t('finance.dashboard.recent.columns.date', { defaultValue: 'Date' }) },
+                            { key: 'status', label: t('finance.dashboard.recent.columns.status', { defaultValue: 'Status' }) },
                         ]}
                         storageKey="finance:dashboard:recent-transactions"
                         getRowKey={(row) => row?._id}
-                        emptyTitle="No recent transactions found."
+                        emptyTitle={t('finance.dashboard.recent.empty', { defaultValue: 'No recent transactions found.' })}
                         tableProps={{
                             shellClassName: 'ring-0 shadow-none rounded-none',
                         }}
@@ -370,7 +392,7 @@ export default function FinanceDashboard() {
                                 case 'status':
                                     return (
                                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-(--nb-color-accent-50) text-(--nb-color-brand) border border-(--nb-color-accent-100)">
-                                            Completed
+                                            {t('finance.dashboard.recent.status.completed', { defaultValue: 'Completed' })}
                                         </span>
                                     );
                                 default:

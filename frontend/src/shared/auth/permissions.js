@@ -21,3 +21,10 @@ export const promotionsAny = permsAny('promotions', actionsFor('promotions'));
 export const cohortsAny = permsAny('cohorts', actionsFor('cohorts'));
 export const transfersAny = permsAny('transfers', actionsFor('transfers'));
 export const transcriptAny = permsAny('transcript', actionsFor('transcript'));
+
+// Finance
+export const financeDashboardAny = permsAny('financeDashboard', actionsFor('financeDashboard'));
+export const financeAccountsAny = permsAny('financeAccounts', actionsFor('financeAccounts'));
+export const financeStudentAny = permsAny('financeStudent', actionsFor('financeStudent'));
+export const financePayrollAny = permsAny('financePayroll', actionsFor('financePayroll'));
+export const financeExpensesAny = permsAny('financeExpenses', actionsFor('financeExpenses'));

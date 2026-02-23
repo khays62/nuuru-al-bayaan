@@ -46,6 +46,19 @@ export const PERMISSION_CONTRACT = Object.freeze({
   // - unlock: unlock staff account from bell
   // - deactivate/activate: toggle account status from bell
   security: Object.freeze(['view', 'resetPassword', 'unlock', 'deactivate', 'activate', 'full']),
+
+  // Finance (granular tab-based permissions)
+  financeDashboard: Object.freeze(['view', 'full']),
+  financeAccounts: Object.freeze(['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'print', 'full']),
+  financeStudent: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
+  financePayroll: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
+  financeExpenses: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
+  financeConfig: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
+  financeFoundation: Object.freeze(['view', 'add', 'full']),
+  financeAppointments: Object.freeze(['view', 'add', 'edit', 'delete', 'print', 'full']),
+  financeAudit: Object.freeze(['view', 'full']),
+  financeMaintenance: Object.freeze(['run', 'full']),
+  financePrint: Object.freeze(['print', 'full']),
 });
 
 export const PERMISSION_MODULES = Object.freeze(Object.keys(PERMISSION_CONTRACT));

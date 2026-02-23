@@ -1,42 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { X, DollarSign, Save, Printer, Calendar, Info, History, Layers, CheckCircle, Smartphone } from 'lucide-react';
-import financeService from '../api/finance';
+import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
+import { accountKeys } from '../queryKeys';
+import { listAccounts as listAccountsApi } from '../api/accountsApi';
+import { useFinanceCategoriesQuery } from '../hooks/financeConfigHooks';
+import { useInvoicesQuery, usePayChargedMonthMutation } from '../hooks/studentFinanceHooks';
+
 export default function StudentResponsibilityModal({ student, row, onClose, onSuccess }) {
     const [view, setView] = useState('finance'); // finance (ledger), history (responsible history)
-    const [loading, setLoading] = useState(false);
-    const [invoices, setInvoices] = useState([]);
-    const [accounts, setAccounts] = useState([]);
     const [accountId, setAccountId] = useState('');
     const [paymentType, setPaymentType] = useState('level'); // level or receipt
     const [feeTypeFilter, setFeeTypeFilter] = useState('all'); // Filter by fee type
-    const [amountTypes, setAmountTypes] = useState([]);
     const [processingId, setProcessingId] = useState(null);
     const [editingPaid, setEditingPaid] = useState({});
 
+    const studentId = student?._id;
+
+    const invoicesQuery = useInvoicesQuery(
+        { studentId },
+        {
+            enabled: Boolean(studentId),
+            staleTime: 10_000,
+            refetchOnMount: 'always',
+            refetchOnWindowFocus: false,
+        }
+    );
+
+    const accountsQuery = useQuery({
+        queryKey: accountKeys.list({ includeInactive: false }),
+        queryFn: async ({ signal }) => {
+            const res = await listAccountsApi({ includeInactive: false }, { signal });
+            return Array.isArray(res) ? res : [];
+        },
+        staleTime: 30_000,
+        refetchOnMount: 'always',
+        refetchOnWindowFocus: false,
+    });
+
+    const categoriesQuery = useFinanceCategoriesQuery({ type: 'fee', includeInactive: false }, { staleTime: 30_000 });
+
+    const payMutation = usePayChargedMonthMutation();
+
     useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            try {
-                const [invRes, accRes, catsRes] = await Promise.all([
-                    financeService.getInvoices({ studentId: student._id }),
-                    financeService.getAccounts(),
-                    financeService.getFinanceCategories()
-                ]);
-                setInvoices(invRes.data || []);
-                setAccounts(accRes.data || accRes || []);
-                const cats = catsRes.data ? catsRes.data.filter(c => c.type === 'fee') : (Array.isArray(catsRes) ? catsRes.filter(c => c.type === 'fee') : []);
-                setAmountTypes(cats);
-            } catch {
-                toast.error("Failed to sync responsibility records");
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
-    }, [student]);
+        if (!invoicesQuery.isError && !accountsQuery.isError && !categoriesQuery.isError) return;
+        toast.error('Failed to sync responsibility records');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [invoicesQuery.isError, accountsQuery.isError, categoriesQuery.isError]);
+
+    const invoices = React.useMemo(() => {
+        const response = invoicesQuery.data;
+        const data = Array.isArray(response)
+            ? response
+            : (Array.isArray(response?.data) ? response.data : (response?.data?.data || []));
+        return Array.isArray(data) ? data : [];
+    }, [invoicesQuery.data]);
+
+    const accounts = accountsQuery.data || [];
+    const amountTypes = categoriesQuery.data || [];
+
+    const loading = Boolean(invoicesQuery.isLoading || accountsQuery.isLoading || categoriesQuery.isLoading);
 
     const filteredInvoices = invoices.filter(inv => {
         if (feeTypeFilter === 'all') return true;
@@ -54,7 +79,7 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
 
         setProcessingId(inv._id);
         try {
-            await financeService.payChargedMonth({
+            await payMutation.mutateAsync({
                 studentId: student._id,
                 month: inv.billingMonth,
                 academicYearId: inv.academicYear,
@@ -66,8 +91,6 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
             toast.success("Payment Captured");
             setEditingPaid(prev => ({ ...prev, [inv._id]: '' }));
             onSuccess?.();
-            const invRes = await financeService.getInvoices({ studentId: student._id });
-            setInvoices(invRes.data || []);
         } catch (err) {
             toast.error(err.response?.data?.message || "Payment processing failed");
         } finally {

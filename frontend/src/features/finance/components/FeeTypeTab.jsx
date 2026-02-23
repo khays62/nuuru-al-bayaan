@@ -11,6 +11,7 @@ import {
 
 import { useFinanceRealtimeInvalidation } from '../useFinanceRealtimeInvalidation';
 import { useI18n } from '../../../i18n/I18nProvider';
+import { useAuth } from '../../../auth/AuthContext';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
@@ -28,6 +29,11 @@ export default function FeeTypeTab() {
   const deleteMutation = useDeleteFeeTypeMutation();
 
   const { t } = useI18n();
+  const { hasPermission } = useAuth();
+
+  const canAdd = hasPermission('financeConfig', 'add');
+  const canEdit = hasPermission('financeConfig', 'edit');
+  const canDelete = hasPermission('financeConfig', 'delete');
 
   const isSaving = Boolean(createMutation.isPending || updateMutation.isPending);
   const loading = Boolean(feeTypesQuery.isLoading);
@@ -52,11 +58,19 @@ export default function FeeTypeTab() {
   }, [feeTypesQuery.isError, t]);
 
   const startNew = () => {
+    if (!canAdd) {
+      toast.error(t('finance.feeTypes.toasts.noAddPermission', { defaultValue: 'You do not have permission to create fee types' }));
+      return;
+    }
     setEditingId('new');
     setFormData({ name: '', mode: 'charge', discountPercent: 0, status: 'active' });
   };
 
   const startEdit = (ft) => {
+    if (!canEdit) {
+      toast.error(t('finance.feeTypes.toasts.noEditPermission', { defaultValue: 'You do not have permission to edit fee types' }));
+      return;
+    }
     setEditingId(ft._id);
     setFormData({
       name: ft.name,
@@ -72,6 +86,18 @@ export default function FeeTypeTab() {
   };
 
   const handleSave = async () => {
+    if (editingId === 'new') {
+      if (!canAdd) {
+        toast.error(t('finance.feeTypes.toasts.noAddPermission', { defaultValue: 'You do not have permission to create fee types' }));
+        return false;
+      }
+    } else {
+      if (!canEdit) {
+        toast.error(t('finance.feeTypes.toasts.noEditPermission', { defaultValue: 'You do not have permission to edit fee types' }));
+        return false;
+      }
+    }
+
     if (!formData.name || !String(formData.name).trim()) {
       toast.error(t('finance.feeTypes.toasts.nameRequired', { defaultValue: 'Name is required' }));
       return false;
@@ -112,31 +138,43 @@ export default function FeeTypeTab() {
       setEditingId(null);
       return true;
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Operation failed');
+      toast.error(e.response?.data?.message || t('finance.feeTypes.toasts.operationFailed', { defaultValue: 'Operation failed' }));
       return false;
     }
   };
 
   const handleDeactivate = async (id) => {
+    if (!canDelete) {
+      toast.error(t('finance.feeTypes.toasts.noDeletePermission', { defaultValue: 'You do not have permission to delete fee types' }));
+      return;
+    }
     if (!window.confirm(t('finance.feeTypes.confirms.deactivate', { defaultValue: 'Deactivate this fee type?' }))) return;
     try {
       await deleteMutation.mutateAsync(id);
       toast.success(t('finance.feeTypes.toasts.deactivated', { defaultValue: 'Fee type deactivated' }));
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Operation failed');
+      toast.error(e.response?.data?.message || t('finance.feeTypes.toasts.operationFailed', { defaultValue: 'Operation failed' }));
     }
   };
 
   const handleActivate = async (id) => {
+    if (!canEdit) {
+      toast.error(t('finance.feeTypes.toasts.noEditPermission', { defaultValue: 'You do not have permission to edit fee types' }));
+      return;
+    }
     try {
       await updateMutation.mutateAsync({ id, payload: { status: 'active' } });
-      toast.success('Fee type activated');
+      toast.success(t('finance.feeTypes.toasts.activated', { defaultValue: 'Fee type activated' }));
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Operation failed');
+      toast.error(e.response?.data?.message || t('finance.feeTypes.toasts.operationFailed', { defaultValue: 'Operation failed' }));
     }
   };
 
   const handleDelete = async (id) => {
+    if (!canDelete) {
+      toast.error(t('finance.feeTypes.toasts.noDeletePermission', { defaultValue: 'You do not have permission to delete fee types' }));
+      return;
+    }
     try {
       // Pre-check whether the fee type can be deleted. If referenced, backend returns 400 with code FEE_TYPE_IN_USE
       const check = await (await import('../api/finance')).default.getCanDeleteFeeType(id);
@@ -172,7 +210,15 @@ export default function FeeTypeTab() {
               <p className="text-xs font-black text-surface-400 uppercase tracking-[0.2em] mt-1">{t('finance.feeTypes.subtitle', { defaultValue: 'Personal vs Free' })}</p>
             </div>
           </div>
-          <Button onClick={startNew} variant="brand" size="lg" icon={<Plus size={18} strokeWidth={3} />} className="font-black text-xs uppercase tracking-widest">
+          <Button
+            onClick={startNew}
+            variant="brand"
+            size="lg"
+            icon={<Plus size={18} strokeWidth={3} />}
+            className="font-black text-xs uppercase tracking-widest"
+            disabled={!canAdd}
+            title={!canAdd ? t('finance.feeTypes.toasts.noAddPermission', { defaultValue: 'You do not have permission to create fee types' }) : undefined}
+          >
             {t('finance.feeTypes.create', { defaultValue: 'Create Fee Type' })}
           </Button>
         </div>
@@ -203,7 +249,16 @@ export default function FeeTypeTab() {
 
             <div className="space-y-2 md:col-span-1">
               <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">{t('finance.feeTypes.labels.status', { defaultValue: 'Status' })}</label>
-              <DropdownSelect value={formData.status} onChange={(v) => setFormData((p) => ({ ...p, status: v || 'active' }))} options={[{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]} clearable={false} className="h-11 font-black text-xs uppercase" />
+              <DropdownSelect
+                value={formData.status}
+                onChange={(v) => setFormData((p) => ({ ...p, status: v || 'active' }))}
+                options={[
+                  { value: 'active', label: t('finance.feeTypes.status.active', { defaultValue: 'Active' }) },
+                  { value: 'inactive', label: t('finance.feeTypes.status.inactive', { defaultValue: 'Inactive' }) },
+                ]}
+                clearable={false}
+                className="h-11 font-black text-xs uppercase"
+              />
             </div>
           </div>
 
@@ -212,7 +267,15 @@ export default function FeeTypeTab() {
               {String(formData.mode) === 'discount' && (
                 <>
                   <label className="text-[10px] font-black text-surface-400 uppercase tracking-widest ml-1">{t('finance.feeTypes.labels.discountPercent', { defaultValue: 'Discount Percent' })}</label>
-                  <Input type="number" min={1} max={100} className="h-11 font-bold" value={formData.discountPercent} onChange={(e) => setFormData((p) => ({ ...p, discountPercent: Number(e.target.value) }))} placeholder="1 - 100" />
+                  <Input
+                    type="number"
+                    min={1}
+                    max={100}
+                    className="h-11 font-bold"
+                    value={formData.discountPercent}
+                    onChange={(e) => setFormData((p) => ({ ...p, discountPercent: Number(e.target.value) }))}
+                    placeholder={t('finance.feeTypes.placeholders.discountPercent', { defaultValue: '1 - 100' })}
+                  />
                 </>
               )}
             </div>
@@ -231,7 +294,7 @@ export default function FeeTypeTab() {
           isLoading={loading}
           error={null}
           items={feeTypes}
-          loadingMessage="Initializing..."
+          loadingMessage={t('finance.feeTypes.loading.initializing', { defaultValue: 'Initializing...' })}
           loadingVariant="table"
           loadingRows={6}
           loadingColumns={3}
@@ -293,10 +356,13 @@ export default function FeeTypeTab() {
             }
 
             if (col.key === 'actions') {
-              const actions = [
-                { key: 'edit', label: t('finance.feeTypes.actions.edit', { defaultValue: 'Edit' }), title: t('finance.feeTypes.actions.edit', { defaultValue: 'Edit' }), tone: 'edit', icon: <Edit size={18} />, onClick: () => startEdit(ft) },
-              ];
-              actions.push({ key: 'delete', label: t('finance.feeTypes.actions.delete', { defaultValue: 'Delete' }), title: t('finance.feeTypes.actions.delete', { defaultValue: 'Delete' }), tone: 'delete', icon: <Trash2 size={18} />, onClick: () => handleDelete(ft._id) });
+              const actions = [];
+              if (canEdit) {
+                actions.push({ key: 'edit', label: t('finance.feeTypes.actions.edit', { defaultValue: 'Edit' }), title: t('finance.feeTypes.actions.edit', { defaultValue: 'Edit' }), tone: 'edit', icon: <Edit size={18} />, onClick: () => startEdit(ft) });
+              }
+              if (canDelete) {
+                actions.push({ key: 'delete', label: t('finance.feeTypes.actions.delete', { defaultValue: 'Delete' }), title: t('finance.feeTypes.actions.delete', { defaultValue: 'Delete' }), tone: 'delete', icon: <Trash2 size={18} />, onClick: () => handleDelete(ft._id) });
+              }
               return <RowActionButtons actions={actions} />;
             }
 

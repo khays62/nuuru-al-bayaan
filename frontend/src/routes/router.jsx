@@ -67,6 +67,11 @@ import {
   timetableAny,
   transcriptAny,
   transfersAny,
+  financeAccountsAny,
+  financeDashboardAny,
+  financeExpensesAny,
+  financePayrollAny,
+  financeStudentAny,
 } from './permissions';
 
 export const router = createBrowserRouter([
@@ -316,7 +321,7 @@ export const router = createBrowserRouter([
       {
         path: 'finance/dashboard',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeDashboardAny}>
             <FinanceDashboardPage />
           </ProtectedRoute>
         ),
@@ -324,7 +329,7 @@ export const router = createBrowserRouter([
       {
         path: 'finance/accounts',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeAccountsAny}>
             <FinanceAccountsPage />
           </ProtectedRoute>
         ),
@@ -332,7 +337,7 @@ export const router = createBrowserRouter([
       {
         path: 'finance/student-finance',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeStudentAny}>
             <FinanceStudentFinancePage />
           </ProtectedRoute>
         ),
@@ -340,7 +345,7 @@ export const router = createBrowserRouter([
       {
         path: 'finance/payroll',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financePayrollAny}>
             <FinancePayrollPage />
           </ProtectedRoute>
         ),
@@ -348,7 +353,7 @@ export const router = createBrowserRouter([
       {
         path: 'finance/expenses',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={financeExpensesAny}>
             <FinanceExpensesPage />
           </ProtectedRoute>
         ),

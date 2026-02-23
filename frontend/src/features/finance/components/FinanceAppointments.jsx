@@ -8,6 +8,9 @@ import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
 import { printHtmlDocument } from '../../../utils/exportTable';
+import { useRealtimeInvalidation } from '../../../shared/realtime/useRealtimeInvalidation';
+import { EVENTS } from '../../../utils/events';
+import { useAuth } from '../../../auth/AuthContext';
 
 const paymentMethods = ['Cash', 'Bank', 'Mobile Money', 'Cheque'];
 
@@ -210,6 +213,11 @@ const RescheduleModal = ({ open, onClose, onSubmit }) => {
 };
 
 export default function FinanceAppointments() {
+    const { hasPermission } = useAuth();
+    const canAddAppointment = hasPermission('financeAppointments', 'add');
+    const canEditAppointment = hasPermission('financeAppointments', 'edit');
+    const canPrint = hasPermission('financePrint', 'print');
+
     const [activeTab, setActiveTab] = useState('create');
     const [loading, setLoading] = useState(false);
     const [years, setYears] = useState([]);
@@ -373,6 +381,7 @@ export default function FinanceAppointments() {
     };
 
     const handleCreate = async () => {
+        if (!canAddAppointment) return toast.error('You do not have permission to create appointments');
         if (!selectedStudent?._id) return toast.error('Select a student');
         if (!form.academicYear) return toast.error('Select academic year');
         if (!form.classId) return toast.error('Select class');
@@ -431,6 +440,22 @@ export default function FinanceAppointments() {
         }
     };
 
+    useRealtimeInvalidation(
+        [
+            EVENTS.FINANCE_APPOINTMENTS_CHANGED,
+            EVENTS.ACCOUNTS_CHANGED,
+            EVENTS.FINANCE_CATEGORIES_CHANGED,
+        ],
+        async () => {
+            // This component uses local/manual fetching; refresh on realtime events.
+            await fetchReferenceData();
+            if (activeTab !== 'create') {
+                await loadList(activeTab);
+            }
+        },
+        { enabled: true }
+    );
+
     useEffect(() => {
         if (activeTab === 'create') return;
         loadList(activeTab);
@@ -447,17 +472,26 @@ export default function FinanceAppointments() {
     }, [studentSearch, studentClassFilter, form.academicYear, activeTab]);
 
     const openPayment = (appt) => {
+        if (!canEditAppointment) {
+            toast.error('You do not have permission to take payments for appointments');
+            return;
+        }
         setSelectedAppointment(appt);
         setPaymentModalOpen(true);
     };
 
     const openReschedule = (appt) => {
+        if (!canEditAppointment) {
+            toast.error('You do not have permission to reschedule appointments');
+            return;
+        }
         setSelectedAppointment(appt);
         setRescheduleModalOpen(true);
     };
 
     const handlePaymentSubmit = async (payload) => {
         if (!selectedAppointment?._id) return;
+        if (!canEditAppointment) return toast.error('You do not have permission to take payments for appointments');
         setLoading(true);
         try {
             await financeService.startAppointmentPayment(selectedAppointment._id, payload);
@@ -473,6 +507,7 @@ export default function FinanceAppointments() {
 
     const handleReschedule = async (payload) => {
         if (!selectedAppointment?._id) return;
+        if (!canEditAppointment) return toast.error('You do not have permission to reschedule appointments');
         setLoading(true);
         try {
             await financeService.rescheduleAppointment(selectedAppointment._id, payload);
@@ -487,6 +522,7 @@ export default function FinanceAppointments() {
     };
 
     const handleCancel = async (appt) => {
+        if (!canEditAppointment) return toast.error('You do not have permission to cancel appointments');
         if (!window.confirm('Cancel this appointment?')) return;
         setLoading(true);
         try {
@@ -501,6 +537,7 @@ export default function FinanceAppointments() {
     };
 
     const handlePrintSlip = async (appt) => {
+        if (!canPrint) return toast.error('You do not have permission to print slips');
         try {
             const data = await financeService.getAppointmentSlip(appt._id);
             const html = AppointmentSlip({ appointment: data?.appointment || appt });
@@ -534,7 +571,13 @@ export default function FinanceAppointments() {
                     return (
                         <button
                             key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
+                            onClick={() => {
+                                if (tab.key === 'create' && !canAddAppointment) {
+                                    toast.error('You do not have permission to create appointments');
+                                    return;
+                                }
+                                setActiveTab(tab.key);
+                            }}
                             className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all ${active ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'}`}
                         >
                             <Icon size={14} /> {tab.label}
@@ -803,9 +846,10 @@ export default function FinanceAppointments() {
 
                     <div className="flex gap-3">
                         <button
-                            disabled={loading}
+                            disabled={loading || !canAddAppointment}
                             onClick={handleCreate}
                             className="px-6 py-2 rounded-xl bg-blue-600 text-white font-black uppercase text-xs tracking-widest"
+                            title={!canAddAppointment ? 'You do not have permission to create appointments' : undefined}
                         >
                             Save Appointment
                         </button>
@@ -862,16 +906,18 @@ export default function FinanceAppointments() {
                                 case 'actions':
                                     return (
                                         <div className="flex items-center gap-2 justify-end">
-                                            {row?.status === 'Pending' && (
+                                            {canEditAppointment && row?.status === 'Pending' && (
                                                 <button onClick={() => openPayment(row)} className="px-2 py-1 rounded-lg bg-blue-600 text-white text-[10px] font-black uppercase flex items-center gap-1"><CreditCard size={12} /> Pay</button>
                                             )}
-                                            {row?.status === 'Pending' && (
+                                            {canEditAppointment && row?.status === 'Pending' && (
                                                 <button onClick={() => openReschedule(row)} className="px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-black uppercase">Reschedule</button>
                                             )}
-                                            {row?.status !== 'Completed' && (
+                                            {canEditAppointment && row?.status !== 'Completed' && (
                                                 <button onClick={() => handleCancel(row)} className="px-2 py-1 rounded-lg bg-red-500 text-white text-[10px] font-black uppercase">Cancel</button>
                                             )}
-                                            <button onClick={() => handlePrintSlip(row)} className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-black uppercase flex items-center gap-1"><Printer size={12} /> Slip</button>
+                                            {canPrint && (
+                                                <button onClick={() => handlePrintSlip(row)} className="px-2 py-1 rounded-lg bg-slate-900 text-white text-[10px] font-black uppercase flex items-center gap-1"><Printer size={12} /> Slip</button>
+                                            )}
                                         </div>
                                     );
                                 default:

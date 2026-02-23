@@ -8,6 +8,8 @@ import {
     useFinanceCategoriesQuery,
     useUpdateFinanceCategoryMutation,
 } from '../hooks/financeConfigHooks';
+import { useI18n } from '../../../i18n/I18nProvider';
+import { useAuth } from '../../../auth/AuthContext';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
@@ -18,6 +20,13 @@ import Modal from '../../../shared/components/ui/Modal.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 
 export default function AmountTypeTab() {
+    const { t } = useI18n();
+    const { hasPermission } = useAuth();
+
+    const canAdd = hasPermission('financeConfig', 'add');
+    const canEdit = hasPermission('financeConfig', 'edit');
+    const canDelete = hasPermission('financeConfig', 'delete');
+
     const categoriesQuery = useFinanceCategoriesQuery(
         { type: 'fee', includePreviousBalance: true, includeInactive: true },
         { staleTime: 30_000 }
@@ -54,6 +63,11 @@ export default function AmountTypeTab() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
 
+    function feeTypeLabel(ft) {
+        const key = String(ft || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        return t(`finance.studentFinance.amountTypeTab.defaults.${key}`, { defaultValue: String(ft || '') });
+    }
+
     const feeTypeOptions = useMemo(() => {
         const fromExisting = (Array.isArray(categories) ? categories : [])
             .map((c) => String(c?.feeType || '').trim())
@@ -67,12 +81,12 @@ export default function AmountTypeTab() {
             ...(pendingCustom ? [pendingCustom] : []),
         ]));
         merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        return merged;
+        return merged.map((ft) => ({ value: ft, label: feeTypeLabel(ft) }));
     }, [categories, customFeeType, extraFeeTypes]);
 
     useEffect(() => {
         if (!categoriesQuery.isError) return;
-        toast.error('Failed to load fee configurations');
+        toast.error(t('finance.studentFinance.amountTypeTab.toasts.loadFailed', { defaultValue: 'Failed to load fee configurations' }));
     }, [categoriesQuery.isError]);
 
     const onSort = (field) => {
@@ -126,29 +140,39 @@ export default function AmountTypeTab() {
     };
 
     const handleSave = async () => {
+        const requiresAdd = editingId === 'new';
+        if (requiresAdd && !canAdd) {
+            toast.error(t('finance.studentFinance.amountTypeTab.toasts.noAddPermission', { defaultValue: 'You do not have permission to add amount types' }));
+            return false;
+        }
+        if (!requiresAdd && !canEdit) {
+            toast.error(t('finance.studentFinance.amountTypeTab.toasts.noEditPermission', { defaultValue: 'You do not have permission to edit amount types' }));
+            return false;
+        }
+
         if (!formData.name) {
-            toast.error("Name is required");
+            toast.error(t('finance.studentFinance.amountTypeTab.validation.nameRequired', { defaultValue: 'Name is required' }));
             return false;
         }
 
         const finalFeeType = isCustomFeeType ? normalizeFeeType(customFeeType) : normalizeFeeType(formData.feeType);
         if (!finalFeeType) {
-            toast.error("Fee Type is required");
+            toast.error(t('finance.studentFinance.amountTypeTab.validation.feeTypeRequired', { defaultValue: 'Fee Type is required' }));
             return false;
         }
 
         const payload = {
             ...formData,
-            feeType: finalFeeType
+            feeType: finalFeeType,
         };
 
         try {
             if (editingId === 'new') {
                 await createMutation.mutateAsync(payload);
-                toast.success("Fee structure defined successfully");
+                toast.success(t('finance.studentFinance.amountTypeTab.toasts.created', { defaultValue: 'Fee structure defined successfully' }));
             } else {
                 await updateMutation.mutateAsync({ id: editingId, payload });
-                toast.success("Configuration synchronized");
+                toast.success(t('finance.studentFinance.amountTypeTab.toasts.updated', { defaultValue: 'Configuration synchronized' }));
             }
             setEditingId(null);
             setIsCustomFeeType(false);
@@ -156,7 +180,7 @@ export default function AmountTypeTab() {
             return true;
         } catch (e) {
             const msg = e?.data?.message || e?.response?.data?.message || e?.message;
-            toast.error(msg || "Process interrupted by server");
+            toast.error(msg || t('finance.studentFinance.amountTypeTab.toasts.operationFailed', { defaultValue: 'Process interrupted by server' }));
             return false;
         }
     };
@@ -169,6 +193,10 @@ export default function AmountTypeTab() {
     };
 
     const startNew = () => {
+        if (!canAdd) {
+            toast.error(t('finance.studentFinance.amountTypeTab.toasts.noAddPermission', { defaultValue: 'You do not have permission to add amount types' }));
+            return;
+        }
         setEditingId('new');
         setFormData({ name: '', type: 'fee', defaultAmount: 0, feeType: 'Standard', status: 'active' });
         setIsCustomFeeType(false);
@@ -177,6 +205,10 @@ export default function AmountTypeTab() {
     };
 
     const startEdit = (cat) => {
+        if (!canEdit) {
+            toast.error(t('finance.studentFinance.amountTypeTab.toasts.noEditPermission', { defaultValue: 'You do not have permission to edit amount types' }));
+            return;
+        }
         setEditingId(cat._id);
         const normalized = normalizeFeeType(cat.feeType) || 'Standard';
         setIsCustomFeeType(!DEFAULT_FEE_TYPES.includes(normalized));
@@ -192,13 +224,17 @@ export default function AmountTypeTab() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm("Delete this Amount Type permanently? If it is already used in invoices/appointments, deletion will be blocked — set it Inactive instead.")) return;
+        if (!canDelete) {
+            toast.error(t('finance.studentFinance.amountTypeTab.toasts.noDeletePermission', { defaultValue: 'You do not have permission to delete amount types' }));
+            return;
+        }
+        if (!window.confirm(t('finance.studentFinance.amountTypeTab.confirms.delete', { defaultValue: "Delete this Amount Type permanently? If it is already used in invoices/appointments, deletion will be blocked — set it Inactive instead." }))) return;
         try {
             const res = await deleteMutation.mutateAsync(id);
-            toast.success(res?.message || "Deleted successfully");
+            toast.success(res?.message || t('finance.studentFinance.amountTypeTab.toasts.deleted', { defaultValue: 'Deleted successfully' }));
         } catch (e) {
             const msg = e?.data?.message || e?.response?.data?.message || e?.message;
-            toast.error(msg || "Delete failed");
+            toast.error(msg || t('finance.studentFinance.amountTypeTab.toasts.deleteFailed', { defaultValue: 'Delete failed' }));
         }
     };
 
@@ -211,8 +247,8 @@ export default function AmountTypeTab() {
                             <Settings size={24} />
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter truncate">Amount Configuration</h3>
-                            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mt-1 truncate">Global Fee Definition Matrix</p>
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter truncate">{t('finance.studentFinance.amountTypeTab.title', { defaultValue: 'Amount Configuration' })}</h3>
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mt-1 truncate">{t('finance.studentFinance.amountTypeTab.subtitle', { defaultValue: 'Global Fee Definition Matrix' })}</p>
                         </div>
                     </div>
 
@@ -222,8 +258,10 @@ export default function AmountTypeTab() {
                         size="lg"
                         icon={<Plus size={18} strokeWidth={3} />}
                         className="font-black text-xs uppercase tracking-widest"
+                        disabled={!canAdd}
+                        title={!canAdd ? t('finance.studentFinance.amountTypeTab.toasts.noAddPermission', { defaultValue: 'You do not have permission to add amount types' }) : undefined}
                     >
-                        Define New Amount Type
+                        {t('finance.studentFinance.amountTypeTab.actions.defineNew', { defaultValue: 'Define New Amount Type' })}
                     </Button>
                 </div>
             </Card>
@@ -231,27 +269,27 @@ export default function AmountTypeTab() {
             <Modal
                 isOpen={editingId === 'new' || (typeof editingId === 'string' && editingId !== 'new')}
                 onClose={closeFormModal}
-                title={editingId === 'new' ? 'Define New Amount Type' : 'Edit Amount Type'}
+                title={editingId === 'new' ? t('finance.studentFinance.amountTypeTab.modal.create', { defaultValue: 'Define New Amount Type' }) : t('finance.studentFinance.amountTypeTab.modal.edit', { defaultValue: 'Edit Amount Type' })}
             >
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fee Label / Identity</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('finance.studentFinance.amountTypeTab.form.label.feeLabel', { defaultValue: 'Fee Label / Identity' })}</label>
                             <Input
                                 type="text"
                                 className="h-11 font-bold"
-                                placeholder="e.g. Monthly Tuition"
+                                placeholder={t('finance.studentFinance.amountTypeTab.placeholders.feeLabel', { defaultValue: 'e.g. Monthly Tuition' })}
                                 value={formData.name}
                                 onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
                                 autoFocus
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Default Multiplier ($)</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('finance.studentFinance.amountTypeTab.form.label.defaultMultiplier', { defaultValue: 'Default Multiplier ($)' })}</label>
                             <Input
                                 type="number"
                                 className="h-11 font-black"
-                                placeholder="0.00"
+                                placeholder={t('finance.studentFinance.amountTypeTab.placeholders.defaultAmount', { defaultValue: '0.00' })}
                                 value={formData.defaultAmount}
                                 onChange={(e) => setFormData((p) => ({ ...p, defaultAmount: e.target.value }))}
                             />
@@ -260,13 +298,13 @@ export default function AmountTypeTab() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('finance.studentFinance.amountTypeTab.form.label.status', { defaultValue: 'Status' })}</label>
                             <DropdownSelect
                                 value={formData.status}
                                 onChange={(v) => setFormData((p) => ({ ...p, status: v || 'active' }))}
                                 options={[
-                                    { value: 'active', label: 'Active' },
-                                    { value: 'inactive', label: 'Inactive' },
+                                    { value: 'active', label: t('common.status.active', { defaultValue: 'Active' }) },
+                                    { value: 'inactive', label: t('common.status.inactive', { defaultValue: 'Inactive' }) },
                                 ]}
                                 clearable={false}
                                 className="h-11 font-black text-xs uppercase"
@@ -276,13 +314,13 @@ export default function AmountTypeTab() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Transaction Category</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{t('finance.studentFinance.amountTypeTab.form.label.transactionCategory', { defaultValue: 'Transaction Category' })}</label>
                         <div className="flex gap-2">
                             {isCustomFeeType ? (
-                                <Input
+                                    <Input
                                     type="text"
                                     className="flex-1 h-11 font-black text-xs uppercase"
-                                    placeholder="Enter Fee Type"
+                                    placeholder={t('finance.studentFinance.amountTypeTab.placeholders.enterFeeType', { defaultValue: 'Enter Fee Type' })}
                                     value={customFeeType}
                                     onChange={(e) => setCustomFeeType(e.target.value)}
                                 />
@@ -290,13 +328,13 @@ export default function AmountTypeTab() {
                                 <DropdownSelect
                                     value={formData.feeType}
                                     onChange={(v) => beginFeeTypeEdit(v)}
-                                    options={feeTypeOptions.map((t) => ({ value: t, label: t }))}
+                                    options={feeTypeOptions}
                                     clearable={false}
                                     className="flex-1 h-11 font-black text-xs uppercase"
                                 />
                             )}
 
-                            <Button
+                                    <Button
                                 onClick={() => {
                                     if (isCustomFeeType) {
                                         const pendingCustom = normalizeFeeType(customFeeType);
@@ -319,7 +357,7 @@ export default function AmountTypeTab() {
                                 size="lg"
                                 className="h-11 font-black text-[10px] uppercase tracking-widest"
                             >
-                                {isCustomFeeType ? 'Use List' : 'Custom'}
+                                {isCustomFeeType ? t('finance.studentFinance.amountTypeTab.actions.useList', { defaultValue: 'Use List' }) : t('finance.studentFinance.amountTypeTab.actions.custom', { defaultValue: 'Custom' })}
                             </Button>
                         </div>
                     </div>
@@ -331,7 +369,7 @@ export default function AmountTypeTab() {
                             size="lg"
                             className="h-11 font-black text-[10px] uppercase tracking-widest"
                         >
-                            Cancel
+                            {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                         </Button>
                         <Button
                             onClick={async () => {
@@ -345,7 +383,7 @@ export default function AmountTypeTab() {
                             disabled={isSaving}
                             icon={isSaving ? <Loader2 size={18} className="animate-spin" /> : undefined}
                         >
-                            {isSaving ? 'Saving...' : 'Save'}
+                            {isSaving ? t('common.saving', { defaultValue: 'Saving...' }) : t('common.actions.save', { defaultValue: 'Save' })}
                         </Button>
                     </div>
                 </div>
@@ -356,20 +394,20 @@ export default function AmountTypeTab() {
                     isLoading={loading}
                     error={null}
                     items={tableRows}
-                    loadingMessage="Initializing Data Stream..."
+                    loadingMessage={t('finance.studentFinance.amountTypeTab.loading.initializing', { defaultValue: 'Initializing Data Stream...' })}
                     loadingVariant="table"
                     loadingRows={6}
                     loadingColumns={5}
-                    emptyTitle="No configurations detected."
+                    emptyTitle={t('finance.studentFinance.amountTypeTab.table.emptyTitle', { defaultValue: 'No configurations detected.' })}
                     emptyDescription=""
 
                     rows={currentRows}
                     columns={[
-                        { key: 'name', label: 'Fee Identity', sortable: true, field: 'name' },
-                        { key: 'defaultAmount', label: 'Default Amount', sortable: true, field: 'defaultAmount' },
-                        { key: 'feeType', label: 'Category Type', sortable: true, field: 'feeType' },
-                        { key: 'status', label: 'Status', sortable: true, field: 'status' },
-                        { key: 'actions', label: 'System Actions', sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
+                        { key: 'name', label: t('finance.studentFinance.amountTypeTab.table.columns.name', { defaultValue: 'Fee Identity' }), sortable: true, field: 'name' },
+                        { key: 'defaultAmount', label: t('finance.studentFinance.amountTypeTab.table.columns.defaultAmount', { defaultValue: 'Default Amount' }), sortable: true, field: 'defaultAmount' },
+                        { key: 'feeType', label: t('finance.studentFinance.amountTypeTab.table.columns.feeType', { defaultValue: 'Category Type' }), sortable: true, field: 'feeType' },
+                        { key: 'status', label: t('finance.studentFinance.amountTypeTab.table.columns.status', { defaultValue: 'Status' }), sortable: true, field: 'status' },
+                        { key: 'actions', label: t('finance.studentFinance.amountTypeTab.table.columns.actions', { defaultValue: 'Actions' }), sortable: false, align: 'right', noPrint: true, tdClassName: 'no-print' },
                     ]}
                     storageKey="finance:amount-types:columns:v1"
                     sortBy={sortBy}
@@ -402,39 +440,41 @@ export default function AmountTypeTab() {
                             case 'feeType':
                                 return (
                                     <span className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-200">
-                                        {cat.feeType || 'Standard'}
+										{feeTypeLabel(cat.feeType || 'Standard')}
                                     </span>
                                 );
                             case 'status':
                                 return (
                                     <div className="flex items-center gap-2">
                                         <div className={`w-2 h-2 rounded-full ${cat.status === 'active' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-slate-300'}`} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{cat.status}</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{cat.status === 'active' ? t('common.status.active', { defaultValue: 'Active' }) : t('common.status.inactive', { defaultValue: 'Inactive' })}</span>
                                     </div>
                                 );
                             case 'actions':
-                                return (
-                                    <RowActionButtons
-                                        actions={[
-                                            {
-                                                key: 'edit',
-                                                label: 'Edit',
-                                                title: 'Edit',
-                                                tone: 'edit',
-                                                icon: <Edit size={18} />,
-                                                onClick: () => startEdit(cat),
-                                            },
-                                            {
-                                                key: 'delete',
-                                                label: 'Delete',
-                                                title: 'Delete',
-                                                tone: 'delete',
-                                                icon: <Trash2 size={18} />,
-                                                onClick: () => handleDelete(cat._id),
-                                            },
-                                        ]}
-                                    />
-                                );
+                                {
+                                    const actions = [];
+                                    if (canEdit) {
+                                        actions.push({
+                                            key: 'edit',
+                                            label: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                            title: t('common.actions.edit', { defaultValue: 'Edit' }),
+                                            tone: 'edit',
+                                            icon: <Edit size={18} />,
+                                            onClick: () => startEdit(cat),
+                                        });
+                                    }
+                                    if (canDelete) {
+                                        actions.push({
+                                            key: 'delete',
+                                            label: t('common.actions.delete', { defaultValue: 'Delete' }),
+                                            title: t('common.actions.delete', { defaultValue: 'Delete' }),
+                                            tone: 'delete',
+                                            icon: <Trash2 size={18} />,
+                                            onClick: () => handleDelete(cat._id),
+                                        });
+                                    }
+                                    return <RowActionButtons actions={actions} />;
+                                }
                             default:
                                 return '';
                         }
@@ -452,9 +492,11 @@ export default function AmountTypeTab() {
                     <Shield size={24} />
                 </div>
                 <div>
-                    <h4 className="text-white font-black uppercase tracking-widest text-xs mb-2">Architectural Integrity Constraint</h4>
+                    <h4 className="text-white font-black uppercase tracking-widest text-xs mb-2">
+                        {t('finance.studentFinance.amountTypeTab.integrity.title', { defaultValue: 'Architectural Integrity Constraint' })}
+                    </h4>
                     <p className="text-slate-400 text-sm leading-relaxed max-w-4xl">
-                        Modifying default amounts will only affect future charges. Historical records are cryptographically linked to the amount defined at the time of charge generation to ensure audit trail consistency across academic years.
+                        {t('finance.studentFinance.amountTypeTab.integrity.description', { defaultValue: 'Modifying default amounts will only affect future charges. Historical records are cryptographically linked to the amount defined at the time of charge generation to ensure audit trail consistency across academic years.' })}
                     </p>
                 </div>
             </div>

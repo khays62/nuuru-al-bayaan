@@ -11,6 +11,7 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Tabs from '../../attendance/components/Tabs.jsx';
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
@@ -30,6 +31,13 @@ import ConfirmationModal from '../common/ConfirmationModal';
 
 const ReceiptTab = () => {
     const { t } = useI18n();
+    const { hasPermission } = useAuth();
+
+    const canCharge = hasPermission('financeStudent', 'add');
+    const canUpdateCharge = hasPermission('financeStudent', 'edit');
+    const canDeleteCharge = hasPermission('financeStudent', 'delete');
+    const canDownload = hasPermission('financeStudent', 'download');
+    const canPrint = hasPermission('financePrint', 'print');
 
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
@@ -238,77 +246,89 @@ const ReceiptTab = () => {
             <Card className="p-6 rounded-3xl shadow-(--nb-shadow-md) no-print">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                        onClick={() => setShowChargeModal(true)}
-                        variant="brand"
-                        size="lg"
-                        icon={<PlusCircle size={18} />}
-                        className="rounded-lg font-bold"
-                    >
-                        {t('finance.studentFinance.receiptTab.actions.charge', { defaultValue: 'Charge' })}
-                    </Button>
-                    <Button
-                        onClick={() => setShowUpdateModal(true)}
-                        variant="primary"
-                        size="lg"
-                        icon={<Edit size={18} />}
-                        className="rounded-lg font-bold"
-                    >
-                        {t('finance.studentFinance.receiptTab.actions.updateCharge', { defaultValue: 'Update Charge' })}
-                    </Button>
-                    <Button
-                        onClick={() => setShowDeleteModal(true)}
-                        variant="danger"
-                        size="lg"
-                        icon={<Trash2 size={18} />}
-                        className="rounded-lg font-bold"
-                    >
-                        {t('finance.studentFinance.receiptTab.actions.deleteCharge', { defaultValue: 'Delete Charge' })}
-                    </Button>
+                    {canCharge ? (
+                        <Button
+                            onClick={() => setShowChargeModal(true)}
+                            variant="brand"
+                            size="lg"
+                            icon={<PlusCircle size={18} />}
+                            className="rounded-lg font-bold"
+                        >
+                            {t('finance.studentFinance.receiptTab.actions.charge', { defaultValue: 'Charge' })}
+                        </Button>
+                    ) : null}
+
+                    {canUpdateCharge ? (
+                        <Button
+                            onClick={() => setShowUpdateModal(true)}
+                            variant="primary"
+                            size="lg"
+                            icon={<Edit size={18} />}
+                            className="rounded-lg font-bold"
+                        >
+                            {t('finance.studentFinance.receiptTab.actions.updateCharge', { defaultValue: 'Update Charge' })}
+                        </Button>
+                    ) : null}
+
+                    {canDeleteCharge ? (
+                        <Button
+                            onClick={() => setShowDeleteModal(true)}
+                            variant="danger"
+                            size="lg"
+                            icon={<Trash2 size={18} />}
+                            className="rounded-lg font-bold"
+                        >
+                            {t('finance.studentFinance.receiptTab.actions.deleteCharge', { defaultValue: 'Delete Charge' })}
+                        </Button>
+                    ) : null}
 
                     {/* Print Group */}
-                        <div className="flex gap-2 lg:mx-2 border-l border-(--nb-color-border) pl-2">
-                        <Button
-                            onClick={() => setShowMonthlyPrint(true)}
-                            variant="neutral"
-                            size="md"
-                            icon={<Printer size={16} />}
-                            className="rounded-lg font-bold text-xs"
-                        >
-                            {t('finance.studentFinance.receiptTab.actions.printMonthly', { defaultValue: 'Monthly' })}
-                        </Button>
-                        <Button
-                            onClick={() => setShowDailyPrint(true)}
-                            variant="neutral"
-                            size="md"
-                            icon={<Printer size={16} />}
-                            className="rounded-lg font-bold text-xs"
-                        >
-                            {t('finance.studentFinance.receiptTab.actions.printDaily', { defaultValue: 'Daily' })}
-                        </Button>
-                        <Button
-                            onClick={() => setShowPassCardPrint(true)}
-                            variant="neutral"
-                            size="md"
-                            icon={<GraduationCap size={16} />}
-                            className="rounded-lg font-bold text-xs"
-                        >
-                            {t('finance.studentFinance.receiptTab.actions.printPasscard', { defaultValue: 'Passcard' })}
-                        </Button>
-                        </div>
+                        {canPrint ? (
+                            <div className="flex gap-2 lg:mx-2 border-l border-(--nb-color-border) pl-2">
+                                <Button
+                                    onClick={() => setShowMonthlyPrint(true)}
+                                    variant="neutral"
+                                    size="md"
+                                    icon={<Printer size={16} />}
+                                    className="rounded-lg font-bold text-xs"
+                                >
+                                    {t('finance.studentFinance.receiptTab.actions.printMonthly', { defaultValue: 'Monthly' })}
+                                </Button>
+                                <Button
+                                    onClick={() => setShowDailyPrint(true)}
+                                    variant="neutral"
+                                    size="md"
+                                    icon={<Printer size={16} />}
+                                    className="rounded-lg font-bold text-xs"
+                                >
+                                    {t('finance.studentFinance.receiptTab.actions.printDaily', { defaultValue: 'Daily' })}
+                                </Button>
+                                <Button
+                                    onClick={() => setShowPassCardPrint(true)}
+                                    variant="neutral"
+                                    size="md"
+                                    icon={<GraduationCap size={16} />}
+                                    className="rounded-lg font-bold text-xs"
+                                >
+                                    {t('finance.studentFinance.receiptTab.actions.printPasscard', { defaultValue: 'Passcard' })}
+                                </Button>
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Export Group */}
                     <div className="flex gap-2">
-                        <Button
-                            onClick={exportToCSV}
-                            variant="neutral"
-                            size="lg"
-                            icon={<FileText size={18} />}
-                            className="rounded-lg font-bold"
-                        >
-                            {t('finance.studentFinance.receiptTab.actions.excelExport', { defaultValue: 'Excel Export' })}
-                        </Button>
+                        {canDownload ? (
+                            <Button
+                                onClick={exportToCSV}
+                                variant="neutral"
+                                size="lg"
+                                icon={<FileText size={18} />}
+                                className="rounded-lg font-bold"
+                            >
+                                {t('finance.studentFinance.receiptTab.actions.excelExport', { defaultValue: 'Excel Export' })}
+                            </Button>
+                        ) : null}
                     </div>
                 </div>
 
@@ -501,7 +521,7 @@ const ReceiptTab = () => {
 
             {/* Modal Components */}
             {
-                showChargeModal && (
+                showChargeModal && canCharge && (
                     <StudentChargeModal
                         onClose={() => setShowChargeModal(false)}
                         onSuccess={handleSearch}
@@ -519,12 +539,12 @@ const ReceiptTab = () => {
                 )
             }
 
-            {showMonthlyPrint && <PrintMonthlyInvoiceModal onClose={() => setShowMonthlyPrint(false)} />}
-            {showDailyPrint && <PrintDailyInvoiceModal onClose={() => setShowDailyPrint(false)} />}
-            {showPassCardPrint && <PrintPassCardModal onClose={() => setShowPassCardPrint(false)} />}
+            {showMonthlyPrint && canPrint && <PrintMonthlyInvoiceModal onClose={() => setShowMonthlyPrint(false)} />}
+            {showDailyPrint && canPrint && <PrintDailyInvoiceModal onClose={() => setShowDailyPrint(false)} />}
+            {showPassCardPrint && canPrint && <PrintPassCardModal onClose={() => setShowPassCardPrint(false)} />}
 
             {
-                showUpdateModal && (
+                showUpdateModal && canUpdateCharge && (
                     <UpdateChargeModal
                         onClose={() => setShowUpdateModal(false)}
                         onSuccess={handleSearch}
@@ -533,7 +553,7 @@ const ReceiptTab = () => {
             }
 
             {
-                showDeleteModal && (
+                showDeleteModal && canDeleteCharge && (
                     <DeleteChargeModal
                         onClose={() => setShowDeleteModal(false)}
                         onSuccess={handleSearch}
@@ -549,15 +569,25 @@ const ReceiptTab = () => {
 
 export default function StudentFees() {
     const { t } = useI18n();
+    const { hasPermission } = useAuth();
 
     const [activeTab, setActiveTab] = useState('receipt');
+
+    const canViewConfig = hasPermission('financeConfig', 'view');
 
     const tabs = [
         { id: 'receipt', label: t('finance.studentFinance.tabs.receipt', { defaultValue: 'Receipt' }), icon: Receipt },
         { id: 'previousBalance', label: t('finance.studentFinance.tabs.previousBalance', { defaultValue: 'Previous Balance' }), icon: Wallet },
-        { id: 'amountType', label: t('finance.studentFinance.tabs.amountType', { defaultValue: 'Amount Type' }), icon: Settings },
-        { id: 'feeType', label: t('finance.studentFinance.tabs.feeType', { defaultValue: 'Fee Type' }), icon: Settings },
+        canViewConfig ? { id: 'amountType', label: t('finance.studentFinance.tabs.amountType', { defaultValue: 'Amount Type' }), icon: Settings } : null,
+        canViewConfig ? { id: 'feeType', label: t('finance.studentFinance.tabs.feeType', { defaultValue: 'Fee Type' }), icon: Settings } : null,
     ];
+
+    const visibleTabs = useMemo(() => tabs.filter(Boolean), [tabs]);
+
+    useEffect(() => {
+        if (visibleTabs.some((tab) => tab.id === activeTab)) return;
+        setActiveTab(visibleTabs[0]?.id || 'receipt');
+    }, [activeTab, visibleTabs]);
 
     return (
         <div className="space-y-6">
@@ -568,7 +598,7 @@ export default function StudentFees() {
                             value={activeTab}
                             onChange={setActiveTab}
                             tone="blue"
-                            options={tabs.map((tab) => {
+                            options={visibleTabs.map((tab) => {
                                 const Icon = tab.icon;
                                 return {
                                     value: tab.id,
@@ -596,7 +626,7 @@ export default function StudentFees() {
                     <AmountTypeTab />
                 </div>
                 <div className={activeTab === 'feeType' ? 'block' : 'hidden'}>
-                    <FeeTypeTab />
+                    {canViewConfig ? <FeeTypeTab /> : null}
                 </div>
             </div>
         </div>

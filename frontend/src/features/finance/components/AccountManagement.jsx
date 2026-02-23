@@ -26,9 +26,20 @@ import { listAccounts as listAccountsApi, createAccount as createAccountApi, upd
 import { accountKeys } from '../queryKeys';
 
 import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function AccountManagement() {
     const { t } = useI18n();
+    const { hasPermission } = useAuth();
+
+    const canCreateAccount = hasPermission('financeAccounts', 'add');
+    const canEditAccount = hasPermission('financeAccounts', 'edit');
+    const canDeleteAccount = hasPermission('financeAccounts', 'delete');
+    const canTransfer = hasPermission('financeAccounts', 'transfer');
+    const canRecordIncome = hasPermission('financeAccounts', 'income');
+    const canAccountsDownload = hasPermission('financeAccounts', 'download');
+    const canPrint = hasPermission('financePrint', 'print');
+    const canViewAudit = hasPermission('financeAudit', 'view');
 
     const getAccountTypeLabel = useCallback((raw) => {
         const v = String(raw || '');
@@ -408,7 +419,7 @@ export default function AccountManagement() {
                             </span>
                         )
                     },
-                    {
+                    canViewAudit ? {
                         value: 'ledger',
                         label: (
                             <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
@@ -416,8 +427,8 @@ export default function AccountManagement() {
                                 {t('finance.accounts.tabs.ledgerHistory', { defaultValue: 'General Ledger History' })}
                             </span>
                         )
-                    },
-                ]}
+                    } : null,
+                ].filter(Boolean)}
             />
         </div>
     );
@@ -438,30 +449,38 @@ export default function AccountManagement() {
                                 <p className="text-xs text-slate-400 font-medium font-mono uppercase tracking-widest mt-1">{t('finance.accounts.sections.institutionAccountsSubtitle', { defaultValue: 'Real-time liquidity management' })}</p>
                             </div>
                             <div className="flex gap-2">
-                                <ActionButton
-                                    variant="neutral"
-                                    icon={<ArrowRightLeft size={16} />}
-                                    onClick={() => setShowTransferModal(true)}
-                                    disabled={isTransferring || isRecordingIncome || isCreating || isUpdating || isDeleting}
-                                >
-                                    {t('common.actions.transfer', { defaultValue: 'Transfer' })}
-                                </ActionButton>
-                                <ActionButton
-                                    variant="neutral"
-                                    icon={<DollarSign size={16} />}
-                                    onClick={() => setShowIncomeModal(true)}
-                                    disabled={isTransferring || isRecordingIncome || isCreating || isUpdating || isDeleting}
-                                >
-                                    {t('finance.accounts.actions.income', { defaultValue: 'Income' })}
-                                </ActionButton>
-                                <ActionButton
-                                    variant="brand"
-                                    icon={<Plus size={16} />}
-                                    onClick={() => setShowCreateModal(true)}
-                                    disabled={isTransferring || isRecordingIncome || isCreating || isUpdating || isDeleting}
-                                >
-                                    {t('finance.accounts.actions.newAccount', { defaultValue: 'New Account' })}
-                                </ActionButton>
+                                {canTransfer ? (
+                                    <ActionButton
+                                        variant="neutral"
+                                        icon={<ArrowRightLeft size={16} />}
+                                        onClick={() => setShowTransferModal(true)}
+                                        disabled={isTransferring || isRecordingIncome || isCreating || isUpdating || isDeleting}
+                                    >
+                                        {t('common.actions.transfer', { defaultValue: 'Transfer' })}
+                                    </ActionButton>
+                                ) : null}
+
+                                {canRecordIncome ? (
+                                    <ActionButton
+                                        variant="neutral"
+                                        icon={<DollarSign size={16} />}
+                                        onClick={() => setShowIncomeModal(true)}
+                                        disabled={isTransferring || isRecordingIncome || isCreating || isUpdating || isDeleting}
+                                    >
+                                        {t('finance.accounts.actions.income', { defaultValue: 'Income' })}
+                                    </ActionButton>
+                                ) : null}
+
+                                {canCreateAccount ? (
+                                    <ActionButton
+                                        variant="brand"
+                                        icon={<Plus size={16} />}
+                                        onClick={() => setShowCreateModal(true)}
+                                        disabled={isTransferring || isRecordingIncome || isCreating || isUpdating || isDeleting}
+                                    >
+                                        {t('finance.accounts.actions.newAccount', { defaultValue: 'New Account' })}
+                                    </ActionButton>
+                                ) : null}
                             </div>
                         </div>
 
@@ -486,7 +505,7 @@ export default function AccountManagement() {
                                             <div className="mt-2 flex justify-end">
                                                 <RowActionButtons
                                                     actions={[
-                                                        {
+                                                        canEditAccount ? {
                                                             key: 'edit',
                                                             label: t('common.actions.edit', { defaultValue: 'Edit' }),
                                                             title: t('common.actions.edit', { defaultValue: 'Edit' }),
@@ -505,8 +524,8 @@ export default function AccountManagement() {
                                                                 });
                                                                 setShowEditModal(true);
                                                             },
-                                                        },
-                                                        {
+                                                        } : null,
+                                                        canDeleteAccount ? {
                                                             key: 'delete',
                                                             label: t('common.actions.delete', { defaultValue: 'Delete' }),
                                                             title: t('common.actions.delete', { defaultValue: 'Delete' }),
@@ -514,8 +533,8 @@ export default function AccountManagement() {
                                                             icon: <Trash2 size={16} />,
                                                             disabled: isDeleting || deletingAccountId === String(acc._id),
                                                             onClick: () => handleDeleteAccount(acc),
-                                                        },
-                                                    ]}
+                                                        } : null,
+                                                    ].filter(Boolean)}
                                                 />
                                             </div>
                                         </div>
@@ -582,19 +601,26 @@ export default function AccountManagement() {
                                 </div>
 
                                 <div className="shrink-0 flex items-center gap-2">
-                                    <ActionButton
-                                        variant="outline"
-                                        icon={<Printer size={16} />}
-                                        disabled={!ledgerCanExport}
-                                        onClick={() => { if (ledgerCanExport) setTimeout(() => window.print(), 0); }}
-                                        title={t('common.actions.print', { defaultValue: 'Print' })}
-                                    >
-                                        {t('common.actions.print', { defaultValue: 'Print' })}
-                                    </ActionButton>
-                                    <PdfDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
-                                    <ExcelDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
-                                    <CsvDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
-                                    <CopyTableButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                    {canPrint ? (
+                                        <ActionButton
+                                            variant="outline"
+                                            icon={<Printer size={16} />}
+                                            disabled={!ledgerCanExport}
+                                            onClick={() => { if (ledgerCanExport) setTimeout(() => window.print(), 0); }}
+                                            title={t('common.actions.print', { defaultValue: 'Print' })}
+                                        >
+                                            {t('common.actions.print', { defaultValue: 'Print' })}
+                                        </ActionButton>
+                                    ) : null}
+
+                                    {canAccountsDownload ? (
+                                        <>
+                                            <PdfDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                            <ExcelDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                            <CsvDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                            <CopyTableButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                        </>
+                                    ) : null}
                                 </div>
                             </div>
 

@@ -4,6 +4,10 @@ import FinanceCategory from '../../models/FinanceCategory.js';
 
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 
+const sendPrintError = (res, status, code, message, extra = {}) => {
+  return res.status(status).json({ code, message, ...extra });
+};
+
 function escapeRegex(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -42,9 +46,9 @@ export async function printMonthlyInvoices(req, res) {
   try {
     const { month, classId, academicYearId, categoryId, includePartial, includeUnpaid, status } = req.query;
 
-    if (!month) return res.status(400).json({ message: 'month is required (YYYY-MM)' });
+    if (!month) return sendPrintError(res, 400, 'FIN_PRINT_MONTH_REQUIRED', 'month is required (YYYY-MM)');
     const range = parseMonthRange(month);
-    if (!range) return res.status(400).json({ message: 'Invalid month format. Expected YYYY-MM' });
+    if (!range) return sendPrintError(res, 400, 'FIN_PRINT_MONTH_INVALID', 'Invalid month format. Expected YYYY-MM');
 
     // Default behavior for monthly printing: Paid + Partial only.
     let statusList = ['Paid', 'Partial'];
@@ -58,7 +62,7 @@ export async function printMonthlyInvoices(req, res) {
       else if (s === 'paid') statusList = ['Paid'];
       else if (s === 'partial') statusList = ['Partial'];
       else if (s === 'unpaid') statusList = ['Unpaid'];
-      else return res.status(400).json({ message: "Invalid status. Use: Paid | Partial | Unpaid | All" });
+      else return sendPrintError(res, 400, 'FIN_PRINT_STATUS_INVALID', 'Invalid status. Use: Paid | Partial | Unpaid | All');
     }
     const paidInMonthTx = await FeeTransaction.find({
       transactionType: 'Payment',
@@ -88,11 +92,11 @@ export async function printMonthlyInvoices(req, res) {
     };
 
     if (classId) {
-      if (!isValidObjectId(classId)) return res.status(400).json({ message: 'Invalid classId' });
+      if (!isValidObjectId(classId)) return sendPrintError(res, 400, 'FIN_PRINT_CLASSID_INVALID', 'Invalid classId');
       query.class = classId;
     }
     if (academicYearId) {
-      if (!isValidObjectId(academicYearId)) return res.status(400).json({ message: 'Invalid academicYearId' });
+      if (!isValidObjectId(academicYearId)) return sendPrintError(res, 400, 'FIN_PRINT_ACADEMICYEARID_INVALID', 'Invalid academicYearId');
       query.$and = [
         { status: { $ne: 'Cancelled' } },
         { $or: query.__statusOrPaid },
@@ -108,7 +112,7 @@ export async function printMonthlyInvoices(req, res) {
     }
     let categoryNameForFallback = null;
     if (categoryId) {
-      if (!isValidObjectId(categoryId)) return res.status(400).json({ message: 'Invalid categoryId' });
+      if (!isValidObjectId(categoryId)) return sendPrintError(res, 400, 'FIN_PRINT_CATEGORYID_INVALID', 'Invalid categoryId');
 
       // Legacy safety: some invoices may have items with a name but missing items.category.
       // In that case, allow matching by the category name.
@@ -250,7 +254,7 @@ export async function printMonthlyInvoices(req, res) {
     });
   } catch (error) {
     console.error('printMonthlyInvoices Error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ code: 'FIN_PRINT_SERVER_ERROR', message: 'Server error' });
   }
 }
 
@@ -266,9 +270,9 @@ export async function printDailyInvoices(req, res) {
   try {
     const { from, to, method } = req.query;
 
-    if (!from || !to) return res.status(400).json({ message: 'from and to are required' });
+    if (!from || !to) return sendPrintError(res, 400, 'FIN_PRINT_DATES_REQUIRED', 'from and to are required');
     const range = parseDateRange(from, to);
-    if (!range) return res.status(400).json({ message: 'Invalid from/to date range' });
+    if (!range) return sendPrintError(res, 400, 'FIN_PRINT_DATERANGE_INVALID', 'Invalid from/to date range');
 
     const query = {
       transactionType: 'Payment',
@@ -311,7 +315,7 @@ export async function printDailyInvoices(req, res) {
     });
   } catch (error) {
     console.error('printDailyInvoices Error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ code: 'FIN_PRINT_SERVER_ERROR', message: 'Server error' });
   }
 }
 
@@ -327,7 +331,7 @@ export async function getReceiptPrintPayload(req, res) {
     const { transactionId } = req.params;
     const { mode } = req.query;
 
-    if (!isValidObjectId(transactionId)) return res.status(400).json({ message: 'Invalid transactionId' });
+    if (!isValidObjectId(transactionId)) return sendPrintError(res, 400, 'FIN_PRINT_TRANSACTIONID_INVALID', 'Invalid transactionId');
 
     const tx = await FeeTransaction.findById(transactionId)
       .populate({
@@ -349,7 +353,7 @@ export async function getReceiptPrintPayload(req, res) {
         .populate('student', 'fullName studentId contactNumber isFree')
       .populate('recordedBy', 'fullName username');
 
-    if (!tx) return res.status(404).json({ message: 'Transaction not found' });
+    if (!tx) return sendPrintError(res, 404, 'FIN_PRINT_TRANSACTION_NOT_FOUND', 'Transaction not found');
 
     // Note: UI prints using shared PrintHeader/PrintFooter; backend returns normalized payload only.
     const invoice = tx.invoice;
@@ -371,7 +375,7 @@ export async function getReceiptPrintPayload(req, res) {
     res.json(payload);
   } catch (error) {
     console.error('getReceiptPrintPayload Error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ code: 'FIN_PRINT_SERVER_ERROR', message: 'Server error' });
   }
 }
 
@@ -387,7 +391,7 @@ export async function getPaymentGroupReceiptPayload(req, res) {
     const { paymentGroupId } = req.params;
     const { mode } = req.query;
 
-    if (!isValidObjectId(paymentGroupId)) return res.status(400).json({ message: 'Invalid paymentGroupId' });
+    if (!isValidObjectId(paymentGroupId)) return sendPrintError(res, 400, 'FIN_PRINT_PAYMENTGROUPID_INVALID', 'Invalid paymentGroupId');
 
     let txs = await FeeTransaction.find({ paymentGroup: paymentGroupId, transactionType: 'Payment', status: 'Completed' })
       .populate({
@@ -436,7 +440,7 @@ export async function getPaymentGroupReceiptPayload(req, res) {
         .populate('account', 'name type');
 
       if (!single || single.transactionType !== 'Payment' || single.status !== 'Completed') {
-        return res.status(404).json({ message: 'Payment group not found' });
+        return sendPrintError(res, 404, 'FIN_PRINT_PAYMENT_GROUP_NOT_FOUND', 'Payment group not found');
       }
 
       const invoice = single.invoice;
@@ -496,7 +500,7 @@ export async function getPaymentGroupReceiptPayload(req, res) {
     });
   } catch (error) {
     console.error('getPaymentGroupReceiptPayload Error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ code: 'FIN_PRINT_SERVER_ERROR', message: 'Server error' });
   }
 }
 
@@ -511,8 +515,8 @@ export async function getPaymentGroupReceiptPayload(req, res) {
 export async function getPassCardsByClass(req, res) {
   try {
     const { classId, academicYearId, examType, validUntil } = req.query;
-    if (classId && !isValidObjectId(classId)) return res.status(400).json({ message: 'Invalid classId' });
-    if (academicYearId && !isValidObjectId(academicYearId)) return res.status(400).json({ message: 'Invalid academicYearId' });
+    if (classId && !isValidObjectId(classId)) return sendPrintError(res, 400, 'FIN_PRINT_CLASSID_INVALID', 'Invalid classId');
+    if (academicYearId && !isValidObjectId(academicYearId)) return sendPrintError(res, 400, 'FIN_PRINT_ACADEMICYEARID_INVALID', 'Invalid academicYearId');
 
     const Enrollment = (await import('../../models/Enrollment.js')).default;
 
@@ -593,6 +597,6 @@ export async function getPassCardsByClass(req, res) {
     });
   } catch (error) {
     console.error('getPassCardsByClass Error:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ code: 'FIN_PRINT_SERVER_ERROR', message: 'Server error' });
   }
 }

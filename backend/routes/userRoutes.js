@@ -18,6 +18,8 @@ const router = express.Router();
 router.use(protect);
 router.use(authorizeRoles('admin'));
 
+const objectIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
+
 const userBodySchema = z.object({
   fullName: z.string().trim().min(1).max(128).optional(),
   username: z.string().trim().min(1).max(64),
@@ -53,29 +55,29 @@ router.get(
 
 router.put(
   "/:id",
-  validate({ params: z.object({ id: z.string().min(1) }).strip(), body: userBodySchema }),
+  validate({ params: z.object({ id: objectIdSchema }).strip(), body: userBodySchema }),
   updateUser
 );
 router.delete(
   "/:id",
-  validate({ params: z.object({ id: z.string().min(1) }).strip() }),
+  validate({ params: z.object({ id: objectIdSchema }).strip() }),
   deleteUser
 );
 router.patch(
   "/:id/toggle",
-  validate({ params: z.object({ id: z.string().min(1) }).strip() }),
+  validate({ params: z.object({ id: objectIdSchema }).strip() }),
   toggleUserStatus
 ); // ✅ matches frontend call now
 router.get(
   "/:id",
-  validate({ params: z.object({ id: z.string().min(1) }).strip() }),
+  validate({ params: z.object({ id: objectIdSchema }).strip() }),
   getUserById
 );
 
 router.get(
   "/:id/logs",
   validate({
-    params: z.object({ id: z.string().min(1) }).strip(),
+    params: z.object({ id: objectIdSchema }).strip(),
     query: z.object({ page: z.coerce.number().optional(), limit: z.coerce.number().optional() }).strip().optional(),
   }),
   getUserAuditLogs

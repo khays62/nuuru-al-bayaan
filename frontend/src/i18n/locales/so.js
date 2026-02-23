@@ -54,6 +54,99 @@ export default {
         month: 'Bil',
         year: 'Sanad',
       },
+      previousBalanceTab: {
+        placeholders: {
+          search: 'Raadi ID Arday, Magac ama Telefoon…',
+          searchShort: 'Raadi…',
+          grade: 'Darajo',
+          shift: 'Shift',
+          section: 'Qayb',
+        },
+        filters: {
+          showAll: 'Muujin Dhammaan',
+          showPrev: 'Muujin Haraaga Hore',
+        },
+        actions: {
+          save: 'Kaydi',
+          add: 'Ku dar',
+          reset: 'Dib u dejin',
+          resetTitle: 'Dib u dejin filters',
+        },
+        toasts: {
+          fetchFailed: 'Lama soo qaadin xogta haraaga ardayda',
+          noPreviousBalanceCategory: 'Abuur Nooca Lacagta ee la yiraahdo "Previous Balance" marka hore',
+          saving: 'Waa la kaydinayaa haraagyadii hore...',
+          saved: 'Haraagyadii hore waa la kaydiyay',
+          saveFailed: 'Kaydinta haraaga horeway fashilantay',
+        },
+        validation: {
+          enterAtLeastOne: 'Geli ugu yaraan hal qaddar haraag ah',
+          validAmountGreaterThanZero: 'Geli qaddar sax ah (> 0)',
+        },
+        loading: {
+          openingArchives: 'Furaya archives…',
+        },
+        empty: {
+          title: 'Diiwaan looma helin xulashadan.',
+        },
+      },
+      amountTypeTab: {
+        title: 'Qaabeynta Nooca Lacagta',
+        subtitle: 'Qaab-dhismeedka guud ee noocyada lacagta',
+        actions: {
+          defineNew: 'Ku qeex Nooca Lacagta Cusub',
+          custom: 'Custom',
+          useList: 'Isticmaal Liiska',
+        },
+        form: {
+          label: {
+            feeLabel: 'Sumadda Fee-ga',
+            defaultMultiplier: 'Multiplier-ka Asaliga ah ($)',
+            status: 'Xaalad',
+            transactionCategory: 'Qaybta Hawlgalka',
+          },
+        },
+        modal: {
+          create: 'Ku dar Nooca Lacagta',
+          edit: 'Tafatir Nooca Lacagta',
+        },
+        placeholders: {
+          feeLabel: 'Tusaale: Kharashka Bishii',
+          defaultAmount: '0.00',
+          enterFeeType: 'Geli Nooca Fee-ga',
+        },
+        validation: {
+          nameRequired: 'Magaca waa qasab',
+          feeTypeRequired: 'Nooca fee-ga waa qasab',
+        },
+        confirms: {
+          delete: 'Ma tirtiraysaa Noocan Lacagta si joogto ah? Haddii hore loo isticmaalay, tirtiridda waa la xanibi doonaa — ka dhig Inactive beddelkeeda.',
+        },
+        toasts: {
+          loadFailed: 'Lama soo dejin qaababka lacagta',
+          created: 'Qaab-dhismeedka lacagta waa la abuuray',
+          updated: 'Qaab-dhismeedka lacagta waa la cusbooneysiiyay',
+          deleted: 'Nooca lacagta waa la tirtiray',
+          deleteFailed: 'Tirtiridu way fashilantay',
+          operationFailed: 'Hawshu way fashilantay',
+        },
+        table: {
+          emptyTitle: 'Kuma jiro qaabeyn la helay.',
+          columns: {
+            name: 'Aqoonsiga Fee-ga',
+            defaultAmount: 'Lacagta Asaliga ah',
+            feeType: 'Nooca',
+            status: 'Xaalad',
+            actions: 'Ficillo',
+          },
+          loading: {
+            initializing: 'Bilaabaya xogta…',
+          },
+        },
+        defaults: {
+          standard: 'Standard',
+        },
+      },
     },
 
     selected: 'La doortay',
@@ -2468,6 +2561,79 @@ export default {
   },
 
   finance: {
+    page: {
+      title: 'Maareynta Maaliyadda',
+      subtitle: 'Maamul xisaabaadka, fee-yada, payroll, iyo kharashaadka.',
+      tabs: {
+        dashboard: 'Dashboard',
+        accounts: 'Xisaabaad',
+        studentFinance: 'Maaliyadda Ardayda',
+        payroll: 'Payroll',
+        expenses: 'Kharashyo',
+      },
+    },
+
+    dashboard: {
+      header: {
+        title: 'Dashboard-ka Maaliyadda',
+        subtitle: 'Dulmar ku saabsan dakhliga, kharashaadka, iyo xaaladda fee-yada.',
+      },
+      cards: {
+        totalRevenue: 'Wadarta Dakhli',
+        totalExpenses: 'Wadarta Kharash',
+        netIncome: 'Dakhli Saafi',
+        pendingFees: 'Fee-yada Sugaya',
+      },
+      cardsSubtext: {
+        collectedFeesThisYear: 'Fee-yada la ururiyay sanadkan',
+        operationalCosts: 'Kharashaadka hawlgalka',
+        revenueMinusExpenses: 'Dakhli - Kharash',
+        unpaidInvoices: 'Invoice aan la bixin',
+      },
+      charts: {
+        incomeVsExpenses: {
+          title: 'Dakhli vs Kharash',
+          subtitle: 'Isbeddelka bilaha 6-da bilood ee u dambeeyay',
+        },
+        feeCollectionStatus: {
+          title: 'Xaaladda Ururinta Fee-yada',
+          subtitle: 'Qaybinta invoice-yada la bixiyay iyo kuwa sugaya',
+        },
+        expensesByCategory: {
+          title: 'Kharashyo Qaybaha',
+          subtitle: 'Qaybaha kharashka ugu badan (xilligan)',
+        },
+      },
+      legends: {
+        income: 'Dakhli',
+        expenses: 'Kharash',
+      },
+      feeStatus: {
+        paid: 'La bixiyay',
+        partial: 'Qayb ahaan',
+        unpaid: 'Aan la bixin',
+        cancelled: 'La kansalay',
+      },
+      recent: {
+        title: 'Macaamilo Ugu Dambeeyay',
+        subtitle: 'Bixinta fee-yada ee ugu dambeeyay iyo dhaqdhaqaaq',
+        empty: 'Ma jiraan macaamilo dhowaan ah.',
+        columns: {
+          student: 'Arday',
+          amount: 'Lacag',
+          method: 'Hab',
+          date: 'Taariikh',
+          status: 'Xaalad',
+        },
+        status: {
+          completed: 'Dhammaystiran',
+        },
+      },
+      errors: {
+        loadFailedTitle: 'Dashboard-ka lama soo dejin',
+        loadFailedDesc: 'Fadlan refresh samee ama mar kale isku day wax yar kadib.',
+      },
+    },
     accounts: {
       tabs: {
         institutionAccounts: 'Xisaabaadka Hay\'adda',
@@ -2726,6 +2892,20 @@ export default {
         FIN_AMOUNT_INVALID: 'Lacagta la geliyay sax ma aha',
         FIN_DATE_INVALID: 'Taariikhda la geliyay sax ma aha',
 
+        FIN_PRINT_MONTH_REQUIRED: 'Bisha waa qasab (YYYY-MM)',
+        FIN_PRINT_MONTH_INVALID: 'Qaabka bisha sax ma aha. Waxaa la rabaa: YYYY-MM',
+        FIN_PRINT_STATUS_INVALID: 'Status sax ma aha. Isticmaal: Paid | Partial | Unpaid | All',
+        FIN_PRINT_CLASSID_INVALID: 'ID-ga fasalka/qaybta sax ma aha',
+        FIN_PRINT_ACADEMICYEARID_INVALID: 'ID-ga sanadka tacliinta sax ma aha',
+        FIN_PRINT_CATEGORYID_INVALID: 'ID-ga nooca lacagta/qaybta sax ma aha',
+        FIN_PRINT_DATES_REQUIRED: 'Taariikhaha from iyo to waa qasab',
+        FIN_PRINT_DATERANGE_INVALID: 'Nidaamka taariikhaha (from/to) sax ma aha',
+        FIN_PRINT_TRANSACTIONID_INVALID: 'ID-ga transaction-ka sax ma aha',
+        FIN_PRINT_TRANSACTION_NOT_FOUND: 'Transaction lama helin',
+        FIN_PRINT_PAYMENTGROUPID_INVALID: 'ID-ga payment group-ka sax ma aha',
+        FIN_PRINT_PAYMENT_GROUP_NOT_FOUND: 'Payment group lama helin',
+        FIN_PRINT_SERVER_ERROR: 'Server-ka ayaa khalad galay',
+
         FIN_EXPENSE_CATEGORY_REQUIRED: 'Qaybta kharashka waa qasab',
         FIN_EXPENSE_CATEGORY_NOT_FOUND: 'Qaybta kharashka lama helin',
         FIN_EXPENSE_BUDGET_EXCEEDED: 'Miisaaniyadda bishan waa la dhaafay',
@@ -2754,6 +2934,55 @@ export default {
       page: {
         kicker: 'Maaliyad',
         title: 'Mushahaaro',
+      },
+
+      runModal: {
+        title: 'Hab-socodka Mushaharka',
+        subtitle: 'Socodsiinta mushaharka: {{month}}',
+        labels: {
+          targetMonth: 'Bisha Mushaharka',
+          scope: 'Xadka Hawsha',
+        },
+        scopes: {
+          all: {
+            label: 'Guud ahaan',
+            desc: 'U samee mushahar dhammaan shaqaalaha firfircoon.',
+          },
+          single: {
+            label: 'Hal Shaqaale',
+            desc: 'U samee mushahar shaqsi gaar ah.',
+          },
+        },
+        placeholders: {
+          search: 'Ka raadi liiska...',
+        },
+        empty: {
+          search: 'Lama helin wax ku habboon.',
+        },
+        fallbacks: {
+          personnel: 'Shaqaale',
+        },
+        bulk: {
+          title: 'Bilow Guud',
+          staffAllActive: 'dhammaan shaqaalaha firfircoon',
+          desc: 'Nidaamku wuxuu abuuri doonaa mushahar qabyada ah oo u ah {{staff}} muddada {{month}}.',
+          tags: {
+            autoApply: 'Gunooyin si toos ah',
+            metadata: 'Xogta diiwaangelinta',
+          },
+        },
+        actions: {
+          previous: 'Tallaabadii Hore',
+          discard: 'Ka noqo',
+          processing: 'Waa socotaa...',
+          configure: 'Deji Istaraatiijiyad',
+          execute: 'Fuli Tolidda',
+        },
+        toasts: {
+          staffLoadFailed: 'Lama soo dejin liiska shaqaalaha',
+          pipelineStarted: 'Hab-socodka mushaharka si guul leh ayuu u bilaabmay',
+          pipelineStartFailed: 'Lama bilaabi karin mushaharka',
+        },
       },
 
       modals: {
@@ -2958,7 +3187,162 @@ export default {
       },
     },
 
+    graduationPaymentModal: {
+      title: 'Bixinta Qalinjabinta',
+      labels: {
+        selectInvoice: 'Dooro Biilka Qalinjabinta',
+        balance: 'Hadhaaga',
+        paid: 'La bixiyay',
+        paymentAmount: 'Lacagta Bixinta',
+        paymentMethod: 'Habka Bixinta',
+      },
+      methods: {
+        cash: 'Kaash',
+        bank: 'Wareejin Bangi',
+        edahab: 'E-Dahab',
+        sahay: 'Sahal / Zaad',
+      },
+      actions: {
+        cancel: 'Ka noqo',
+        processing: 'Waa socotaa...',
+        processAndPrint: 'Bixi oo Daabac Rasiidka',
+      },
+      toasts: {
+        selectInvoiceRequired: 'Dooro biil aad bixinayso',
+        amountInvalid: 'Geli lacag sax ah',
+        receiptGenerated: 'Rasiidka qalinjabinta waa la soo saaray',
+        paymentFailed: 'Diiwaangelinta bixinta way fashilantay',
+      },
+      description: 'Bixinta lacagta qalinjabinta: {{title}}',
+    },
+
+    printModals: {
+      actions: {
+        close: 'Xir',
+        print: 'Daabac',
+        generating: 'Waa la diyaarinayaa…',
+        reset: 'Dib u dejin',
+      },
+      common: {
+        placeholders: {
+          chooseYear: 'Dooro Sanad',
+          chooseMonth: 'Dooro Bil',
+          allFeeTypes: 'Dhammaan Noocyada Fee-ga',
+          search: 'Raadi…',
+          grade: 'Darajo',
+          shift: 'Shift',
+          campusWide: 'Dugsiga oo dhan (Default)',
+          allClasses: 'Dhammaan Fasallada',
+        },
+      },
+      titles: {
+        monthlyVouchers: 'SYD ERP - Vouchers Bille',
+        dailyAudit: 'SYD ERP - Audit Maalinle',
+        passcards: 'Kaadhadhka Passcard - {{examType}}',
+      },
+      toasts: {
+        noInvoices: 'Invoice la daabaco lama helin',
+        noTransactions: 'Transactions la daabaco lama helin',
+        noPasscards: 'Kaadhadh la daabaco lama helin',
+      },
+      voucher: {
+        title: 'Rasiid',
+        labels: {
+          date: 'Taariikh',
+          rv: 'RV',
+          class: 'Fasal',
+          id: 'ID',
+          studentName: 'Magaca Ardayga',
+          shift: 'Shift',
+          description: 'Sharaxaad',
+          month: 'Bil',
+          balance: 'Haraag',
+          paid: 'La bixiyay',
+          fee: 'Fee',
+          discount: 'Dhimmis',
+        },
+        note: '* Fiiro: Rasiidkani wuxuu matalaa lacagta heerka lagu heshiiyay.',
+        hormarisSuffix: ' (Hormaris)',
+        hormarisPayment: 'Bixin Hormaris ({{count}} bil)',
+        defaults: {
+          monthlyFee: 'Fee Bil',
+        },
+      },
+      monthly: {
+        title: 'Billing badan',
+        subtitle: 'Samee Statement Bille',
+        fields: {
+          academicYear: 'Sanadka Waxbarashada',
+          billingMonth: 'Bisha Billing-ka',
+          feeCategory: 'Qaybta Fee-ga / Nooca Lacagta',
+          classFiltering: 'Shaandhayn Fasalka (Ikhtiyaari)',
+        },
+        toasts: {
+          syncFailed: 'Sync report-ka waa fashilmay',
+          checkMonth: 'Hubi field-ka bisha',
+          selectAcademicYear: 'Dooro Sanadka Waxbarashada',
+          generationFailed: 'Sameynta report-ka waa fashilantay',
+        },
+      },
+      dailyAudit: {
+        title: 'Audit Journal',
+        subtitle: 'Xiritaan Maalinle (Taariikh ahaan)',
+        auditTitle: 'Audit Maaliyadeed Maalinle (Professional)',
+        fields: {
+          fromDate: 'Laga bilaabo',
+          toDate: 'Ilaa',
+        },
+        toasts: {
+          generationFailed: 'Sameynta audit-ka waa fashilantay',
+        },
+      },
+      passcards: {
+        title: 'Academic Hub',
+        subtitle: 'Kaadhadhka Clearance Ardayda',
+        fields: {
+          academicYear: 'Sanadka Waxbarashada (Target)',
+          chooseClass: 'Dooro Fasalka',
+          examType: 'Nooca Imtixaanka',
+        },
+        placeholders: {
+          chooseExam: 'Dooro Imtixaan',
+        },
+        examTypes: {
+          midterm: 'Imtixaanka Dhexe',
+          final: 'Imtixaanka Dhammaadka',
+        },
+        layout: {
+          portrait: 'Portrait',
+          landscape: 'Landscape',
+        },
+        toasts: {
+          syncFailed: 'Sync passcard-ka waa fashilmay',
+          generationFailed: 'Sameynta passcard-ka waa fashilantay',
+        },
+        validity: 'Wuxuu shaqaynayaa {{from}} ilaa {{to}}',
+        labels: {
+          academicYear: 'Sanadka Waxbarashada',
+          date: 'Taariikh',
+          clearanceCard: 'Kaadhka Clearance',
+          studentName: 'Magaca Ardayga',
+          class: 'Fasal',
+          shift: 'Shift',
+          id: 'ID',
+          room: 'Qol',
+          hall: 'Hall',
+          photo: 'Sawir',
+        },
+        notice: 'Arday kasta oo isku dayo khiyaano ma laha xuquuq uu ku sii wato waxbarashadiisa dugsiga',
+        stamp: 'Shaabad rasmi ah (Registrar)',
+      },
+    },
+
     studentFinance: {
+      printTab: {
+        toasts: {
+          noPrintPermission: 'Ma lihid oggolaansho aad ku daabacdo',
+        },
+      },
       tabs: {
         receipt: 'Rasiid',
         previousBalance: 'Haraagii Hore',
@@ -2968,6 +3352,9 @@ export default {
 
       paymentModal: {
         title: 'Maaliyadda Ardayga',
+        print: {
+          arrears: 'Dayn',
+        },
         tabs: {
           ledger: 'Ledger',
           history: 'Taariikh',
@@ -3059,6 +3446,127 @@ export default {
           hormarisFailed: 'Bixinta Hormaris waa fashilantay',
           preparingStatement: 'Diyaarinaya statement...',
           printFailed: 'Daabacaaddu waa fashilantay',
+        },
+      },
+
+      amountTypeTab: {
+        title: 'Qaabeynta Nooca Lacagta',
+        subtitle: 'Qaab-dhismeedka guud ee noocyada lacagta',
+        actions: {
+          defineNew: 'Ku qeex Nooca Lacagta Cusub',
+          custom: 'Custom',
+          useList: 'Isticmaal Liiska',
+        },
+        form: {
+          label: {
+            feeLabel: 'Sumadda Fee-ga',
+            defaultMultiplier: 'Multiplier-ka Asaliga ah ($)',
+            status: 'Xaalad',
+            transactionCategory: 'Qaybta Hawlgalka',
+          },
+        },
+        modal: {
+          create: 'Ku dar Nooca Lacagta',
+          edit: 'Tafatir Nooca Lacagta',
+        },
+        placeholders: {
+          feeLabel: 'Tusaale: Kharashka Bishii',
+          defaultAmount: '0.00',
+          enterFeeType: 'Geli Nooca Fee-ga',
+        },
+        validation: {
+          nameRequired: 'Magaca waa qasab',
+          feeTypeRequired: 'Nooca fee-ga waa qasab',
+        },
+        confirms: {
+          delete: 'Ma tirtiraysaa Noocan Lacagta si joogto ah? Haddii hore loo isticmaalay, tirtiridda waa la xanibi doonaa — ka dhig Inactive beddelkeeda.',
+        },
+        toasts: {
+          loadFailed: 'Lama soo dejin qaababka lacagta',
+          created: 'Qaab-dhismeedka lacagta waa la abuuray',
+          updated: 'Qaab-dhismeedka lacagta waa la cusbooneysiiyay',
+          deleted: 'Nooca lacagta waa la tirtiray',
+          deleteFailed: 'Tirtiridu way fashilantay',
+          operationFailed: 'Hawshu way fashilantay',
+          noAddPermission: 'Ma lihid oggolaansho aad ku darto noocyada lacagta',
+          noEditPermission: 'Ma lihid oggolaansho aad ku tafatirto noocyada lacagta',
+          noDeletePermission: 'Ma lihid oggolaansho aad ku tirtirto noocyada lacagta',
+        },
+        integrity: {
+          title: 'Xaddidaadda Dhismaha (Integrity)',
+          description: 'Beddelidda lacagaha default-ka ah waxay saameynaysaa oo keliya lacagaha mustaqbalka. Diiwaannada hore waxaa si ammaan ah (crypto) loogu xiraa lacagtii waqtiga la dallacay si loo hubiyo audit trail-ka sannadaha waxbarashada.',
+        },
+        table: {
+          emptyTitle: 'Kuma jiro qaabeyn la helay.',
+          columns: {
+            name: 'Aqoonsiga Fee-ga',
+            defaultAmount: 'Lacagta Asaliga ah',
+            feeType: 'Nooca',
+            status: 'Xaalad',
+            actions: 'Ficillo',
+          },
+          loading: {
+            initializing: 'Bilaabaya xogta…',
+          },
+        },
+        defaults: {
+          standard: 'Standard',
+          mandatory: 'Waajib',
+          registration: 'Diiwaangelin',
+          graduation: 'Qalin-jabin',
+          optional: 'Ikhtiyaari',
+          personal: 'Shakhsi',
+        },
+      },
+
+      previousBalanceTab: {
+        placeholders: {
+          search: 'Raadi ID Arday, Magac ama Telefoon…',
+          searchShort: 'Raadi…',
+          grade: 'Darajo',
+          shift: 'Shift',
+          section: 'Qayb',
+          amount: '0.00',
+        },
+        filters: {
+          showAll: 'Muujin Dhammaan',
+          showPrev: 'Muujin Haraaga Hore',
+        },
+        actions: {
+          save: 'Kaydi',
+          add: 'Ku dar',
+          reset: 'Dib u dejin',
+          resetTitle: 'Dib u dejin filters',
+          viewInfo: 'Eeg Macluumaad',
+        },
+        toasts: {
+          fetchFailed: 'Lama soo qaadin xogta haraaga ardayda',
+          noPreviousBalanceCategory: 'Abuur Nooca Lacagta ee la yiraahdo "Previous Balance" marka hore',
+          saving: 'Waa la kaydinayaa haraagyadii hore...',
+          saved: 'Haraagyadii hore waa la kaydiyay',
+          saveFailed: 'Kaydinta haraaga horeway fashilantay',
+        },
+        validation: {
+          enterAtLeastOne: 'Geli ugu yaraan hal qaddar haraag ah',
+          validAmountGreaterThanZero: 'Geli qaddar sax ah (> 0)',
+        },
+        loading: {
+          openingArchives: 'Furaya archives…',
+        },
+        table: {
+          columns: {
+            studentId: 'ID',
+            fullName: 'Magaca Ardayga',
+            contact: 'Xiriir',
+            class: 'Fasalka',
+            balance: 'Haraag',
+            actions: 'Ficillo',
+          },
+          currentBalance: 'Hadda: {{amount}}',
+          bfAccount: 'B/F ACCOUNT',
+        },
+        empty: {
+          title: 'Diiwaan looma helin xulashadan.',
         },
       },
 
@@ -3166,6 +3674,9 @@ export default {
           dailyAuditLedger: 'Audit Maalinle',
           enrollmentPasscards: 'Kaadhadhka Diiwaangelinta',
         },
+        defaults: {
+          passcardsExamType: 'Diiwaangelin',
+        },
         loading: {
           streamingRegistry: 'Soo dejinaya liiska…',
         },
@@ -3187,11 +3698,218 @@ export default {
             'Daabacaadda invoice-yo badan waxay qaadan kartaa ilaa 30 ilbiriqsi si ay u soo saarto watermark tayo-sare leh.',
         },
       },
+
+      updateChargeModal: {
+        title: 'Habka Cusbooneysiinta Maaliyadda',
+        auditNotice:
+          'Isbeddel kasta oo halkan lagu sameeyo waxaa lagu diiwaangeliyaa audit logs joogto ah oo leh before/after. Xisaabinta haraaga si otomaatig ah ayey u dhacdaa.',
+        workflows: {
+          correction: {
+            title: 'Cusbooneysii Lacagta Fee-ga',
+            desc: 'Sax qalad bini’aadmi oo ku jira qaddarka fee-ga',
+          },
+          monthlyDiscount: {
+            title: 'Ku dar Dhimis Bille',
+            desc: 'Deeq/Scholarship hal-mar ah oo bil gaar ah',
+          },
+          undoCharges: {
+            title: 'Ka Noqo Lacagaha',
+            desc: 'Jooji lacagaha aan la bixin ee bilaha la doortay',
+          },
+          overallDiscount: {
+            title: 'Ku dar Dhimis Guud',
+            desc: 'Deeq joogto ah oo ku dhacda lacagaha mustaqbalka',
+          },
+        },
+        discountTypes: {
+          fixed: 'Lacag go’an ($)',
+          percentage: 'Boqolkiiba (%)',
+        },
+        labels: {
+          studentId: 'ID Arday',
+          feeCategory: 'Qaybta Fee-ga',
+          discountType: 'Nooca Dhimista',
+          billingMonth: 'Bisha Xisaabinta',
+          multipleMonths: 'Bilo badan',
+          newCorrectAmount: 'Qaddarka Saxda ah ($)',
+          discountValue: 'Qaddarka Dhimista',
+          reason: 'Sababta Isbeddelka',
+        },
+        placeholders: {
+          studentId: 'Tusaale: DU1S1A62',
+          chooseFee: 'Dooro Fee...',
+          searchFeeCategories: 'Raadi qaybaha fee-ga…',
+          amount: '0.00',
+          reason: 'Sharax sababta isbeddelkan loo sameynayo (Audit waa qasab)',
+        },
+        actions: {
+          cancel: 'Jooji',
+          back: 'Dib u noqo',
+          processing: 'Waa la shaqaynayaa…',
+          execute: 'Fulii',
+        },
+        confirms: {
+          undoCharges: 'Tani waxay joojinaysaa lacagaha aan la bixin ee bilaha la doortay. Sii wad?',
+        },
+        toasts: {
+          loadConfigFailed: 'Lama soo dejin xogta qaabeynta',
+          enterValidStudentId: 'Fadlan geli ID arday sax ah',
+          feeCategoryAndMonthRequired: 'Qaybta fee-ga iyo bisha waa qasab',
+          selectAtLeastOneMonth: 'Dooro ugu yaraan hal bil',
+          enterAmount: 'Fadlan geli qaddar',
+          enterDiscountValue: 'Fadlan geli qaddarka dhimista',
+          reasonMinLength: 'Fadlan bixi sabab macno leh (ugu yaraan 5 xaraf)',
+          cancelledSuccess: 'Lacagaha waa la joojiyay ({{count}})',
+          noneFoundToCancel: 'Lama helin lacag aan la bixin oo ku habboon in la joojiyo',
+          updateSuccess: 'Cusbooneysiinta waa guuleysatay, audit log-na waa la sameeyay',
+          operationFailed: 'Hawshu way fashilantay',
+        },
+      },
+
+      chargeModal: {
+        title: 'Kudar Lacag Arday',
+        steps: {
+          one: 'Tallaabo 1: Dooro Habka',
+          two: 'Tallaabo 2: Buuxi Foomka Lacag-gelinta',
+        },
+        labels: {
+          chargeMethod: 'Habka Lacag-gelinta',
+          studentRegistrationId: 'ID Diiwaangelinta Ardayga',
+          selectTargetClass: 'Dooro Fasalka Bartilmaameedka',
+          amountType: 'Nooca Lacagta',
+          feeType: 'Nooca Fee-ga',
+          enterAmount: 'Geli Lacag ($)',
+          billingMonth: 'Bisha Xisaabinta',
+          multipleMonths: 'Bilo badan',
+          chargeDate: 'Taariikhda Lacag-gelinta',
+        },
+        placeholders: {
+          studentRegistrationId: 'Tusaale: STU-1001',
+          grade: 'Darajo',
+          shift: 'Shift',
+          section: 'Qayb',
+          search: 'Raadi…',
+          selectType: '-- Dooro Nooca --',
+          searchAmountTypes: 'Raadi noocyada lacagta…',
+          amount: '0.00',
+        },
+        actions: {
+          reset: 'Dib u dejin',
+          close: 'Xir',
+          back: 'Dib u noqo',
+          processing: 'Waa la shaqaynayaa...',
+          next: 'Tallaabada xigta',
+          chargeStudents: 'Ku dar lacag ardayda',
+        },
+        scopes: {
+          all: 'Dhammaan',
+          single: 'Arday Keliya',
+          class: 'Sida Fasalka/Darajada',
+        },
+        feeTypes: {
+          regular: 'Caadi',
+          free: 'Bilaash',
+        },
+        validation: {
+          selectAmountType: 'Dooro Nooca Lacagta',
+          enterStudentId: 'Geli ID Arday',
+          selectClass: 'Dooro Fasalka',
+          selectAtLeastOneMonth: 'Dooro ugu yaraan hal bil',
+        },
+        toasts: {
+          loadConfigFailed: 'Lama soo dejin xogta qaabeynta',
+          chargeRecorded: 'Lacag-gelintu waa guuleysatay',
+          chargeFailed: 'Lacag-gelintu way fashilantay',
+        },
+      },
+
+      recordPaymentModal: {
+        title: 'Diiwaangeli Bixin',
+        subtitle: 'Invoice ama Hormaris',
+        types: {
+          invoice: 'Bixi Invoice',
+          hormaris: 'Hormaris (Hore)',
+        },
+        summary: {
+          payingFor: 'Bixinaysaa:',
+          student: 'Arday:',
+          totalBalance: 'Wadar Haraag:',
+          hormarisHint: 'Tani waxay ku shubi doontaa account-ka ardayga fee-yada mustaqbalka.',
+        },
+        labels: {
+          amountToCredit: 'Lacagta la credit-gareynayo',
+          amountToPay: 'Lacagta la bixinayo',
+          targetMonth: 'Bisha Bartilmaameedka (YYYY-MM)',
+          method: 'Hab',
+          reference: 'Tixraac #',
+        },
+        placeholders: {
+          optional: 'Ikhtiyaari',
+        },
+        actions: {
+          cancel: 'Jooji',
+          processing: 'Waa la shaqaynayaa...',
+          confirm: 'Xaqiiji Bixinta',
+        },
+        toasts: {
+          recorded: 'Bixinta waa la diiwaangeliyay',
+          failed: 'Diiwaangelinta bixinta waa fashilantay',
+          noAddPermission: 'Ma lihid oggolaansho aad ku diiwaangeliso bixin',
+        },
+      },
+
+      deleteChargesModal: {
+        title: 'Tirtir Lacagaha',
+        warning: 'Tani waxay joojinaysaa invoice-yada aan la bixin ee ku jira ledger-ka ardayda iyadoo la raacayo shuruudaha aad dooratay.',
+        labels: {
+          deletionScope: 'Baaxadda Tirtirka',
+          studentRegistrationId: 'ID Diiwaangelinta Ardayga',
+          selectTargetClass: 'Dooro Fasalka Bartilmaameedka',
+          amountType: 'Nooca Lacagta',
+          year: 'Sannad',
+          billingMonth: 'Bisha Xisaabinta',
+          multipleMonths: 'Bilo badan',
+          createdDate: 'Taariikhda Abuurista',
+          useDateFilter: 'Isticmaal Filter Taariikh',
+        },
+        placeholders: {
+          studentRegistrationId: 'Tusaale: STU-1001',
+          grade: 'Darajo',
+          shift: 'Shift',
+          section: 'Qayb',
+          search: 'Raadi…',
+          allTypes: '-- Dhammaan Noocyada --',
+          searchAmountTypes: 'Raadi noocyada lacagta…',
+        },
+        scopes: {
+          all: 'Tirtir Dhammaan Lacagaha',
+          single: 'Arday Keliya',
+          class: 'Sida Fasalka/Darajada',
+        },
+        actions: {
+          reset: 'Dib u dejin',
+          close: 'Xir',
+          deleting: 'Tirtirayaa...',
+          deleteCharges: 'Tirtir Lacagaha',
+        },
+        confirms: {
+          critical: 'MUHIIM: Ficilkan wuxuu si joogto ah u tirtirayaa diiwaannada lacagaha. Ma hubtaa inaad sii waddo?',
+        },
+        toasts: {
+          loadConfigFailed: 'Lama soo dejin xogta qaabeynta',
+          selectAtLeastOneMonth: 'Dooro ugu yaraan hal bil',
+          invalidBillingMonthYear: 'Bisha/Sannadka ma saxna',
+          selectAmountType: 'Dooro Nooca Lacagta ee la tirtirayo',
+          deletedSuccess: 'Lacagaha waa la tirtiray ({{count}})',
+          noneFound: 'Lama helin lacag aan la bixin oo ku habboon in la tirtiro',
+          deletionFailed: 'Tirtiridu way fashilantay',
+        },
+      },
     },
 
     feeTypes: {
       title: 'Qaabeynta Noocyada Lacagta',
-      subtitle: 'Personal vs Free',
+      subtitle: 'Shakhsi vs Bilaash',
       create: 'Abuur Nooca Fee-ga',
       modal: {
         create: 'Abuur Nooca Fee-ga',
@@ -3210,9 +3928,9 @@ export default {
         actions: 'Howlgallo',
       },
       behaviors: {
-        charge: 'Regular',
-        waive: 'Free / Waive',
-        discount: 'Discount',
+        charge: 'Lacag Bixin',
+        waive: 'Bilaash / Ka dhaaf',
+        discount: 'Dhimis (%)',
       },
       status: {
         active: 'Firfircoon',
@@ -3223,8 +3941,14 @@ export default {
         delete: 'Tirtir',
         save: 'Kaydi',
       },
+      placeholders: {
+        discountPercent: '1 - 100',
+      },
+      loading: {
+        initializing: 'Diyaarinayaa...',
+      },
       saving: 'Waa la kaydinayaa…',
-      emptyTitle: 'No fee types defined.',
+      emptyTitle: 'Noocyada fee-ga lama qeexin.',
       confirms: {
         deactivate: 'Ma joojinaysaa noocan fee-ga?',
         permanentDelete: 'Ma tirtiraysaa noocan fee-ga si joogto ah? Ficilkaani dib looma celin karo.',
@@ -3235,9 +3959,13 @@ export default {
         discountInvalid: 'Boqolkiiba dhimistu waa inay noqotaa 1 ilaa 100',
         created: 'Nooca fee-ga waa la abuuray',
         updated: 'Nooca fee-ga waa la cusbooneysiiyay',
+        activated: 'Nooca fee-ga waa la dhaqaajiyay',
         deleted: 'Nooca fee-ga waa la tirtiray',
         deactivated: 'Nooca fee-ga waa la joojiyay',
-        deleteBlocked: 'Cannot delete — this fee type is referenced by other records.',
+        deleteBlocked: 'Lama tirtiri karo — noocan fee-ga waxaa laga isticmaalaa diiwaanno kale.',
+        noAddPermission: 'Ma lihid oggolaansho aad ku abuurto noocyada fee-ga',
+        noEditPermission: 'Ma lihid oggolaansho aad ku tafatirto noocyada fee-ga',
+        noDeletePermission: 'Ma lihid oggolaansho aad ku tirtirto noocyada fee-ga',
         operationFailed: 'Hawshu way fashilantay',
       },
     },

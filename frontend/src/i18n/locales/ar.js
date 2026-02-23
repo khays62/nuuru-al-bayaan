@@ -50,6 +50,68 @@ export default {
       subject: 'المادة',
       cohort: 'الدفعة',
       status: 'الحالة',
+
+      dashboard: {
+        header: {
+          title: 'لوحة التحكم المالية',
+          subtitle: 'نظرة عامة على الإيرادات والمصروفات وحالة الرسوم.',
+        },
+        cards: {
+          totalRevenue: 'إجمالي الإيرادات',
+          totalExpenses: 'إجمالي المصروفات',
+          netIncome: 'صافي الدخل',
+          pendingFees: 'الرسوم المعلّقة',
+        },
+        cardsSubtext: {
+          collectedFeesThisYear: 'الرسوم المحصّلة هذا العام',
+          operationalCosts: 'تكاليف التشغيل',
+          revenueMinusExpenses: 'الإيرادات - المصروفات',
+          unpaidInvoices: 'فواتير غير مدفوعة',
+        },
+        charts: {
+          incomeVsExpenses: {
+            title: 'الدخل مقابل المصروفات',
+            subtitle: 'الاتجاه الشهري لآخر 6 أشهر',
+          },
+          feeCollectionStatus: {
+            title: 'حالة تحصيل الرسوم',
+            subtitle: 'توزيع الفواتير المدفوعة وغير المدفوعة',
+          },
+          expensesByCategory: {
+            title: 'المصروفات حسب الفئة',
+            subtitle: 'أعلى فئات المصروفات (الفترة الحالية)',
+          },
+        },
+        legends: {
+          income: 'الدخل',
+          expenses: 'المصروفات',
+        },
+        feeStatus: {
+          paid: 'مدفوع',
+          partial: 'جزئي',
+          unpaid: 'غير مدفوع',
+          cancelled: 'ملغى',
+        },
+        recent: {
+          title: 'أحدث المعاملات',
+          subtitle: 'آخر مدفوعات الرسوم والنشاط',
+          empty: 'لا توجد معاملات حديثة.',
+          columns: {
+            student: 'الطالب',
+            amount: 'المبلغ',
+            method: 'الطريقة',
+            date: 'التاريخ',
+            status: 'الحالة',
+          },
+          status: {
+            completed: 'مكتمل',
+          },
+        },
+        errors: {
+          loadFailedTitle: 'فشل تحميل لوحة التحكم',
+          loadFailedDesc: 'يرجى تحديث الصفحة أو المحاولة مرة أخرى بعد قليل.',
+        },
+      },
       any: 'أي',
     },
 
@@ -122,6 +184,102 @@ export default {
         week: 'أسبوع',
         month: 'شهر',
         year: 'سنة',
+      },
+      previousBalanceTab: {
+        placeholders: {
+          search: 'ابحث برقم الطالب أو الاسم أو الهاتف…',
+          searchShort: 'ابحث…',
+          grade: 'الصف',
+          shift: 'الدوام',
+          section: 'الشعبة',
+        },
+        filters: {
+          showAll: 'عرض الكل',
+          showPrev: 'عرض الرصيد السابق',
+        },
+        actions: {
+          save: 'حفظ',
+          add: 'إضافة',
+          reset: 'إعادة ضبط',
+          resetTitle: 'إعادة ضبط الفلاتر',
+        },
+        toasts: {
+          fetchFailed: 'فشل جلب بيانات أرصدة الطلاب',
+          noPreviousBalanceCategory: 'أنشئ نوع مبلغ باسم "Previous Balance" أولاً',
+          saving: 'جارٍ حفظ الأرصدة السابقة...',
+          saved: 'تم حفظ الأرصدة السابقة',
+          saveFailed: 'فشل حفظ الأرصدة السابقة',
+        },
+        validation: {
+          enterAtLeastOne: 'أدخل قيمة رصيد واحدة على الأقل',
+          validAmountGreaterThanZero: 'أدخل مبالغ صالحة (> 0)',
+        },
+        loading: {
+          openingArchives: 'جارٍ فتح الأرشيف…',
+        },
+        empty: {
+          title: 'لا توجد سجلات لهذا الاختيار.',
+        },
+      },
+      amountTypeTab: {
+        title: 'إعداد نوع المبلغ',
+        subtitle: 'مصفوفة تعريف الرسوم العامة',
+        actions: {
+          defineNew: 'تعريف نوع مبلغ جديد',
+          custom: 'مخصص',
+          useList: 'استخدم القائمة',
+        },
+        form: {
+          label: {
+            feeLabel: 'وسم الرسوم',
+            defaultMultiplier: 'المضاعف الافتراضي ($)',
+            status: 'الحالة',
+            transactionCategory: 'فئة المعاملة',
+          },
+        },
+        modal: {
+          create: 'إضافة نوع مبلغ',
+          edit: 'تعديل نوع المبلغ',
+        },
+        placeholders: {
+          feeLabel: 'مثال: رسوم شهرية',
+          defaultAmount: '0.00',
+          enterFeeType: 'أدخل نوع الرسوم',
+        },
+        validation: {
+          nameRequired: 'الاسم مطلوب',
+          feeTypeRequired: 'نوع الرسوم مطلوب',
+        },
+        confirms: {
+          delete: 'هل تريد حذف نوع المبلغ هذا نهائياً؟ إذا تم استخدامه من قبل، فسيتم حظر الحذف — اجعله غير مفعل بدلاً من ذلك.',
+        },
+        toasts: {
+          loadFailed: 'فشل تحميل إعدادات المبالغ',
+          created: 'تم تعريف هيكل المبالغ',
+          updated: 'تمت مزامنة الإعدادات',
+          deleted: 'تم حذف نوع المبلغ',
+          deleteFailed: 'فشل الحذف',
+          operationFailed: 'فشل الإجراء',
+          noAddPermission: 'ليست لديك صلاحية لإضافة أنواع المبالغ',
+          noEditPermission: 'ليست لديك صلاحية لتعديل أنواع المبالغ',
+          noDeletePermission: 'ليست لديك صلاحية لحذف أنواع المبالغ',
+        },
+        table: {
+          emptyTitle: 'لا توجد إعدادات.',
+          columns: {
+            name: 'معرف الرسوم',
+            defaultAmount: 'المبلغ الافتراضي',
+            feeType: 'النوع',
+            status: 'الحالة',
+            actions: 'إجراءات',
+          },
+          loading: {
+            initializing: 'جارٍ تهيئة مصدر البيانات…',
+          },
+        },
+        defaults: {
+          standard: 'Standard',
+        },
       },
 
       selected: 'مختار',
@@ -2498,6 +2656,79 @@ export default {
   },
 
   finance: {
+    page: {
+      title: 'إدارة المالية',
+      subtitle: 'إدارة الحسابات والرسوم والرواتب والمصروفات.',
+      tabs: {
+        dashboard: 'لوحة التحكم',
+        accounts: 'الحسابات',
+        studentFinance: 'مالية الطلاب',
+        payroll: 'الرواتب',
+        expenses: 'المصروفات',
+      },
+    },
+
+    dashboard: {
+      header: {
+        title: 'لوحة التحكم المالية',
+        subtitle: 'نظرة عامة على الإيرادات والمصروفات وحالة الرسوم.',
+      },
+      cards: {
+        totalRevenue: 'إجمالي الإيرادات',
+        totalExpenses: 'إجمالي المصروفات',
+        netIncome: 'صافي الدخل',
+        pendingFees: 'الرسوم المعلّقة',
+      },
+      cardsSubtext: {
+        collectedFeesThisYear: 'الرسوم المحصّلة هذا العام',
+        operationalCosts: 'تكاليف التشغيل',
+        revenueMinusExpenses: 'الإيرادات - المصروفات',
+        unpaidInvoices: 'فواتير غير مدفوعة',
+      },
+      charts: {
+        incomeVsExpenses: {
+          title: 'الدخل مقابل المصروفات',
+          subtitle: 'الاتجاه الشهري لآخر 6 أشهر',
+        },
+        feeCollectionStatus: {
+          title: 'حالة تحصيل الرسوم',
+          subtitle: 'توزيع الفواتير المدفوعة وغير المدفوعة',
+        },
+        expensesByCategory: {
+          title: 'المصروفات حسب الفئة',
+          subtitle: 'أعلى فئات المصروفات (الفترة الحالية)',
+        },
+      },
+      legends: {
+        income: 'الدخل',
+        expenses: 'المصروفات',
+      },
+      feeStatus: {
+        paid: 'مدفوع',
+        partial: 'جزئي',
+        unpaid: 'غير مدفوع',
+        cancelled: 'ملغى',
+      },
+      recent: {
+        title: 'أحدث المعاملات',
+        subtitle: 'آخر مدفوعات الرسوم والنشاط',
+        empty: 'لا توجد معاملات حديثة.',
+        columns: {
+          student: 'الطالب',
+          amount: 'المبلغ',
+          method: 'الطريقة',
+          date: 'التاريخ',
+          status: 'الحالة',
+        },
+        status: {
+          completed: 'مكتمل',
+        },
+      },
+      errors: {
+        loadFailedTitle: 'فشل تحميل لوحة التحكم',
+        loadFailedDesc: 'يرجى تحديث الصفحة أو المحاولة مرة أخرى بعد قليل.',
+      },
+    },
     accounts: {
       tabs: {
         institutionAccounts: 'حسابات المؤسسة',
@@ -2758,6 +2989,20 @@ export default {
         FIN_AMOUNT_INVALID: 'المبلغ المدخل غير صحيح',
         FIN_DATE_INVALID: 'التاريخ المدخل غير صحيح',
 
+        FIN_PRINT_MONTH_REQUIRED: 'الشهر مطلوب (YYYY-MM)',
+        FIN_PRINT_MONTH_INVALID: 'تنسيق الشهر غير صحيح. المتوقّع: YYYY-MM',
+        FIN_PRINT_STATUS_INVALID: 'حالة غير صحيحة. استخدم: Paid | Partial | Unpaid | All',
+        FIN_PRINT_CLASSID_INVALID: 'معرّف الصف/الشعبة غير صالح',
+        FIN_PRINT_ACADEMICYEARID_INVALID: 'معرّف السنة الدراسية غير صالح',
+        FIN_PRINT_CATEGORYID_INVALID: 'معرّف نوع المبلغ/الفئة غير صالح',
+        FIN_PRINT_DATES_REQUIRED: 'حقلا من/إلى مطلوبان',
+        FIN_PRINT_DATERANGE_INVALID: 'نطاق التاريخ (من/إلى) غير صالح',
+        FIN_PRINT_TRANSACTIONID_INVALID: 'معرّف المعاملة غير صالح',
+        FIN_PRINT_TRANSACTION_NOT_FOUND: 'المعاملة غير موجودة',
+        FIN_PRINT_PAYMENTGROUPID_INVALID: 'معرّف مجموعة الدفع غير صالح',
+        FIN_PRINT_PAYMENT_GROUP_NOT_FOUND: 'مجموعة الدفع غير موجودة',
+        FIN_PRINT_SERVER_ERROR: 'حدث خطأ في الخادم',
+
         FIN_EXPENSE_CATEGORY_REQUIRED: 'فئة المصروف مطلوبة',
         FIN_EXPENSE_CATEGORY_NOT_FOUND: 'فئة المصروف غير موجودة',
         FIN_EXPENSE_BUDGET_EXCEEDED: 'تم تجاوز ميزانية هذا الشهر',
@@ -2786,6 +3031,55 @@ export default {
       page: {
         kicker: 'المالية',
         title: 'الرواتب',
+      },
+
+      runModal: {
+        title: 'سير عمل الرواتب',
+        subtitle: 'معالجة رواتب الفترة: {{month}}',
+        labels: {
+          targetMonth: 'الشهر المالي المستهدف',
+          scope: 'نطاق العملية',
+        },
+        scopes: {
+          all: {
+            label: 'على مستوى المؤسسة',
+            desc: 'معالجة رواتب جميع الموظفين النشطين.',
+          },
+          single: {
+            label: 'موظف واحد',
+            desc: 'معالجة الرواتب لسجل شخص محدد.',
+          },
+        },
+        placeholders: {
+          search: 'ابحث في الدليل...',
+        },
+        empty: {
+          search: 'لا توجد سجلات مطابقة.',
+        },
+        fallbacks: {
+          personnel: 'موظف',
+        },
+        bulk: {
+          title: 'تهيئة جماعية',
+          staffAllActive: 'جميع الموظفين النشطين',
+          desc: 'سيقوم النظام بإنشاء مسودات رواتب لـ {{staff}} للفترة المالية {{month}}.',
+          tags: {
+            autoApply: 'تطبيق البدلات تلقائياً',
+            metadata: 'بيانات الأرشفة',
+          },
+        },
+        actions: {
+          previous: 'الخطوة السابقة',
+          discard: 'إلغاء العملية',
+          processing: 'جارٍ المعالجة...',
+          configure: 'تهيئة الإستراتيجية',
+          execute: 'تنفيذ التوليد',
+        },
+        toasts: {
+          staffLoadFailed: 'فشل تحميل قائمة الموظفين',
+          pipelineStarted: 'تم بدء سير عمل الرواتب بنجاح',
+          pipelineStartFailed: 'فشل بدء الرواتب',
+        },
       },
 
       modals: {
@@ -2990,7 +3284,162 @@ export default {
       },
     },
 
+    graduationPaymentModal: {
+      title: 'دفع التخرج',
+      labels: {
+        selectInvoice: 'اختر فاتورة التخرج',
+        balance: 'الرصيد',
+        paid: 'مدفوع',
+        paymentAmount: 'مبلغ الدفع',
+        paymentMethod: 'طريقة الدفع',
+      },
+      methods: {
+        cash: 'نقدًا',
+        bank: 'تحويل بنكي',
+        edahab: 'E-Dahab',
+        sahay: 'سهل / زاد',
+      },
+      actions: {
+        cancel: 'إلغاء',
+        processing: 'جارٍ المعالجة...',
+        processAndPrint: 'تنفيذ وطباعة الإيصال',
+      },
+      toasts: {
+        selectInvoiceRequired: 'اختر فاتورة للدفع',
+        amountInvalid: 'أدخل مبلغًا صحيحًا',
+        receiptGenerated: 'تم إنشاء إيصال التخرج',
+        paymentFailed: 'فشل تسجيل الدفع',
+      },
+      description: 'دفع رسوم التخرج: {{title}}',
+    },
+
+    printModals: {
+      actions: {
+        close: 'إغلاق',
+        print: 'طباعة',
+        generating: 'جارٍ الإنشاء…',
+        reset: 'إعادة ضبط',
+      },
+      common: {
+        placeholders: {
+          chooseYear: 'اختر السنة',
+          chooseMonth: 'اختر الشهر',
+          allFeeTypes: 'كل أنواع الرسوم',
+          search: 'بحث…',
+          grade: 'الصف',
+          shift: 'الدوام',
+          campusWide: 'على مستوى الحرم (افتراضي)',
+          allClasses: 'كل الصفوف',
+        },
+      },
+      titles: {
+        monthlyVouchers: 'SYD ERP - قسائم شهرية',
+        dailyAudit: 'SYD ERP - تدقيق يومي',
+        passcards: 'بطاقات المرور الأكاديمية - {{examType}}',
+      },
+      toasts: {
+        noInvoices: 'لا توجد فواتير للطباعة',
+        noTransactions: 'لا توجد معاملات للطباعة',
+        noPasscards: 'لا توجد بطاقات للطباعة',
+      },
+      voucher: {
+        title: 'إيصال دفع',
+        labels: {
+          date: 'التاريخ',
+          rv: 'رقم الإيصال',
+          class: 'الصف',
+          id: 'المعرف',
+          studentName: 'اسم الطالب',
+          shift: 'الدوام',
+          description: 'الوصف',
+          month: 'الشهر',
+          balance: 'الرصيد',
+          paid: 'مدفوع',
+          fee: 'الرسوم',
+          discount: 'خصم',
+        },
+        note: '* ملاحظة: هذا الإيصال يمثل المبلغ المتفق عليه حسب المستوى.',
+        hormarisSuffix: ' (Hormaris)',
+        hormarisPayment: 'دفع Hormaris ({{count}} شهر)',
+        defaults: {
+          monthlyFee: 'رسوم شهرية',
+        },
+      },
+      monthly: {
+        title: 'فوترة جماعية',
+        subtitle: 'إنشاء بيان شهري',
+        fields: {
+          academicYear: 'السنة الدراسية',
+          billingMonth: 'شهر الفوترة',
+          feeCategory: 'فئة الرسوم / نوع المبلغ',
+          classFiltering: 'تصفية الصف (اختياري)',
+        },
+        toasts: {
+          syncFailed: 'فشل مزامنة التقرير',
+          checkMonth: 'تحقق من حقل الشهر',
+          selectAcademicYear: 'اختر السنة الدراسية',
+          generationFailed: 'فشل إنشاء التقرير',
+        },
+      },
+      dailyAudit: {
+        title: 'سجل التدقيق',
+        subtitle: 'إغلاق يومي زمني',
+        auditTitle: 'تدقيق مالي يومي احترافي',
+        fields: {
+          fromDate: 'من تاريخ',
+          toDate: 'إلى تاريخ',
+        },
+        toasts: {
+          generationFailed: 'فشل إنشاء التدقيق',
+        },
+      },
+      passcards: {
+        title: 'المركز الأكاديمي',
+        subtitle: 'بطاقات تخليص الطلاب',
+        fields: {
+          academicYear: 'السنة الدراسية المستهدفة',
+          chooseClass: 'اختر الصف',
+          examType: 'نوع الاختبار',
+        },
+        placeholders: {
+          chooseExam: 'اختر الاختبار',
+        },
+        examTypes: {
+          midterm: 'امتحان منتصف الفصل',
+          final: 'الامتحان النهائي',
+        },
+        layout: {
+          portrait: 'طولي',
+          landscape: 'عرضي',
+        },
+        toasts: {
+          syncFailed: 'فشلت مزامنة البطاقات',
+          generationFailed: 'فشل إنشاء البطاقات',
+        },
+        validity: 'صالح من {{from}} إلى {{to}}',
+        labels: {
+          academicYear: 'السنة الدراسية',
+          date: 'التاريخ',
+          clearanceCard: 'بطاقة التخليص',
+          studentName: 'اسم الطالب',
+          class: 'الصف',
+          shift: 'الدوام',
+          id: 'المعرف',
+          room: 'الغرفة',
+          hall: 'القاعة',
+          photo: 'صورة',
+        },
+        notice: 'أي طالب يحاول التلاعب لا يحق له مواصلة تعليمه في المدرسة',
+        stamp: 'ختم رسمي لمسجل المدرسة',
+      },
+    },
+
     studentFinance: {
+      printTab: {
+        toasts: {
+          noPrintPermission: 'ليست لديك صلاحية للطباعة',
+        },
+      },
       tabs: {
         receipt: 'إيصال',
         previousBalance: 'الرصيد السابق',
@@ -3000,6 +3449,9 @@ export default {
 
       paymentModal: {
         title: 'مالية الطالب',
+        print: {
+          arrears: 'متأخرات',
+        },
         tabs: {
           ledger: 'السجل',
           history: 'التاريخ',
@@ -3091,6 +3543,124 @@ export default {
           hormarisFailed: 'فشل دفع Hormaris',
           preparingStatement: 'جارٍ تجهيز البيان...',
           printFailed: 'فشلت الطباعة',
+        },
+      },
+
+      amountTypeTab: {
+        title: 'إعداد نوع المبلغ',
+        subtitle: 'مصفوفة تعريف الرسوم العامة',
+        actions: {
+          defineNew: 'تعريف نوع مبلغ جديد',
+          custom: 'مخصص',
+          useList: 'استخدم القائمة',
+        },
+        form: {
+          label: {
+            feeLabel: 'وسم الرسوم',
+            defaultMultiplier: 'المضاعف الافتراضي ($)',
+            status: 'الحالة',
+            transactionCategory: 'فئة المعاملة',
+          },
+        },
+        modal: {
+          create: 'إضافة نوع مبلغ',
+          edit: 'تعديل نوع المبلغ',
+        },
+        placeholders: {
+          feeLabel: 'مثال: رسوم شهرية',
+          defaultAmount: '0.00',
+          enterFeeType: 'أدخل نوع الرسوم',
+        },
+        validation: {
+          nameRequired: 'الاسم مطلوب',
+          feeTypeRequired: 'نوع الرسوم مطلوب',
+        },
+        confirms: {
+          delete: 'هل تريد حذف نوع المبلغ هذا نهائياً؟ إذا تم استخدامه من قبل، فسيتم حظر الحذف — اجعله غير مفعل بدلاً من ذلك.',
+        },
+        toasts: {
+          loadFailed: 'فشل تحميل إعدادات المبالغ',
+          created: 'تم تعريف هيكل المبالغ',
+          updated: 'تمت مزامنة الإعدادات',
+          deleted: 'تم حذف نوع المبلغ',
+          deleteFailed: 'فشل الحذف',
+          operationFailed: 'فشل الإجراء',
+        },
+        integrity: {
+          title: 'قيد السلامة المعمارية',
+          description: 'تعديل المبالغ الافتراضية سيؤثر فقط على الرسوم المستقبلية. السجلات التاريخية مرتبطة تشفيرياً بالمبلغ المحدد وقت إنشاء الرسوم لضمان اتساق سجل التدقيق عبر السنوات الدراسية.',
+        },
+        table: {
+          emptyTitle: 'لا توجد إعدادات.',
+          columns: {
+            name: 'معرف الرسوم',
+            defaultAmount: 'المبلغ الافتراضي',
+            feeType: 'النوع',
+            status: 'الحالة',
+            actions: 'إجراءات',
+          },
+          loading: {
+            initializing: 'جارٍ تهيئة مصدر البيانات…',
+          },
+        },
+        defaults: {
+          standard: 'قياسي',
+          mandatory: 'إلزامي',
+          registration: 'تسجيل',
+          graduation: 'تخرج',
+          optional: 'اختياري',
+          personal: 'شخصي',
+        },
+      },
+
+      previousBalanceTab: {
+        placeholders: {
+          search: 'ابحث برقم الطالب أو الاسم أو الهاتف…',
+          searchShort: 'ابحث…',
+          grade: 'الصف',
+          shift: 'الدوام',
+          section: 'الشعبة',
+          amount: '0.00',
+        },
+        filters: {
+          showAll: 'عرض الكل',
+          showPrev: 'عرض الرصيد السابق',
+        },
+        actions: {
+          save: 'حفظ',
+          add: 'إضافة',
+          reset: 'إعادة ضبط',
+          resetTitle: 'إعادة ضبط الفلاتر',
+          viewInfo: 'عرض المعلومات',
+        },
+        toasts: {
+          fetchFailed: 'فشل جلب بيانات أرصدة الطلاب',
+          noPreviousBalanceCategory: 'أنشئ نوع مبلغ باسم "Previous Balance" أولاً',
+          saving: 'جارٍ حفظ الأرصدة السابقة...',
+          saved: 'تم حفظ الأرصدة السابقة',
+          saveFailed: 'فشل حفظ الأرصدة السابقة',
+        },
+        validation: {
+          enterAtLeastOne: 'أدخل قيمة رصيد واحدة على الأقل',
+          validAmountGreaterThanZero: 'أدخل مبالغ صالحة (> 0)',
+        },
+        loading: {
+          openingArchives: 'جارٍ فتح الأرشيف…',
+        },
+        table: {
+          columns: {
+            studentId: 'ID',
+            fullName: 'اسم الطالب',
+            contact: 'جهة الاتصال',
+            class: 'الصف',
+            balance: 'الرصيد',
+            actions: 'الإجراءات',
+          },
+          currentBalance: 'الحالي: {{amount}}',
+          bfAccount: 'B/F ACCOUNT',
+        },
+        empty: {
+          title: 'لا توجد سجلات لهذا الاختيار.',
         },
       },
 
@@ -3198,6 +3768,9 @@ export default {
           dailyAuditLedger: 'سجل تدقيق يومي',
           enrollmentPasscards: 'بطاقات التسجيل',
         },
+        defaults: {
+          passcardsExamType: 'تسجيل',
+        },
         loading: {
           streamingRegistry: 'جاري تحميل السجل…',
         },
@@ -3219,11 +3792,218 @@ export default {
             'قد تستغرق طباعة عدة فواتير حتى 30 ثانية لعرض علامات مائية عالية الدقة.',
         },
       },
+
+      updateChargeModal: {
+        title: 'سير عمل تحديث المالية',
+        auditNotice:
+          'يتم تسجيل كل تحديث هنا في سجلات التدقيق الدائمة مع قيم قبل/بعد. تتم إعادة حساب الأرصدة تلقائيًا.',
+        workflows: {
+          correction: {
+            title: 'تحديث مبلغ الرسوم',
+            desc: 'تصحيح خطأ بشري في مبلغ الرسوم',
+          },
+          monthlyDiscount: {
+            title: 'تطبيق خصم شهري',
+            desc: 'منحة لمرة واحدة لشهر محدد',
+          },
+          undoCharges: {
+            title: 'التراجع عن الرسوم',
+            desc: 'إلغاء الرسوم غير المدفوعة للأشهر المحددة',
+          },
+          overallDiscount: {
+            title: 'تطبيق خصم شامل',
+            desc: 'منحة دائمة لكل الرسوم المستقبلية',
+          },
+        },
+        discountTypes: {
+          fixed: 'مبلغ ثابت ($)',
+          percentage: 'نسبة مئوية (%)',
+        },
+        labels: {
+          studentId: 'رقم الطالب',
+          feeCategory: 'فئة الرسوم',
+          discountType: 'نوع الخصم',
+          billingMonth: 'شهر الفوترة',
+          multipleMonths: 'عدة أشهر',
+          newCorrectAmount: 'المبلغ المصحح ($)',
+          discountValue: 'قيمة الخصم',
+          reason: 'سبب التعديل',
+        },
+        placeholders: {
+          studentId: 'مثال: DU1S1A62',
+          chooseFee: 'اختر الرسوم...',
+          searchFeeCategories: 'ابحث عن فئات الرسوم…',
+          amount: '0.00',
+          reason: 'اشرح سبب إجراء هذا التعديل (التدقيق مطلوب)',
+        },
+        actions: {
+          cancel: 'إلغاء',
+          back: 'رجوع',
+          processing: 'جارٍ المعالجة…',
+          execute: 'تنفيذ',
+        },
+        confirms: {
+          undoCharges: 'سيؤدي هذا إلى إلغاء الرسوم غير المدفوعة للأشهر المحددة. هل تريد المتابعة؟',
+        },
+        toasts: {
+          loadConfigFailed: 'فشل تحميل بيانات الإعداد',
+          enterValidStudentId: 'يرجى إدخال رقم طالب صالح',
+          feeCategoryAndMonthRequired: 'فئة الرسوم والشهر مطلوبان',
+          selectAtLeastOneMonth: 'اختر شهر فوترة واحدًا على الأقل',
+          enterAmount: 'يرجى إدخال مبلغ',
+          enterDiscountValue: 'يرجى إدخال قيمة الخصم',
+          reasonMinLength: 'يرجى إدخال سبب واضح (على الأقل 5 أحرف)',
+          cancelledSuccess: 'تم إلغاء الرسوم بنجاح ({{count}})',
+          noneFoundToCancel: 'لم يتم العثور على رسوم غير مدفوعة مطابقة للإلغاء',
+          updateSuccess: 'تم التحديث بنجاح وتم إنشاء سجل تدقيق',
+          operationFailed: 'فشل الإجراء',
+        },
+      },
+
+      chargeModal: {
+        title: 'تسجيل رسوم للطلاب',
+        steps: {
+          one: 'الخطوة 1: اختر الطريقة',
+          two: 'الخطوة 2: املأ نموذج الرسوم',
+        },
+        labels: {
+          chargeMethod: 'طريقة التسجيل',
+          studentRegistrationId: 'رقم تسجيل الطالب',
+          selectTargetClass: 'اختر الصف المستهدف',
+          amountType: 'نوع المبلغ',
+          feeType: 'نوع الرسوم',
+          enterAmount: 'أدخل المبلغ ($)',
+          billingMonth: 'شهر الفوترة',
+          multipleMonths: 'عدة أشهر',
+          chargeDate: 'تاريخ التسجيل',
+        },
+        placeholders: {
+          studentRegistrationId: 'مثال: STU-1001',
+          grade: 'المرحلة',
+          shift: 'الدوام',
+          section: 'الشعبة',
+          search: 'بحث…',
+          selectType: '-- اختر النوع --',
+          searchAmountTypes: 'ابحث عن أنواع المبالغ…',
+          amount: '0.00',
+        },
+        actions: {
+          reset: 'إعادة تعيين',
+          close: 'إغلاق',
+          back: 'رجوع',
+          processing: 'جارٍ المعالجة...',
+          next: 'الخطوة التالية',
+          chargeStudents: 'تسجيل الرسوم للطلاب',
+        },
+        scopes: {
+          all: 'الكل',
+          single: 'طالب واحد',
+          class: 'حسب الصف/المرحلة',
+        },
+        feeTypes: {
+          regular: 'عادي',
+          free: 'مجاني',
+        },
+        validation: {
+          selectAmountType: 'اختر نوع المبلغ',
+          enterStudentId: 'أدخل رقم الطالب',
+          selectClass: 'اختر الصف',
+          selectAtLeastOneMonth: 'اختر شهر فوترة واحدًا على الأقل',
+        },
+        toasts: {
+          loadConfigFailed: 'فشل تحميل بيانات الإعداد',
+          chargeRecorded: 'تم تسجيل الرسوم بنجاح',
+          chargeFailed: 'فشل تسجيل الرسوم',
+        },
+      },
+
+      recordPaymentModal: {
+        title: 'تسجيل دفعة',
+        subtitle: 'فاتورة أو رصيد هرمريس',
+        types: {
+          invoice: 'دفع الفاتورة',
+          hormaris: 'هرمريس (مقدم)',
+        },
+        summary: {
+          payingFor: 'الدفع مقابل:',
+          student: 'الطالب:',
+          totalBalance: 'إجمالي الرصيد:',
+          hormarisHint: 'سيتم إضافة هذا الرصيد إلى حساب الطالب للرسوم المستقبلية.',
+        },
+        labels: {
+          amountToCredit: 'المبلغ لإضافته كرصيد',
+          amountToPay: 'المبلغ للدفع',
+          targetMonth: 'الشهر المستهدف (YYYY-MM)',
+          method: 'الطريقة',
+          reference: 'رقم المرجع',
+        },
+        placeholders: {
+          optional: 'اختياري',
+        },
+        actions: {
+          cancel: 'إلغاء',
+          processing: 'جارٍ المعالجة...',
+          confirm: 'تأكيد الدفع',
+        },
+        toasts: {
+          recorded: 'تم تسجيل الدفع بنجاح',
+          failed: 'فشل تسجيل الدفع',
+          noAddPermission: 'ليست لديك صلاحية لتسجيل المدفوعات',
+        },
+      },
+
+      deleteChargesModal: {
+        title: 'حذف الرسوم',
+        warning: 'سيؤدي هذا إلى إلغاء الفواتير غير المدفوعة من سجلات الطلاب وفقًا للمعايير المحددة.',
+        labels: {
+          deletionScope: 'نطاق الحذف',
+          studentRegistrationId: 'رقم تسجيل الطالب',
+          selectTargetClass: 'اختر الصف المستهدف',
+          amountType: 'نوع المبلغ',
+          year: 'السنة',
+          billingMonth: 'شهر الفوترة',
+          multipleMonths: 'عدة أشهر',
+          createdDate: 'تاريخ الإنشاء',
+          useDateFilter: 'استخدم فلتر التاريخ',
+        },
+        placeholders: {
+          studentRegistrationId: 'مثال: STU-1001',
+          grade: 'المرحلة',
+          shift: 'الدوام',
+          section: 'الشعبة',
+          search: 'بحث…',
+          allTypes: '-- كل الأنواع --',
+          searchAmountTypes: 'ابحث عن أنواع المبالغ…',
+        },
+        scopes: {
+          all: 'حذف كل الرسوم',
+          single: 'طالب واحد',
+          class: 'حسب الصف/المرحلة',
+        },
+        actions: {
+          reset: 'إعادة تعيين',
+          close: 'إغلاق',
+          deleting: 'جارٍ الحذف...',
+          deleteCharges: 'حذف الرسوم',
+        },
+        confirms: {
+          critical: 'هام: سيؤدي هذا الإجراء إلى حذف سجلات الرسوم نهائيًا. هل أنت متأكد؟',
+        },
+        toasts: {
+          loadConfigFailed: 'فشل تحميل بيانات الإعداد',
+          selectAtLeastOneMonth: 'اختر شهر فوترة واحدًا على الأقل',
+          invalidBillingMonthYear: 'شهر/سنة الفوترة غير صالح',
+          selectAmountType: 'اختر نوع المبلغ للحذف',
+          deletedSuccess: 'تم حذف الرسوم بنجاح ({{count}})',
+          noneFound: 'لم يتم العثور على رسوم غير مدفوعة مطابقة للحذف',
+          deletionFailed: 'فشل الحذف',
+        },
+      },
     },
 
     feeTypes: {
       title: 'إعداد أنواع الرسوم',
-      subtitle: 'Personal vs Free',
+      subtitle: 'شخصي مقابل مجاني',
       create: 'إنشاء نوع الرسوم',
       modal: {
         create: 'إنشاء نوع الرسوم',
@@ -3242,9 +4022,9 @@ export default {
         actions: 'الإجراءات',
       },
       behaviors: {
-        charge: 'عادي',
+        charge: 'مدفوع',
         waive: 'مجاني / إعفاء',
-        discount: 'خصم',
+        discount: 'خصم (%)',
       },
       status: {
         active: 'نشط',
@@ -3255,8 +4035,14 @@ export default {
         delete: 'حذف',
         save: 'حفظ',
       },
+      placeholders: {
+        discountPercent: '1 - 100',
+      },
+      loading: {
+        initializing: 'جارٍ التهيئة...',
+      },
       saving: 'جارٍ الحفظ…',
-      emptyTitle: 'No fee types defined.',
+      emptyTitle: 'لم يتم تعريف أنواع الرسوم.',
       confirms: {
         deactivate: 'هل تريد إلغاء تفعيل هذا النوع؟',
         permanentDelete: 'هل تريد حذف هذا النوع نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.',
@@ -3267,9 +4053,13 @@ export default {
         discountInvalid: 'يجب أن تكون نسبة الخصم بين 1 و 100',
         created: 'تم إنشاء نوع الرسوم',
         updated: 'تم تحديث نوع الرسوم',
+        activated: 'تم تفعيل نوع الرسوم',
         deleted: 'تم حذف نوع الرسوم',
         deactivated: 'تم إلغاء تفعيل نوع الرسوم',
-        deleteBlocked: 'Cannot delete — this fee type is referenced by other records.',
+        deleteBlocked: 'لا يمكن الحذف — هذا النوع مستخدم في سجلات أخرى.',
+        noAddPermission: 'ليست لديك صلاحية لإنشاء أنواع الرسوم',
+        noEditPermission: 'ليست لديك صلاحية لتعديل أنواع الرسوم',
+        noDeletePermission: 'ليست لديك صلاحية لحذف أنواع الرسوم',
         operationFailed: 'فشل الإجراء',
       },
     },
