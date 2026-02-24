@@ -877,6 +877,7 @@ export default {
     download: 'تنزيل',
     assign: 'التكليفات',
     unlock: 'فك القفل',
+    resetLockout: 'إعادة ضبط الحظر',
     activate: 'تفعيل',
     print: 'طباعة',
     preview: 'معاينة',

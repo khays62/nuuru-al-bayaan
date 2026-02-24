@@ -27,7 +27,23 @@ export default function PayrollEmployeeInfoModal({
     const { t } = useI18n();
     const { hasPermission } = useAuth();
 
-    const canSave = hasPermission('financePayroll', 'edit');
+    const canView =
+        hasPermission('financePayrollEmployeeInfo', 'view') ||
+        hasPermission('financePayrollEmployeeInfo', 'full') ||
+        // Backward-compatible legacy
+        hasPermission('financePayroll', 'edit');
+
+    const canInput =
+        hasPermission('financePayrollEmployeeInfo', 'input') ||
+        hasPermission('financePayrollEmployeeInfo', 'full') ||
+        // Backward-compatible legacy
+        hasPermission('financePayroll', 'edit');
+
+    const canSave =
+        hasPermission('financePayrollEmployeeInfo', 'save') ||
+        hasPermission('financePayrollEmployeeInfo', 'full') ||
+        // Backward-compatible legacy
+        hasPermission('financePayroll', 'edit');
     const canPrint = hasPermission('financePrint', 'print');
 
     const [staffList, setStaffList] = useState([]);
@@ -52,6 +68,11 @@ export default function PayrollEmployeeInfoModal({
 
     useEffect(() => {
         const load = async () => {
+            if (!canView) {
+                setAccounts([]);
+                setStaffList([]);
+                return;
+            }
             try {
                 const [accData, staffRes] = await Promise.all([
                     listAccounts({ includeInactive: false }),
@@ -65,7 +86,7 @@ export default function PayrollEmployeeInfoModal({
             }
         };
         load();
-    }, []);
+    }, [canView]);
 
     useEffect(() => {
         if (accounts.length === 0) return;
@@ -74,7 +95,7 @@ export default function PayrollEmployeeInfoModal({
 
     const ledgerQuery = usePayrollStaffLedgerQuery(
         { staffId: selected.staffId, academicYear: selected.academicYear || undefined },
-        { enabled: Boolean(selected.staffId) && Boolean(selected.academicYear) }
+        { enabled: Boolean(canView) && Boolean(selected.staffId) && Boolean(selected.academicYear) }
     );
 
     const ledger = useMemo(() => {
@@ -327,7 +348,7 @@ export default function PayrollEmployeeInfoModal({
         ? (ledgerQuery.error?.response?.data?.message || ledgerQuery.error?.message || t('finance.payroll.employeeInfo.errors.loadFailed', { defaultValue: 'Failed to load employee info' }))
         : null;
 
-    const canEditRow = (r) => canSave && r?.payroll?.status !== 'Paid';
+    const canEditRow = (r) => canInput && r?.payroll?.status !== 'Paid';
     const requestEdit = (r) => {
         if (!r?._id) return;
         if (!canEditRow(r)) return;
@@ -361,6 +382,8 @@ export default function PayrollEmployeeInfoModal({
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [editingRowId, computedRows]);
+
+    if (!canView) return null;
 
     return (
         <Modal
@@ -398,7 +421,7 @@ export default function PayrollEmployeeInfoModal({
                             onChange={(v) => setSelected((prev) => ({ ...prev, accountId: v }))}
                             options={accountOptions}
                             placeholder={t('finance.payroll.placeholders.account', { defaultValue: 'Select account…' })}
-                            disabled={!canSave}
+                            disabled={!canInput}
                         />
                     </FormField>
                 </div>
@@ -414,7 +437,7 @@ export default function PayrollEmployeeInfoModal({
                             type="date"
                             value={selected.date}
                             onChange={(e) => setSelected((prev) => ({ ...prev, date: e.target.value }))}
-                            disabled={!canSave}
+                            disabled={!canInput}
                         />
                     </FormField>
 

@@ -38,7 +38,13 @@ const ReceiptTab = () => {
     const canDeleteCharge = hasPermission('financeStudentReceipt', 'delete');
     const canDownload = hasPermission('financeStudentReceipt', 'download');
     const canPrint = hasPermission('financePrint', 'print');
+    const canViewReceiptLedger = ['view', 'edit', 'delete', 'download'].some((a) => hasPermission('financeStudentReceipt', a));
     const canSeePreviousBalanceData = ['view', 'add', 'edit', 'delete'].some((a) => hasPermission('financeStudentPreviousBalance', a));
+
+    const canViewInfoModal =
+        hasPermission('financeStudentReceiptModal', 'view') ||
+        hasPermission('financeStudentReceiptModal', 'full') ||
+        ['view', 'add', 'edit', 'delete', 'download'].some((a) => hasPermission('financeStudentReceipt', a));
 
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
@@ -69,7 +75,7 @@ const ReceiptTab = () => {
     const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
 
     const queryUX = {
-        enabled: true,
+        enabled: Boolean(canViewReceiptLedger),
         staleTime: 60_000,
         refetchOnMount: false,
         refetchOnWindowFocus: false,
@@ -504,18 +510,20 @@ const ReceiptTab = () => {
                                 return (
                                     <RowActionButtons
                                         actions={[
-                                            {
-                                                key: 'info',
-                                                label: t('finance.studentFinance.receiptTab.actions.viewInfo', { defaultValue: 'View Info' }),
-                                                title: t('finance.studentFinance.receiptTab.actions.viewInfo', { defaultValue: 'View Info' }),
-                                                tone: 'view',
-                                                showLabel: true,
-                                                icon: null,
-                                                onClick: () => {
-                                                    setSelectedStudentRow({ student: row?.raw, totalBalance: row?.balance || 0 });
-                                                    setShowInfoModal(true);
+                                            ...(canViewInfoModal ? [
+                                                {
+                                                    key: 'info',
+                                                    label: t('finance.studentFinance.receiptTab.actions.viewInfo', { defaultValue: 'View Info' }),
+                                                    title: t('finance.studentFinance.receiptTab.actions.viewInfo', { defaultValue: 'View Info' }),
+                                                    tone: 'view',
+                                                    showLabel: true,
+                                                    icon: null,
+                                                    onClick: () => {
+                                                        setSelectedStudentRow({ student: row?.raw, totalBalance: row?.balance || 0 });
+                                                        setShowInfoModal(true);
+                                                    },
                                                 },
-                                            },
+                                            ] : []),
                                         ]}
                                     />
                                 );
@@ -550,6 +558,8 @@ const ReceiptTab = () => {
                         row={selectedStudentRow}
                         onClose={() => setShowInfoModal(false)}
                         onPaid={handleSearch}
+                        permissionModule="financeStudentReceiptModal"
+                        legacyModule="financeStudentReceipt"
                     />
                 )
             }

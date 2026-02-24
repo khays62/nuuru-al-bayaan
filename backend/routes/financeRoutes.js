@@ -202,7 +202,20 @@ const checkCategoryByQueryType = (action) => {
     if (act === 'view') {
       return checkAnyPermission([
         { module: 'financeConfig', action: 'view' },
+        // Modal roles may need read-only lookup categories (e.g., payment methods)
+        // to complete permitted workflows.
+        { module: 'financeStudentReceiptModal', action: 'view' },
+        { module: 'financeStudentReceiptModal', action: 'input' },
+        { module: 'financeStudentReceiptModal', action: 'save' },
+        { module: 'financeStudentPreviousBalanceModal', action: 'view' },
+        { module: 'financeStudentPreviousBalanceModal', action: 'input' },
+        { module: 'financeStudentPreviousBalanceModal', action: 'save' },
+        // Receipt users must be able to read fee configuration data (amount types)
+        // required by charging, without necessarily having the Amount Type tab.
         { module: 'financeStudentReceipt', action: 'view' },
+        { module: 'financeStudentReceipt', action: 'add' },
+        { module: 'financeStudentReceipt', action: 'edit' },
+        { module: 'financeStudentReceipt', action: 'delete' },
         { module: 'financeStudentPreviousBalance', action: 'view' },
         { module: 'financeStudentAmountType', action: 'view' },
       ])(req, res, next);
@@ -314,6 +327,10 @@ router.get(
   authorizeRoles('admin', 'staff'),
   checkAnyPermission([
     { module: 'financeConfig', action: 'view' },
+    // Receipt users need fee types for charging, even if they can't manage Fee Types.
+    { module: 'financeStudentReceipt', action: 'view' },
+    { module: 'financeStudentReceipt', action: 'add' },
+    { module: 'financeStudentReceipt', action: 'edit' },
     { module: 'financeStudentAmountType', action: 'view' },
     { module: 'financeStudentFeeType', action: 'view' },
   ]),
@@ -352,7 +369,38 @@ router.delete(
 
 // --- ACCOUNTS (General Ledger) ---
 router.post('/accounts', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'add'), createAccount);
-router.get('/accounts', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeAccountsInstitution'), getAccounts);
+router.get(
+  '/accounts',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  // Accounts are also required as read-only lookup data for finance workflows
+  // (Student Finance payments + Payroll ledger saving), even if the staff member
+  // cannot manage Accounts.
+  checkAnyPermission([
+    // Normal Accounts access
+    { module: 'financeAccountsInstitution', action: 'view' },
+    { module: 'financeAccountsInstitution', action: 'add' },
+    { module: 'financeAccountsInstitution', action: 'edit' },
+    { module: 'financeAccountsInstitution', action: 'delete' },
+    { module: 'financeAccountsInstitution', action: 'transfer' },
+    { module: 'financeAccountsInstitution', action: 'income' },
+    { module: 'financeAccountsInstitution', action: 'download' },
+
+    // Student Finance payment modal permissions
+    { module: 'financeStudentReceiptModal', action: 'view' },
+    { module: 'financeStudentReceiptModal', action: 'input' },
+    { module: 'financeStudentReceiptModal', action: 'save' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'view' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'input' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'save' },
+
+    // Payroll employee info modal permissions
+    { module: 'financePayrollEmployeeInfo', action: 'view' },
+    { module: 'financePayrollEmployeeInfo', action: 'input' },
+    { module: 'financePayrollEmployeeInfo', action: 'save' },
+  ]),
+  getAccounts
+);
 router.put('/accounts/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'edit'), updateAccount);
 router.delete('/accounts/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'delete'), deleteAccount);
 router.post('/accounts/transfer', protect, authorizeRoles('admin', 'staff'), checkPermission('financeAccountsInstitution', 'transfer'), transferFunds);
@@ -374,12 +422,42 @@ router.get('/audit', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPe
 router.post('/maintenance/backfill-billing-month', protect, authorizeRoles('admin', 'staff'), checkPermission('financeMaintenance', 'run'), backfillInvoiceBillingMonth);
 
 // Fee Management
-router.get('/invoices', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), getInvoices);
+router.get(
+  '/invoices',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    // Legacy Receipt tab access
+    { module: 'financeStudentReceipt', action: 'view' },
+    { module: 'financeStudentReceipt', action: 'add' },
+    { module: 'financeStudentReceipt', action: 'edit' },
+    { module: 'financeStudentReceipt', action: 'delete' },
+    { module: 'financeStudentReceipt', action: 'download' },
+
+    // Modal-level access
+    { module: 'financeStudentReceiptModal', action: 'view' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'view' },
+  ]),
+  getInvoices
+);
 router.post('/invoices', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), createInvoice);
 router.post('/invoices/bulk', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), createBulkInvoice);
 router.put('/invoices/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), updateInvoice);
 router.delete('/invoices/:id', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'delete'), deleteInvoice);
-router.post('/payments', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), recordPayment);
+router.post(
+  '/payments',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    // New modal permissions
+    { module: 'financeStudentReceiptModal', action: 'save' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'save' },
+    // Backward-compatible legacy
+    { module: 'financeStudentReceipt', action: 'add' },
+    { module: 'financeStudentReceipt', action: 'edit' },
+  ]),
+  recordPayment
+);
 router.put('/payments/:transactionId', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), editPaymentTransaction);
 router.get('/defaulters', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'view'), getDefaulters);
 router.get('/clearance/:studentId', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'view'), checkClearance);
@@ -387,7 +465,19 @@ router.get('/clearance/:studentId', protect, authorizeRoles('admin', 'staff'), c
 // Student Finance - Receipt workflows
 router.get('/receipt/students', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), listReceiptStudents);
 router.get('/receipt/ledger', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), getStudentReceiptLedger);
-router.post('/receipt/payment-group/revert', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), revertPaymentGroup);
+router.post(
+  '/receipt/payment-group/revert',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    // New modal permissions
+    { module: 'financeStudentReceiptModal', action: 'revert' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'revert' },
+    // Backward-compatible legacy
+    { module: 'financeStudentReceipt', action: 'edit' },
+  ]),
+  revertPaymentGroup
+);
 
 // Student Finance - Students summary (shared by Receipt + Previous Balance tabs)
 router.get(
@@ -415,9 +505,48 @@ router.get('/previous-balance/summary', protect, authorizeRoles('admin', 'staff'
 
 // Student Finance - Show/Pay/History
 router.get('/receipt/show', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), listChargedMonthSummary);
-router.post('/receipt/pay', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), payChargedMonth);
-router.post('/receipt/pay-selected-months', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'add'), paySelectedMonths);
-router.get('/receipt/history', protect, authorizeRoles('admin', 'staff'), checkModuleAnyPermission('financeStudentReceipt'), getStudentMonthHistory);
+router.post(
+  '/receipt/pay',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    { module: 'financeStudentReceiptModal', action: 'save' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'save' },
+    // Backward-compatible legacy
+    { module: 'financeStudentReceipt', action: 'add' },
+  ]),
+  payChargedMonth
+);
+router.post(
+  '/receipt/pay-selected-months',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    { module: 'financeStudentReceiptModal', action: 'save' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'save' },
+    // Backward-compatible legacy
+    { module: 'financeStudentReceipt', action: 'add' },
+  ]),
+  paySelectedMonths
+);
+router.get(
+  '/receipt/history',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    // Legacy Receipt access
+    { module: 'financeStudentReceipt', action: 'view' },
+    { module: 'financeStudentReceipt', action: 'add' },
+    { module: 'financeStudentReceipt', action: 'edit' },
+    { module: 'financeStudentReceipt', action: 'delete' },
+    { module: 'financeStudentReceipt', action: 'download' },
+
+    // Modal-level access
+    { module: 'financeStudentReceiptModal', action: 'view' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'view' },
+  ]),
+  getStudentMonthHistory
+);
 router.post('/receipt/discount', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), discountChargedMonth);
 router.post('/receipt/payment-group/edit', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), editPaymentGroup);
 
@@ -467,7 +596,18 @@ router.post('/payroll/generate-single', protect, authorizeRoles('admin', 'staff'
 router.post('/payroll/update-by-params', protect, authorizeRoles('admin', 'staff'), checkPermission('financePayroll', 'edit'), updatePayrollByParams);
 router.put('/payroll/:id/status', protect, authorizeRoles('admin', 'staff'), checkPermission('financePayroll', 'edit'), updatePayrollStatus);
 router.put('/payroll/:id/adjust', protect, authorizeRoles('admin', 'staff'), checkPermission('financePayroll', 'edit'), adjustPayroll);
-router.patch('/payroll/:id/ledger', protect, authorizeRoles('admin', 'staff'), checkPermission('financePayroll', 'edit'), updatePayrollLedger);
+router.patch(
+  '/payroll/:id/ledger',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    // New modal save permission
+    { module: 'financePayrollEmployeeInfo', action: 'save' },
+    // Backward-compatible legacy
+    { module: 'financePayroll', action: 'edit' },
+  ]),
+  updatePayrollLedger
+);
 
 // Payroll Workflows
 router.post('/payroll/charge', protect, authorizeRoles('admin', 'staff'), checkPermission('financePayroll', 'add'), chargePayroll);

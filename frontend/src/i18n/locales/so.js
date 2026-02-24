@@ -1216,6 +1216,7 @@ export default {
     download: 'Soo dejiso',
     assign: 'Hawlaha',
     unlock: 'Fur qufulka',
+    resetLockout: 'Reset garee xannibaadda gelitaanka',
     activate: 'Fur',
     print: 'Daabac',
     preview: 'Horudhac',

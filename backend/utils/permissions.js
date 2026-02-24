@@ -25,6 +25,7 @@ export const PERMISSION_CONTRACT = Object.freeze({
     'assign',
     'deactivate',
     'reactivate',
+    'download',
     'full',
   ]),
   transfers: Object.freeze(['view', 'transfer', 'full']),
@@ -39,23 +40,26 @@ export const PERMISSION_CONTRACT = Object.freeze({
   // Backward compatibility: some routes accept attendance.print/download for reports.
   attendance: Object.freeze(['view', 'edit', 'print', 'download', 'full']),
   attendanceReports: Object.freeze(['view', 'print', 'download', 'full']),
-  announcements: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
+  announcements: Object.freeze(['add', 'edit', 'delete', 'full']),
   // Bell notifications / security module
   // - view: show bell + list alerts
   // - resetPassword: reset student/teacher password from bell
   // - unlock: unlock staff account from bell
   // - deactivate/activate: toggle account status from bell
-  security: Object.freeze(['view', 'resetPassword', 'unlock', 'deactivate', 'activate', 'full']),
+  // - resetLockout: reset staff login lockout (used in User Management)
+  // - edit: legacy fallback (kept for backwards compatibility)
+  security: Object.freeze(['view', 'resetPassword', 'unlock', 'deactivate', 'activate', 'resetLockout', 'edit', 'full']),
 
   // Finance (granular tab-based permissions)
   financeDashboard: Object.freeze(['view', 'full']),
-  financeAccounts: Object.freeze(['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'print', 'full']),
+  // Note: printing is governed by financePrint.print (global)
+  financeAccounts: Object.freeze(['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'full']),
   // Accounts (sub-tabs)
   // NOTE: Enforced per-tab in financeRoutes.js and backward-compatible with legacy financeAccounts.* via middleware aliases.
   financeAccountsInstitution: Object.freeze(['view', 'add', 'edit', 'delete', 'transfer', 'income', 'download', 'full']),
   financeAccountsOverview: Object.freeze(['view', 'full']),
   financeAccountsLedger: Object.freeze(['view', 'download', 'full']),
-  financeStudent: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
+  financeStudent: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'full']),
   // Student Finance (sub-tabs)
   // NOTE: These are used to allow admin to grant access per Student Finance tab.
   // They are enforced in financeRoutes.js and are backward-compatible with legacy financeStudent.* via middleware aliases.
@@ -63,14 +67,20 @@ export const PERMISSION_CONTRACT = Object.freeze({
   financeStudentPreviousBalance: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
   financeStudentAmountType: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
   financeStudentFeeType: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
-  financePayroll: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
-  financeExpenses: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'print', 'full']),
+  // Modal-level permissions (separate from tab CRUD)
+  financeStudentReceiptModal: Object.freeze(['view', 'input', 'save', 'revert', 'full']),
+  financeStudentPreviousBalanceModal: Object.freeze(['view', 'input', 'save', 'revert', 'full']),
+
+  financePayroll: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'full']),
+  financePayrollEmployeeInfo: Object.freeze(['view', 'input', 'save', 'full']),
+
+  financeExpenses: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'full']),
   // Expenses (sub-tabs)
   financeExpensesLedger: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'full']),
   financeExpensesCategories: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
   financeConfig: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
   financeFoundation: Object.freeze(['view', 'add', 'full']),
-  financeAppointments: Object.freeze(['view', 'add', 'edit', 'delete', 'print', 'full']),
+  financeAppointments: Object.freeze(['view', 'add', 'edit', 'delete', 'full']),
   financeAudit: Object.freeze(['view', 'full']),
   financeMaintenance: Object.freeze(['run', 'full']),
   financePrint: Object.freeze(['print', 'full']),

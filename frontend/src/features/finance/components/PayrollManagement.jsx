@@ -34,6 +34,13 @@ export default function PayrollManagement() {
     const canDelete = hasPermission('financePayroll', 'delete');
     const canPrint = hasPermission('financePrint', 'print');
 
+    const canViewEmployeeInfo =
+        hasPermission('financePayrollEmployeeInfo', 'view') ||
+        hasPermission('financePayrollEmployeeInfo', 'full') ||
+        // Backward-compatible legacy
+        hasPermission('financePayroll', 'view') ||
+        hasPermission('financePayroll', 'edit');
+
     const queryClient = useQueryClient();
     const cachedAcademicYears = queryClient.getQueryData(['academicYears']);
 
@@ -355,18 +362,20 @@ export default function PayrollManagement() {
                                 return (
                                     <RowActionButtons
                                         actions={[
-                                            {
-                                                key: 'info',
-                                                label: t('finance.payroll.actions.viewInfo', { defaultValue: 'View Info' }),
-                                                title: t('finance.payroll.actions.viewInfo', { defaultValue: 'View Info' }),
-                                                tone: 'view',
-                                                showLabel: true,
-                                                icon: null,
-                                                onClick: () => {
-                                                    setInfoStaffId(row?.raw?.staff?._id || '');
-                                                    setShowEmployeeInfo(true);
+                                            ...(canViewEmployeeInfo ? [
+                                                {
+                                                    key: 'info',
+                                                    label: t('finance.payroll.actions.viewInfo', { defaultValue: 'View Info' }),
+                                                    title: t('finance.payroll.actions.viewInfo', { defaultValue: 'View Info' }),
+                                                    tone: 'view',
+                                                    showLabel: true,
+                                                    icon: null,
+                                                    onClick: () => {
+                                                        setInfoStaffId(row?.raw?.staff?._id || '');
+                                                        setShowEmployeeInfo(true);
+                                                    },
                                                 },
-                                            },
+                                            ] : []),
                                         ]}
                                     />
                                 );

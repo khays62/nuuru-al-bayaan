@@ -972,6 +972,7 @@ const en = {
     download: 'Download',
     assign: 'Assignments',
     unlock: 'Unlock',
+    resetLockout: 'Reset Lockout',
     activate: 'Activate',
     print: 'Print',
     preview: 'Preview',

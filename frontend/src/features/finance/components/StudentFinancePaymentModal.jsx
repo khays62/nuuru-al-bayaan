@@ -23,14 +23,40 @@ import {
 } from '../hooks/studentFinanceHooks';
 import { getInvoices } from '../api/studentFinanceApi';
 
-export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
+export default function StudentFinancePaymentModal({
+    row,
+    onClose,
+    onPaid,
+    permissionModule = 'financeStudentReceiptModal',
+    legacyModule = 'financeStudentReceipt',
+}) {
     const { auth, hasPermission } = useAuth();
     const { t, lang } = useI18n();
     // Note: role checks handled server-side; keep auth available for future UI rules
     void auth;
 
-    const canPayPerm = hasPermission('financeStudentReceipt', 'edit');
-    const canRevertPerm = hasPermission('financeStudentReceipt', 'delete');
+    const legacyAny = ['view', 'add', 'edit', 'delete', 'download'].some((a) => hasPermission(legacyModule, a));
+
+    const canViewPerm =
+        hasPermission(permissionModule, 'view') ||
+        hasPermission(permissionModule, 'full') ||
+        legacyAny;
+
+    const canInputPerm =
+        hasPermission(permissionModule, 'input') ||
+        hasPermission(permissionModule, 'full') ||
+        ['add', 'edit'].some((a) => hasPermission(legacyModule, a));
+
+    const canSavePerm =
+        hasPermission(permissionModule, 'save') ||
+        hasPermission(permissionModule, 'full') ||
+        ['add', 'edit'].some((a) => hasPermission(legacyModule, a));
+
+    const canRevertPerm =
+        hasPermission(permissionModule, 'revert') ||
+        hasPermission(permissionModule, 'full') ||
+        ['delete', 'edit'].some((a) => hasPermission(legacyModule, a));
+
     const canPrintPerm = hasPermission('financePrint', 'print');
 
     const [loading, setLoading] = useState(true);
@@ -76,16 +102,17 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
         queryKey: accountKeys.list({ includeInactive: false }),
         queryFn: ({ signal }) => listAccounts({ includeInactive: false }, { signal }),
         staleTime: 30 * 1000,
+        enabled: Boolean(canViewPerm),
     });
 
     const invoicesQuery = useInvoicesQuery(
         { studentId: student?._id, limit: 200 },
-        { enabled: !!student?._id }
+        { enabled: Boolean(canViewPerm) && !!student?._id }
     );
 
     const historyQuery = useStudentMonthHistoryQuery(
         { studentId: student?._id },
-        { enabled: !!student?._id }
+        { enabled: Boolean(canViewPerm) && !!student?._id }
     );
 
     const payChargedMonthMutation = usePayChargedMonthMutation();
@@ -146,6 +173,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
 
     const handleRevertHistoryPayments = async (h) => {
         try {
+            if (!canRevertPerm) return;
             const groups = Array.isArray(h?.paymentGroups) ? h.paymentGroups : [];
             if (!groups.length) {
                 return toast.error(t('finance.studentFinance.paymentModal.toasts.noPaymentGroupsToRevert', { defaultValue: 'No payment groups found to revert' }));
@@ -203,6 +231,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     };
 
     const handleSavePayment = async (inv) => {
+        if (!canSavePerm) return;
         const paidAmount = Number(editingPaid[inv._id]);
         if (!accountId) return toast.error(t('finance.studentFinance.paymentModal.validation.selectAccount', { defaultValue: 'Please select an account' }));
         if (!paidAmount || paidAmount <= 0) return toast.error(t('finance.studentFinance.paymentModal.validation.enterValidAmount', { defaultValue: 'Enter a valid amount' }));
@@ -448,6 +477,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
     };
 
     const handlePaySelectedHormaris = async () => {
+        if (!canSavePerm) return;
         if (!selectedHormarisMonths.length) return toast.error(t('finance.studentFinance.paymentModal.validation.selectHormarisMonths', { defaultValue: 'Select Hormaris months' }));
         if (!accountId) return toast.error(t('finance.studentFinance.paymentModal.validation.selectAccountShort', { defaultValue: 'Select account' }));
         const reference = String(hormarisReference || '').trim();
@@ -748,6 +778,8 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
         `;
     };
 
+    if (!canViewPerm) return null;
+
     return (
         <Modal
             isOpen
@@ -808,6 +840,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                         }))}
                                         placeholder={t('finance.studentFinance.paymentModal.placeholders.chooseAccount', { defaultValue: '-- Choose Account --' })}
                                         className="h-10 font-bold text-xs"
+                                        disabled={!canInputPerm}
                                     />
                                 </div>
 
@@ -820,6 +853,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                             onClick={() => setPaymentType('level')}
                                             variant="neutral"
                                             size="sm"
+                                            disabled={!canInputPerm}
                                             className={`flex-1 h-full px-0 border-0 shadow-none rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${paymentType === 'level' ? 'bg-(--nb-color-bg-card)! text-(--nb-color-fg)! shadow-(--nb-shadow-sm) border border-(--nb-color-border)' : 'bg-transparent! text-(--nb-color-muted)!'}`}
                                         >
                                             {t('finance.studentFinance.paymentModal.controls.byLevel', { defaultValue: 'By Level' })}
@@ -828,6 +862,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                             onClick={() => setPaymentType('receipt')}
                                             variant="neutral"
                                             size="sm"
+                                            disabled={!canInputPerm}
                                             className={`flex-1 h-full px-0 border-0 shadow-none rounded-md text-[9px] font-black uppercase tracking-tighter transition-all ${paymentType === 'receipt' ? 'bg-(--nb-color-bg-card)! text-(--nb-color-fg)! shadow-(--nb-shadow-sm) border border-(--nb-color-border)' : 'bg-transparent! text-(--nb-color-muted)!'}`}
                                         >
                                             {t('finance.studentFinance.paymentModal.controls.byReceipt', { defaultValue: 'By Receipt' })}
@@ -844,6 +879,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                         className="h-10 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-lg font-bold text-xs text-(--nb-color-fg)"
                                         value={paymentDate}
                                         onChange={e => setPaymentDate(e.target.value)}
+                                        disabled={!canInputPerm}
                                     />
                                 </div>
 
@@ -869,7 +905,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                         </div>
                                         <Button
                                             onClick={handlePaySelectedHormaris}
-                                            disabled={selectedHormarisMonths.length === 0 || !accountId}
+                                            disabled={!canSavePerm || selectedHormarisMonths.length === 0 || !accountId}
                                             variant="neutral"
                                             size="md"
                                             className="h-8 px-4 bg-(--nb-color-brand)! text-white! border-(--nb-color-brand)! rounded-lg text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
@@ -884,6 +920,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                         value={hormarisReference}
                                         onChange={(e) => setHormarisReference(e.target.value)}
                                         className="h-8 w-full px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-lg font-black text-[10px] uppercase tracking-widest text-(--nb-color-fg)"
+                                        disabled={!canInputPerm}
                                     />
 
                                     <div className="flex flex-wrap gap-2">
@@ -909,6 +946,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                             value={selectedHormarisAmounts?.[o.month] ?? ''}
                                                             onChange={(e) => handleHormarisAmountChange(o.month, e.target.value)}
                                                             className="h-8 w-24 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-lg font-black text-[10px] uppercase tracking-widest text-(--nb-color-fg)"
+                                                            disabled={!canInputPerm}
                                                         />
                                                     ) : null}
                                                 </div>
@@ -982,7 +1020,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                             : t('finance.studentFinance.paymentModal.placeholders.phoneRef', { defaultValue: 'Phone/Ref' })}
                                                         value={editingReference?.[inv._id] ?? ''}
                                                         onChange={(e) => handleReferenceChange(inv._id, e.target.value)}
-                                                        disabled={paymentLocked}
+                                                        disabled={paymentLocked || !canInputPerm}
                                                     />
                                                 );
                                             case 'description':
@@ -1006,7 +1044,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
                                                         placeholder={t('finance.studentFinance.paymentModal.placeholders.amountZero', { defaultValue: '0.00' })}
                                                         value={editingPaid?.[inv._id] || ''}
                                                         onChange={(e) => handlePaidChange(inv._id, e.target.value)}
-                                                        disabled={paymentLocked}
+                                                        disabled={paymentLocked || !canInputPerm}
                                                     />
                                                 );
                                             case 'actions':
@@ -1028,12 +1066,12 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
 
                                                     return (
                                                         <div className="flex justify-end gap-2">
-                                                            {canPayPerm ? (
+                                                            {canSavePerm ? (
                                                                 <Button
                                                                     size="sm"
                                                                     variant="brand"
                                                                     className={saveColorClass}
-                                                                    disabled={paymentLocked || !hasValidAmount || isOverpay}
+                                                                    disabled={!canInputPerm || paymentLocked || !hasValidAmount || isOverpay}
                                                                     onClick={() => handleSavePayment(inv)}
                                                                     title={isOverpay
                                                                         ? t('finance.studentFinance.paymentModal.validation.amountExceedsBalance', { defaultValue: 'Amount exceeds balance' })
@@ -1092,6 +1130,7 @@ export default function StudentFinancePaymentModal({ row, onClose, onPaid }) {
 
                             <div className="overflow-x-auto border border-(--nb-color-border) rounded-xl">
                                 <StandardTable
+                                                        disabled={!canInputPerm}
                                     isLoading={loading}
                                     items={history}
                                     rows={history}

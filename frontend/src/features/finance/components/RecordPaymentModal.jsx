@@ -9,7 +9,12 @@ import { useAuth } from '../../../auth/AuthContext';
 export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
-    const canAddPayment = hasPermission('financeStudentReceipt', 'add');
+    const canAddPayment =
+        hasPermission('financeStudentReceiptModal', 'save') ||
+        hasPermission('financeStudentReceiptModal', 'full') ||
+        // Backward-compatible legacy
+        hasPermission('financeStudentReceipt', 'add') ||
+        hasPermission('financeStudentReceipt', 'edit');
 
     const [paymentMethods, setPaymentMethods] = useState(['Cash']);
     const [paymentType, setPaymentType] = useState('Invoice'); // Invoice or Hormaris
@@ -26,7 +31,11 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
 
     const paymentMethodsQuery = useFinanceCategoriesQuery(
         { type: 'paymentMethod', includeInactive: false },
-        { staleTime: 60_000, refetchOnWindowFocus: false }
+        {
+            staleTime: 60_000,
+            refetchOnWindowFocus: false,
+            enabled: Boolean(canAddPayment),
+        }
     );
 
     useEffect(() => {

@@ -204,7 +204,7 @@ export default function UserFormModal({
       // Otherwise, keep the user's group selection if present.
       return prevId || derivedId || '';
     });
-  }, [isOpen, form?.role, form?.selectedModule]);
+  }, [isOpen, form?.role, form?.selectedModule, MODULE_PERMISSIONS]);
 
   // When selecting Student Finance, default the tab to a tab that already has permissions (if any).
   useEffect(() => {
@@ -217,7 +217,7 @@ export default function UserFormModal({
 
     const found = tabs.find((x) => moduleHasAnyEnabledPermission(form?.permissions?.[x.module]));
     if (found?.id) setSelectedStudentFinanceTab(found.id);
-  }, [isOpen, form?.role, form?.selectedModule, form?.permissions, MODULE_PERMISSIONS]);
+  }, [isOpen, form?.role, form?.selectedModule, MODULE_PERMISSIONS]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -229,7 +229,7 @@ export default function UserFormModal({
 
     const found = tabs.find((x) => moduleHasAnyEnabledPermission(form?.permissions?.[x.module]));
     if (found?.id) setSelectedAccountsTab(found.id);
-  }, [isOpen, form?.role, form?.selectedModule, form?.permissions, MODULE_PERMISSIONS]);
+  }, [isOpen, form?.role, form?.selectedModule, MODULE_PERMISSIONS]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -241,7 +241,7 @@ export default function UserFormModal({
 
     const found = tabs.find((x) => moduleHasAnyEnabledPermission(form?.permissions?.[x.module]));
     if (found?.id) setSelectedExpensesTab(found.id);
-  }, [isOpen, form?.role, form?.selectedModule, form?.permissions, MODULE_PERMISSIONS]);
+  }, [isOpen, form?.role, form?.selectedModule]);
 
   const moduleGroupOptions = useMemo(() => {
     const present = new Set(Array.isArray(MODULES) ? MODULES.map((m) => moduleGroupIdFor(m)) : []);
@@ -557,6 +557,29 @@ export default function UserFormModal({
                           </label>
                         ));
 
+                        // Modal permissions (Receipt / Previous Balance)
+                        const modalModule = tab?.id === 'receipt'
+                          ? 'financeStudentReceiptModal'
+                          : (tab?.id === 'previousBalance' ? 'financeStudentPreviousBalanceModal' : '');
+                        const modalPerms = modalModule ? (MODULE_PERMISSIONS?.[modalModule] || []) : [];
+                        if (modalModule && modalPerms.length) {
+                          const modalPrefix = tab?.id === 'receipt'
+                            ? t('finance.studentFinance.tabs.receipt', { defaultValue: 'Receipt' })
+                            : t('finance.studentFinance.tabs.previousBalance', { defaultValue: 'Previous Balance' });
+                          modalPerms.forEach((perm) => {
+                            base.push(
+                              <label key={`${modalModule}:${perm}`} className="flex items-center gap-2 border p-2 rounded">
+                                <Checkbox
+                                  checked={!!form.permissions?.[modalModule]?.[perm]}
+                                  onChange={() => togglePermissionSmart(modalModule, perm)}
+                                  disabled={isFormLoading || isSaving}
+                                />
+                                {`${modalPrefix} Modal: ${permissionLabel(modalModule, perm)}`}
+                              </label>
+                            );
+                          });
+                        }
+
                         // Receipt tab printing is controlled by financePrint.print.
                         if (tab?.id === 'receipt') {
                           base.push(
@@ -716,6 +739,21 @@ export default function UserFormModal({
                             {permissionLabel('financePrint', 'print')}
                           </label>
                         );
+
+                        // Payroll Employee Info modal permissions
+                        const payrollInfoPerms = MODULE_PERMISSIONS?.financePayrollEmployeeInfo || [];
+                        payrollInfoPerms.forEach((perm) => {
+                          base.push(
+                            <label key={`financePayrollEmployeeInfo:${perm}`} className="flex items-center gap-2 border p-2 rounded">
+                              <Checkbox
+                                checked={!!form.permissions?.financePayrollEmployeeInfo?.[perm]}
+                                onChange={() => togglePermissionSmart('financePayrollEmployeeInfo', perm)}
+                                disabled={isFormLoading || isSaving}
+                              />
+                              {`Employee Info Modal: ${permissionLabel('financePayrollEmployeeInfo', perm)}`}
+                            </label>
+                          );
+                        });
 
                         return base;
                       })()}

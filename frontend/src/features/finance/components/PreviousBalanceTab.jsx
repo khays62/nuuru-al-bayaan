@@ -26,8 +26,11 @@ export default function PreviousBalanceTab() {
     const canEdit = hasPermission('financeStudentPreviousBalance', 'edit');
     const canSave = canAdd || canEdit;
 
-    // This modal relies on Receipt endpoints (ledger/history/invoices), so gate it by Receipt permissions.
-    const canViewInfo = ['view', 'add', 'edit', 'delete', 'download'].some((a) => hasPermission('financeStudentReceipt', a));
+    const canViewInfo =
+        hasPermission('financeStudentPreviousBalanceModal', 'view') ||
+        hasPermission('financeStudentPreviousBalanceModal', 'full') ||
+        // Backward-compatible legacy
+        ['view', 'add', 'edit', 'delete', 'download'].some((a) => hasPermission('financeStudentReceipt', a));
 
     const [search, setSearch] = useState('');
     const [classId, setClassId] = useState('');
@@ -532,6 +535,8 @@ export default function PreviousBalanceTab() {
                     row={selectedStudentRow}
                     onClose={() => setShowInfoModal(false)}
                     onPaid={handleSearch}
+                    permissionModule="financeStudentPreviousBalanceModal"
+                    legacyModule="financeStudentReceipt"
                 />
             )}
         </div>

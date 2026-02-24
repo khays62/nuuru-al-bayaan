@@ -16,8 +16,22 @@ import { useAuth } from '../../../auth/AuthContext';
 
 export default function FeeManagement() {
     const { hasPermission } = useAuth();
-    const canAdd = hasPermission('financeStudentReceipt', 'add');
-    const canView = hasPermission('financeStudentReceipt', 'view');
+    const canAdd =
+        hasPermission('financeStudentReceiptModal', 'save') ||
+        hasPermission('financeStudentReceiptModal', 'full') ||
+        // Backward-compatible legacy
+        hasPermission('financeStudentReceipt', 'add') ||
+        hasPermission('financeStudentReceipt', 'edit');
+
+    const canView =
+        hasPermission('financeStudentReceiptModal', 'view') ||
+        hasPermission('financeStudentReceiptModal', 'full') ||
+        // Backward-compatible legacy
+        hasPermission('financeStudentReceipt', 'view') ||
+        hasPermission('financeStudentReceipt', 'add') ||
+        hasPermission('financeStudentReceipt', 'edit') ||
+        hasPermission('financeStudentReceipt', 'delete') ||
+        hasPermission('financeStudentReceipt', 'download');
 
     const [invoices, setInvoices] = useState([]);
     const [loading, setLoading] = useState(true);
