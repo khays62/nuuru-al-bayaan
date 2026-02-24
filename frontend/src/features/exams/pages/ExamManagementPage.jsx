@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
-import { RotateCcw, Check, Loader2, AlertCircle, Lock } from 'lucide-react';
+import { RotateCcw, Check, Loader2, AlertCircle, Lock, FileDown, Upload } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { getExamGrid, saveExamScore, getExamTemplateVersions } from '../api/exams';
 import { getGradeSectionById, listGradeSections } from '../../grades/api/gradeSections';
@@ -19,6 +19,7 @@ import { useI18n } from '../../../i18n/I18nProvider';
 import { getAssignments as getTeacherAssignments } from '../../teachers/api/teachersApi';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { useExamsRealtimeInvalidation } from '../useExamsRealtimeInvalidation';
+import ExamScoresExcelImportModal from '../components/ExamScoresExcelImportModal.jsx';
 
 export default function ExamManagementPage() {
     const { t } = useI18n();
@@ -76,6 +77,9 @@ export default function ExamManagementPage() {
 
     const [templateVersions, setTemplateVersions] = useState([]);
     const [templateVersion, setTemplateVersion] = useState('');
+
+    const [importOpen, setImportOpen] = useState(false);
+    const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
     const activeTemplateVersion = useMemo(() => {
         const v = (templateVersions || []).find(x => Boolean(x?.isActive));
@@ -234,13 +238,21 @@ export default function ExamManagementPage() {
     });
 
     useEffect(() => {
+        // When switching to a new section, reset subject selection.
         setSubjects([]);
         setSubjectId('');
+    }, [gradeSectionId]);
+
+    useEffect(() => {
         if (!gradeSectionId) return;
         const subs = Array.isArray(gradeSectionQuery.data?.subjects) ? gradeSectionQuery.data.subjects : [];
         setSubjects(subs);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gradeSectionId, gradeSectionQuery.data]);
+        // Keep current subject selection if it still exists after a realtime refetch.
+        if (subjectId) {
+            const exists = subs.some((s) => String(s?._id) === String(subjectId));
+            if (!exists) setSubjectId('');
+        }
+    }, [gradeSectionId, gradeSectionQuery.data, subjectId]);
 
     useEffect(() => {
         if (!gradeSectionId) return;
@@ -346,7 +358,8 @@ export default function ExamManagementPage() {
         setSavingCells(prev => { const next = new Set(prev); next.delete(key); return next; });
         if (!ok) {
             setErrorCells(prev => new Set(prev).add(key));
-            toast.error(data?.message || t('exams.management.errors.saveFailed'));
+            const msg = data?.code ? t(data.code, data.params || {}) : (data?.message || t('exams.management.errors.saveFailed'));
+            toast.error(msg);
         } else {
             setLocalInputs(prev => ({ ...prev, [key]: String(n) }));
             setRecentlySaved(prev => {
@@ -473,6 +486,126 @@ export default function ExamManagementPage() {
     });
 
     const loadingGrid = Boolean(examGridQuery.isLoading && examGridQuery.data == null);
+
+    const canExcelActions = examGridEnabled && !loadingGrid && (grid.students?.length || 0) > 0 && (grid.columns?.length || 0) > 0;
+
+    const safeFilePart = (s) => String(s || '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^\p{L}\p{N}_\-]+/gu, '')
+        .slice(0, 50);
+
+    const downloadExcelTemplate = async () => {
+        if (!canInput) {
+            toast.error(t('exams.management.errors.noPermissionInputScores'));
+            return;
+        }
+        if (!canExcelActions) {
+            toast.error(t('exams.management.import.errors.selectFiltersFirst'));
+            return;
+        }
+        if (downloadingTemplate) return;
+        setDownloadingTemplate(true);
+        try {
+            const ExcelJS = (await import('exceljs')).default;
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'Nuuru Al-Bayaan';
+            wb.created = new Date();
+
+            const sectionList = (isTeacher ? teacherSections : sections) || [];
+            const sectionObj = sectionList.find((gs) => String(gs?._id) === String(gradeSectionId)) || null;
+            const gradeName = sectionObj?.grade?.gradeName || (grades || []).find((g) => String(g?._id) === String(gradeId))?.gradeName || '';
+            const shiftName = sectionObj?.shift?.shiftName || (shifts || []).find((s) => String(s?._id) === String(shiftId))?.shiftName || '';
+            const sectionNum = sectionObj?.section || '';
+            const subjectName = (subjects || []).find((su) => String(su?._id) === String(subjectId))?.subjectName || '';
+
+            const sortedCols = [...(grid.columns || [])].sort((a, b) => {
+                const ao = Number(a?.order || 0);
+                const bo = Number(b?.order || 0);
+                if (ao !== bo) return ao - bo;
+                return String(a?.typeName || '').localeCompare(String(b?.typeName || ''));
+            });
+
+            const ws = wb.addWorksheet('Scores');
+            const headers = [
+                'Student Mongo ID',
+                'Student ID',
+                'Student Name',
+                ...sortedCols.map((c) => {
+                    const max = maxScoreMap?.[c.examId] ?? c?.maxScore ?? '';
+                    return `${String(c?.typeName || 'Exam')} (${String(max || '-')})`;
+                }),
+            ];
+            ws.addRow(headers);
+            const idsRow = [
+                '',
+                '',
+                '',
+                ...sortedCols.map((c) => String(c.examId)),
+            ];
+            ws.addRow(idsRow);
+
+            // Styling + hiding
+            ws.getRow(1).font = { bold: true };
+            ws.getRow(2).hidden = true;
+            ws.getColumn(1).hidden = true;
+            ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+            for (const st of (grid.students || [])) {
+                const scoreCells = sortedCols.map((c) => {
+                    const key = `${st.studentId}-${c.examId}-${subjectId}`;
+                    const existing = scoreMap.get(key);
+                    return (existing === undefined || existing === null) ? '' : existing;
+                });
+                ws.addRow([
+                    String(st.studentId || ''),
+                    String(st.studentCode || ''),
+                    String(st.fullName || ''),
+                    ...scoreCells,
+                ]);
+            }
+
+            const meta = wb.addWorksheet('_meta');
+            meta.addRow(['academicYearId', String(academicYearId || '')]);
+            meta.addRow(['gradeSectionId', String(gradeSectionId || '')]);
+            meta.addRow(['subjectId', String(subjectId || '')]);
+            meta.addRow(['gradeName', String(gradeName || '')]);
+            meta.addRow(['shiftName', String(shiftName || '')]);
+            meta.addRow(['section', String(sectionNum || '')]);
+            meta.addRow(['subjectName', String(subjectName || '')]);
+            meta.addRow(['templateVersion', String(templateVersion || '')]);
+            meta.addRow(['enrollmentStatus', String(enrollmentStatus || '')]);
+            meta.addRow(['cohortId', String(cohortId || '')]);
+            meta.addRow(['generatedAt', new Date().toISOString()]);
+            meta.state = 'veryHidden';
+
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const parts = [
+                'exam_scores',
+                safeFilePart(gradeName) || safeFilePart(gradeId) || safeFilePart(gradeSectionId),
+                safeFilePart(shiftName) || safeFilePart(shiftId),
+                sectionNum ? `Sec${safeFilePart(sectionNum)}` : safeFilePart(gradeSectionId),
+                safeFilePart(subjectName) || safeFilePart(subjectId),
+            ].filter(Boolean);
+            a.download = `${parts.join('_')}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('Template download failed', e);
+            toast.error(e?.message || t('common.error', { defaultValue: 'Error' }));
+        } finally {
+            setDownloadingTemplate(false);
+        }
+    };
 
     useEffect(() => {
         if (!examGridEnabled) {
@@ -750,6 +883,26 @@ export default function ExamManagementPage() {
                     <FilterItem className="sm:ml-auto">
                         <div className="flex items-center gap-2 flex-wrap">
                             <ActionButton
+                                variant="outline"
+                                onClick={downloadExcelTemplate}
+                                disabled={!canExcelActions || downloadingTemplate || !canInput}
+                                            title={t('exams.management.import.actions.downloadTemplate')}
+                                icon={<FileDown size={16} />}
+                            >
+                                            {t('exams.management.import.actions.downloadTemplate')}
+                            </ActionButton>
+
+                            <ActionButton
+                                variant="outline"
+                                onClick={() => setImportOpen(true)}
+                                disabled={!canExcelActions || !canInput}
+                                title={t('exams.management.import.actions.importExcel')}
+                                icon={<Upload size={16} />}
+                            >
+                                {t('exams.management.import.actions.importExcel')}
+                            </ActionButton>
+
+                            <ActionButton
                                 variant="primary"
                                 onClick={handleReset}
                                 title={t('common.filters.resetTitle')}
@@ -761,6 +914,19 @@ export default function ExamManagementPage() {
                     </FilterItem>
                 </FilterRow>
             </Card>
+
+            <ExamScoresExcelImportModal
+                isOpen={importOpen}
+                onClose={() => setImportOpen(false)}
+                canInput={canInput}
+                gridParams={examGridParams}
+                onImported={() => {
+                    examGridQuery.refetch?.();
+                    setLocalInputs({});
+                    setSavingCells(new Set());
+                    setErrorCells(new Set());
+                }}
+            />
 
             <Card className="p-4 overflow-auto">
                 {!academicYearId || !gradeSectionId ? (

@@ -166,6 +166,18 @@ export async function saveExamScore({ studentId, examId, subjectId, scoreObtaine
   }
 }
 
+export async function importExamScores(payload = {}) {
+  try {
+    const data = await fetchJson('/exams/scores/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return { ok: true, status: 200, data };
+  } catch (e) {
+    return { ok: false, status: e?.status || 0, data: e?.data || { message: e?.message || 'Network error' } };
+  }
+}
+
 export async function getExamSummary(params = {}) {
   try {
     const query = new URLSearchParams();

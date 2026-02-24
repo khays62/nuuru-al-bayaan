@@ -18,6 +18,10 @@ export default {
       copyFailed: 'فشل النسخ',
     },
 
+    labels: {
+      errors: 'الأخطاء',
+    },
+
     emptyStates: {
       noData: 'لا توجد بيانات',
       noDataFound: 'لم يتم العثور على بيانات',
@@ -2327,6 +2331,66 @@ export default {
         saveAllTitle: 'حفظ جميع الإدخالات المعلّقة',
       },
 
+      import: {
+        title: 'استيراد درجات الامتحان (Excel)',
+        help: 'استخدم القالب الذي تم تنزيله. املأ الدرجات ثم ارفعه هنا.',
+        labels: {
+          mode: 'الوضع',
+          file: 'ملف Excel',
+        },
+        actions: {
+          downloadTemplate: 'تنزيل القالب',
+          importExcel: 'استيراد Excel',
+          validate: 'تحقق',
+          import: 'استيراد',
+        },
+        modes: {
+          merge: 'دمج (الخلايا المعبأة فقط)',
+          skip: 'تخطي الدرجات الموجودة',
+          overwrite: 'استبدال (الفراغ يحذف)',
+        },
+        toasts: {
+          validated: 'تم التحقق بنجاح.',
+          imported: 'تم الاستيراد بنجاح.',
+        },
+        summary: 'الطلاب: {{students}}، الأعمدة: {{columns}}، الإضافات/التحديث: {{upserts}}، الحذف: {{deletes}}',
+        errors: {
+          pickFile: 'يرجى اختيار ملف Excel.',
+          validateFirst: 'يرجى التحقق من الملف أولاً.',
+          mismatch: 'القالب لا يطابق الفلاتر الحالية.',
+          selectFiltersFirst: 'يرجى اختيار الفلاتر وتحميل الشبكة أولاً.',
+          noWorksheetFound: 'لم يتم العثور على ورقة عمل داخل ملف Excel.',
+          missingStudentMongoIdCol: 'القالب يفتقد العمود المخفي لمعرّف الطالب (Mongo ID).',
+          missingStudentIdCol: 'القالب يفتقد عمود معرّف الطالب.',
+          missingStudentNameCol: 'القالب يفتقد عمود اسم الطالب.',
+          noExamColumns: 'القالب لا يحتوي على أعمدة امتحان.',
+        },
+
+        serverMessages: {
+          validated: 'تم التحقق',
+          imported: 'تم الاستيراد',
+        },
+
+        serverErrors: {
+          badRequest: 'طلب الاستيراد غير صالح.',
+          invalidMode: 'وضع الاستيراد غير صالح.',
+          missingRows: 'لم يتم العثور على صفوف للاستيراد.',
+          validationFailed: 'فشل التحقق من الاستيراد.',
+          invalidStudentId: 'معرّف الطالب غير صالح.',
+          duplicateStudentRow: 'صف طالب مكرر.',
+          studentNotInFilter: 'الطالب غير موجود ضمن فلاتر الصف/الحالة المحددة.',
+          studentLocked: 'الطالب مقفل (توجد درجات ضمن قالب آخر).',
+          studentNameMismatch: 'اسم الطالب غير مطابق.',
+          studentCodeMismatch: 'رمز/معرّف الطالب غير مطابق.',
+          unknownExamColumn: 'عمود امتحان غير معروف.',
+          scoreNotNumber: 'يجب أن تكون الدرجة رقماً >= 0.',
+          scoreTooHigh: 'يجب أن تكون الدرجة بين 0 و {{max}}.',
+          missingStudents: 'ينقص {{count}} صفاً للطلاب من القالب.',
+          extraStudents: 'القالب يحتوي على {{count}} صفاً غير متوقع للطلاب.',
+          serverError: 'خطأ في الخادم.',
+        },
+      },
+
       toasts: {
         savedScoresSuccessfully: 'تم حفظ الدرجات بنجاح',
         updatedScoresSuccessfully: 'تم تحديث الدرجات بنجاح',
@@ -2341,6 +2405,19 @@ export default {
         fixInvalidEntries: 'أصلح {{count}} إدخالات غير صالحة قبل الحفظ.',
         loadGridFailed: 'فشل تحميل الشبكة',
         lockedCount: 'لدى {{count}} طالب(ة) درجات محفوظة ضمن قالب آخر (مقفل).',
+      },
+
+      serverErrors: {
+        missingIds: 'يجب توفير studentId و examId و subjectId.',
+        invalidScore: 'يجب أن تكون الدرجة رقماً صالحاً >= 0.',
+        examNotFound: 'لم يتم العثور على الامتحان.',
+        teacherMissingRef: 'حساب المعلم يفتقد teacherRef.',
+        notAssigned: 'غير مكلّف بهذا الصف/المادة.',
+        lockedOtherTemplate: 'لدى هذا الطالب درجات محفوظة ضمن إصدار قالب آخر لهذه المادة. انتقل إلى ذلك الإصدار. ({{versions}})',
+        scoreTooHigh: 'يجب أن تكون الدرجة بين 0 و {{max}}.',
+        noEnrollment: 'لا يوجد قيد للطالب لهذه الشعبة/السنة.',
+        duplicate: 'تركيبة درجة مكررة.',
+        serverError: 'خطأ في الخادم.',
       },
     },
   },

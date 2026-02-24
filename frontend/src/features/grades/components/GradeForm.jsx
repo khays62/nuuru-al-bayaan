@@ -30,8 +30,11 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   const [gradeSubjects, setGradeSubjects] = useState([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [hasScoreMap, setHasScoreMap] = useState({}); // subjectId -> boolean (has scores)
+  const [lockMapLoading, setLockMapLoading] = useState(false);
   const hasScoresAbortRef = useRef(null);
   const hasScoresTimerRef = useRef(null);
+  const hasScoresFetchedOnceRef = useRef(false);
+  const initialSubjectIdsRef = useRef(new Set((cls?.subjects || []).map(s => String(s?._id || s))));
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittingPhase, setSubmittingPhase] = useState(''); // '', 'saving'
@@ -111,6 +114,17 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
             blocked: (res.blocked || []).join(', '),
           }));
         } else if (res.code === 'SUBJECTS_HAVE_SCORES') {
+          const blockedIds = (res.blockedSubjects || []).map(s => String(s?._id || '')).filter(Boolean);
+          // Ensure blocked subjects remain selected and show as locked.
+          if (blockedIds.length) {
+            setSubjects(prev => Array.from(new Set([...(prev || []), ...blockedIds])));
+            setHasScoreMap(prev => {
+              const next = { ...(prev || {}) };
+              for (const id of blockedIds) next[id] = true;
+              return next;
+            });
+          }
+
           const items = (res.blockedSubjects || []).map(s => s.subjectName || s._id).join(', ');
           toast.error(t('gradeSections.form.errors.cannotRemoveWithScores', {
             defaultValue: 'Cannot remove subjects with scores: {{items}}',
@@ -160,8 +174,9 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   const toggleSubject = (id) => {
     setSubjects((prev) => {
       const has = prev.includes(id);
+      const wasInitial = isEdit && initialSubjectIdsRef.current?.has(String(id));
       // Prevent deselect if it has scores (guard in UI); backend will also enforce
-      if (has && isEdit && hasScoreMap[id]) return prev;
+      if (has && isEdit && (hasScoreMap[id] || (lockMapLoading && wasInitial))) return prev;
       if (has) return prev.filter(s => s !== id);
       return [...prev, id];
     });
@@ -170,25 +185,50 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   // Query has-scores for selected subjects in edit mode to disable deselection
   useEffect(() => {
     // Debounce and abort in-flight calls to reduce network noise
-    if (!isEdit || !cls?._id || !subjects || subjects.length === 0) {
+    if (!isEdit || !cls?._id) {
       setHasScoreMap({});
+      setLockMapLoading(false);
+      hasScoresFetchedOnceRef.current = false;
       if (hasScoresTimerRef.current) { clearTimeout(hasScoresTimerRef.current); hasScoresTimerRef.current = null; }
       if (hasScoresAbortRef.current) { hasScoresAbortRef.current.abort(); hasScoresAbortRef.current = null; }
       return;
     }
+
+    const unionIds = Array.from(new Set([
+      ...(subjects || []).map(s => String(s)),
+      ...Array.from(initialSubjectIdsRef.current || []).map(s => String(s)),
+    ])).filter(Boolean);
+
+    if (!unionIds.length) {
+      setHasScoreMap({});
+      setLockMapLoading(false);
+      hasScoresFetchedOnceRef.current = true;
+      if (hasScoresTimerRef.current) { clearTimeout(hasScoresTimerRef.current); hasScoresTimerRef.current = null; }
+      if (hasScoresAbortRef.current) { hasScoresAbortRef.current.abort(); hasScoresAbortRef.current = null; }
+      return;
+    }
+
+    const isInitialFetch = !hasScoresFetchedOnceRef.current;
+    const delayMs = isInitialFetch ? 0 : 200;
+    if (isInitialFetch) setLockMapLoading(true);
     if (hasScoresTimerRef.current) clearTimeout(hasScoresTimerRef.current);
     hasScoresTimerRef.current = setTimeout(async () => {
       if (hasScoresAbortRef.current) { hasScoresAbortRef.current.abort(); }
       const ctrl = new AbortController();
       hasScoresAbortRef.current = ctrl;
       try {
-        const params = { gradeSectionId: cls._id, subjectIds: subjects.join(',') };
+        const params = { gradeSectionId: cls._id, subjectIds: unionIds.join(','), anyTemplate: '1', activeOnly: '1' };
         const res = await apiHasScores(params, { signal: ctrl.signal });
         if (!ctrl.signal.aborted && res.ok) setHasScoreMap(res.data?.map || {});
       } catch {
         // ignore abort errors
+      } finally {
+        if (!ctrl.signal.aborted) {
+          hasScoresFetchedOnceRef.current = true;
+          if (isInitialFetch) setLockMapLoading(false);
+        }
       }
-    }, 200);
+    }, delayMs);
     return () => {
       if (hasScoresTimerRef.current) { clearTimeout(hasScoresTimerRef.current); hasScoresTimerRef.current = null; }
     };
@@ -236,9 +276,11 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
                 const id = sub._id;
                 const checked = subjects.includes(id);
                 const locked = isEdit && checked && !!hasScoreMap[id];
+                const initiallySelected = isEdit && initialSubjectIdsRef.current?.has(String(id));
+                const preventDeselectUntilChecked = Boolean(isEdit && checked && initiallySelected && lockMapLoading);
                 return (
                   <label key={id} className={`flex items-center gap-3 py-2 ${locked ? 'opacity-70' : ''}`}>
-                    <Checkbox disabled={submitting || locked} checked={checked} onChange={() => toggleSubject(id)} />
+                    <Checkbox disabled={submitting || locked || preventDeselectUntilChecked} checked={checked} onChange={() => toggleSubject(id)} />
                     <span className="text-sm text-gray-800">{sub.subjectName}</span>
                     {locked && (
                       <span className="ml-auto inline-flex items-center gap-1 text-xs text-gray-500">

@@ -4,6 +4,7 @@ import {
 	ensureExams,
 	getExamGrid,
 	upsertScore,
+	importExamScores,
 	getSummary,
 	getTranscript,
 	hasScores,
@@ -160,6 +161,16 @@ router.put(
 	protect,
 	allowTeacher(checkPermission("exams", "input")),
 	upsertScore
+);
+
+router.post(
+	'/scores/import',
+	protect,
+	teacherOr(
+		checkPermission('exams', 'input'),
+		requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectKeys: ['subjectId'], subjectOptional: false })
+	),
+	importExamScores
 );
 
 router.get(

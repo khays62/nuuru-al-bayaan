@@ -194,6 +194,10 @@ const en = {
       copy: 'Copy',
     },
 
+    labels: {
+      errors: 'Errors',
+    },
+
     pagination: {
       pageSummary: 'Page {{page}} of {{pages}} — {{total}} total',
     },
@@ -2422,6 +2426,66 @@ const en = {
         saveAllTitle: 'Save all pending entries',
       },
 
+      import: {
+        title: 'Import Exam Scores (Excel)',
+        help: 'Use the downloaded template. Fill scores and upload it here.',
+        labels: {
+          mode: 'Mode',
+          file: 'Excel File',
+        },
+        actions: {
+          downloadTemplate: 'Download Template',
+          importExcel: 'Import Excel',
+          validate: 'Validate',
+          import: 'Import',
+        },
+        modes: {
+          merge: 'Merge (only filled cells)',
+          skip: 'Skip existing scores',
+          overwrite: 'Overwrite (blanks delete)',
+        },
+        toasts: {
+          validated: 'Validated successfully.',
+          imported: 'Imported successfully.',
+        },
+        summary: 'Students: {{students}}, Columns: {{columns}}, Upserts: {{upserts}}, Deletes: {{deletes}}',
+        errors: {
+          pickFile: 'Please choose an Excel file.',
+          validateFirst: 'Please validate the file first.',
+          mismatch: 'Template does not match current filters.',
+          selectFiltersFirst: 'Please select filters and load the grid first.',
+          noWorksheetFound: 'No worksheet found in the Excel file.',
+          missingStudentMongoIdCol: 'Template is missing the hidden Student Mongo ID column.',
+          missingStudentIdCol: 'Template is missing the Student ID column.',
+          missingStudentNameCol: 'Template is missing the Student Name column.',
+          noExamColumns: 'Template has no exam columns.',
+        },
+
+        serverMessages: {
+          validated: 'Validated',
+          imported: 'Imported',
+        },
+
+        serverErrors: {
+          badRequest: 'Invalid import request.',
+          invalidMode: 'Invalid import mode.',
+          missingRows: 'No rows found to import.',
+          validationFailed: 'Import validation failed.',
+          invalidStudentId: 'Invalid student ID.',
+          duplicateStudentRow: 'Duplicate student row.',
+          studentNotInFilter: 'Student not in selected class/status filter.',
+          studentLocked: 'Student is locked (scores exist under another template).',
+          studentNameMismatch: 'Student name does not match.',
+          studentCodeMismatch: 'Student ID code does not match.',
+          unknownExamColumn: 'Unknown exam column.',
+          scoreNotNumber: 'Score must be a number >= 0.',
+          scoreTooHigh: 'Score must be between 0 and {{max}}.',
+          missingStudents: 'Missing {{count}} student row(s) from template.',
+          extraStudents: 'Template includes {{count}} unexpected student row(s).',
+          serverError: 'Server error.',
+        },
+      },
+
       toasts: {
         savedScoresSuccessfully: 'Saved scores successfully',
         updatedScoresSuccessfully: 'Updated scores successfully',
@@ -2436,6 +2500,19 @@ const en = {
         fixInvalidEntries: 'Fix {{count}} invalid entries before saving.',
         loadGridFailed: 'Failed to load grid',
         lockedCount: '{{count}} student(s) already have scores saved under another template (locked).',
+      },
+
+      serverErrors: {
+        missingIds: 'studentId, examId, subjectId are required.',
+        invalidScore: 'Score must be a valid number >= 0.',
+        examNotFound: 'Exam not found.',
+        teacherMissingRef: 'Teacher account is missing teacherRef.',
+        notAssigned: 'Not assigned to this class/subject.',
+        lockedOtherTemplate: 'This student already has scores saved under another exam template version for this subject. Please switch to that version. ({{versions}})',
+        scoreTooHigh: 'Score must be between 0 and {{max}}.',
+        noEnrollment: 'Student has no enrollment for this section/year.',
+        duplicate: 'Duplicate score combination.',
+        serverError: 'Server error.',
       },
     },
   },

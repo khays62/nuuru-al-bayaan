@@ -184,7 +184,7 @@ export const updateGradeSection = async (req, res) => {
     const cls = await GradeSection.findById(id);
     if (!cls) return res.status(404).json({ message: 'Not found' });
 
-    // Guard: structural lock if enrollments exist
+    // Guard: structural lock if enrollments exist (any status)
     const enrollmentExists = await Enrollment.exists({ gradeSection: id });
     const structuralRequested = {
       grade: grade !== undefined && grade.toString() !== cls.grade.toString(),
@@ -242,12 +242,22 @@ export const updateGradeSection = async (req, res) => {
       const next = (subjects || []).map(id => id.toString());
       removedCandidateIds = prev.filter(id => !next.includes(id));
 
-      // Guard: prevent removing subjects that already have scores recorded for this class (any AY)
+      // Guard: prevent removing subjects that already have recorded scores for the CURRENT ACTIVE cohort.
+      // If the section has no active students (e.g., after promotion/transfer), subjects become editable again.
       if (removedCandidateIds.length) {
         try {
           const Exam = (await import('../models/Exam.js')).default;
           const ExamScore = (await import('../models/ExamScore.js')).default;
-          const exams = await Exam.find({ gradeSection: cls._id }).select('_id').lean();
+          const activeAys = await Enrollment.distinct('academicYear', { gradeSection: cls._id, status: 'active' });
+          if (!activeAys || activeAys.length === 0) {
+            // No active students => do not lock subjects based on historical scores.
+            activeAys.length = 0;
+          }
+
+          if (!activeAys || activeAys.length === 0) {
+            // Allowed: class currently empty (no active cohort)
+          } else {
+            const exams = await Exam.find({ gradeSection: cls._id, academicYear: { $in: activeAys } }).select('_id').lean();
           const examIds = exams.map(e => e._id);
           if (examIds.length) {
             const count = await ExamScore.countDocuments({ exam: { $in: examIds }, subject: { $in: removedCandidateIds } });
@@ -260,6 +270,7 @@ export const updateGradeSection = async (req, res) => {
                 blockedSubjects
               });
             }
+          }
           }
         } catch (guardErr) {
           console.error('Subject removal guard error', guardErr);

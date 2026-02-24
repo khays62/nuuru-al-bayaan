@@ -475,12 +475,17 @@ export const setActiveExamTemplateVersion = async (req, res) => {
 // Response: { map: { [subjectId]: boolean } }
 export const hasScores = async (req, res) => {
   try {
-    const { gradeSectionId, academicYearId, subjectIds, templateVersion } = req.query || {};
+    const { gradeSectionId, academicYearId, subjectIds, templateVersion, anyTemplate, activeOnly } = req.query || {};
     if (!gradeSectionId || !mongoose.isValidObjectId(gradeSectionId)) {
       return res.status(400).json({ message: 'gradeSectionId is required' });
     }
 
-    const version = await resolveTemplateVersion(templateVersion);
+    const anyTemplateFlag = String(anyTemplate || '') === '1'
+      || ['*', 'any', 'all'].includes(String(templateVersion || '').trim().toLowerCase());
+
+    const activeOnlyFlag = String(activeOnly || '') === '1' || String(activeOnly || '').toLowerCase() === 'true';
+
+    const version = anyTemplateFlag ? null : await resolveTemplateVersion(templateVersion);
 
     // Validate grade section exists (helps avoid silent errors)
     const gs = await GradeSection.findById(gradeSectionId).select('_id subjects').lean();
@@ -497,8 +502,21 @@ export const hasScores = async (req, res) => {
     if (!subjectsToCheck.length) return res.json({ map: {} });
 
     // Exams for gradeSection (and optional AY)
-    const examQuery = { gradeSection: gradeSectionId, templateVersion: version };
-    if (academicYearId && mongoose.isValidObjectId(academicYearId)) examQuery.academicYear = academicYearId;
+    const examQuery = { gradeSection: gradeSectionId };
+    if (!anyTemplateFlag) examQuery.templateVersion = version;
+
+    // If activeOnly is requested, restrict to the academicYear(s) of ACTIVE enrollments.
+    // This makes "locks" disappear automatically when the class has no active students.
+    if (activeOnlyFlag) {
+      const activeAys = await Enrollment.distinct('academicYear', { gradeSection: gradeSectionId, status: 'active' });
+      if (!activeAys || activeAys.length === 0) {
+        const emptyMap = Object.fromEntries(subjectsToCheck.map(id => [String(id), false]));
+        return res.json({ map: emptyMap });
+      }
+      examQuery.academicYear = { $in: activeAys };
+    } else if (academicYearId && mongoose.isValidObjectId(academicYearId)) {
+      examQuery.academicYear = academicYearId;
+    }
     const exams = await Exam.find(examQuery).select('_id').lean();
     const examIds = exams.map(e => e._id);
     if (!examIds.length) {
@@ -566,94 +584,402 @@ export const getExamGrid = async (req, res) => {
       return res.status(400).json({ message: 'academicYearId, gradeSectionId and subjectId are required' });
     }
 
-    const version = await resolveTemplateVersion(templateVersion);
-
-    // Ensure exams exist for the given AY + section
-    const types = await getTemplateComponents(version);
-    const ensureOps = types.map((t) => (
-      Exam.updateOne(
-        { examType: t._id, academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: version },
-        { $setOnInsert: { examType: t._id, academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: version } },
-        { upsert: true }
-      )
-    ));
-    await Promise.all(ensureOps);
-
-    const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: version })
-      .populate('examType', 'typeName maxScore order templateVersion')
-      .lean();
-    const columns = exams
-      .map(e => ({
-        examId: e._id,
-        examTypeId: e.examType?._id || e.examType,
-        typeName: e.examType?.typeName,
-        maxScore: e.examType?.maxScore,
-        order: e.examType?.order,
-        templateVersion: version,
-      }))
-      .sort((a, b) => (Number(a.order || 0) - Number(b.order || 0)) || String(a.typeName || '').localeCompare(String(b.typeName || '')));
-
-    // Determine statuses to include based on filter (default active only)
-    let statusFilter = ['active'];
-    if (enrollmentStatus === 'all') {
-      statusFilter = ['active','inactive','promoted','graduated','transferred','withdrawn'];
-    } else if (enrollmentStatus && ['active','inactive','promoted','graduated','transferred','withdrawn'].includes(enrollmentStatus)) {
-      statusFilter = [enrollmentStatus];
-    }
-    const enrQuery = { academicYear: academicYearId, gradeSection: gradeSectionId, status: { $in: statusFilter } };
-    if (cohortId && isId(cohortId)) enrQuery.cohort = cohortId;
-    const enrolls = await Enrollment.find(enrQuery).select('student').lean();
-    const studentIds = [...new Set(enrolls.map(e => String(e.student)))];
-    const studentsDocs = await Student.find({ _id: { $in: studentIds } }).select('fullName').lean();
-    const students = studentsDocs
-      .map(s => ({ studentId: s._id, fullName: s.fullName }))
-      .sort((a, b) => a.fullName.localeCompare(b.fullName));
-
-    const examIds = exams.map(e => e._id);
-    const scores = await ExamScore.find({ subject: subjectId, exam: { $in: examIds }, student: { $in: studentIds } })
-      .select('student exam subject scoreObtained')
-      .lean();
-
-    // Integrity guard: for the same AY+Section+Subject, a student must not have scores across multiple template versions.
-    // Return locked studentIds that already have scores in other versions.
-    let lockedStudents = [];
-    let lockedStudentVersions = {};
-    if (studentIds.length) {
-      const otherExams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: { $ne: version } })
-        .select('_id templateVersion')
-        .lean();
-      const otherExamIds = otherExams.map(e => e._id);
-      if (otherExamIds.length) {
-        const examIdToVersion = new Map(otherExams.map(e => [String(e._id), Number(e.templateVersion || 0)]));
-        const locked = await ExamScore.aggregate([
-          {
-            $match: {
-              subject: new mongoose.Types.ObjectId(subjectId),
-              exam: { $in: otherExamIds },
-              student: { $in: studentIds.map(id => new mongoose.Types.ObjectId(id)) }
-            }
-          },
-          { $group: { _id: '$student', exams: { $addToSet: '$exam' } } }
-        ]);
-
-        lockedStudents = locked.map(r => String(r._id));
-        lockedStudentVersions = Object.fromEntries(
-          locked.map((r) => {
-            const versions = Array.from(new Set(
-              (r.exams || [])
-                .map(exId => examIdToVersion.get(String(exId)))
-                .filter(v => Number.isFinite(v) && v > 0)
-            )).sort((a, b) => a - b);
-            return [String(r._id), versions];
-          })
-        );
-      }
-    }
-
-    res.json({ students, columns, scores, lockedStudents, lockedStudentVersions, templateVersion: version });
+    const data = await fetchExamGridData({ academicYearId, gradeSectionId, subjectId, enrollmentStatus, cohortId, templateVersion });
+    res.json(data);
   } catch (err) {
     console.error('getExamGrid error', err);
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+async function fetchExamGridData({ academicYearId, gradeSectionId, subjectId, enrollmentStatus, cohortId, templateVersion }) {
+  const version = await resolveTemplateVersion(templateVersion);
+
+  // Ensure exams exist for the given AY + section
+  const types = await getTemplateComponents(version);
+  const ensureOps = types.map((t) => (
+    Exam.updateOne(
+      { examType: t._id, academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: version },
+      { $setOnInsert: { examType: t._id, academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: version } },
+      { upsert: true }
+    )
+  ));
+  await Promise.all(ensureOps);
+
+  const exams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: version })
+    .populate('examType', 'typeName maxScore order templateVersion')
+    .lean();
+  const columns = exams
+    .map(e => ({
+      examId: e._id,
+      examTypeId: e.examType?._id || e.examType,
+      typeName: e.examType?.typeName,
+      maxScore: e.examType?.maxScore,
+      order: e.examType?.order,
+      templateVersion: version,
+    }))
+    .sort((a, b) => (Number(a.order || 0) - Number(b.order || 0)) || String(a.typeName || '').localeCompare(String(b.typeName || '')));
+
+  // Determine statuses to include based on filter (default active only)
+  let statusFilter = ['active'];
+  if (enrollmentStatus === 'all') {
+    statusFilter = ['active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn'];
+  } else if (enrollmentStatus && ['active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn'].includes(enrollmentStatus)) {
+    statusFilter = [enrollmentStatus];
+  }
+  const enrQuery = { academicYear: academicYearId, gradeSection: gradeSectionId, status: { $in: statusFilter } };
+  if (cohortId && isId(cohortId)) enrQuery.cohort = cohortId;
+  const enrolls = await Enrollment.find(enrQuery).select('student').lean();
+  const studentIds = [...new Set(enrolls.map(e => String(e.student)))];
+  const studentsDocs = await Student.find({ _id: { $in: studentIds } }).select('fullName studentId').lean();
+  const students = studentsDocs
+    .map(s => ({ studentId: s._id, fullName: s.fullName, studentCode: s.studentId || '' }))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+  const examIds = exams.map(e => e._id);
+  const scores = await ExamScore.find({ subject: subjectId, exam: { $in: examIds }, student: { $in: studentIds } })
+    .select('student exam subject scoreObtained')
+    .lean();
+
+  // Integrity guard: for the same AY+Section+Subject, a student must not have scores across multiple template versions.
+  // Return locked studentIds that already have scores in other versions.
+  let lockedStudents = [];
+  let lockedStudentVersions = {};
+  if (studentIds.length) {
+    const otherExams = await Exam.find({ academicYear: academicYearId, gradeSection: gradeSectionId, templateVersion: { $ne: version } })
+      .select('_id templateVersion')
+      .lean();
+    const otherExamIds = otherExams.map(e => e._id);
+    if (otherExamIds.length) {
+      const examIdToVersion = new Map(otherExams.map(e => [String(e._id), Number(e.templateVersion || 0)]));
+      const locked = await ExamScore.aggregate([
+        {
+          $match: {
+            subject: new mongoose.Types.ObjectId(subjectId),
+            exam: { $in: otherExamIds },
+            student: { $in: studentIds.map(id => new mongoose.Types.ObjectId(id)) }
+          }
+        },
+        { $group: { _id: '$student', exams: { $addToSet: '$exam' } } }
+      ]);
+
+      lockedStudents = locked.map(r => String(r._id));
+      lockedStudentVersions = Object.fromEntries(
+        locked.map((r) => {
+          const versions = Array.from(new Set(
+            (r.exams || [])
+              .map(exId => examIdToVersion.get(String(exId)))
+              .filter(v => Number.isFinite(v) && v > 0)
+          )).sort((a, b) => a - b);
+          return [String(r._id), versions];
+        })
+      );
+    }
+  }
+
+  return { students, columns, scores, lockedStudents, lockedStudentVersions, templateVersion: version };
+}
+
+export const importExamScores = async (req, res) => {
+  try {
+    const {
+      academicYearId,
+      gradeSectionId,
+      subjectId,
+      enrollmentStatus,
+      cohortId,
+      templateVersion,
+      mode,
+      dryRun,
+      rows,
+    } = req.body || {};
+
+    if (!isId(academicYearId) || !isId(gradeSectionId) || !isId(subjectId)) {
+      return res.status(400).json({
+        message: 'academicYearId, gradeSectionId and subjectId are required',
+        code: 'exams.management.import.serverErrors.badRequest',
+      });
+    }
+
+    const effectiveMode = String(mode || 'merge').toLowerCase();
+    if (!['overwrite', 'skip', 'merge'].includes(effectiveMode)) {
+      return res.status(400).json({
+        message: 'mode must be one of overwrite|skip|merge',
+        code: 'exams.management.import.serverErrors.invalidMode',
+      });
+    }
+
+    const data = await fetchExamGridData({ academicYearId, gradeSectionId, subjectId, enrollmentStatus, cohortId, templateVersion });
+    const cols = Array.isArray(data?.columns) ? data.columns : [];
+    const students = Array.isArray(data?.students) ? data.students : [];
+    const scores = Array.isArray(data?.scores) ? data.scores : [];
+    const lockedSet = new Set((data?.lockedStudents || []).map(String));
+
+    const allowedById = new Map(students.map((s) => [String(s.studentId), { fullName: String(s.fullName || ''), studentCode: String(s.studentCode || '') }]));
+    const expectedStudentIds = new Set(students.map((s) => String(s.studentId)));
+    const maxByExamId = new Map(cols.map((c) => [String(c.examId), Number(c.maxScore)]));
+    const allowedExamIds = new Set(cols.map((c) => String(c.examId)));
+
+    const errors = [];
+    const inputRows = Array.isArray(rows) ? rows : [];
+    if (!inputRows.length) {
+      return res.status(400).json({
+        message: 'rows is required',
+        code: 'exams.management.import.serverErrors.missingRows',
+      });
+    }
+
+    const seen = new Set();
+    const importedStudentIds = new Set();
+
+    for (const r of inputRows) {
+      const sid = String(r?.studentId || '').trim();
+      const code = String(r?.studentCode || '').trim();
+      const name = String(r?.fullName || '').trim();
+      if (!sid || !isId(sid)) {
+        errors.push({
+          type: 'row',
+          studentId: sid || null,
+          message: 'Invalid studentId',
+          code: 'exams.management.import.serverErrors.invalidStudentId',
+        });
+        continue;
+      }
+      if (seen.has(sid)) {
+        errors.push({
+          type: 'row',
+          studentId: sid,
+          message: 'Duplicate student row',
+          code: 'exams.management.import.serverErrors.duplicateStudentRow',
+        });
+        continue;
+      }
+      seen.add(sid);
+      importedStudentIds.add(sid);
+
+      const expected = allowedById.get(sid);
+      if (!expected) {
+        errors.push({
+          type: 'student',
+          studentId: sid,
+          message: 'Student not in selected class/status filter',
+          code: 'exams.management.import.serverErrors.studentNotInFilter',
+        });
+        continue;
+      }
+      if (lockedSet.has(sid)) {
+        errors.push({
+          type: 'student',
+          studentId: sid,
+          message: 'Student has scores under another template version (locked)',
+          code: 'exams.management.import.serverErrors.studentLocked',
+        });
+        continue;
+      }
+
+      const expectedName = String(expected.fullName || '').trim().toLowerCase();
+      if (name && expectedName && name.toLowerCase() !== expectedName) {
+        errors.push({
+          type: 'student',
+          studentId: sid,
+          message: 'Student name does not match',
+          code: 'exams.management.import.serverErrors.studentNameMismatch',
+        });
+      }
+      const expectedCode = String(expected.studentCode || '').trim();
+      if (code && expectedCode && code !== expectedCode) {
+        errors.push({
+          type: 'student',
+          studentId: sid,
+          message: 'Student ID code does not match',
+          code: 'exams.management.import.serverErrors.studentCodeMismatch',
+        });
+      }
+
+      const values = (r?.values && typeof r.values === 'object') ? r.values : {};
+      for (const [examIdRaw, rawVal] of Object.entries(values)) {
+        const examId = String(examIdRaw);
+        if (!allowedExamIds.has(examId)) {
+          errors.push({
+            type: 'column',
+            studentId: sid,
+            examId,
+            message: 'Unknown exam column',
+            code: 'exams.management.import.serverErrors.unknownExamColumn',
+          });
+          continue;
+        }
+        if (rawVal === null || rawVal === undefined || rawVal === '') continue;
+        const n = Number(rawVal);
+        if (!Number.isFinite(n) || n < 0) {
+          errors.push({
+            type: 'score',
+            studentId: sid,
+            examId,
+            message: 'Score must be a number >= 0',
+            code: 'exams.management.import.serverErrors.scoreNotNumber',
+          });
+          continue;
+        }
+        const limit = Number(maxByExamId.get(examId));
+        const max = Number.isFinite(limit) && limit > 0 ? limit : 100;
+        if (n > max) {
+          errors.push({
+            type: 'score',
+            studentId: sid,
+            examId,
+            message: `Score must be between 0 and ${max}`,
+            code: 'exams.management.import.serverErrors.scoreTooHigh',
+            params: { max },
+          });
+        }
+      }
+    }
+
+    // Enforce template list integrity: no missing or extra students.
+    const missing = [...expectedStudentIds].filter((id) => !importedStudentIds.has(id));
+    const extra = [...importedStudentIds].filter((id) => !expectedStudentIds.has(id));
+    if (missing.length) {
+      errors.push({
+        type: 'students',
+        message: `Missing ${missing.length} student rows from template`,
+        code: 'exams.management.import.serverErrors.missingStudents',
+        params: { count: missing.length },
+      });
+    }
+    if (extra.length) {
+      errors.push({
+        type: 'students',
+        message: `Template includes ${extra.length} unexpected student rows`,
+        code: 'exams.management.import.serverErrors.extraStudents',
+        params: { count: extra.length },
+      });
+    }
+
+    if (errors.length) {
+      return res.status(400).json({
+        message: 'Import validation failed',
+        code: 'exams.management.import.serverErrors.validationFailed',
+        errors,
+      });
+    }
+
+    const existingMap = new Map();
+    for (const s of scores) {
+      existingMap.set(`${String(s.student)}|${String(s.exam)}`, Number(s.scoreObtained));
+    }
+
+    const ops = [];
+    let upserts = 0;
+    let deletes = 0;
+    let skippedExisting = 0;
+    let skippedBlank = 0;
+
+    for (const r of inputRows) {
+      const sid = String(r.studentId);
+      const values = r?.values || {};
+      for (const c of cols) {
+        const examId = String(c.examId);
+        const key = `${sid}|${examId}`;
+        const hasExisting = existingMap.has(key);
+        const rawVal = Object.prototype.hasOwnProperty.call(values, examId) ? values[examId] : null;
+        const isBlank = rawVal === null || rawVal === undefined || rawVal === '';
+
+        if (effectiveMode === 'skip') {
+          if (hasExisting) {
+            if (!isBlank) skippedExisting++;
+            else skippedBlank++;
+            continue;
+          }
+          if (isBlank) {
+            skippedBlank++;
+            continue;
+          }
+          ops.push({
+            updateOne: {
+              filter: { student: sid, exam: examId, subject: subjectId },
+              update: { $set: { scoreObtained: Number(rawVal) } },
+              upsert: true,
+            }
+          });
+          upserts++;
+          continue;
+        }
+
+        if (effectiveMode === 'merge') {
+          if (isBlank) {
+            skippedBlank++;
+            continue;
+          }
+          ops.push({
+            updateOne: {
+              filter: { student: sid, exam: examId, subject: subjectId },
+              update: { $set: { scoreObtained: Number(rawVal) } },
+              upsert: true,
+            }
+          });
+          upserts++;
+          continue;
+        }
+
+        // overwrite
+        if (isBlank) {
+          if (!hasExisting) {
+            skippedBlank++;
+            continue;
+          }
+          ops.push({ deleteOne: { filter: { student: sid, exam: examId, subject: subjectId } } });
+          deletes++;
+          continue;
+        }
+        ops.push({
+          updateOne: {
+            filter: { student: sid, exam: examId, subject: subjectId },
+            update: { $set: { scoreObtained: Number(rawVal) } },
+            upsert: true,
+          }
+        });
+        upserts++;
+      }
+    }
+
+    const summary = {
+      templateVersion: data?.templateVersion,
+      students: students.length,
+      columns: cols.length,
+      mode: effectiveMode,
+      upserts,
+      deletes,
+      skippedExisting,
+      skippedBlank,
+    };
+
+    const isDryRun = Boolean(dryRun);
+    if (isDryRun) {
+      return res.json({
+        message: 'Validated',
+        code: 'exams.management.import.serverMessages.validated',
+        summary,
+      });
+    }
+
+    if (ops.length) {
+      await ExamScore.bulkWrite(ops, { ordered: false });
+    }
+    publishRealtime({ type: 'results:changed', ts: Date.now() });
+    publishRealtime({ type: 'transcript:changed', ts: Date.now() });
+
+    return res.json({
+      message: 'Imported',
+      code: 'exams.management.import.serverMessages.imported',
+      summary,
+    });
+  } catch (err) {
+    console.error('importExamScores error', err);
+    return res.status(500).json({
+      message: 'Server Error',
+      code: 'exams.management.import.serverErrors.serverError',
+    });
   }
 };
 
@@ -661,28 +987,47 @@ export const upsertScore = async (req, res) => {
   try {
     const { studentId, examId, subjectId, scoreObtained } = req.body || {};
     if (!isId(studentId) || !isId(examId) || !isId(subjectId)) {
-      return res.status(400).json({ message: 'studentId, examId, subjectId are required' });
+      return res.status(400).json({
+        message: 'studentId, examId, subjectId are required',
+        code: 'exams.management.serverErrors.missingIds',
+      });
     }
     const scoreNum = Number(scoreObtained);
     if (!Number.isFinite(scoreNum) || scoreNum < 0) {
-      return res.status(400).json({ message: 'scoreObtained must be a valid number >= 0' });
+      return res.status(400).json({
+        message: 'scoreObtained must be a valid number >= 0',
+        code: 'exams.management.serverErrors.invalidScore',
+      });
     }
 
     const exam = await Exam.findById(examId).lean();
-    if (!exam) return res.status(404).json({ message: 'Exam not found' });
+    if (!exam) {
+      return res.status(404).json({
+        message: 'Exam not found',
+        code: 'exams.management.serverErrors.examNotFound',
+      });
+    }
 
     // Teacher scope: must be assigned to this class+subject.
     if (req.user?.role === 'teacher') {
       const teacherId = req.user?.teacherRef;
       if (!teacherId || !isId(teacherId)) {
-        return res.status(403).json({ message: 'Teacher account is missing teacherRef' });
+        return res.status(403).json({
+          message: 'Teacher account is missing teacherRef',
+          code: 'exams.management.serverErrors.teacherMissingRef',
+        });
       }
       const has = await TeacherAssignment.exists({
         teacher: teacherId,
         gradeSection: exam.gradeSection,
         subject: subjectId,
       });
-      if (!has) return res.status(403).json({ message: 'Not assigned to this class/subject' });
+      if (!has) {
+        return res.status(403).json({
+          message: 'Not assigned to this class/subject',
+          code: 'exams.management.serverErrors.notAssigned',
+        });
+      }
     }
 
     // Integrity guard: prevent saving scores for same student+subject across multiple template versions in same AY+Section.
@@ -698,6 +1043,8 @@ export const upsertScore = async (req, res) => {
         const otherVersions = Array.from(new Set(otherExams.map(e => Number(e.templateVersion || 0)).filter(v => Number.isFinite(v) && v > 0))).sort((a, b) => a - b);
         return res.status(409).json({
           message: 'This student already has scores saved under another exam template version for this subject. Please switch to that version.',
+          code: 'exams.management.serverErrors.lockedOtherTemplate',
+          params: { versions: otherVersions.join(', ') },
           otherVersions
         });
       }
@@ -708,12 +1055,21 @@ export const upsertScore = async (req, res) => {
     const maxScore = Number(examType?.maxScore);
     const limit = Number.isFinite(maxScore) && maxScore > 0 ? maxScore : 100;
     if (scoreNum > limit) {
-      return res.status(400).json({ message: `scoreObtained must be between 0 and ${limit}` });
+      return res.status(400).json({
+        message: `scoreObtained must be between 0 and ${limit}`,
+        code: 'exams.management.serverErrors.scoreTooHigh',
+        params: { max: limit },
+      });
     }
 
     // coherence: student must have an enrollment (any status) in same AY + section
     const enrollment = await Enrollment.findOne({ student: studentId, academicYear: exam.academicYear, gradeSection: exam.gradeSection }).lean();
-    if (!enrollment) return res.status(409).json({ message: 'Student has no enrollment for this section/year' });
+    if (!enrollment) {
+      return res.status(409).json({
+        message: 'Student has no enrollment for this section/year',
+        code: 'exams.management.serverErrors.noEnrollment',
+      });
+    }
 
     const updated = await ExamScore.findOneAndUpdate(
       { student: studentId, exam: examId, subject: subjectId },
@@ -727,8 +1083,16 @@ export const upsertScore = async (req, res) => {
     res.json({ message: 'Saved', score: updated });
   } catch (err) {
     console.error('upsertScore error', err);
-    if (err.code === 11000) return res.status(409).json({ message: 'Duplicate score combination' });
-    res.status(500).json({ message: 'Server Error' });
+    if (err.code === 11000) {
+      return res.status(409).json({
+        message: 'Duplicate score combination',
+        code: 'exams.management.serverErrors.duplicate',
+      });
+    }
+    return res.status(500).json({
+      message: 'Server Error',
+      code: 'exams.management.serverErrors.serverError',
+    });
   }
 };
 

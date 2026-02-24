@@ -258,6 +258,10 @@ export default {
       resetPassword: 'Dib u dejin erayga sirta',
     },
 
+    labels: {
+      errors: 'Khaladaad',
+    },
+
     errors: {
       somethingWentWrong: 'Wax baa qaldamay.',
       failedToCreate: 'Abuuristu way fashilantay',
@@ -903,6 +907,66 @@ export default {
       actions: {
         saveAllTitle: 'Kaydi dhammaan gelinta sugaysa',
       },
+
+      import: {
+        title: 'Soo dejin Dhibcaha Imtixaanka (Excel)',
+        help: 'Isticmaal template-ka la soo dejiyey. Buuxi dhibcaha kadibna halkan ku soo geli (upload).',
+        labels: {
+          mode: 'Hab',
+          file: 'Faylka Excel',
+        },
+        actions: {
+          downloadTemplate: 'Soo dejiso Template',
+          importExcel: 'Soo geli Excel',
+          validate: 'Hubi (Validate)',
+          import: 'Soo dejin (Import)',
+        },
+        modes: {
+          merge: 'Isku dar (kaliya cell-yada la buuxiyay)',
+          skip: 'Ka bood kuwa horey u jira',
+          overwrite: 'Ku beddel (blanks tirtiraan)',
+        },
+        toasts: {
+          validated: 'Si guul leh ayaa loo hubiyay.',
+          imported: 'Si guul leh ayaa loo soo dejiyay.',
+        },
+        summary: 'Arday: {{students}}, Tiirar: {{columns}}, Ku darid/Update: {{upserts}}, Tirtirid: {{deletes}}',
+        errors: {
+          pickFile: 'Fadlan dooro fayl Excel ah.',
+          validateFirst: 'Fadlan marka hore hubi (validate) faylka.',
+          mismatch: 'Template-ku kuma eka xulashada (filters) hadda.',
+          selectFiltersFirst: 'Fadlan dooro filters-ka kadibna rar grid-ka marka hore.',
+          noWorksheetFound: 'Worksheet lama helin gudaha faylka Excel-ka.',
+          missingStudentMongoIdCol: 'Template-ka waxa ka maqan tiirka qarsoon ee Student Mongo ID.',
+          missingStudentIdCol: 'Template-ka waxa ka maqan tiirka Student ID.',
+          missingStudentNameCol: 'Template-ka waxa ka maqan tiirka Student Name.',
+          noExamColumns: 'Template-ku ma laha tiirar imtixaan.',
+        },
+
+        serverMessages: {
+          validated: 'Waa la hubiyay',
+          imported: 'Waa la soo dejiyay',
+        },
+
+        serverErrors: {
+          badRequest: 'Codsiga import-ka waa khaldan.',
+          invalidMode: 'Habka import-ka waa khaldan.',
+          missingRows: 'Safaf (rows) lama helin si loo import-gareeyo.',
+          validationFailed: 'Hubinta import-ka way fashilantay.',
+          invalidStudentId: 'Student ID waa khaldan.',
+          duplicateStudentRow: 'Saf arday oo is-celcelis ah (duplicate).',
+          studentNotInFilter: 'Ardaygu kuma jiro class/status-ka la doortay.',
+          studentLocked: 'Ardaygu waa qufulan yahay (dhibco ayaa ku jira template kale).',
+          studentNameMismatch: 'Magaca ardayga isma waafaqsana.',
+          studentCodeMismatch: 'Student code/ID isma waafaqsana.',
+          unknownExamColumn: 'Tiirka imtixaanka lama aqoonsan.',
+          scoreNotNumber: 'Dhibcuhu waa inay noqdaan tiro >= 0.',
+          scoreTooHigh: 'Dhibcuhu waa inay u dhexeeyaan 0 iyo {{max}}.',
+          missingStudents: 'Waxa ka maqan {{count}} saf arday(yo) ah template-ka.',
+          extraStudents: 'Template-ku waxa ku jira {{count}} saf arday(yo) aan la filayn.',
+          serverError: 'Khalad server.',
+        },
+      },
       cell: {
         maxTitle: 'Ugu badnaan: {{max}}',
         saveFailed: 'Kaydintu waa fashilantay',
@@ -923,6 +987,19 @@ export default {
         lockedStudent: 'Ardaygan horey ayuu u leeyahay dhibco ku kaydsan {{version}}. U beddel template-kaas si aad u tafatirto.',
         noPermissionInputScores: 'Ma lihid oggolaansho aad ku geliso dhibcaha imtixaanka',
         saveFailed: 'Kaydintu waa fashilantay',
+      },
+
+      serverErrors: {
+        missingIds: 'studentId, examId, subjectId waa khasab.',
+        invalidScore: 'Dhibcuhu waa inay noqdaan tiro sax ah >= 0.',
+        examNotFound: 'Imtixaan lama helin.',
+        teacherMissingRef: 'Koontada macallinka waxa ka maqan teacherRef.',
+        notAssigned: 'Laguma meeleyn class/maaddadan.',
+        lockedOtherTemplate: 'Ardaygan waxa uu leeyahay dhibco ku jira template version kale ee maaddadan. U beddel version-kaas. ({{versions}})',
+        scoreTooHigh: 'Dhibcuhu waa inay u dhexeeyaan 0 iyo {{max}}.',
+        noEnrollment: 'Ardaygu ma leh enrollment qayb/sanadkan.',
+        duplicate: 'Isku-dar dhibco oo duplicate ah.',
+        serverError: 'Khalad server.',
       },
       locked: {
         adminHelp: 'Arday qaar waa qufulan yihiin sababtoo ah waxay leeyihiin dhibco ku jira template kale. Isticmaal Template dropdown-ka kore si aad ugu wareegto version-ka ku qoran qaladka.',
