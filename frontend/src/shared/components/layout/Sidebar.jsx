@@ -165,6 +165,23 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         .map((x) => x.it);
     }
 
+    // Sidebar ordering tweak (admin/staff): move Finance down near the bottom,
+    // right above Announcements, without changing the sidebar layout structure.
+    if (role === 'admin' || role === 'staff') {
+      const next = [...base];
+      const financeIdx = next.findIndex((x) => String(x?.key || '') === 'finance');
+      if (financeIdx !== -1) {
+        const financeItem = next.splice(financeIdx, 1)[0];
+        const announcementsIdx = next.findIndex((x) => String(x?.key || '') === 'announcements');
+        if (announcementsIdx !== -1) {
+          next.splice(announcementsIdx, 0, financeItem);
+        } else {
+          next.push(financeItem);
+        }
+      }
+      return next;
+    }
+
     return base;
   }, [role, hasPermission]);
 
@@ -207,7 +224,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     const showGroupHeaders = (role === 'admin' || role === 'staff') && !collapsed;
     let lastGroup = null;
 
-    return (visibleNavItems || []).map((item) => {
+    const renderOne = (item) => {
       const Icon = item.icon;
       const hasChildren = Array.isArray(item.children) && item.children.length;
 
@@ -317,7 +334,11 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
           </NavLink>
         </React.Fragment>
       );
-    });
+
+    };
+
+    const items = Array.isArray(visibleNavItems) ? visibleNavItems : [];
+    return items.map(renderOne);
   };
 
   return (

@@ -6,7 +6,7 @@ import { Plus, Printer, RotateCcw } from 'lucide-react';
 
 import { useAuth } from '../../../auth/AuthContext';
 
-import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, resetTeacherPassword, updateTeacher } from '../api/teachersApi';
+import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, resetTeacherPassword, updateTeacher, uploadTeacherPhoto } from '../api/teachersApi';
 
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
@@ -49,6 +49,7 @@ export default function TeachersPage() {
 	const navigate = useNavigate();
 	const [showForm, setShowForm] = useState(false);
 	const [editing, setEditing] = useState(null);
+	const [createFormKey, setCreateFormKey] = useState(0);
 	const [search, setSearch] = useState('');
 	const debouncedSearch = useDebounce(search, 350);
 	const [showAssign, setShowAssign] = useState(false);
@@ -79,7 +80,6 @@ export default function TeachersPage() {
 	const createTeacherMutation = useMutation({
 		mutationFn: (payload) => createTeacher(payload),
 		onSuccess: () => {
-			toast.success(t('teachers.table.toasts.created'));
 			try {
 				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
 			} catch { /* ignore */ }
@@ -186,6 +186,7 @@ export default function TeachersPage() {
 			return;
 		}
 		setEditing(null);
+		setCreateFormKey((k) => k + 1);
 		setShowForm(true);
 	};
 	const onEdit = (row) => {
@@ -282,15 +283,48 @@ export default function TeachersPage() {
 		return sortedItems.slice(start, start + limit);
 	}, [sortedItems, page, limit, total]);
 
-	const onSave = async (payload) => {
-		if (editing) {
-			const id = editing._id || editing.id;
-			await updateTeacherMutation.mutateAsync({ id, payload });
-		} else {
-			await createTeacherMutation.mutateAsync(payload);
+	const onSave = async (payload, photoFile) => {
+		const isEdit = Boolean(editing);
+		let teacherId = null;
+		let createdName = '';
+
+		try {
+			if (isEdit) {
+				const id = editing._id || editing.id;
+				teacherId = id;
+				await updateTeacherMutation.mutateAsync({ id, payload });
+			} else {
+				const res = await createTeacherMutation.mutateAsync(payload);
+				teacherId = res?.data?._id || res?.data?.id || res?._id || null;
+				createdName = String(payload?.fullName || '').trim();
+				toast.success(
+					createdName
+						? t('teachers.table.toasts.createdWithName', { name: createdName })
+						: t('teachers.table.toasts.created')
+				);
+			}
+		} catch {
+			// Errors are already toasted in the mutation handlers.
+			return;
 		}
-		setShowForm(false);
+
+		if (teacherId && photoFile) {
+			try {
+				await uploadTeacherPhoto(teacherId, photoFile);
+			} catch (e) {
+				toast.error(e?.data?.message || e?.message || t('teachers.table.errors.photoUploadFailed'));
+			}
+		}
+
+		if (isEdit) {
+			setShowForm(false);
+			setEditing(null);
+			return;
+		}
+
+		// Create: keep modal open for bulk entry, but reset the form.
 		setEditing(null);
+		setCreateFormKey((k) => k + 1);
 	};
 
 	const handlePrint = () => {
@@ -466,14 +500,28 @@ export default function TeachersPage() {
 				pendingById={pendingById}
 			/>
 
-			<Modal isOpen={showForm} onClose={() => {
-				setShowForm(false);
-				setEditing(null);
-			}} title={editing ? t('teachers.editTitle') : t('teachers.addTitle')}>
-				<TeacherForm initialValue={editing} onCancel={() => {
+			<Modal
+				isOpen={showForm}
+				onClose={() => {
 					setShowForm(false);
 					setEditing(null);
-				}} onSave={onSave} />
+				}}
+				title={editing ? t('teachers.editTitle') : t('teachers.addTitle')}
+				panelClassName="max-w-none w-[96vw]"
+				headerClassName="bg-linear-to-r from-(--nb-color-brand) to-(--nb-color-accent) text-white border-b border-white/10"
+				titleClassName="text-white text-xl font-bold"
+				closeButtonClassName="text-white/90 hover:text-white p-1 rounded-(--nb-radius-sm) hover:bg-white/10 transition-colors"
+				bodyClassName="p-3 nb-scrollbar-none"
+			>
+				<TeacherForm
+					key={editing ? String(editing?._id || editing?.id || 'edit') : `create:${createFormKey}`}
+					initialValue={editing}
+					onCancel={() => {
+						setShowForm(false);
+						setEditing(null);
+					}}
+					onSave={onSave}
+				/>
 			</Modal>
 
 			<TeacherAssignmentsModal key={assignTeacher?._id || assignTeacher?.id || 'teacher-assignments'} isOpen={showAssign} onClose={() => {

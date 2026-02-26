@@ -68,3 +68,12 @@ export const removeAssignment = (teacherId, assignmentId) =>
   fetchJson(`teachers/${teacherId}/assignments/${assignmentId}`, {
     method: 'DELETE',
   });
+
+export const uploadTeacherPhoto = (teacherId, file) => {
+  const fd = new FormData();
+  fd.append('photo', file);
+  return fetchJson(`teachers/${teacherId}/photo`, {
+    method: 'POST',
+    body: fd,
+  });
+};

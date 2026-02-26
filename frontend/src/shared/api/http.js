@@ -40,7 +40,10 @@ export async function fetchJson(urlOrPath, options = {}) {
 	const method = String(options.method || 'GET').toUpperCase();
 	// Avoid setting Content-Type for GET/HEAD to prevent unnecessary CORS preflights
 	const baseHeaders = (options.headers || {});
-	const headers = (method === 'GET' || method === 'HEAD') ? { ...baseHeaders } : { 'Content-Type': 'application/json', ...baseHeaders };
+	const isFormData = (typeof FormData !== 'undefined') && (options?.body instanceof FormData);
+	const headers = (method === 'GET' || method === 'HEAD')
+		? { ...baseHeaders }
+		: (isFormData ? { ...baseHeaders } : { 'Content-Type': 'application/json', ...baseHeaders });
 
 	// Locale: allow backend to localize messages to the UI language.
 	// Do not override if the caller already set it.

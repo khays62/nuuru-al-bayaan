@@ -14,11 +14,12 @@ import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 import { useI18n } from '../../../../i18n/I18nProvider';
+import { getSomaliaDistrictLabel, getSomaliaRegionLabel } from '../../../../shared/data/somaliaAdminDivisions.js';
 
 export default function ProfileTab() {
   const { studentId: paramStudentId } = useParams();
   const { auth, refreshUser } = useAuth();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const rawStudentRef = auth?.user?.studentRef;
   const studentRefId = rawStudentRef?._id || rawStudentRef || null;
@@ -115,9 +116,38 @@ export default function ProfileTab() {
   const error = profileQuery.isError ? t('students.profileTab.loadFailed') : null;
   const profile = profileQuery.data ?? null;
   const latestTransfer = (transfersQuery.data || [])?.[0] ?? null;
+  const student = profile?.student || null;
+
+  const photoUrl = student?.photo?.url || student?.photoUrl || '';
+  const regionLabel = student?.residenceRegionId ? getSomaliaRegionLabel(student.residenceRegionId, lang) : '';
+  const districtLabel = (student?.residenceRegionId && student?.residenceDistrictId)
+    ? getSomaliaDistrictLabel(student.residenceRegionId, student.residenceDistrictId, lang)
+    : '';
+
+  const transferIsEnabled = Boolean(student?.transfer?.isTransfer);
+  const transferLabel = transferIsEnabled
+    ? t('common.yes', { defaultValue: 'Yes' })
+    : t('common.no', { defaultValue: 'No' });
+
+  const disabilityLabel = Array.isArray(student?.medical?.disabilityFlags)
+    ? student.medical.disabilityFlags.filter(Boolean).join(', ')
+    : (student?.medical?.disabilityFlags || '');
+
+  const cardBase =
+    'rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) ' +
+    'shadow-(--nb-shadow-md) shadow-[0_10px_18px_-12px_rgba(0,0,0,0.35)] ' +
+    'hover:border-(--nb-color-accent) focus-within:border-(--nb-color-accent) ' +
+    'focus-within:ring-2 focus-within:ring-(--nb-color-accent-200) transition-colors';
+
+  const cardHeaderBase =
+    'px-4 py-3 border-b border-(--nb-color-border) ' +
+    'bg-linear-to-r from-(--nb-color-brand-100) to-(--nb-color-accent-100) ' +
+    'rounded-t-(--nb-radius-md)';
+
+  const cardTitleClass = 'text-base font-semibold text-(--nb-color-fg)';
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden rounded-(--nb-radius-md)">
       {loading ? (
         <div className="p-6">
           <UiLoadingState label={t('common.loading')} className="border-0 bg-transparent p-0 justify-start" />
@@ -131,19 +161,29 @@ export default function ProfileTab() {
         <>
           <div className="bg-(--nb-color-bg-card) p-10 border-b border-(--nb-color-border)">
         <div className="flex flex-col items-center text-center gap-4">
-          <div className="w-28 h-28 rounded-full bg-(--nb-color-bg-card) flex items-center justify-center shadow-inner ring-2 ring-(--nb-color-border)">
-            <UserIcon size={56} className="text-(--nb-color-text)" />
+          <div className="w-28 h-28 rounded-full bg-(--nb-color-bg-card) flex items-center justify-center shadow-inner ring-2 ring-(--nb-color-border) overflow-hidden">
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt={t('students.profileTab.photo.alt', { defaultValue: 'Student photo' })}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <UserIcon size={56} className="text-(--nb-color-text)" />
+            )}
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold leading-tight text-(--nb-color-text)">{profile?.student?.fullName || t('students.common.studentFallback')}</h2>
+          <h2 className="text-2xl md:text-3xl font-bold leading-tight text-(--nb-color-text)">{student?.fullName || t('students.common.studentFallback')}</h2>
+
               {/* Summary cards: ID, Status, Cohort */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl mt-3">
                 <div className="rounded-lg p-4 bg-(--nb-color-brand-50) text-(--nb-color-fg) border border-(--nb-color-border)">
                   <div className="text-xs uppercase tracking-wide font-semibold">{t('students.table.columns.studentId')}</div>
-                  <div className="font-mono text-xl font-bold">{profile?.student?.studentId || '-'}</div>
+                  <div className="font-mono text-xl font-bold">{student?.studentId || '-'}</div>
                 </div>
                 <div className="rounded-lg p-4 bg-(--nb-color-accent-50) text-(--nb-color-fg) border border-(--nb-color-border)">
                   <div className="text-xs uppercase tracking-wide font-semibold">{t('students.table.columns.status')}</div>
-                  <div className="text-xl font-bold">{profile?.student?.status || profile?.stats?.activeStatus || '-'}</div>
+                  <div className="text-xl font-bold">{student?.status || profile?.stats?.activeStatus || '-'}</div>
                 </div>
                 <div className="rounded-lg p-4 bg-(--nb-color-bg) text-(--nb-color-fg) border border-(--nb-color-border)">
                   <div className="text-xs uppercase tracking-wide font-semibold">{t('students.form.cohort')}</div>
@@ -155,25 +195,24 @@ export default function ProfileTab() {
 
           <div className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="rounded-xl shadow-none">
-                <div className="px-4 py-3 border-b border-(--nb-color-border)">
-                  <h3 className="text-base font-semibold">{t('students.profileTab.personal.title')}</h3>
+              <Card className={cardBase}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.personal.title')}</h3>
                   <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.personal.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InfoItem label={t('students.form.fullName')} value={profile?.student?.fullName} />
-                  <InfoItem label={t('students.form.gender')} value={profile?.student?.gender} />
-                  <InfoItem label={t('students.form.dob')} value={formatDate(profile?.student)} />
-                  <InfoItem label={t('students.form.guardianName')} value={profile?.student?.guardianName} />
-                  <InfoItem label={t('students.form.contactNumber')} value={profile?.student?.contactNumber} />
-                  <InfoItem label={t('students.form.admissionDate')} value={profile?.student?.admissionDate ? new Date(profile.student.admissionDate).toLocaleDateString() : '-'} />
-                  <InfoItem label={t('students.form.address')} value={profile?.student?.address} />
+                  <InfoItem label={t('students.form.fullName')} value={student?.fullName} />
+                  <InfoItem label={t('students.form.gender')} value={student?.gender} />
+                  <InfoItem label={t('students.form.dob')} value={formatDate(student)} />
+                  <InfoItem label={t('students.form.birthPlace')} value={student?.birthPlace} />
+                  <InfoItem label={t('students.form.motherName')} value={student?.motherName} />
+                  <InfoItem label={t('students.form.guardianName')} value={student?.guardianName} />
                 </div>
               </Card>
 
-              <Card className="rounded-xl shadow-none">
-                <div className="px-4 py-3 border-b border-(--nb-color-border)">
-                  <h3 className="text-base font-semibold">{t('students.profileTab.academic.title')}</h3>
+              <Card className={cardBase}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.academic.title')}</h3>
                   <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.academic.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -181,6 +220,97 @@ export default function ProfileTab() {
                   <InfoItem label={t('students.table.columns.grade')} value={profile?.latestEnrollment?.grade?.gradeName || profile?.latestEnrollment?.gradeSection?.grade?.gradeName} />
                   <InfoItem label={t('students.table.columns.section')} value={profile?.latestEnrollment?.gradeSection?.section} />
                   <InfoItem label={t('students.table.columns.shift')} value={profile?.latestEnrollment?.shift?.shiftName} />
+                </div>
+              </Card>
+
+              <Card className={cardBase}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.contacts.title', { defaultValue: 'Contacts' })}</h3>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.contacts.subtitle', { defaultValue: 'Phone numbers and email addresses' })}</p>
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InfoItem label={t('students.form.guardianRelationship')} value={student?.guardianRelationship} />
+                  <InfoItem label={t('students.form.guardianPhone1')} value={student?.guardianPhone1 || student?.contactNumber} />
+                  <InfoItem label={t('students.form.guardianPhone2')} value={student?.guardianPhone2} />
+                  <InfoItem label={t('students.form.guardianEmail')} value={student?.guardianEmail} />
+                  <InfoItem label={t('students.form.studentPhone')} value={student?.studentPhone} />
+                  <InfoItem label={t('students.form.studentEmail')} value={student?.studentEmail} />
+                </div>
+              </Card>
+
+              <Card className={cardBase}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.residence.title', { defaultValue: 'Residence' })}</h3>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.residence.subtitle', { defaultValue: 'Home location details' })}</p>
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InfoItem
+                    label={t('students.address.nationality.label', { defaultValue: 'Nationality' })}
+                    value={student?.isSomali === false
+                      ? t('students.address.nationality.notSomali', { defaultValue: 'Not Somali' })
+                      : t('students.address.nationality.somali', { defaultValue: 'Somali' })}
+                  />
+                  <InfoItem
+                    label={t('students.address.region.label', { defaultValue: 'Region' })}
+                    value={(student?.isSomali === false) ? '-' : (regionLabel || student?.residenceRegionId)}
+                  />
+                  <InfoItem
+                    label={t('students.address.district.label', { defaultValue: 'District' })}
+                    value={(student?.isSomali === false) ? '-' : (districtLabel || student?.residenceDistrictId)}
+                  />
+                  <InfoItem
+                    label={t('students.address.neighborhood.label', { defaultValue: 'Neighborhood' })}
+                    value={student?.residenceNeighborhood || student?.address}
+                  />
+                  <InfoItem label={t('students.form.address')} value={student?.address} />
+                </div>
+              </Card>
+
+              <Card className={cardBase}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.transfer.title', { defaultValue: 'Transfer (Intake)' })}</h3>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.transfer.subtitle', { defaultValue: 'Transfer metadata collected on registration' })}</p>
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InfoItem label={t('students.form.transfer.isTransfer')} value={transferLabel} />
+                  <InfoItem label={t('students.form.transfer.previousSchoolName')} value={transferIsEnabled ? student?.transfer?.previousSchoolName : ''} />
+                  <InfoItem label={t('students.form.transfer.transferReason')} value={transferIsEnabled ? student?.transfer?.transferReason : ''} />
+                </div>
+              </Card>
+
+              <Card className={cardBase}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.idDocument.title', { defaultValue: 'ID Document' })}</h3>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.idDocument.subtitle', { defaultValue: 'Identification details (optional)' })}</p>
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InfoItem label={t('students.form.idDocument.idType')} value={student?.idDocument?.idType} />
+                  <InfoItem label={t('students.form.idDocument.idNumber')} value={student?.idDocument?.idNumber} />
+                  <InfoItem label={t('students.form.idDocument.issuedBy')} value={student?.idDocument?.issuedBy} />
+                  <InfoItem label={t('students.form.idDocument.expiresAt')} value={student?.idDocument?.expiresAt ? new Date(student.idDocument.expiresAt).toLocaleDateString() : '-'} />
+                </div>
+              </Card>
+
+              <Card className={cardBase}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.medical.title', { defaultValue: 'Medical' })}</h3>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.medical.subtitle', { defaultValue: 'Important medical notes (optional)' })}</p>
+                </div>
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <InfoItem label={t('students.form.medical.allergies')} value={student?.medical?.allergies} />
+                  <InfoItem label={t('students.form.medical.medicalConditions')} value={student?.medical?.medicalConditions} />
+                  <InfoItem label={t('students.form.medical.disabilityFlags')} value={disabilityLabel} />
+                  <InfoItem label={t('students.form.medical.bloodGroup')} value={student?.medical?.bloodGroup} />
+                </div>
+              </Card>
+
+              <Card className={`${cardBase} lg:col-span-2`}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.notes.title', { defaultValue: 'Notes' })}</h3>
+                  <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.notes.subtitle', { defaultValue: 'Extra notes about this student' })}</p>
+                </div>
+                <div className="p-4">
+                  <div className="text-sm text-(--nb-color-muted) whitespace-pre-wrap wrap-break-word">{student?.notes || '-'}</div>
                 </div>
               </Card>
             </div>
@@ -192,9 +322,9 @@ export default function ProfileTab() {
             ) : null}
 
             {isStudentSelf ? (
-              <Card className="mt-6 rounded-xl shadow-none">
-                <div className="px-4 py-3 border-b border-(--nb-color-border)">
-                  <h3 className="text-base font-semibold">{t('students.profileTab.password.title')}</h3>
+              <Card className={`mt-6 ${cardBase}`}>
+                <div className={cardHeaderBase}>
+                  <h3 className={cardTitleClass}>{t('students.profileTab.password.title')}</h3>
                   <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.password.subtitle')}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">

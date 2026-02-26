@@ -9,7 +9,10 @@ import {
     listStudents,
     createStudent,
     updateStudent as updateStudentApi,
+    deactivateStudentApi,
+    reactivateStudentApi,
     getStudentProfile as fetchStudentProfile,
+    uploadStudentPhoto,
 } from '../api/studentsApi';
 import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
 import { listGradeSections } from '../../grades/api/gradeSections';
@@ -56,6 +59,7 @@ export default function StudentPage() {
     const [editingStudent, setEditingStudent] = useState(null);
     const [loadingEdit, setLoadingEdit] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [createFormKey, setCreateFormKey] = useState(0);
     const [gradeSectionFilter, setGradeSectionFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     // Enrollment status tabs (active/inactive/promoted/graduated/transferred/withdrawn/all)
@@ -259,6 +263,7 @@ export default function StudentPage() {
             return;
         }
         setEditingStudent(null);
+        setCreateFormKey((k) => k + 1);
         setIsModalOpen(true);
     };
     // ------------------------------------------------------------
@@ -315,16 +320,22 @@ export default function StudentPage() {
     // Delete flow intentionally unimplemented in Phase 1
     const closeModal = () => { setIsModalOpen(false); setEditingStudent(null); };
 
-    const handleSubmit = async (payload) => {
+    const handleSubmit = async (payload, opts = {}) => {
+        const photoFile = opts?.photoFile || null;
         try {
             setIsSaving(true);
             if (editingStudent) {
                 if (!canEditStudent) {
                     toast.error(t('students.table.permissions.noEdit'));
-                    return;
+                    return { ok: false };
                 }
                 const { ok, status, data } = await updateStudentApi(editingStudent._id, payload);
                 if (ok) {
+                    if (photoFile) {
+                        const up = await uploadStudentPhoto(editingStudent._id, photoFile);
+                        if (up.ok) toast.success(t('students.table.toasts.photoUploaded'));
+                        else toast.error(up.data?.message || t('students.table.errors.photoUploadFailed'));
+                    }
                     toast.success(t('students.table.toasts.updated'));
                     // Invalidate and warm profile cache for immediate re-edit
                     try { queryClient.removeQueries({ queryKey: studentKeys.adminProfile(editingStudent._id) }); } catch { /* ignore */ }
@@ -337,24 +348,47 @@ export default function StudentPage() {
                     } catch { /* no-op prefetch */ }
                     closeModal();
                     emitStudentsChanged({ source: 'local', action: 'update', id: String(editingStudent._id), ts: Date.now() });
+                    return { ok: true, studentId: String(editingStudent._id) };
                 } else {
                     if (status === 409) toast.error(data.message || t('students.table.errors.conflictUpdate'));
                     else toast.error(data.message || t('students.table.errors.updateFailed'));
+                    return { ok: false };
                 }
             } else {
                 if (!canAddStudent) {
                     toast.error(t('students.table.permissions.noAdd'));
-                    return;
+                    return { ok: false };
                 }
                 const { ok, status, data } = await createStudent(payload);
                 if (ok) {
-                    toast.success(t('students.table.toasts.created'));
-                    closeModal();
+                    const createdId = String(data?.student?._id || '');
+                    if (photoFile && createdId) {
+                        const up = await uploadStudentPhoto(createdId, photoFile);
+                        if (up.ok) toast.success(t('students.table.toasts.photoUploaded'));
+                        else toast.error(up.data?.message || t('students.table.errors.photoUploadFailed'));
+                    }
+                    const savedName = String(payload?.fullName || '').trim();
+                    toast.success(
+                        savedName
+                            ? t('students.table.toasts.createdWithName', { name: savedName })
+                            : t('students.table.toasts.created')
+                    );
+                    // Keep modal open for fast multi-student entry; clear the form.
+                    setCreateFormKey((k) => k + 1);
                     emitStudentsChanged({ source: 'local', action: 'create', id: String(data?.student?._id || ''), ts: Date.now() });
+                    return { ok: true, studentId: createdId };
                 } else if (status === 409) {
                     toast.error(data.message || t('students.table.errors.conflictCreate'));
+                    return { ok: false };
                 } else {
-                    toast.error(data.message || t('students.table.errors.createFailed'));
+                    const savedName = String(payload?.fullName || '').trim();
+                    toast.error(
+                        data.message
+                        || (savedName
+                            ? t('students.table.errors.createFailedWithName', { name: savedName })
+                            : t('students.table.errors.createFailed'))
+                    );
+                    return { ok: false };
                 }
             }
         } catch (e) {
@@ -362,6 +396,7 @@ export default function StudentPage() {
                 if (import.meta?.env?.DEV || localStorage.getItem('debug:students') === '1') console.error(e);
             } catch { /* ignore */ }
             toast.error(t('students.table.errors.network'));
+            return { ok: false };
         } finally {
             setIsSaving(false);
         }
@@ -652,14 +687,30 @@ export default function StudentPage() {
                 showRowsSelector={false}
             />
 
-            <Modal isOpen={isModalOpen} onClose={closeModal} title={editingStudent ? t('students.editTitle') : t('students.addTitle')}>
+            <Modal
+                isOpen={isModalOpen}
+                onClose={closeModal}
+                title={editingStudent ? t('students.editTitle') : t('students.addTitle')}
+                panelClassName="max-w-none w-[96vw]"
+                headerClassName="bg-linear-to-r from-(--nb-color-brand) to-(--nb-color-accent) text-white border-b border-white/10"
+                titleClassName="text-white text-xl font-bold"
+                closeButtonClassName="text-white/90 hover:text-white p-1 rounded-(--nb-radius-sm) hover:bg-white/10 transition-colors"
+                bodyClassName="p-3 nb-scrollbar-none"
+            >
                 <div className="relative">
                     {loadingEdit && (
                         <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex items-center justify-center z-10 text-sm text-gray-600">
                             {t('students.loadingFullDetails')}
                         </div>
                     )}
-                    <StudentForm student={editingStudent} onClose={closeModal} onSubmit={handleSubmit} classes={classes} submitting={isSaving} />
+                    <StudentForm
+                        key={editingStudent ? String(editingStudent?._id || 'edit') : `create:${createFormKey}`}
+                        student={editingStudent}
+                        onClose={closeModal}
+                        onSubmit={handleSubmit}
+                        classes={classes}
+                        submitting={isSaving}
+                    />
                 </div>
             </Modal>
 

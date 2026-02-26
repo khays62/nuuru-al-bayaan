@@ -14,10 +14,12 @@ import {
 	resetTeacherPassword,
 	getTeacherProfile,
 	getTeacherAuditLogs,
+	uploadTeacherPhoto,
 } from '../controllers/teacherController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { checkAnyPermission, checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
 import { teacherOr, requireTeacherSelf } from '../middleware/teacherScope.js';
+import { uploadTeacherPhoto as uploadTeacherPhotoMw, TEACHER_PHOTO_MAX_BYTES } from '../middleware/uploadTeacherPhoto.js';
 
 const router = express.Router();
 
@@ -55,6 +57,26 @@ router.patch(
 );
 router.delete('/:id', protect, checkPermission('teachers', 'delete'), deleteTeacher);
 
+// Staff/admin: upload teacher photo (optional feature)
+router.post(
+	'/:id/photo',
+	protect,
+	checkPermission('teachers', 'edit'),
+	(req, res, next) => {
+		uploadTeacherPhotoMw.single('photo')(req, res, (err) => {
+			if (!err) return next();
+			if (err?.code === 'LIMIT_FILE_SIZE') {
+				return res.status(400).json({ message: `Photo too large (max ${Math.round(TEACHER_PHOTO_MAX_BYTES / (1024 * 1024))}MB).` });
+			}
+			if (err?.code === 'INVALID_FILE_TYPE') {
+				return res.status(400).json({ message: 'Invalid photo type. Allowed: JPEG, PNG, WEBP.' });
+			}
+			return res.status(400).json({ message: err?.message || 'Failed to upload photo.' });
+		});
+	},
+	uploadTeacherPhoto
+);
+
 router.get(
 	'/:id/assignments',
 	protect,
@@ -70,8 +92,13 @@ router.get(
 	getRoster
 );
 
-// Admin/staff teacher profile + audit history (teachers should not access)
-router.get('/:id', protect, checkModuleAnyPermission('teachers'), getTeacherProfile);
+// Teacher self OR admin/staff teacher profile
+router.get(
+	'/:id',
+	protect,
+	teacherOr(checkModuleAnyPermission('teachers'), requireTeacherSelf('id')),
+	getTeacherProfile
+);
 router.get('/:id/logs', protect, checkModuleAnyPermission('teachers'), getTeacherAuditLogs);
 
 export default router;

@@ -15,11 +15,14 @@ export default function AttendanceReportTable({
   emptyMessage,
   skeletonRows = 6,
 }) {
-  const { t } = useI18n();
+  const { t, isRTL } = useI18n();
   const safeColumns = Array.isArray(columns) ? columns : [];
   const safeRows = Array.isArray(rows) ? rows : [];
   const colCount = safeColumns.length || 1;
   const safeHeaderRows = Array.isArray(headerRows) ? headerRows : null;
+
+  const thAlignClass = isRTL ? 'text-right' : 'text-left';
+  const tdAlignClass = isRTL ? 'text-right' : 'text-left';
 
   return (
     <StandardTable
@@ -44,7 +47,7 @@ export default function AttendanceReportTable({
                       colSpan={cell?.colSpan || 1}
                       rowSpan={cell?.rowSpan || 1}
                       className={
-                        'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border) ' +
+                        `px-6 py-3 ${thAlignClass} text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border) ` +
                         (cell?.className || '')
                       }
                     >
@@ -59,7 +62,7 @@ export default function AttendanceReportTable({
                   <th
                     key={c.key}
                     className={
-                      'px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border) ' +
+                      `px-6 py-3 ${thAlignClass} text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border) ` +
                       (c.headerClassName || '')
                     }
                   >
@@ -96,7 +99,7 @@ export default function AttendanceReportTable({
                   <td
                     key={`${c.key}-${idx}`}
                     className={
-                      'px-6 py-4 text-sm text-(--nb-color-fg) border-x border-(--nb-color-border) ' +
+                      `px-6 py-4 ${tdAlignClass} text-sm text-(--nb-color-fg) border-x border-(--nb-color-border) ` +
                       (c.cellClassName || '')
                     }
                   >

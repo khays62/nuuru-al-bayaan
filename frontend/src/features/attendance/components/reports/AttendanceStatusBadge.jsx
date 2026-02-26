@@ -20,7 +20,7 @@ export default function AttendanceStatusBadge({ status }) {
       : (translated && translated !== translatedKey ? translated : (status || '—'));
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${cls}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-current/25 whitespace-nowrap ${cls}`}>
       {label}
     </span>
   );

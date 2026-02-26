@@ -7,11 +7,59 @@ const { Schema } = mongoose;
 const studentSchema = new Schema({
     studentId: { type: String }, // Assigned after enrollment; unique enforced via partial index below
     fullName: { type: String, required: true, trim: true },
+    motherName: { type: String, trim: true, default: '' },
     gender: { type: String, enum: ['Male', 'Female'], required: true },
     dob: { type: Date, required: true }, // renamed from dateOfBirth -> dob
+    birthPlace: { type: String, trim: true, default: '' },
     guardianName: { type: String, required: true }, // renamed parentName -> guardianName
-    contactNumber: { type: String, required: true }, // renamed contact -> contactNumber
-    address: { type: String },
+    contactNumber: { type: String, required: true, trim: true }, // renamed contact -> contactNumber
+
+    photo: {
+        url: { type: String, trim: true, default: '' },
+        path: { type: String, trim: true, default: '' },
+        mimeType: { type: String, trim: true, default: '' },
+        size: { type: Number, default: 0 },
+        uploadedAt: { type: Date, default: null },
+    },
+
+    guardianRelationship: { type: String, enum: ['Father', 'Mother', 'Guardian', 'Other'], default: 'Guardian' },
+    // New canonical guardian contact fields (keep contactNumber for backward compat)
+    guardianPhone1: { type: String, trim: true, default: '' },
+    guardianPhone2: { type: String, trim: true, default: '' },
+    guardianEmail: { type: String, trim: true, default: '' },
+    // Optional student-specific contacts
+    studentPhone: { type: String, trim: true, default: '' },
+    studentEmail: { type: String, trim: true, default: '' },
+
+    transfer: {
+        isTransfer: { type: Boolean, default: false },
+        previousSchoolName: { type: String, trim: true, default: '' },
+        transferReason: { type: String, trim: true, default: '' },
+    },
+
+    notes: { type: String, trim: true, default: '' },
+
+    medical: {
+        allergies: { type: String, trim: true, default: '' },
+        medicalConditions: { type: String, trim: true, default: '' },
+        disabilityFlags: { type: [String], default: [] },
+        bloodGroup: { type: String, trim: true, default: '' },
+    },
+
+    idDocument: {
+        idType: { type: String, trim: true, default: '' },
+        idNumber: { type: String, trim: true, default: '' },
+        issuedBy: { type: String, trim: true, default: '' },
+        expiresAt: { type: Date, default: null },
+    },
+    // Legacy free-text address (kept for backward compatibility in older UI exports)
+    address: { type: String, trim: true },
+
+    // Structured residence address (language-independent IDs)
+    isSomali: { type: Boolean, default: true },
+    residenceRegionId: { type: String, trim: true, default: '' },
+    residenceDistrictId: { type: String, trim: true, default: '' },
+    residenceNeighborhood: { type: String, trim: true, default: '' },
     admissionDate: { type: Date, required: true },
     // Auth fields (ported from Target)
     password: { type: String, required: true, default: () => getDefaultInitialPassword() },

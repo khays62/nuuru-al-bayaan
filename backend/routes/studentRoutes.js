@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStudents, addStudent, getStudentProfile, getStudentHistory, getStudentTransfers, deactivateStudent, reactivateStudent, updateStudent, getLatestTransfer, setEnrollmentActiveFlag, changeStudentPassword, resetStudentPassword } from '../controllers/studentController.js';
+import { getStudents, addStudent, getStudentProfile, getStudentHistory, getStudentTransfers, deactivateStudent, reactivateStudent, updateStudent, getLatestTransfer, setEnrollmentActiveFlag, changeStudentPassword, resetStudentPassword, uploadStudentPhoto } from '../controllers/studentController.js';
 import { getFullTranscript } from '../controllers/transcriptController.js';
 
 import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
@@ -7,6 +7,7 @@ import { checkAnyPermission, checkPermission } from "../middleware/checkPermissi
 import { allowStudentSelfOr } from '../middleware/studentSelf.js';
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
+import { uploadStudentPhoto as uploadStudentPhotoMw, STUDENT_PHOTO_MAX_BYTES } from '../middleware/uploadStudentPhoto.js';
 
 const router = express.Router();
 
@@ -31,13 +32,54 @@ const listStudentsQuery = z.object({
 
 const updateStudentBody = z.object({
     fullName: z.string().trim().min(1).max(128).optional(),
+    motherName: z.string().trim().min(1).max(128).optional(),
     gender: z.enum(['Male', 'Female']).optional(),
     dob: z.union([z.string().trim().min(4).max(32), z.date()]).optional(),
+    birthPlace: z.string().trim().min(1).max(128).optional(),
     guardianName: z.string().trim().min(1).max(128).optional(),
+    guardianRelationship: z.enum(['Father', 'Mother', 'Guardian', 'Other']).optional(),
+
+    // Back-compat + canonical guardian contacts
     contactNumber: z.string().trim().min(1).max(32).optional(),
+    guardianPhone1: z.string().trim().min(1).max(32).optional(),
+    guardianPhone2: z.string().trim().max(32).optional(),
+    guardianEmail: z.string().trim().max(128).optional(),
+    studentPhone: z.string().trim().max(32).optional(),
+    studentEmail: z.string().trim().max(128).optional(),
+
+    transfer: z.object({
+        isTransfer: z.boolean().optional(),
+        previousSchoolName: z.string().trim().max(128).optional(),
+        transferReason: z.string().trim().max(256).optional(),
+    }).optional(),
+
+    notes: z.string().trim().max(2000).optional(),
+
+    medical: z.object({
+        allergies: z.string().trim().max(512).optional(),
+        medicalConditions: z.string().trim().max(512).optional(),
+        disabilityFlags: z.union([
+            z.array(z.string().trim().max(64)).max(32),
+            z.string().trim().max(512),
+        ]).optional(),
+        bloodGroup: z.string().trim().max(8).optional(),
+    }).optional(),
+
+    idDocument: z.object({
+        idType: z.string().trim().max(64).optional(),
+        idNumber: z.string().trim().max(64).optional(),
+        issuedBy: z.string().trim().max(64).optional(),
+        expiresAt: z.union([z.string().trim().max(32), z.date(), z.null()]).optional(),
+    }).optional(),
+
     address: z.string().trim().max(256).optional(),
     admissionDate: z.union([z.string().trim().min(4).max(32), z.date()]).optional(),
     status: z.string().trim().max(16).optional(),
+
+    isSomali: z.boolean().optional(),
+    residenceRegionId: z.string().trim().max(64).optional(),
+    residenceDistrictId: z.string().trim().max(64).optional(),
+    residenceNeighborhood: z.string().trim().max(128).optional(),
 }).strip();
 
 const canReadStudents = (req, res, next) => {
@@ -106,6 +148,37 @@ router.patch(
     checkPermission("students", "edit"),
     updateStudent
 ); // PATCH /api/students/:id (update basic fields)
+
+// Staff/admin: upload student photo (optional feature)
+router.post(
+    '/:id/photo',
+    protect,
+    validate({ params: z.object({ id: objectId }).strip() }),
+    checkPermission('students', 'edit'),
+    (req, res, next) => {
+        uploadStudentPhotoMw.single('photo')(req, res, (err) => {
+            if (!err) return next();
+            const code = String(err?.code || '').toUpperCase();
+            if (code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({
+                    success: false,
+                    message: req.t('students.photo.tooLarge', { mb: Math.floor(STUDENT_PHOTO_MAX_BYTES / (1024 * 1024)) }, 'Photo is too large.'),
+                });
+            }
+            if (String(err?.code || '') === 'INVALID_FILE_TYPE') {
+                return res.status(400).json({
+                    success: false,
+                    message: req.t('students.photo.invalidType', null, 'Invalid image type. Only JPG, PNG, or WEBP are allowed.'),
+                });
+            }
+            return res.status(400).json({
+                success: false,
+                message: req.t('students.photo.uploadFailed', null, 'Failed to upload photo.'),
+            });
+        });
+    },
+    uploadStudentPhoto
+);
 
 router.get(
     '/:id/history',

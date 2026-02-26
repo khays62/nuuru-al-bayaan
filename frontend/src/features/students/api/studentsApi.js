@@ -64,6 +64,31 @@ export async function updateStudent(id, payload) {
   }
 }
 
+export async function uploadStudentPhoto(studentId, file) {
+  const id = String(studentId || '').trim();
+  if (!id) {
+    return { ok: false, status: 0, data: { message: 'Missing studentId' } };
+  }
+  if (!file) {
+    return { ok: false, status: 0, data: { message: 'Missing photo file' } };
+  }
+  try {
+    const fd = new FormData();
+    fd.append('photo', file);
+    const data = await fetchJson(`/students/${id}/photo`, {
+      method: 'POST',
+      body: fd,
+    });
+    return { ok: true, status: 200, data };
+  } catch (e) {
+    return {
+      ok: false,
+      status: e?.status || 0,
+      data: e?.data || { message: e?.message || 'Network or server error' },
+    };
+  }
+}
+
 export async function deactivateStudentApi(id) {
   try {
     const data = await fetchJson(`/students/${id}/deactivate`, { method: 'PATCH' });

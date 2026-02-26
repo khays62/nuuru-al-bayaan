@@ -153,6 +153,17 @@
 	animation: nb-fade-in 240ms ease-out both;
 }
 
+/* Utility: allow scrolling without showing scrollbars (used in wide modals). */
+.nb-scrollbar-none {
+	-ms-overflow-style: none; /* IE/Edge */
+	scrollbar-width: none; /* Firefox */
+}
+
+.nb-scrollbar-none::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+}
+
 /* Accessibility: ensure focus rings use the accent color (orange) while
    primary brand stays as the brown tone. Many components use the generated
    utility `.focus-visible:ring-(--nb-color-brand)`; override the resulting

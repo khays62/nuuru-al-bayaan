@@ -1,4 +1,7 @@
 import mongoose from 'mongoose';
+import path from 'path';
+import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
 import Teacher from '../models/Teacher.js';
 import TeacherAssignment from '../models/TeacherAssignment.js';
 import Enrollment from '../models/Enrollment.js';
@@ -12,6 +15,16 @@ import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
 import { publishRealtime } from '../utils/realtimeBus.js';
 import AuditLog from '../models/AuditLog.js';
 import { parsePagination } from '../utils/pagination.js';
+import { normalizeSomaliaPhone, isValidSomaliaPhone } from '../utils/phoneSomalia.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const isValidEmail = (value) => {
+  const v = String(value || '').trim();
+  if (!v) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+};
 
 function getDefaultTeacherPassword() {
   return getDefaultInitialPassword();
@@ -72,7 +85,7 @@ export const listTeachers = async (req, res) => {
       ];
     }
     const docs = await Teacher.find(q)
-      .select('fullName teacherId email phone salary status lastAcademicYear createdAt')
+      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience notes photo lastAcademicYear createdAt')
       .populate({ path: 'lastAcademicYear', select: 'yearName' })
       .lean();
     res.json({ data: docs });
@@ -83,7 +96,72 @@ export const listTeachers = async (req, res) => {
 
 export const createTeacher = async (req, res) => {
   try {
-    let { fullName, teacherId, email, phone, status, salary } = req.body;
+    let {
+      fullName,
+      teacherId,
+      employeeId,
+      email,
+      phone,
+      phone2,
+      gender,
+      dob,
+      nationality,
+      isSomali,
+      residenceRegionId,
+      residenceDistrictId,
+      residenceNeighborhood,
+      hireDate,
+      employmentType,
+      status,
+      salary,
+      specialization,
+      qualification,
+      yearsOfExperience,
+      notes,
+    } = req.body || {};
+
+    if (!fullName || String(fullName).trim() === '') return res.status(400).json({ message: 'fullName is required' });
+    if (!gender || !['Male', 'Female'].includes(String(gender))) return res.status(400).json({ message: 'gender is required' });
+    if (!dob) return res.status(400).json({ message: 'dob is required' });
+    const dobDate = new Date(dob);
+    if (Number.isNaN(dobDate.getTime())) return res.status(400).json({ message: 'dob must be a valid date' });
+    if (!nationality || String(nationality).trim() === '') nationality = 'Somalia';
+
+    if (!email || String(email).trim() === '') return res.status(400).json({ message: 'email is required' });
+    if (!phone || String(phone).trim() === '') return res.status(400).json({ message: 'phone is required' });
+
+    fullName = String(fullName).trim();
+    const fullNameWordCount = fullName.split(/\s+/).filter(Boolean).length;
+    if (fullNameWordCount !== 4) return res.status(400).json({ message: 'fullName must be exactly 4 names' });
+
+    email = String(email).trim();
+    if (!isValidEmail(email)) return res.status(400).json({ message: 'Invalid email address.' });
+
+    const normalizedPhone = normalizeSomaliaPhone(phone);
+    if (!normalizedPhone || !isValidSomaliaPhone(normalizedPhone)) return res.status(400).json({ message: 'Invalid Somalia phone number.' });
+    phone = normalizedPhone;
+
+    if (phone2) {
+      const normalizedPhone2 = normalizeSomaliaPhone(phone2);
+      if (!normalizedPhone2 || !isValidSomaliaPhone(normalizedPhone2)) return res.status(400).json({ message: 'Invalid Somalia phone number (phone2).' });
+      phone2 = normalizedPhone2;
+    } else {
+      phone2 = '';
+    }
+
+    nationality = String(nationality).trim();
+
+    // Auto-generate employeeId like TCH-000001 if not provided
+    if (!employeeId) {
+      const cEmp = await Counter.findOneAndUpdate(
+        { key: 'teacherEmployeeId' },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      ).lean();
+      const nEmp = cEmp?.seq || 1;
+      employeeId = `TCH-${String(nEmp).padStart(6, '0')}`;
+    }
+    employeeId = String(employeeId).trim();
 
     if (salary !== undefined && salary !== null && salary !== '') {
       const n = Number(salary);
@@ -91,6 +169,22 @@ export const createTeacher = async (req, res) => {
       salary = n;
     } else {
       salary = undefined;
+    }
+
+    if (yearsOfExperience !== undefined && yearsOfExperience !== null && yearsOfExperience !== '') {
+      const y = Number(yearsOfExperience);
+      if (!Number.isFinite(y) || y < 0) return res.status(400).json({ message: 'yearsOfExperience must be a non-negative number' });
+      yearsOfExperience = y;
+    } else {
+      yearsOfExperience = undefined;
+    }
+
+    const hireDateObj = hireDate ? new Date(hireDate) : null;
+    if (hireDate && Number.isNaN(hireDateObj.getTime())) return res.status(400).json({ message: 'hireDate must be a valid date' });
+
+    const normalizedEmploymentType = employmentType ? String(employmentType).trim().toLowerCase() : '';
+    if (normalizedEmploymentType && !['full-time', 'part-time', 'contract'].includes(normalizedEmploymentType)) {
+      return res.status(400).json({ message: 'employmentType invalid' });
     }
     // Auto-generate teacherId like ID01, ID02 if not provided
     if (!teacherId) {
@@ -113,6 +207,10 @@ export const createTeacher = async (req, res) => {
     if (fullName) {
       const exists = await Teacher.exists({ fullName });
       if (exists) conflicts.push('fullName');
+    }
+    if (employeeId) {
+      const exists = await Teacher.exists({ employeeId });
+      if (exists) conflicts.push('employeeId');
     }
     if (email) {
       const exists = await Teacher.exists({ email });
@@ -143,7 +241,30 @@ export const createTeacher = async (req, res) => {
       return res.status(409).json({ message: 'Teacher login already exists (username/email conflict)' });
     }
 
-    const doc = await Teacher.create({ fullName, teacherId, email, phone, status, salary, lastAcademicYear });
+    const doc = await Teacher.create({
+      fullName,
+      employeeId,
+      teacherId,
+      email,
+      phone,
+      phone2: phone2 || '',
+      gender,
+      dob: dobDate,
+      nationality,
+      isSomali: typeof isSomali === 'boolean' ? isSomali : true,
+      residenceRegionId: residenceRegionId ? String(residenceRegionId).trim() : '',
+      residenceDistrictId: residenceDistrictId ? String(residenceDistrictId).trim() : '',
+      residenceNeighborhood: residenceNeighborhood ? String(residenceNeighborhood).trim() : '',
+      hireDate: hireDateObj || null,
+      employmentType: normalizedEmploymentType,
+      salary,
+      status,
+      specialization: specialization ? String(specialization).trim() : '',
+      qualification: qualification ? String(qualification).trim() : '',
+      yearsOfExperience,
+      notes: notes ? String(notes).trim() : '',
+      lastAcademicYear,
+    });
 
     try {
       await ensureTeacherUser({ teacherId, teacherDoc: doc });
@@ -159,7 +280,35 @@ export const createTeacher = async (req, res) => {
     publishRealtime({ type: 'teachers:changed', id: String(doc._id), ts: Date.now() });
     publishRealtime({ type: 'users:changed', ts: Date.now() });
 
-    res.status(201).json({ data: { _id: String(doc._id), fullName: doc.fullName, teacherId: doc.teacherId, email: doc.email, phone: doc.phone, salary: doc.salary || 0, status: doc.status, lastAcademicYear: doc.lastAcademicYear, createdAt: doc.createdAt } });
+    res.status(201).json({
+      data: {
+        _id: String(doc._id),
+        fullName: doc.fullName,
+        employeeId: doc.employeeId,
+        teacherId: doc.teacherId,
+        email: doc.email,
+        phone: doc.phone,
+        phone2: doc.phone2,
+        gender: doc.gender,
+        dob: doc.dob,
+        nationality: doc.nationality,
+        isSomali: doc.isSomali,
+        residenceRegionId: doc.residenceRegionId,
+        residenceDistrictId: doc.residenceDistrictId,
+        residenceNeighborhood: doc.residenceNeighborhood,
+        hireDate: doc.hireDate,
+        employmentType: doc.employmentType,
+        salary: doc.salary || 0,
+        status: doc.status,
+        specialization: doc.specialization,
+        qualification: doc.qualification,
+        yearsOfExperience: doc.yearsOfExperience,
+        notes: doc.notes,
+        photo: doc.photo,
+        lastAcademicYear: doc.lastAcademicYear,
+        createdAt: doc.createdAt,
+      },
+    });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
   }
@@ -194,7 +343,29 @@ export const updateTeacher = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
-    let { fullName, teacherId, email, phone, status, salary } = req.body;
+    let {
+      fullName,
+      teacherId,
+      employeeId,
+      email,
+      phone,
+      phone2,
+      gender,
+      dob,
+      nationality,
+      isSomali,
+      residenceRegionId,
+      residenceDistrictId,
+      residenceNeighborhood,
+      hireDate,
+      employmentType,
+      status,
+      salary,
+      specialization,
+      qualification,
+      yearsOfExperience,
+      notes,
+    } = req.body || {};
 
     if (salary !== undefined && salary !== null && salary !== '') {
       const n = Number(salary);
@@ -204,12 +375,42 @@ export const updateTeacher = async (req, res) => {
       salary = 0;
     }
 
+    if (fullName !== undefined) {
+      const trimmed = String(fullName || '').trim();
+      if (!trimmed) return res.status(400).json({ message: 'fullName is required' });
+      const wc = trimmed.split(/\s+/).filter(Boolean).length;
+      if (wc !== 4) return res.status(400).json({ message: 'fullName must be exactly 4 names' });
+      fullName = trimmed;
+    }
+
+    if (teacherId !== undefined) {
+      const trimmed = String(teacherId || '').trim();
+      teacherId = trimmed ? trimmed : undefined;
+    }
+
+    if (phone !== undefined) {
+      if (String(phone).trim() === '') return res.status(400).json({ message: 'phone is required' });
+      const normalized = normalizeSomaliaPhone(phone);
+      if (!normalized || !isValidSomaliaPhone(normalized)) return res.status(400).json({ message: 'Invalid Somalia phone number.' });
+      phone = normalized;
+    }
+    if (phone2 !== undefined) {
+      if (!phone2 || String(phone2).trim() === '') {
+        phone2 = '';
+      } else {
+        const normalized2 = normalizeSomaliaPhone(phone2);
+        if (!normalized2 || !isValidSomaliaPhone(normalized2)) return res.status(400).json({ message: 'Invalid Somalia phone number (phone2).' });
+        phone2 = normalized2;
+      }
+    }
+
     const existingTeacher = await Teacher.findById(id).select('teacherId email status').lean();
     if (!existingTeacher) return res.status(404).json({ message: 'Not found' });
 
     // Uniqueness validation excluding current doc
     const orConds = [];
     if (fullName) orConds.push({ fullName });
+    if (employeeId) orConds.push({ employeeId });
     if (email) orConds.push({ email });
     if (phone) orConds.push({ phone });
     if (teacherId) orConds.push({ teacherId });
@@ -219,7 +420,7 @@ export const updateTeacher = async (req, res) => {
     }
 
     // If teacherId/email changes, keep linked login user in sync (and detect conflicts).
-    const nextTeacherId = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId).trim() : existingTeacher.teacherId;
+    const nextTeacherId = teacherId ? String(teacherId).trim() : existingTeacher.teacherId;
     const nextEmail = email != null && String(email).trim() !== '' ? String(email).trim() : (existingTeacher.email || undefined);
 
     if (nextTeacherId && String(nextTeacherId) !== String(existingTeacher.teacherId)) {
@@ -237,7 +438,73 @@ export const updateTeacher = async (req, res) => {
       if (emailConflict) return res.status(409).json({ message: 'Teacher login email already exists' });
     }
 
-    const updated = await Teacher.findByIdAndUpdate(id, { $set: { fullName, teacherId, email, phone, salary, status } }, { new: true }).select('fullName teacherId email phone salary status lastAcademicYear createdAt').lean();
+    const setPatch = {};
+    if (fullName !== undefined) setPatch.fullName = String(fullName).trim();
+    if (teacherId !== undefined) setPatch.teacherId = String(teacherId).trim();
+    if (employeeId !== undefined) setPatch.employeeId = String(employeeId).trim();
+    if (email !== undefined) {
+      if (String(email).trim() === '') return res.status(400).json({ message: 'email is required' });
+      const next = String(email).trim();
+      if (!isValidEmail(next)) return res.status(400).json({ message: 'Invalid email address.' });
+      setPatch.email = next;
+    }
+    if (phone !== undefined) {
+      // phone has been normalized/validated above
+      setPatch.phone = String(phone).trim();
+    }
+    if (phone2 !== undefined) {
+      // phone2 has been normalized/validated above
+      setPatch.phone2 = phone2 ? String(phone2).trim() : '';
+    }
+    if (gender !== undefined) {
+      if (!['Male', 'Female'].includes(String(gender))) return res.status(400).json({ message: 'gender is required' });
+      setPatch.gender = String(gender);
+    }
+    if (dob !== undefined) {
+      if (!dob) return res.status(400).json({ message: 'dob is required' });
+      const d = new Date(dob);
+      if (Number.isNaN(d.getTime())) return res.status(400).json({ message: 'dob must be a valid date' });
+      setPatch.dob = d;
+    }
+    if (nationality !== undefined) {
+      if (!nationality || String(nationality).trim() === '') return res.status(400).json({ message: 'nationality is required' });
+      setPatch.nationality = String(nationality).trim();
+    }
+    if (typeof isSomali === 'boolean') setPatch.isSomali = isSomali;
+    if (residenceRegionId !== undefined) setPatch.residenceRegionId = residenceRegionId ? String(residenceRegionId).trim() : '';
+    if (residenceDistrictId !== undefined) setPatch.residenceDistrictId = residenceDistrictId ? String(residenceDistrictId).trim() : '';
+    if (residenceNeighborhood !== undefined) setPatch.residenceNeighborhood = residenceNeighborhood ? String(residenceNeighborhood).trim() : '';
+    if (hireDate !== undefined) {
+      if (!hireDate) setPatch.hireDate = null;
+      else {
+        const hd = new Date(hireDate);
+        if (Number.isNaN(hd.getTime())) return res.status(400).json({ message: 'hireDate must be a valid date' });
+        setPatch.hireDate = hd;
+      }
+    }
+    if (employmentType !== undefined) {
+      const et = employmentType ? String(employmentType).trim().toLowerCase() : '';
+      if (et && !['full-time', 'part-time', 'contract'].includes(et)) return res.status(400).json({ message: 'employmentType invalid' });
+      setPatch.employmentType = et;
+    }
+    if (salary !== undefined) setPatch.salary = salary === '' || salary == null ? 0 : Number(salary);
+    if (status !== undefined) setPatch.status = status;
+    if (specialization !== undefined) setPatch.specialization = specialization ? String(specialization).trim() : '';
+    if (qualification !== undefined) setPatch.qualification = qualification ? String(qualification).trim() : '';
+    if (yearsOfExperience !== undefined) {
+      const y = yearsOfExperience === '' || yearsOfExperience == null ? 0 : Number(yearsOfExperience);
+      if (!Number.isFinite(y) || y < 0) return res.status(400).json({ message: 'yearsOfExperience must be a non-negative number' });
+      setPatch.yearsOfExperience = y;
+    }
+    if (notes !== undefined) setPatch.notes = notes ? String(notes).trim() : '';
+
+    const updated = await Teacher.findByIdAndUpdate(
+      id,
+      { $set: setPatch },
+      { new: true }
+    )
+      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience notes photo lastAcademicYear createdAt')
+      .lean();
     if (!updated) return res.status(404).json({ message: 'Not found' });
 
     // Best-effort sync to linked User account (if exists)
@@ -275,6 +542,60 @@ export const updateTeacher = async (req, res) => {
     res.json({ data: updated });
   } catch (e) {
     res.status(400).json({ message: e.message || 'Bad Request' });
+  }
+};
+
+
+// @desc    Upload / replace teacher photo
+// @route   POST /api/teachers/:id/photo   (multipart/form-data: photo)
+export const uploadTeacherPhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
+
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ message: 'Photo file is required.' });
+    }
+
+    const teacher = await Teacher.findById(id);
+    if (!teacher) {
+      try { await fs.unlink(file.path); } catch { /* ignore */ }
+      return res.status(404).json({ message: 'Teacher not found' });
+    }
+
+    const nextRelPath = path.posix.join('uploads', 'teachers', String(file.filename || ''));
+    const nextUrl = `/${path.posix.join('api', 'uploads', 'teachers', String(file.filename || ''))}`;
+
+    const prevPath = String(teacher?.photo?.path || '').trim();
+    if (prevPath && prevPath.startsWith('uploads/teachers/')) {
+      const absPrev = path.join(__dirname, '..', prevPath);
+      try {
+        await fs.unlink(absPrev);
+      } catch {
+        // ignore
+      }
+    }
+
+    teacher.photo = {
+      url: nextUrl,
+      path: nextRelPath,
+      mimeType: String(file.mimetype || ''),
+      size: Number(file.size || 0),
+      uploadedAt: new Date(),
+    };
+    await teacher.save();
+
+    publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
+
+    return res.status(200).json({
+      message: 'Photo uploaded successfully.',
+      photo: teacher.photo,
+      teacher,
+    });
+  } catch (err) {
+    console.error('uploadTeacherPhoto error', err);
+    return res.status(500).json({ message: 'Server Error' });
   }
 };
 
@@ -523,7 +844,7 @@ export const getTeacherProfile = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
 
     const teacher = await Teacher.findById(id)
-      .select('fullName teacherId email phone salary status lastAcademicYear createdAt')
+      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience notes photo lastAcademicYear createdAt')
       .populate({ path: 'lastAcademicYear', select: 'yearName' })
       .lean();
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });

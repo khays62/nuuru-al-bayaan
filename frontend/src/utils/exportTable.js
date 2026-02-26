@@ -34,10 +34,33 @@ const getImageSize = (dataUrl) => new Promise((resolve) => {
 
 const toText = (v) => {
   if (v == null) return '';
+  // Support rich cell objects from callers (e.g. { content, tone }).
+  if (typeof v === 'object' && !(v instanceof Date)) {
+    if (Object.prototype.hasOwnProperty.call(v, 'content')) return toText(v.content);
+    if (Object.prototype.hasOwnProperty.call(v, 'text')) return toText(v.text);
+    if (Object.prototype.hasOwnProperty.call(v, 'value')) return toText(v.value);
+  }
   if (typeof v === 'string') return v;
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
   if (v instanceof Date) return v.toISOString();
   return String(v);
+};
+
+const getCellTone = (v) => {
+  if (!v || typeof v !== 'object' || v instanceof Date) return '';
+  const tone = v.tone ?? v.status ?? v.kind;
+  return String(tone || '').toLowerCase();
+};
+
+const getAttendanceToneStyle = (tone) => {
+  const t = String(tone || '').toLowerCase();
+  // Light tints + readable text colors.
+  if (t === 'present') return { bg: '#DCFCE7', fg: '#15803D', bold: true };
+  if (t === 'absent') return { bg: '#FEE2E2', fg: '#B91C1C', bold: true };
+  if (t === 'late') return { bg: '#FEF3C7', fg: '#92400E', bold: true };
+  if (t === 'not_marked') return { bg: '#F3F4F6', fg: '#6B7280', bold: false };
+  if (['excused', 'sick', 'medical', 'family', 'other'].includes(t)) return { bg: '#F3F4F6', fg: '#111827', bold: false };
+  return null;
 };
 
 const containsArabic = (text) => {
@@ -262,13 +285,22 @@ const buildTableImageDataUrl = async ({ headers = [], rows = [], theme, rtl = fa
     const cells = Array.isArray(r) ? r : [];
     for (let i = 0; i < safeHeaders.length; i += 1) {
       const td = document.createElement('td');
-      td.textContent = toText(cells[i]);
+      const cellInput = cells[i];
+      td.textContent = toText(cellInput);
       td.style.padding = '7px 10px';
       td.style.border = `1px solid ${theme?.gridBorder || '#E5E7EB'}`;
       td.style.verticalAlign = 'top';
       td.style.whiteSpace = 'normal';
       td.style.wordBreak = 'break-word';
       if (rtl) td.style.textAlign = 'right';
+
+      const tone = getCellTone(cellInput);
+      const st = getAttendanceToneStyle(tone);
+      if (st) {
+        td.style.background = st.bg;
+        td.style.color = st.fg;
+        if (st.bold) td.style.fontWeight = '700';
+      }
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
@@ -507,7 +539,10 @@ export function exportTableToCSV({
     writeSingleTable({ title, subtitle, headers, rows, includeMeta: includeMetaRows });
   }
 
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  // Add UTF-8 BOM so Excel on Windows reliably reads Arabic/UTF-8.
+  const csvText = lines.join('\n');
+  const withBom = `\uFEFF${csvText}`;
+  const blob = new Blob([withBom], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -533,6 +568,15 @@ export async function exportTableToExcel({
   wb.creator = 'Nuuru Al-Bayaan';
   wb.created = new Date();
 
+  const isRtlDoc = (() => {
+    try {
+      const dir = String(document?.documentElement?.dir || '').toLowerCase();
+      return dir === 'rtl';
+    } catch {
+      return false;
+    }
+  })();
+
   const excelTheme = (() => {
     const brand = getCssVar('--nb-color-brand', '#4B2C20');
     const border = getCssVar('--nb-color-border', '#E5E7EB');
@@ -544,15 +588,23 @@ export async function exportTableToExcel({
     };
   })();
 
-  const writeWorksheet = async ({ ws, sheetTitle, sheetSubtitle, sheetHeaders, sheetRows, includeBranding }) => {
+  const writeWorksheet = async ({ ws, sheetTitle, sheetSubtitle, sheetHeaders, sheetRows, includeBranding, rtl = false }) => {
     const safeHeaders = Array.isArray(sheetHeaders) ? sheetHeaders : [];
     const safeRows = Array.isArray(sheetRows) ? sheetRows : [];
     const colCount = Math.max(1, safeHeaders.length);
 
+    // Visual padding for LTR sheets: keep column A empty (matches existing exports/screenshots)
+    // while keeping header+data aligned and styled.
+    const padCols = rtl ? 0 : 1;
+    const totalCols = colCount + padCols;
+    const firstDataCol = padCols + 1;
+
+    const hAlign = rtl ? 'right' : 'left';
+
     ws.properties.defaultRowHeight = 18;
 
     const mergeAcross = (rowIndex) => {
-      if (colCount > 1) ws.mergeCells(rowIndex, 1, rowIndex, colCount);
+      if (totalCols > 1) ws.mergeCells(rowIndex, 1, rowIndex, totalCols);
     };
 
     let rowCursor = 1;
@@ -568,7 +620,7 @@ export async function exportTableToExcel({
 
           const imgW = 720;
           const imgH = 100;
-          const startCol = Math.max(0, (colCount / 2) - 3.5);
+          const startCol = Math.max(0, (totalCols / 2) - 3.5);
           ws.addImage(imageId, {
             tl: { col: startCol, row: 0 },
             ext: { width: imgW, height: imgH },
@@ -584,7 +636,7 @@ export async function exportTableToExcel({
       const c = ws.getCell(rowCursor, 1);
       c.value = toText(sheetTitle);
       c.font = { bold: true, size: 16 };
-      c.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      c.alignment = { vertical: 'middle', horizontal: hAlign, wrapText: true };
       ws.getRow(rowCursor).height = 24;
       rowCursor += 1;
     }
@@ -593,7 +645,7 @@ export async function exportTableToExcel({
       const c = ws.getCell(rowCursor, 1);
       c.value = toText(sheetSubtitle);
       c.font = { size: 10, color: { argb: 'FF374151' } };
-      c.alignment = { vertical: 'top', horizontal: 'left', wrapText: true };
+      c.alignment = { vertical: 'top', horizontal: hAlign, wrapText: true };
       ws.getRow(rowCursor).height = 34;
       rowCursor += 1;
     }
@@ -602,12 +654,16 @@ export async function exportTableToExcel({
     // 3) Header row
     const headerRowIndex = rowCursor;
     const headerRow = ws.getRow(headerRowIndex);
-    headerRow.values = [null, ...safeHeaders.map(toText)];
-    for (let c = 1; c <= colCount; c += 1) {
+    for (let c = 1; c <= totalCols; c += 1) {
       const cell = headerRow.getCell(c);
+      if (c <= padCols) {
+        cell.value = '';
+      } else {
+        cell.value = toText(safeHeaders[c - firstDataCol]);
+      }
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: excelTheme.headerArgb } };
-      cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+      cell.alignment = { vertical: 'middle', horizontal: hAlign, wrapText: true };
     }
     headerRow.height = 26;
     rowCursor += 1;
@@ -615,8 +671,32 @@ export async function exportTableToExcel({
     // 4) Data rows
     for (const rawRow of safeRows) {
       const row = ws.getRow(rowCursor);
-      const values = (Array.isArray(rawRow) ? rawRow : []).map(toText);
-      row.values = [null, ...values];
+      const cells = Array.isArray(rawRow) ? rawRow : [];
+      for (let c = 1; c <= totalCols; c += 1) {
+        const cell = row.getCell(c);
+        if (c <= padCols) {
+          cell.value = '';
+          continue;
+        }
+
+        const cellInput = cells[c - firstDataCol];
+        cell.value = toText(cellInput);
+
+        const tone = getCellTone(cellInput);
+        const st = getAttendanceToneStyle(tone);
+        if (st) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: rgbToExcelArgb(parseCssColorToRgb(st.bg, { r: 255, g: 255, b: 255 })) },
+          };
+          cell.font = {
+            ...(cell.font || {}),
+            bold: Boolean(st.bold),
+            color: { argb: rgbToExcelArgb(parseCssColorToRgb(st.fg, { r: 17, g: 24, b: 39 })) },
+          };
+        }
+      }
       rowCursor += 1;
     }
 
@@ -634,11 +714,18 @@ export async function exportTableToExcel({
       return Math.min(maxW, Math.max(minW, Math.ceil(maxLen * 1.25) + 2));
     });
 
-    ws.columns = widths.map((w) => ({ width: w }));
+    // Column widths (include left padding column for LTR).
+    const padWidth = 3;
+    ws.columns = [
+      ...Array.from({ length: padCols }).map(() => ({ width: padWidth })),
+      ...widths.map((w) => ({ width: w })),
+    ];
 
+    // Borders + body alignment (ensure we include the final column too)
     ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber < headerRowIndex) return;
-      row.eachCell({ includeEmpty: true }, (cell) => {
+      for (let c = 1; c <= totalCols; c += 1) {
+        const cell = row.getCell(c);
         cell.border = {
           top: { style: 'thin', color: { argb: excelTheme.borderArgb } },
           left: { style: 'thin', color: { argb: excelTheme.borderArgb } },
@@ -646,12 +733,12 @@ export async function exportTableToExcel({
           right: { style: 'thin', color: { argb: excelTheme.borderArgb } },
         };
         if (rowNumber !== headerRowIndex) {
-          cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: false };
+          cell.alignment = { vertical: 'top', horizontal: hAlign, wrapText: false };
         }
-      });
+      }
     });
 
-    ws.views = [{ state: 'normal' }];
+    ws.views = [{ state: 'normal', rightToLeft: Boolean(rtl) }];
   };
 
   const normalizeSheetName = (n) => String(n || 'Sheet')
@@ -691,6 +778,9 @@ export async function exportTableToExcel({
       const s = sheets[i] || {};
       const name = makeUniqueSheetName(s.sheetName || s.name || `Sheet${i + 1}`, usedSheetNames);
       const ws = wb.addWorksheet(name);
+      // RTL should follow the UI language (document dir) only.
+      // Do NOT auto-flip based on Arabic content, otherwise English exports with Arabic names become RTL unexpectedly.
+      const rtl = Boolean(isRtlDoc);
       await writeWorksheet({
         ws,
         sheetTitle: s.title || '',
@@ -698,12 +788,15 @@ export async function exportTableToExcel({
         sheetHeaders: s.headers || [],
         sheetRows: s.rows || [],
         includeBranding: i === 0,
+        rtl,
       });
     }
   } else {
     const usedSheetNames = new Set();
     const safeSheetName = makeUniqueSheetName(sheetName || 'Sheet1', usedSheetNames);
     const ws = wb.addWorksheet(safeSheetName);
+    // RTL should follow the UI language (document dir) only.
+    const rtl = Boolean(isRtlDoc);
     await writeWorksheet({
       ws,
       sheetTitle: title,
@@ -711,6 +804,7 @@ export async function exportTableToExcel({
       sheetHeaders: headers,
       sheetRows: rows,
       includeBranding: true,
+      rtl,
     });
   }
 
@@ -864,10 +958,28 @@ export async function exportTableToPDF({
 
     const hasArabic = tableHasArabic(safeHeaders, safeRows);
     if (!hasArabic) {
+      const buildAutoTableCell = (cellInput) => {
+        const content = toText(cellInput);
+        const tone = getCellTone(cellInput);
+        const st = getAttendanceToneStyle(tone);
+        if (!st) return content;
+
+        const fill = parseCssColorToRgb(st.bg, { r: 255, g: 255, b: 255 });
+        const fg = parseCssColorToRgb(st.fg, { r: 17, g: 24, b: 39 });
+        return {
+          content,
+          styles: {
+            fillColor: [fill.r, fill.g, fill.b],
+            textColor: [fg.r, fg.g, fg.b],
+            fontStyle: st.bold ? 'bold' : 'normal',
+          },
+        };
+      };
+
       autoTable(doc, {
         startY: cursorY + 6,
         head: [safeHeaders.map(toText)],
-        body: safeRows.map((r) => (Array.isArray(r) ? r : []).map(toText)),
+        body: safeRows.map((r) => (Array.isArray(r) ? r : []).map(buildAutoTableCell)),
         theme: 'grid',
         showHead: 'everyPage',
         rowPageBreak: 'avoid',
@@ -991,7 +1103,22 @@ export async function exportTableToPDF({
       autoTable(doc, {
         startY: cursorY + 6,
         head: [safeHeaders.map(toText)],
-        body: safeRows.map((r) => (Array.isArray(r) ? r : []).map(toText)),
+        body: safeRows.map((r) => (Array.isArray(r) ? r : []).map((cellInput) => {
+          const content = toText(cellInput);
+          const tone = getCellTone(cellInput);
+          const st = getAttendanceToneStyle(tone);
+          if (!st) return content;
+          const fill = parseCssColorToRgb(st.bg, { r: 255, g: 255, b: 255 });
+          const fg = parseCssColorToRgb(st.fg, { r: 17, g: 24, b: 39 });
+          return {
+            content,
+            styles: {
+              fillColor: [fill.r, fill.g, fill.b],
+              textColor: [fg.r, fg.g, fg.b],
+              fontStyle: st.bold ? 'bold' : 'normal',
+            },
+          };
+        })),
         theme: 'grid',
         showHead: 'everyPage',
         rowPageBreak: 'avoid',

@@ -31,7 +31,7 @@ import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 import { useI18n } from '../../../i18n/I18nProvider';
 
 export default function AttendanceReportsPage() {
-  const { t } = useI18n();
+  const { t, isRTL } = useI18n();
   const { auth, hasPermission } = useAuth();
   const role = String(auth?.user?.role || '').toLowerCase();
   const isTeacher = role === 'teacher';
@@ -497,6 +497,53 @@ export default function AttendanceReportsPage() {
   const buildExportPayload = async () => {
     const filenameBase = `attendance_report_${reportType}_${from}_to_${to}`;
 
+    const buildChunkedTables = ({ headers, rows, fixedCount, maxTotalCols }) => {
+      const safeHeaders = Array.isArray(headers) ? headers : [];
+      const safeRows = Array.isArray(rows) ? rows : [];
+      const fixed = Math.max(0, Number(fixedCount) || 0);
+      const maxCols = Math.max(fixed + 1, Number(maxTotalCols) || 0);
+
+      const varCount = Math.max(0, safeHeaders.length - fixed);
+      const varPerTable = Math.max(1, maxCols - fixed);
+      if (varCount <= varPerTable || safeHeaders.length <= maxCols) {
+        return [{ headers: safeHeaders, rows: safeRows }];
+      }
+
+      const tables = [];
+      for (let start = 0; start < varCount; start += varPerTable) {
+        const end = Math.min(varCount, start + varPerTable);
+        const tableHeaders = [
+          ...safeHeaders.slice(0, fixed),
+          ...safeHeaders.slice(fixed + start, fixed + end),
+        ];
+        const tableRows = safeRows.map((r) => {
+          const arr = Array.isArray(r) ? r : [];
+          return [
+            ...arr.slice(0, fixed),
+            ...arr.slice(fixed + start, fixed + end),
+          ];
+        });
+        tables.push({ headers: tableHeaders, rows: tableRows, pageBreakBefore: tables.length > 0 });
+      }
+      return tables;
+    };
+
+    const buildChunkedSheets = ({ baseName, title, subtitle, tables }) => {
+      const safeBase = String(baseName || 'Sheet').trim() || 'Sheet';
+      const safeTables = Array.isArray(tables) ? tables : [];
+      if (safeTables.length <= 1) {
+        const t0 = safeTables[0] || {};
+        return [{ sheetName: safeBase, title, subtitle, headers: t0.headers || [], rows: t0.rows || [] }];
+      }
+      return safeTables.map((t, i) => ({
+        sheetName: `${safeBase} ${i + 1}`,
+        title,
+        subtitle,
+        headers: t.headers || [],
+        rows: t.rows || [],
+      }));
+    };
+
     if (isSummary) {
       const headers = summaryColumns.map((c) => String(c.header || c.key || ''));
       const rows = summaryMatrix.rows.map((r) => [
@@ -527,14 +574,32 @@ export default function AttendanceReportsPage() {
           })
         : t('attendance.reports.export.subtitleRangeOnly', { from: formatDateWithDay(from), to: formatDateWithDay(to) });
 
+      // Chunk horizontally when range is long: keep the Date column repeated and split period columns.
+      // This avoids unreadable PDFs when there are many columns.
+      const periodHeaderAvgLen = (headers.slice(1).reduce((sum, h) => sum + String(h || '').length, 0) / Math.max(1, headers.length - 1)) || 0;
+      const maxTotalCols = periodHeaderAvgLen > 20 ? 8 : 10; // 1 fixed + 7/9 variable
+      const tables = buildChunkedTables({ headers, rows, fixedCount: 1, maxTotalCols });
+
       return {
         filename: `${filenameBase}.pdf`,
         title: t('attendance.reports.title'),
         subtitle,
         headerImageSrc: headerImg,
-        headers,
-        rows,
+        headers: tables[0]?.headers || headers,
+        rows: tables[0]?.rows || rows,
+        tables: tables.map((tt) => ({
+          headers: tt.headers,
+          rows: tt.rows,
+          pageBreakBefore: tt.pageBreakBefore,
+          pdfHideTitle: true,
+        })),
         sheetName: t('attendance.reports.export.sheet.summary'),
+        sheets: buildChunkedSheets({
+          baseName: t('attendance.reports.export.sheet.summary'),
+          title: t('attendance.reports.title'),
+          subtitle,
+          tables,
+        }),
       };
     }
 
@@ -556,7 +621,7 @@ export default function AttendanceReportsPage() {
       const cells = flatCols.map((c) => {
         const key = `${c.date}__${c.period}`;
         const status = r?.byCell?.[key]?.status || 'not_marked';
-        return statusLabel(status);
+        return { content: statusLabel(status), tone: status };
       });
       return [r.studentId, r.fullName, ...cells];
     });
@@ -566,14 +631,31 @@ export default function AttendanceReportsPage() {
       ? t('attendance.reports.export.subtitleRangeOnly', { from: formatDateWithDay(m.from), to: formatDateWithDay(m.to) })
       : t('attendance.reports.export.subtitleRangeOnly', { from: formatDateWithDay(from), to: formatDateWithDay(to) });
 
+    // Chunk horizontally when range is long: keep Student ID + Full Name repeated and split date/period columns.
+    const detailsHeaderAvgLen = (headers.slice(2).reduce((sum, h) => sum + String(h || '').length, 0) / Math.max(1, headers.length - 2)) || 0;
+    const maxTotalCols = detailsHeaderAvgLen > 20 ? 8 : 11; // 2 fixed + 6/9 variable
+    const tables = buildChunkedTables({ headers, rows, fixedCount: 2, maxTotalCols });
+
     return {
       filename: `${filenameBase}.pdf`,
       title: t('attendance.reports.title'),
       subtitle,
       headerImageSrc: headerImg,
-      headers,
-      rows,
+      headers: tables[0]?.headers || headers,
+      rows: tables[0]?.rows || rows,
+      tables: tables.map((tt) => ({
+        headers: tt.headers,
+        rows: tt.rows,
+        pageBreakBefore: tt.pageBreakBefore,
+        pdfHideTitle: true,
+      })),
       sheetName: t('attendance.reports.export.sheet.details'),
+      sheets: buildChunkedSheets({
+        baseName: t('attendance.reports.export.sheet.details'),
+        title: t('attendance.reports.title'),
+        subtitle,
+        tables,
+      }),
     };
   };
 
@@ -1042,6 +1124,21 @@ export default function AttendanceReportsPage() {
     return cols;
   }, [detailsGrid, t]);
 
+  const chunkColumnsForPrint = (columns, { fixedCount = 0, maxTotalCols = 10 } = {}) => {
+    const safe = Array.isArray(columns) ? columns : [];
+    const fixed = Math.max(0, Number(fixedCount) || 0);
+    const maxCols = Math.max(fixed + 1, Number(maxTotalCols) || 0);
+    if (safe.length <= maxCols) return [safe];
+
+    const variable = safe.slice(fixed);
+    const per = Math.max(1, maxCols - fixed);
+    const out = [];
+    for (let i = 0; i < variable.length; i += per) {
+      out.push([...safe.slice(0, fixed), ...variable.slice(i, i + per)]);
+    }
+    return out;
+  };
+
   const renderStudentCards = (studentRow, { print = false } = {}) => {
     const groups = Array.isArray(detailsGrid?.groups) ? detailsGrid.groups : [];
     if (!studentRow || !groups.length) {
@@ -1055,7 +1152,7 @@ export default function AttendanceReportsPage() {
       >
         {groups.map((g) => (
           <div key={g.date} className={`border border-gray-200 rounded-lg ${print ? 'avoid-break' : ''} bg-white overflow-hidden`}>
-            <div className="px-4 py-2 bg-gray-800 text-white">
+            <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
               <div className="font-semibold">{formatDateWithDay(g.date)}</div>
             </div>
             <div className="p-4 space-y-2">
@@ -1090,12 +1187,24 @@ export default function AttendanceReportsPage() {
     );
   };
 
+  const printColumnsCount = useMemo(() => {
+    if (printContext === 'student') return 0;
+    if (isSummary) return (Array.isArray(summaryColumns) ? summaryColumns.length : 0);
+    return (Array.isArray(detailsColumnsPrint) ? detailsColumnsPrint.length : 0);
+  }, [detailsColumnsPrint, isSummary, printContext, summaryColumns]);
+
+  const shouldPrintFitWide = printColumnsCount > 10;
+
   return (
     <div className="p-4 space-y-4">
       <PrintHeader />
       <PrintFooter left={t('common.generatedBy')} />
 
-      <div className="print-only space-y-4 attendance-report-print">
+      <div
+        className={`print-only space-y-4 attendance-report-print ${shouldPrintFitWide ? 'print-fit-wide' : ''}`}
+        dir={isRTL ? 'rtl' : 'ltr'}
+        style={{ direction: isRTL ? 'rtl' : 'ltr' }}
+      >
         {isSummary ? (
           <>
             <div className="text-lg font-semibold">{t('attendance.reports.title')}</div>
@@ -1104,12 +1213,25 @@ export default function AttendanceReportsPage() {
                 {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(meta.to)}</span> · {t('attendance.reports.labels.rosterCount')}: <span className="font-medium">{meta.rosterCount}</span>
               </div>
             )}
-            <AttendanceReportTable
-              columns={summaryColumns}
-              rows={summaryMatrix.rows}
-              loading={false}
-              emptyMessage={t('attendance.reports.empty.noAttendanceInRange')}
-            />
+            {shouldPrintFitWide ? (
+              chunkColumnsForPrint(summaryColumns, { fixedCount: 1, maxTotalCols: 10 }).map((cols, idx) => (
+                <div key={`print-summary-chunk-${idx}`} className={idx === 0 ? '' : 'page-break'}>
+                  <AttendanceReportTable
+                    columns={cols}
+                    rows={summaryMatrix.rows}
+                    loading={false}
+                    emptyMessage={t('attendance.reports.empty.noAttendanceInRange')}
+                  />
+                </div>
+              ))
+            ) : (
+              <AttendanceReportTable
+                columns={summaryColumns}
+                rows={summaryMatrix.rows}
+                loading={false}
+                emptyMessage={t('attendance.reports.empty.noAttendanceInRange')}
+              />
+            )}
           </>
         ) : (
           <>
@@ -1132,13 +1254,26 @@ export default function AttendanceReportsPage() {
                 {renderStudentCards(printStudent, { print: true })}
               </>
             ) : (
-              <AttendanceReportTable
-                columns={detailsColumnsPrint}
-                headerRows={detailsHeaderRowsPrint}
-                rows={Array.isArray(detailsGrid?.rows) ? detailsGrid.rows : []}
-                loading={false}
-                emptyMessage={t('attendance.reports.empty.noRecordsInRange')}
-              />
+              shouldPrintFitWide ? (
+                chunkColumnsForPrint(detailsColumnsPrint, { fixedCount: 2, maxTotalCols: 11 }).map((cols, idx) => (
+                  <div key={`print-details-chunk-${idx}`} className={idx === 0 ? '' : 'page-break'}>
+                    <AttendanceReportTable
+                      columns={cols}
+                      rows={Array.isArray(detailsGrid?.rows) ? detailsGrid.rows : []}
+                      loading={false}
+                      emptyMessage={t('attendance.reports.empty.noRecordsInRange')}
+                    />
+                  </div>
+                ))
+              ) : (
+                <AttendanceReportTable
+                  columns={detailsColumnsPrint}
+                  headerRows={detailsHeaderRowsPrint}
+                  rows={Array.isArray(detailsGrid?.rows) ? detailsGrid.rows : []}
+                  loading={false}
+                  emptyMessage={t('attendance.reports.empty.noRecordsInRange')}
+                />
+              )
             )}
           </>
         )}
@@ -1430,7 +1565,8 @@ export default function AttendanceReportsPage() {
                 ? t('attendance.reports.studentModal.titleWithName', { name: selectedStudent.fullName, id: selectedStudent.studentId })
                 : t('attendance.reports.studentModal.title')
             }
-            panelClassName="max-w-5xl"
+            panelClassName="max-w-7xl"
+            bodyClassName="max-h-[80vh] overflow-y-auto"
           >
             {!selectedStudent ? (
               <div className="text-sm text-gray-600">{t('attendance.reports.studentModal.noStudentSelected')}</div>

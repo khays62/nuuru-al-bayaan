@@ -5,6 +5,8 @@ import chalk from 'chalk';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import { ensureIndexes } from './utils/indexMaintenance.js';
 import { getDefaultInitialPassword } from './utils/defaultPasswords.js';
@@ -12,6 +14,7 @@ import { csrfProtection } from './middleware/csrf.js';
 import { responseNormalize } from './middleware/responseNormalize.js';
 import { auditTrail } from './middleware/auditTrail.js';
 import { i18nMiddleware } from './middleware/i18n.js';
+import { protect } from './middleware/authMiddleware.js';
 // import seedDatabase from './utils/seeder.js'; // Import the seeder function
 
 // Import routes
@@ -39,6 +42,9 @@ import userRoutes from './routes/userRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Validate required secrets early (avoid running with an implicit weak default password)
 try {
@@ -186,6 +192,14 @@ const startServer = async () => {
   });
   app.use('/api/auth', authRoutes);
   app.use('/api/security', securityRoutes);
+
+  // Protected static file serving for uploads (e.g., student photos)
+  app.use('/api/uploads', protect, express.static(path.join(__dirname, 'uploads'), {
+    fallthrough: false,
+    maxAge: isDev ? 0 : '7d',
+    immutable: false,
+  }));
+
   app.use('/api/lookups', lookupRoutes);
   app.use('/api/students', studentRoutes);
   app.use('/api/subjects', subjectRoutes);

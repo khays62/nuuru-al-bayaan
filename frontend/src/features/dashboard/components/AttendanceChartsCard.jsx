@@ -679,7 +679,7 @@ export default function AttendanceChartsCard() {
                         </div>
 
                         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                            <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+                            <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                                 <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.performance.statusPercentages')}</div>
                                 <div className="text-xs text-white/80">{t('teachers.dashboard.attendance.performance.totalRecords', { count: Number(performanceAgg.total || 0) })}</div>
                             </div>
@@ -723,7 +723,7 @@ export default function AttendanceChartsCard() {
 
                             return (
                                 <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                                    <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+                                    <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                                         <div className="text-sm font-semibold">{t('dashboard.cards.attendance.byPeriod.periodsTitle')}</div>
                                         <div className="text-xs text-white/80">{t('dashboard.cards.attendance.byPeriod.excludesAllDay')}</div>
                                     </div>
@@ -746,7 +746,7 @@ export default function AttendanceChartsCard() {
                         <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
 
                         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                            <div className="px-4 py-2 bg-gray-900 text-white flex items-center justify-between gap-3 flex-wrap">
+                            <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                                 <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.statusTrend.dailyTrend')}</div>
                                 <div className="text-xs text-white/80">{t('dashboard.cards.attendance.statusTrend.hoverNote')}</div>
                             </div>

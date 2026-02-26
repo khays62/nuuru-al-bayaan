@@ -15,7 +15,9 @@ const Modal = ({
     titleClassName = '',
     closeButtonClassName = '',
     bodyClassName = '',
-    closeOnBackdrop = true,
+    // Prevent accidental data loss while filling forms.
+    // Users can still close via the X button or an explicit Cancel button in the modal content.
+    closeOnBackdrop = false,
     showCloseButton = true,
 }) => {
     // If the modal is not open, render nothing.
@@ -45,12 +47,22 @@ const Modal = ({
                 className={cn(
                     'w-full transform transition-transform duration-300 scale-95 animate-scale-in modal-panel',
                     'bg-(--nb-color-bg-card) rounded-(--nb-radius-md) border border-(--nb-color-border) shadow-(--nb-shadow-md)',
-                    panelClassName || 'max-w-2xl'
+                    // Layout: fixed header + scrollable body. Keep within viewport on small screens.
+                    'flex flex-col overflow-hidden max-h-[calc(100vh-2rem)]',
+                    // Default width: bias toward more horizontal room; callers can override via panelClassName.
+                    panelClassName || 'max-w-5xl'
                 )}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header */}
-                <div className={cn('p-4 border-b border-(--nb-color-border) flex justify-between items-center modal-header', headerClassName)}>
+                <div
+                    className={cn(
+                        'p-4 border-b border-(--nb-color-border) flex justify-between items-center modal-header',
+                        // Keep header visible while body scrolls.
+                        'shrink-0 sticky top-0 z-10 bg-(--nb-color-bg-card)',
+                        headerClassName,
+                    )}
+                >
                     <h3 className={cn(isTitlePrimitive ? 'text-lg font-semibold text-(--nb-color-fg)' : 'text-left w-full', titleClassName)}>{title}</h3>
                     {showCloseButton && canClose ? (
                         <button 
@@ -62,7 +74,16 @@ const Modal = ({
                     ) : null}
                 </div>
                 {/* Modal Body */}
-                <div className={cn('p-6 modal-body', bodyClassName)}>
+                <div
+                    className={cn(
+                        'p-6 modal-body',
+                        // Allow tall/wide content without growing the modal beyond the viewport.
+                        'flex-1 min-h-0 overflow-auto overscroll-contain',
+                        // Prefer horizontal space for wide tables/forms.
+                        'overflow-x-auto',
+                        bodyClassName,
+                    )}
+                >
                     {children}
                 </div>
             </div>
