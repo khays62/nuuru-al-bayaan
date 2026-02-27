@@ -13,6 +13,7 @@ export default function DropdownSelect({
   placeholder,
   id,
   name,
+  menuPlacement = 'auto',
   maxHeightClassName = 'max-h-64',
   buttonProps = {},
   hideSelectedOption = true,
@@ -22,6 +23,7 @@ export default function DropdownSelect({
   const { t } = useI18n();
 
   const [open, setOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(false);
   const rootRef = useRef(null);
 
   const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
@@ -37,6 +39,31 @@ export default function DropdownSelect({
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (menuPlacement === 'up') {
+      setOpenUp(true);
+      return;
+    }
+    if (menuPlacement === 'down') {
+      setOpenUp(false);
+      return;
+    }
+
+    const root = rootRef.current;
+    const btn = root?.querySelector('button');
+    if (!btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    // Conservative estimate: allow room for a few options + padding.
+    const estimatedMenuHeight = 280;
+    const shouldOpenUp = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
+    setOpenUp(shouldOpenUp);
+  }, [open, menuPlacement]);
 
   const safeOptions = useMemo(() => (Array.isArray(options) ? options : []).map((o) => ({
     value: String(o?.value ?? ''),
@@ -92,7 +119,8 @@ export default function DropdownSelect({
       {open && !disabled ? (
         <div
           className={cn(
-            'absolute right-0 left-0 mt-2 overflow-hidden z-50',
+            'absolute right-0 left-0 overflow-hidden z-70',
+            openUp ? 'bottom-full mb-2' : 'top-full mt-2',
             'rounded-md border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-lg'
           )}
         >

@@ -4,14 +4,25 @@ import { useAuth } from '../AuthContext';
 import toast from 'react-hot-toast';
 import Input from '../../shared/components/ui/Input';
 import Button from '../../shared/components/ui/Button';
+import { useI18n } from '../../i18n/I18nProvider';
+import appLogo from '../../assets/Logo.jpeg';
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const { auth, login } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [cooldownUntilMs, setCooldownUntilMs] = useState(0);
   const [cooldownKind, setCooldownKind] = useState(''); // '' | 'COOLDOWN' | 'LOCKED_24H'
   const [nowMs, setNowMs] = useState(Date.now());
+  const [swapSides, setSwapSides] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(min-width: 768px)').matches;
+    } catch {
+      return true;
+    }
+  });
 
   const usernameRef = useRef(null);
   const passwordRef = useRef(null);
@@ -133,6 +144,26 @@ export default function LoginPage() {
     if (cooldownRemainingSeconds <= 0) setCooldownUntilMs(0);
   }, [cooldownRemainingSeconds, cooldownUntilMs]);
 
+  // Track desktop breakpoint for slide animation.
+  useEffect(() => {
+    let mql;
+    try {
+      if (typeof window === 'undefined' || !window.matchMedia) return;
+      mql = window.matchMedia('(min-width: 768px)');
+      const onChange = (e) => setIsDesktop(Boolean(e.matches));
+      setIsDesktop(Boolean(mql.matches));
+      if (typeof mql.addEventListener === 'function') mql.addEventListener('change', onChange);
+      else if (typeof mql.addListener === 'function') mql.addListener(onChange);
+      return () => {
+        if (typeof mql.removeEventListener === 'function') mql.removeEventListener('change', onChange);
+        else if (typeof mql.removeListener === 'function') mql.removeListener(onChange);
+      };
+    } catch {
+      // ignore
+    }
+    return undefined;
+  }, []);
+
   const doLogin = async (username, password) => {
     if (!username || !password) return;
     if (loadingRef.current) return;
@@ -140,7 +171,12 @@ export default function LoginPage() {
       const now = Date.now();
       if (now - lastCooldownToastAtRef.current > 2000) {
         lastCooldownToastAtRef.current = now;
-        toast.error(`Too many attempts. Try again in ${formatSeconds(cooldownRemainingSeconds)}.`);
+        toast.error(
+          t('auth.login.errors.tooManyAttemptsTryAgainIn', {
+            defaultValue: 'Too many attempts. Try again in {{time}}.',
+            time: formatSeconds(cooldownRemainingSeconds),
+          })
+        );
       }
       return;
     }
@@ -155,7 +191,9 @@ export default function LoginPage() {
         const remainingAttemptsRaw = result?.remainingAttempts;
         const remainingAttempts = Number.isFinite(Number(remainingAttemptsRaw)) ? Number(remainingAttemptsRaw) : null;
         const showAttemptsLeft = remainingAttempts !== null && Number.isFinite(remainingAttempts) && remainingAttempts <= 3;
-        const lastAttemptHint = showAttemptsLeft && remainingAttempts === 1 ? ' Last attempt before lock.' : '';
+        const lastAttemptHint = showAttemptsLeft && remainingAttempts === 1
+          ? t('auth.login.errors.lastAttemptBeforeLock', { defaultValue: ' Last attempt before lock.' })
+          : '';
 
         if (status === 429 && retryAfterSeconds > 0) {
           const until = Date.now() + retryAfterSeconds * 1000;
@@ -164,44 +202,70 @@ export default function LoginPage() {
           lastCooldownToastAtRef.current = Date.now();
           if (code === 'LOGIN_LOCKED_24H') {
             if (principalType === 'unknown') {
-              toast.error('Unknown username. Too many attempts; login is blocked.');
+              toast.error(t('auth.login.errors.unknownUsernameBlocked', { defaultValue: 'Unknown username. Too many attempts; login is blocked.' }));
             } else {
-              toast.error('Account locked for 24 hours. Please contact an administrator.');
+              toast.error(t('auth.login.errors.accountLocked24hContactAdmin', { defaultValue: 'Account locked for 24 hours. Please contact an administrator.' }));
             }
           } else {
-            toast.error(`Too many attempts. Try again in ${formatSeconds(retryAfterSeconds)}.`);
+            toast.error(
+              t('auth.login.errors.tooManyAttemptsTryAgainIn', {
+                defaultValue: 'Too many attempts. Try again in {{time}}.',
+                time: formatSeconds(retryAfterSeconds),
+              })
+            );
           }
           return;
         }
 
         if (status === 429 && code === 'UNKNOWN_USERNAME_BLOCKED') {
-          toast.error('Unknown username. Too many attempts; login is blocked.');
+          toast.error(t('auth.login.errors.unknownUsernameBlocked', { defaultValue: 'Unknown username. Too many attempts; login is blocked.' }));
           return;
         }
 
         if (code === 'USER_NOT_FOUND') {
           if (showAttemptsLeft) {
-            toast.error(`Unknown username / student ID. Attempts left: ${remainingAttempts}.${remainingAttempts === 1 ? ' Last attempt before block.' : ''}`);
+            toast.error(
+              t('auth.login.errors.unknownUsernameOrStudentIdWithAttempts', {
+                defaultValue: 'Unknown username / student ID. Attempts left: {{count}}.{{hint}}',
+                count: remainingAttempts,
+                hint: remainingAttempts === 1
+                  ? t('auth.login.errors.lastAttemptBeforeBlock', { defaultValue: ' Last attempt before block.' })
+                  : '',
+              })
+            );
           } else {
-            toast.error('Unknown username / student ID.');
+            toast.error(t('auth.login.errors.unknownUsernameOrStudentId', { defaultValue: 'Unknown username / student ID.' }));
           }
           return;
         }
         if (code === 'WRONG_PASSWORD') {
           if (showAttemptsLeft) {
-            toast.error(`Wrong password. Attempts left: ${remainingAttempts}.${lastAttemptHint}`);
+            toast.error(
+              t('auth.login.errors.wrongPasswordWithAttempts', {
+                defaultValue: 'Wrong password. Attempts left: {{count}}.{{hint}}',
+                count: remainingAttempts,
+                hint: lastAttemptHint,
+              })
+            );
           } else {
-            toast.error('Wrong password.');
+            toast.error(t('auth.login.errors.wrongPassword', { defaultValue: 'Wrong password.' }));
           }
           return;
         }
 
         if (status === 401 && showAttemptsLeft) {
-          toast.error(`${result?.message || 'Invalid credentials.'} Attempts left: ${remainingAttempts}.${lastAttemptHint}`);
+          toast.error(
+            t('auth.login.errors.invalidCredentialsWithAttempts', {
+              defaultValue: '{{message}} Attempts left: {{count}}.{{hint}}',
+              message: result?.message || t('auth.login.errors.invalidCredentials', { defaultValue: 'Invalid credentials.' }),
+              count: remainingAttempts,
+              hint: lastAttemptHint,
+            })
+          );
           return;
         }
 
-        toast.error(result?.message || 'Invalid credentials.');
+        toast.error(result?.message || t('auth.login.errors.invalidCredentials', { defaultValue: 'Invalid credentials.' }));
         return;
       }
 
@@ -220,62 +284,160 @@ export default function LoginPage() {
     await doLogin(username, password);
   };
 
+  // Note: Do not invert transforms for RTL. `dir="rtl"` changes text direction, not CSS positioning.
+  // Inverting would push both panels off-screen in RTL languages (Arabic).
+  const formShiftPct = isDesktop && swapSides ? 100 : 0;
+  const welcomeShiftPct = isDesktop && swapSides ? -100 : 0;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-cover bg-center px-6 py-10">
-      <div className="relative w-full max-w-4xl rounded-2xl p-2">
-        <div className="relative flex flex-col justify-center rounded-2xl bg-white/70 px-6 py-16 backdrop-blur-md shadow-xl">
-          <div className="mx-auto w-full max-w-md">
-            <div className="mb-10">
-              <h1 className="text-4xl font-extrabold uppercase text-gray-800">Sign in</h1>
-              <p className="text-base font-bold leading-normal text-gray-500">
-                Enter your username and password to log in.
-              </p>
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-(--nb-color-bg)">
+      <div className="w-full max-w-6xl">
+        <div className="relative overflow-hidden rounded-3xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-(--nb-shadow-md)">
+          {/* Decorative background */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-(--nb-color-brand-a12)" />
+            <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-(--nb-color-accent-a12)" />
+          </div>
+
+          {/* Small switch */}
+          <div className="absolute top-4 right-4 z-20">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={swapSides}
+              aria-label={t('auth.login.layout.switchLabel', { defaultValue: 'Switch layout' })}
+              onClick={() => setSwapSides((v) => !v)}
+              className="group inline-flex items-center rounded-full border border-(--nb-color-border) bg-(--nb-color-bg) p-1 shadow-(--nb-shadow-sm) hover:border-(--nb-color-accent) focus:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-accent-200)"
+            >
+              <span className="sr-only">{t('auth.login.layout.switchLabel', { defaultValue: 'Switch layout' })}</span>
+              <span className="relative h-4 w-8 rounded-full bg-(--nb-color-border) transition-colors group-hover:bg-(--nb-color-accent-200)">
+                <span
+                  className="absolute top-0.5 h-3 w-3 rounded-full bg-(--nb-color-bg-card) shadow-(--nb-shadow-sm) transition-transform"
+                  style={{
+                    transform: swapSides ? 'translateX(14px)' : 'translateX(2px)',
+                  }}
+                />
+              </span>
+            </button>
+          </div>
+
+          <div className="relative md:min-h-130">
+            {/* Form panel */}
+            <div
+              className="w-full md:absolute md:inset-y-0 md:left-0 md:w-1/2 p-8 md:p-12 transition-transform duration-500 ease-out will-change-transform"
+              style={isDesktop ? { transform: `translateX(${formShiftPct}%)` } : undefined}
+            >
+              <div className="mx-auto w-full max-w-md">
+                <div className="mb-8">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={appLogo}
+                      alt={t('auth.login.logoAlt', { defaultValue: 'Nuuru Al-Bayaan' })}
+                      className="h-11 w-11 rounded-full object-cover border border-(--nb-color-border) bg-(--nb-color-bg-card)"
+                      loading="lazy"
+                      draggable={false}
+                    />
+                    <div className="inline-flex items-center gap-2 rounded-full border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-1 text-xs text-(--nb-color-muted)">
+                      <span className="h-2 w-2 rounded-full bg-(--nb-color-accent)" />
+                      <span>{t('auth.login.badge', { defaultValue: 'Welcome' })}</span>
+                    </div>
+                  </div>
+                  <h1 className="mt-4 text-3xl md:text-4xl font-extrabold tracking-tight text-(--nb-color-text)">
+                    {t('auth.login.title', { defaultValue: 'Sign in' })}
+                  </h1>
+                  <p className="mt-2 text-sm md:text-base text-(--nb-color-muted)">
+                    {t('auth.login.subtitle', { defaultValue: 'Enter your username and password to log in.' })}
+                  </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-(--nb-color-text) mb-1">
+                      {t('auth.login.fields.usernameOrStudentId', { defaultValue: 'Username / Student ID' })}
+                    </label>
+                    <Input
+                      ref={usernameRef}
+                      name="username"
+                      type="text"
+                      onInput={handleInput}
+                      onFocus={() => { hasFocusedRef.current = true; stopAutofillClear(); }}
+                      className="px-4 py-3"
+                      autoComplete="username"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-(--nb-color-text) mb-1">
+                      {t('auth.login.fields.password', { defaultValue: 'Password' })}
+                    </label>
+                    <Input
+                      ref={passwordRef}
+                      name="password"
+                      type="password"
+                      onInput={handleInput}
+                      className="px-4 py-3"
+                      autoComplete="current-password"
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={loading || cooldownRemainingSeconds > 0}
+                    variant={cooldownRemainingSeconds > 0 ? 'danger' : 'brand'}
+                    size="lg"
+                    className="w-full justify-center py-3 font-semibold"
+                  >
+                    {loading
+                      ? t('auth.login.actions.signingIn', { defaultValue: 'Signing in…' })
+                      : (
+                        cooldownRemainingSeconds > 0
+                          ? (cooldownKind === 'LOCKED_24H'
+                            ? t('auth.login.actions.lockedContactAdmin', { defaultValue: 'Locked (contact admin)' })
+                            : t('auth.login.actions.tryAgainIn', {
+                              defaultValue: 'Try again in {{time}}',
+                              time: formatSeconds(cooldownRemainingSeconds),
+                            }))
+                          : t('auth.login.actions.signIn', { defaultValue: 'Sign in' })
+                      )}
+                  </Button>
+                </form>
+              </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username / Student ID</label>
-                <Input
-                  ref={usernameRef}
-                  name="username"
-                  type="text"
-                  onInput={handleInput}
-                  onFocus={() => { hasFocusedRef.current = true; stopAutofillClear(); }}
-                  className="px-4 py-3"
-                  autoComplete="username"
-                />
-              </div>
+            {/* Welcome panel */}
+            <div
+              className="w-full md:absolute md:inset-y-0 md:left-1/2 md:w-1/2 p-8 md:p-12 transition-transform duration-500 ease-out will-change-transform"
+              style={isDesktop ? { transform: `translateX(${welcomeShiftPct}%)` } : undefined}
+            >
+              <div className="relative h-full overflow-hidden rounded-3xl bg-linear-to-br from-(--nb-color-brand) via-(--nb-color-brand) to-(--nb-color-accent) text-white">
+                <div className="pointer-events-none absolute inset-0 opacity-20">
+                  <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/30" />
+                  <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-white/20" />
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <Input
-                  ref={passwordRef}
-                  name="password"
-                  type="password"
-                  onInput={handleInput}
-                  className="px-4 py-3"
-                  autoComplete="current-password"
-                />
-              </div>
+                <div className="relative flex h-full flex-col justify-center px-8 md:px-12 py-12">
+                  <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+                    {t('auth.login.welcome.title', { defaultValue: 'Hello, Friend!' })}
+                  </h2>
+                  <p className="mt-3 text-sm md:text-base text-white/85 max-w-md">
+                    {t('auth.login.welcome.body', { defaultValue: 'Use your account to access all features of the system.' })}
+                  </p>
 
-              <Button
-                type="submit"
-                disabled={loading || cooldownRemainingSeconds > 0}
-                variant={cooldownRemainingSeconds > 0 ? 'danger' : 'brand'}
-                size="lg"
-                className="w-full justify-center py-3 font-semibold"
-              >
-                {loading
-                  ? 'Signing in…'
-                  : (
-                    cooldownRemainingSeconds > 0
-                      ? (cooldownKind === 'LOCKED_24H'
-                        ? 'Locked (contact admin)'
-                        : `Try again in ${formatSeconds(cooldownRemainingSeconds)}`)
-                      : 'Sign in'
-                  )}
-              </Button>
-            </form>
+                  <div className="mt-8">
+                    <button
+                      type="button"
+                      onClick={() => setSwapSides((v) => !v)}
+                      className="inline-flex items-center justify-center rounded-full border border-white/60 bg-white/10 px-6 py-2 text-sm font-semibold text-white hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                    >
+                      {t('auth.login.welcome.cta', { defaultValue: 'Switch' })}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile spacing: keep panels stacked nicely */}
+            <div className="md:hidden h-6" />
           </div>
         </div>
       </div>

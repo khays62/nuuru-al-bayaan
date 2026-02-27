@@ -6,6 +6,67 @@ import AuditLog from "../models/AuditLog.js";
 import { parsePagination } from '../utils/pagination.js';
 import { sanitizePermissionsPayload } from '../utils/permissions.js';
 import { publishRealtime } from '../utils/realtimeBus.js';
+import Counter from '../models/Counter.js';
+import path from 'path';
+import fs from 'fs/promises';
+
+
+const parseJsonIfString = (v) => {
+  if (v === undefined || v === null) return v;
+  if (typeof v !== 'string') return v;
+  const s = v.trim();
+  if (!s) return undefined;
+  try {
+    return JSON.parse(s);
+  } catch {
+    return v;
+  }
+};
+
+const moduleHasAnyEnabledPermission = (permObj) => {
+  if (!permObj || typeof permObj !== 'object') return false;
+  if (permObj.full === true) return true;
+  return Object.entries(permObj).some(([k, v]) => k !== 'full' && v === true);
+};
+
+// Keep in sync with frontend UserFormModal module groupings.
+const deriveStaffMetaFromPermissions = (permissions) => {
+  const p = permissions && typeof permissions === 'object' ? permissions : {};
+  const modulesEnabled = Object.entries(p)
+    .filter(([, permObj]) => moduleHasAnyEnabledPermission(permObj))
+    .map(([module]) => String(module));
+
+  if (!modulesEnabled.length) return { unit: '', jobTitle: '' };
+
+  const groupFor = (m) => {
+    if (m.startsWith('finance')) return 'finance';
+    if (m === 'security') return 'security';
+    if (m === 'announcements') return 'announcements';
+    if (m === 'students' || m === 'teachers') return 'users';
+    if (['grades', 'subjects', 'cohorts', 'promotions', 'transfers'].includes(m)) return 'academics';
+    if (['exams', 'results', 'transcript'].includes(m)) return 'exams';
+    if (['attendance', 'attendanceReports', 'timetable'].includes(m)) return 'operations';
+    return 'other';
+  };
+
+  const groupsEnabled = Array.from(new Set(modulesEnabled.map(groupFor))).filter(Boolean);
+  const unit = (modulesEnabled.length === 1) ? modulesEnabled[0] : 'multiple';
+  const jobTitle = (groupsEnabled.length === 1) ? groupsEnabled[0] : 'multiple';
+
+  return { unit, jobTitle };
+};
+
+async function ensureStaffCodeForRole(role) {
+  const r = String(role || '').trim().toLowerCase();
+  if (r !== 'staff' && r !== 'admin') return '';
+  const c = await Counter.findOneAndUpdate(
+    { key: 'staffCode' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  ).lean();
+  const n = c?.seq || 1;
+  return `ST-${String(n).padStart(6, '0')}`;
+}
 
 
 const summarizePermissions = (permissions) => {
@@ -35,14 +96,49 @@ const safeActorLabel = (req) => {
   return String(u?.fullName || u?.name || u?.username || u?._id || 'unknown');
 };
 
+const safeUserResponse = (user) => {
+  if (!user) return user;
+  const obj = (typeof user?.toObject === 'function') ? user.toObject() : user;
+  if (!obj || typeof obj !== 'object') return obj;
+  // Never expose password hashes.
+  const { password, __v, ...rest } = obj;
+  return rest;
+};
+
+const coerceBool = (v, fallback = undefined) => {
+  if (v === undefined || v === null) return fallback;
+  if (typeof v === 'boolean') return v;
+  const s = String(v).trim().toLowerCase();
+  if (s === 'true' || s === '1' || s === 'yes') return true;
+  if (s === 'false' || s === '0' || s === 'no') return false;
+  return fallback;
+};
+
 
 
 
 // CREATE USER
 export const createUser = async (req, res) => {
   try {
-    let { fullName, username, email, phone, role, permissions, password, salary } = req.body;
+    let {
+      fullName,
+      username,
+      email,
+      phone,
+      phone2,
+      role,
+      permissions,
+      password,
+      salary,
+      isSomali,
+      nationality,
+      residenceRegionId,
+      residenceDistrictId,
+      residenceNeighborhood,
+    } = req.body;
     if (!password) return res.status(400).json({ message: "Password required" });
+
+    permissions = parseJsonIfString(permissions);
 
     if (salary !== undefined && salary !== null && salary !== '') {
       const n = Number(salary);
@@ -77,6 +173,19 @@ export const createUser = async (req, res) => {
       safePermissions = sanitized;
     }
 
+    const staffCode = await ensureStaffCodeForRole(normalizedRole);
+    const derivedMeta = deriveStaffMetaFromPermissions(safePermissions);
+
+    const nextIsSomali = coerceBool(isSomali, true) !== false;
+    const nextNationality = nextIsSomali ? 'Somalia' : String(nationality || '').trim();
+    if (!nextIsSomali && !nextNationality) {
+      return res.status(400).json({ message: 'nationality is required when isSomali=false', field: 'nationality' });
+    }
+
+    const nextResidenceRegionId = nextIsSomali ? String(residenceRegionId || '').trim() : '';
+    const nextResidenceDistrictId = nextIsSomali ? String(residenceDistrictId || '').trim() : '';
+    const nextResidenceNeighborhood = nextIsSomali ? String(residenceNeighborhood || '').trim() : '';
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
@@ -84,13 +193,37 @@ export const createUser = async (req, res) => {
       username,
       email,
       phone,
+      phone2: String(phone2 || '').trim(),
+      nationality: nextNationality,
+      isSomali: nextIsSomali,
+      residenceRegionId: nextResidenceRegionId,
+      residenceDistrictId: nextResidenceDistrictId,
+      residenceNeighborhood: nextResidenceNeighborhood,
       salary,
+      staffCode: staffCode || undefined,
+      unit: derivedMeta.unit,
+      jobTitle: derivedMeta.jobTitle,
       role: normalizedRole,
       permissions: safePermissions,
       password: hashedPassword,
       // Treat admin-set password as a default; force user to change after first login.
       mustChangePassword: true,
     });
+
+    // Optional photo (multipart/form-data: photo)
+    if (req.file) {
+      const file = req.file;
+      const nextRelPath = path.posix.join('uploads', 'users', String(file.filename || ''));
+      const nextUrl = `/${path.posix.join('api', 'uploads', 'users', String(file.filename || ''))}`;
+      newUser.photo = {
+        url: nextUrl,
+        path: nextRelPath,
+        mimeType: String(file.mimetype || ''),
+        size: Number(file.size || 0),
+        uploadedAt: new Date(),
+      };
+      await newUser.save();
+    }
 
     await writeAuditLog({
       userId: req.user?._id,
@@ -109,7 +242,7 @@ export const createUser = async (req, res) => {
 
     publishRealtime({ type: 'users:changed', id: String(newUser._id), ts: Date.now() });
 
-    res.status(201).json(newUser);
+    res.status(201).json(safeUserResponse(newUser));
   } catch (error) {
     console.error("❌ Create user error:", error);
     res.status(500).json({ message: error.message });
@@ -128,7 +261,24 @@ export const updateUser = async (req, res) => {
     const beforeStatus = String(user.status || '').toLowerCase();
     const beforePerms = user.permissions ? JSON.parse(JSON.stringify(user.permissions)) : null;
 
-    let { fullName, username, email, phone, role, permissions, password, salary } = req.body;
+    let {
+      fullName,
+      username,
+      email,
+      phone,
+      phone2,
+      role,
+      permissions,
+      password,
+      salary,
+      isSomali,
+      nationality,
+      residenceRegionId,
+      residenceDistrictId,
+      residenceNeighborhood,
+    } = req.body;
+
+    permissions = parseJsonIfString(permissions);
 
     if (salary !== undefined && salary !== null && salary !== '') {
       const n = Number(salary);
@@ -167,10 +317,67 @@ export const updateUser = async (req, res) => {
     user.username = username;
     user.email = email;
     user.phone = phone;
+    if (phone2 !== undefined) user.phone2 = String(phone2 || '').trim();
     if (salary !== undefined) user.salary = salary;
     user.role = normalizedRole;
+
+    const nextIsSomali = coerceBool(isSomali, undefined);
+    if (nextIsSomali !== undefined) {
+      user.isSomali = nextIsSomali !== false;
+      if (user.isSomali) {
+        user.nationality = 'Somalia';
+      } else {
+        const nextNationality = String(nationality || '').trim();
+        if (!nextNationality) {
+          return res.status(400).json({ message: 'nationality is required when isSomali=false', field: 'nationality' });
+        }
+        user.nationality = nextNationality;
+        user.residenceRegionId = '';
+        user.residenceDistrictId = '';
+        user.residenceNeighborhood = '';
+      }
+    }
+
+    // Address updates (Somali-only fields)
+    if (user.isSomali !== false) {
+      if (residenceRegionId !== undefined) user.residenceRegionId = String(residenceRegionId || '').trim();
+      if (residenceDistrictId !== undefined) user.residenceDistrictId = String(residenceDistrictId || '').trim();
+      if (residenceNeighborhood !== undefined) user.residenceNeighborhood = String(residenceNeighborhood || '').trim();
+    }
     if (safePermissions !== null) {
       user.permissions = safePermissions; // must be object matching schema
+      const derived = deriveStaffMetaFromPermissions(safePermissions);
+      user.unit = derived.unit;
+      user.jobTitle = derived.jobTitle;
+    }
+
+    if (!user.staffCode && (normalizedRole === 'staff' || normalizedRole === 'admin')) {
+      user.staffCode = await ensureStaffCodeForRole(normalizedRole);
+    }
+
+    // Optional photo (multipart/form-data: photo)
+    if (req.file) {
+      const file = req.file;
+      const nextRelPath = path.posix.join('uploads', 'users', String(file.filename || ''));
+      const nextUrl = `/${path.posix.join('api', 'uploads', 'users', String(file.filename || ''))}`;
+
+      const prevPath = String(user?.photo?.path || '').trim();
+      if (prevPath && prevPath.startsWith('uploads/users/')) {
+        const absPrev = path.join(process.cwd(), prevPath);
+        try {
+          await fs.unlink(absPrev);
+        } catch {
+          // ignore
+        }
+      }
+
+      user.photo = {
+        url: nextUrl,
+        path: nextRelPath,
+        mimeType: String(file.mimetype || ''),
+        size: Number(file.size || 0),
+        uploadedAt: new Date(),
+      };
     }
 
     if (password && password.trim() !== "") {
@@ -242,7 +449,7 @@ export const updateUser = async (req, res) => {
 
     publishRealtime({ type: 'users:changed', id: String(user._id), ts: Date.now() });
 
-    res.json({ message: "User updated successfully", user });
+    res.json({ message: "User updated successfully", user: safeUserResponse(user) });
   } catch (error) {
     console.error("❌ Update user error:", error);
     res.status(500).json({ message: error.message });
@@ -304,7 +511,7 @@ export const getUsers = async (req, res) => {
 
     // Never return sensitive fields like password hashes.
     const users = await User.find(query)
-      .select('_id fullName username email phone salary role status permissions teacherRef studentRef mustChangePassword createdAt updatedAt')
+        .select('_id staffCode unit jobTitle photo fullName username email phone phone2 nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood salary role status permissions teacherRef studentRef mustChangePassword createdAt updatedAt')
       .sort({ [safeSortBy]: direction })
       .lean();
     res.json(users);
@@ -404,7 +611,7 @@ export const toggleUserStatus = async (req, res) => {
 
     publishRealtime({ type: 'users:changed', id: String(user._id), ts: Date.now() });
 
-    res.json(user);
+    res.json(safeUserResponse(user));
   } catch (err) {
     res.status(500).json({ message: err.message || 'Server error' });
   }
@@ -412,7 +619,9 @@ export const toggleUserStatus = async (req, res) => {
 
 export const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).lean();
+    const user = await User.findById(req.params.id)
+      .select('_id staffCode unit jobTitle photo fullName username email phone phone2 nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood salary role status permissions teacherRef studentRef mustChangePassword createdAt updatedAt')
+      .lean();
 
     if (!user)
       return res.status(404).json({ message: "User not found" });
@@ -451,6 +660,22 @@ export const getUserAuditLogs = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ message: error?.message || 'Failed to fetch logs' });
+  }
+};
+
+export const checkUsernameAvailability = async (req, res) => {
+  try {
+    const username = String(req?.query?.username || '').trim();
+    if (!username) return res.json({ data: { available: false } });
+
+    const excludeId = String(req?.query?.excludeId || '').trim();
+    const query = { username };
+    if (excludeId) query._id = { $ne: excludeId };
+
+    const exists = await User.exists(query);
+    return res.json({ data: { available: !exists } });
+  } catch (error) {
+    return res.status(500).json({ message: error?.message || 'Failed to check username' });
   }
 };
 

@@ -27,14 +27,46 @@ export async function listUsers(params = {}, options = {}) {
  * Create a new user
  */
 export async function createUser(userData) {
-	return fetchJson('/users', { method: 'POST', body: JSON.stringify(userData) });
+	const hasPhoto = Boolean(userData && (userData.photo instanceof File));
+	if (!hasPhoto) {
+		return fetchJson('/users', { method: 'POST', body: JSON.stringify(userData) });
+	}
+
+	const fd = new FormData();
+	Object.entries(userData || {}).forEach(([k, v]) => {
+		if (v === undefined || v === null) return;
+		if (k === 'photo') return;
+		if (k === 'permissions') {
+			fd.append('permissions', JSON.stringify(v));
+			return;
+		}
+		fd.append(k, String(v));
+	});
+	fd.append('photo', userData.photo);
+	return fetchJson('/users', { method: 'POST', body: fd });
 }
 
 /**
  * Update user details
  */
 export async function updateUser(id, userData) {
-	return fetchJson(`/users/${id}`, { method: 'PUT', body: JSON.stringify(userData) });
+	const hasPhoto = Boolean(userData && (userData.photo instanceof File));
+	if (!hasPhoto) {
+		return fetchJson(`/users/${id}`, { method: 'PUT', body: JSON.stringify(userData) });
+	}
+
+	const fd = new FormData();
+	Object.entries(userData || {}).forEach(([k, v]) => {
+		if (v === undefined || v === null) return;
+		if (k === 'photo') return;
+		if (k === 'permissions') {
+			fd.append('permissions', JSON.stringify(v));
+			return;
+		}
+		fd.append(k, String(v));
+	});
+	fd.append('photo', userData.photo);
+	return fetchJson(`/users/${id}`, { method: 'PUT', body: fd });
 }
 
 /**
@@ -55,6 +87,16 @@ export const getUserById = async (id, options = {}) => {
 	const data = await fetchJson(`/users/${id}`, { signal: options?.signal });
 	return data?.data || data;
 };
+
+export async function checkUsernameAvailability(username, opts = {}) {
+	const u = String(username || '').trim();
+	if (!u) return { available: false };
+	const query = new URLSearchParams();
+	query.set('username', u);
+	if (opts?.excludeId) query.set('excludeId', String(opts.excludeId));
+	const data = await fetchJson(`/users/check-username?${query.toString()}`, { signal: opts?.signal });
+	return data?.data || data;
+}
 
 export const getUserAuditLogs = async (id, params = {}, options = {}) => {
 	const qs = new URLSearchParams(params).toString();

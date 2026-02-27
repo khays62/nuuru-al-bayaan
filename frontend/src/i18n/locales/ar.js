@@ -295,7 +295,7 @@ export default {
           label: {
             feeLabel: 'وسم الرسوم',
             defaultMultiplier: 'المضاعف الافتراضي ($)',
-          phoneInvalidHint: 'يجب أن يكون الهاتف صومالياً: 9 أرقام ويبدأ بـ 61… أو 77… (يدعم +252 أو 252 أو بادئة 0).',
+          phoneInvalidHint: 'يجب أن يكون الهاتف صومالياً: 9 أرقام ويبدأ بـ 61/62/68 أو 7x (يدعم +252 أو 252 أو بادئة 0).',
             status: 'الحالة',
             transactionCategory: 'فئة المعاملة',
           },
@@ -500,6 +500,43 @@ export default {
   },
 
   auth: {
+    login: {
+      badge: 'مرحباً',
+      logoAlt: 'نور البيان',
+      title: 'تسجيل الدخول',
+      subtitle: 'أدخل اسم المستخدم وكلمة المرور لتسجيل الدخول.',
+      fields: {
+        usernameOrStudentId: 'اسم المستخدم / رقم الطالب',
+        password: 'كلمة المرور',
+      },
+      layout: {
+        switchLabel: 'تبديل التخطيط',
+      },
+      welcome: {
+        title: 'مرحباً يا صديقي!',
+        body: 'استخدم حسابك للوصول إلى جميع ميزات النظام.',
+        cta: 'تبديل',
+      },
+      actions: {
+        signIn: 'دخول',
+        signingIn: 'جارٍ تسجيل الدخول…',
+        lockedContactAdmin: 'مقفول (اتصل بالإدارة)',
+        tryAgainIn: 'حاول مرة أخرى خلال {{time}}',
+      },
+      errors: {
+        invalidCredentials: 'بيانات الدخول غير صحيحة.',
+        tooManyAttemptsTryAgainIn: 'محاولات كثيرة. حاول مرة أخرى خلال {{time}}.',
+        accountLocked24hContactAdmin: 'تم قفل الحساب لمدة 24 ساعة. يرجى التواصل مع الإدارة.',
+        unknownUsernameBlocked: 'اسم مستخدم غير معروف. محاولات كثيرة؛ تم حظر تسجيل الدخول.',
+        unknownUsernameOrStudentId: 'اسم المستخدم / رقم الطالب غير معروف.',
+        unknownUsernameOrStudentIdWithAttempts: 'اسم المستخدم / رقم الطالب غير معروف. المحاولات المتبقية: {{count}}.{{hint}}',
+        wrongPassword: 'كلمة المرور غير صحيحة.',
+        wrongPasswordWithAttempts: 'كلمة المرور غير صحيحة. المحاولات المتبقية: {{count}}.{{hint}}',
+        invalidCredentialsWithAttempts: '{{message}} المحاولات المتبقية: {{count}}.{{hint}}',
+        lastAttemptBeforeLock: ' المحاولة الأخيرة قبل القفل.',
+        lastAttemptBeforeBlock: ' المحاولة الأخيرة قبل الحظر.',
+      },
+    },
     forcePasswordChange: {
       title: 'تغيير كلمة المرور',
       body: {
@@ -954,6 +991,30 @@ export default {
     grades: 'الدرجات',
     exams: 'الامتحانات',
     results: 'النتائج',
+
+    financeDashboard: 'لوحة التحكم المالية',
+    financeAccounts: 'الحسابات المالية',
+    financeAccountsInstitution: 'حسابات المؤسسة',
+    financeAccountsOverview: 'نظرة عامة على الأرصدة والمشاريع',
+    financeAccountsLedger: 'سجل الأستاذ العام',
+    financeStudent: 'مالية الطلاب',
+    financeStudentReceipt: 'الإيصالات',
+    financeStudentPreviousBalance: 'الرصيد السابق',
+    financeStudentAmountType: 'نوع المبلغ',
+    financeStudentFeeType: 'نوع الرسوم',
+    financeStudentReceiptModal: 'نافذة الإيصال',
+    financeStudentPreviousBalanceModal: 'نافذة الرصيد السابق',
+    financePayroll: 'الرواتب',
+    financePayrollEmployeeInfo: 'معلومات الموظف (الرواتب)',
+    financeExpenses: 'المصروفات',
+    financeExpensesLedger: 'سجل المصروفات',
+    financeExpensesCategories: 'فئات المصروفات',
+    financeConfig: 'إعدادات المصروفات',
+    financeFoundation: 'إعدادات المالية',
+    financeAppointments: 'المواعيد',
+    financeAudit: 'التدقيق',
+    financeMaintenance: 'الصيانة',
+    financePrint: 'طباعة المالية',
   },
 
   perms: {
@@ -975,6 +1036,10 @@ export default {
     preview: 'معاينة',
     promote: 'ترقية',
     input: 'إدخال',
+    income: 'تحصيل',
+    save: 'حفظ',
+    revert: 'تراجع',
+    run: 'تشغيل',
   },
 
   setup: {
@@ -1588,6 +1653,9 @@ export default {
 
     profileTab: {
       loadFailed: 'فشل تحميل الملف الشخصي',
+      photo: {
+        alt: 'صورة الطالب',
+      },
       personal: {
         title: 'شخصي',
         subtitle: 'بيانات الطالب',
@@ -1595,6 +1663,30 @@ export default {
       academic: {
         title: 'أكاديمي',
         subtitle: 'معلومات آخر تسجيل',
+      },
+      contacts: {
+        title: 'جهات الاتصال',
+        subtitle: 'أرقام الهاتف والبريد الإلكتروني',
+      },
+      residence: {
+        title: 'السكن',
+        subtitle: 'تفاصيل مكان الإقامة',
+      },
+      transfer: {
+        title: 'التحويل (القبول)',
+        subtitle: 'بيانات التحويل التي تم جمعها عند التسجيل',
+      },
+      idDocument: {
+        title: 'وثيقة الهوية',
+        subtitle: 'تفاصيل الهوية (اختياري)',
+      },
+      medical: {
+        title: 'طبي',
+        subtitle: 'ملاحظات طبية مهمة (اختياري)',
+      },
+      notes: {
+        title: 'ملاحظات',
+        subtitle: 'ملاحظات إضافية عن هذا الطالب',
       },
       password: {
         title: 'تغيير كلمة المرور',
@@ -1874,7 +1966,7 @@ export default {
         guardianPhone1Invalid: 'رقم هاتف صومالي غير صالح',
         guardianPhone2Invalid: 'رقم هاتف ولي الأمر (ثانوي) غير صالح',
         studentPhoneInvalid: 'رقم هاتف الطالب غير صالح',
-        phoneInvalidHint: 'يجب أن يكون الهاتف صومالياً: 9 أرقام ويبدأ بـ 61… أو 77… (يدعم +252 أو 252 أو بادئة 0).',
+        phoneInvalidHint: 'يجب أن يكون الهاتف صومالياً: 9 أرقام ويبدأ بـ 61/62/68 أو 7x (يدعم +252 أو 252 أو بادئة 0).',
         phoneTooLong: 'رقم الهاتف طويل جداً. يجب أن يكون 9 أرقام (الرقم الوطني).',
         phoneTooShort: 'رقم الهاتف قصير جداً. يجب أن يكون 9 أرقام (الرقم الوطني).',
         previousSchoolNameRequired: 'اسم المدرسة السابقة مطلوب للطلاب المحولين',
@@ -2317,7 +2409,7 @@ export default {
         phoneInvalid: 'الهاتف الأساسي غير صالح (رقم صومالي).',
         phoneTooShort: 'رقم الهاتف قصير جداً. يجب أن يكون 9 أرقام (الرقم الوطني).',
         phoneTooLong: 'رقم الهاتف طويل جداً.',
-        phoneInvalidHint: 'يجب أن يكون الهاتف صومالياً: 9 أرقام ويبدأ بـ 61… أو 77… (يدعم +252 أو 252 أو بادئة 0).',
+        phoneInvalidHint: 'يجب أن يكون الهاتف صومالياً: 9 أرقام ويبدأ بـ 61/62/68 أو 7x (يدعم +252 أو 252 أو بادئة 0).',
         phone2Invalid: 'الهاتف الثانوي غير صالح (رقم صومالي).',
         qualificationOtherRequired: 'يرجى كتابة المؤهل.',
       },
@@ -2423,21 +2515,41 @@ export default {
     },
 
     form: {
+      sections: {
+        personal: 'البيانات الشخصية',
+        contact: 'معلومات الاتصال',
+        address: 'العنوان',
+        photo: 'الصورة (اختياري)',
+        permissions: 'الصلاحيات',
+      },
       fields: {
         fullName: 'الاسم الكامل',
         username: 'اسم المستخدم',
         email: 'البريد الإلكتروني',
         phone: 'الهاتف',
         salary: 'الراتب',
+        photo: 'الصورة',
+        staffCode: 'رمز الموظف',
+        unit: 'القسم',
+        jobTitle: 'المسمى الوظيفي',
         password: 'كلمة المرور',
         confirmPassword: 'تأكيد كلمة المرور',
       },
+      photoHint: 'JPG/PNG/WEBP، بحد أقصى 2MB',
+      primaryPhone: 'الهاتف الأساسي',
+      secondaryPhone: 'الهاتف الثانوي',
+      primaryPhonePlaceholder: 'مثال: +252 61XXXXXXX، 61',
+      secondaryPhonePlaceholder: 'اختياري',
+      nationalityDetail: 'الجنسية (تفاصيل)',
+      nationalityDetailPlaceholder: 'أدخل الجنسية',
       newPasswordOptional: 'كلمة مرور جديدة (اختياري)',
       loadingDetails: 'جارٍ تحميل تفاصيل المستخدم…',
       passwordsNoMatch: 'كلمتا المرور غير متطابقتين',
       role: 'الدور',
       staff: 'موظف',
       admin: 'مدير',
+      selectModuleGroup: 'اختر مجموعة الوحدات',
+      chooseModuleGroup: '-- اختر مجموعة --',
       selectModule: 'اختر الوحدة',
       chooseModule: '-- اختر وحدة --',
       permissionsFor: 'الصلاحيات لـ {{module}}',
@@ -2448,6 +2560,31 @@ export default {
       validations: {
         passwordRequiredNew: 'كلمة المرور مطلوبة للمستخدمين الجدد',
         passwordMin: 'يجب ألا تقل كلمة المرور عن 6 أحرف',
+        passwordTooShort: 'يجب ألا تقل كلمة المرور عن 6 أحرف',
+        emailInvalid: 'عنوان البريد الإلكتروني غير صالح',
+        fullNameFourNames: 'يجب أن يحتوي الاسم الكامل على 4 أسماء على الأقل',
+        usernameLength: 'يجب أن يكون اسم المستخدم من 4 إلى 6 أحرف',
+        usernameExists: 'اسم المستخدم موجود بالفعل',
+        phoneInvalid: 'أدخل رقم هاتف صالح',
+        phone2Invalid: 'أدخل رقم الهاتف الثانوي بشكل صحيح',
+        phoneTooShort: 'رقم الهاتف قصير جدًا',
+        phoneTooLong: 'رقم الهاتف طويل جدًا',
+        phoneInvalidHint: 'أرقام الصومال غالبًا تبدأ بـ 61/62/68 أو 7x',
+        nationalityRequired: 'الجنسية مطلوبة عندما يكون غير صومالي',
+      },
+    },
+
+    staff: {
+      units: {
+        finance: 'المالية',
+        users: 'المستخدمون',
+        academics: 'الأكاديميات',
+        exams: 'الامتحانات',
+        operations: 'العمليات',
+        announcements: 'الإعلانات',
+        security: 'الأمان',
+        other: 'أخرى',
+        multiple: 'متعدد',
       },
     },
 
@@ -2457,6 +2594,15 @@ export default {
       couldNotLoad: 'تعذر تحميل ملف المستخدم.',
       backToUsers: 'العودة إلى المستخدمين',
       rolePrefix: 'الدور: {{role}}',
+      auditSubtitle: 'أحدث الإجراءات المسجلة لهذا الحساب',
+      tip: 'نصيحة: إذا كانت بعض الحقول ناقصة، اطلب من المسؤول تحديث بيانات هذا المستخدم.',
+      roleFallback: 'موظف',
+      sections: {
+        staff: 'بيانات الموظف',
+        staffSubtitle: 'تفاصيل العمل والصلاحيات',
+        staffSubtitleDetails: 'تفاصيل العمل',
+        permissionsSubtitle: 'مجموعات الوحدات والوحدات والصلاحيات الممنوحة',
+      },
       labels: {
         fullName: 'الاسم الكامل',
         username: 'اسم المستخدم',
@@ -2465,6 +2611,7 @@ export default {
         role: 'الدور',
         status: 'الحالة',
         createdAt: 'تاريخ الإنشاء',
+        updatedAt: 'آخر تحديث',
         lastLogin: 'آخر تسجيل دخول',
       },
       never: 'أبدًا',

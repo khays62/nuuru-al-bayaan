@@ -23,6 +23,29 @@ export function useUsersRealtimeInvalidation({ userId } = {}) {
         // ignore
       }
 
+      // Some backend events intentionally omit `id` (broadcast). In that case,
+      // refresh all cached admin profiles/audit logs so open pages update without manual refresh.
+      if (!changedId) {
+        try {
+          queryClient.invalidateQueries({ queryKey: userKeys.adminProfileBase, refetchType: 'active' });
+        } catch {
+          // ignore
+        }
+        try {
+          queryClient.invalidateQueries({ queryKey: userKeys.adminAuditLogsBase, refetchType: 'active' });
+        } catch {
+          // ignore
+        }
+        return;
+      }
+
+      // If we know which user changed, refresh that profile cache too.
+      try {
+        queryClient.invalidateQueries({ queryKey: userKeys.adminProfile(changedId), refetchType: 'active' });
+      } catch {
+        // ignore
+      }
+
       // If a specific user profile is open, refresh it and its audit logs.
       if (userId && changedId && changedId === String(userId)) {
         try {

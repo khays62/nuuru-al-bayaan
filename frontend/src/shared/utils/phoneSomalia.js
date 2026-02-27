@@ -38,9 +38,11 @@ export function normalizeSomaliaPhone(input) {
 
   if (!/^\d{9}$/.test(national)) return '';
 
-  // Prefix policy (as requested): accept 61... and 77... (from 077...)
-  // This can be extended later.
-  if (!(national.startsWith('61') || national.startsWith('77'))) return '';
+  // Prefix policy:
+  // - Accept 61/62/68
+  // - Accept any 7x prefix (e.g. 77...) which can come from 077...
+  const okPrefix = /^6[128]/.test(national) || /^7\d/.test(national);
+  if (!okPrefix) return '';
 
   return `+252${national}`;
 }

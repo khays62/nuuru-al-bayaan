@@ -99,6 +99,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'profile',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']}>
+            <UserProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'teacher-dashboard',
         element: (
           <ProtectedRoute allowedRoles={['teacher']}>

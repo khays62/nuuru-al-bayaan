@@ -22,6 +22,7 @@ import {
   export const navItems = [
     // Dashboard
   { key: 'dashboard', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/dashboard", label: "Dashboard", labelKey: 'nav.dashboard', roles: ["admin", "staff"], icon: LayoutDashboard },
+  { key: 'profile', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/profile", label: "Profile", labelKey: 'nav.profile', roles: ["admin", "staff"], icon: Users },
 	{ key: 'teacher-dashboard', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-dashboard", label: "Dashboard", labelKey: 'nav.dashboard', roles: ["teacher"], icon: LayoutDashboard },
     { key: 'teacher-classes', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-classes", label: "My Classes", labelKey: 'nav.myClasses', roles: ["teacher"], icon: Layers3 },
     { key: 'teacher-profile', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-profile", label: "Profile", labelKey: 'nav.profile', roles: ["teacher"], icon: Users },

@@ -249,13 +249,13 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     if (!national) return '';
     if (national.length > 9) return t('teachers.form.validations.phoneTooLong');
     // Show a helpful hint early when the number start is wrong (even before 9 digits).
-    // Expected Somalia national formats typically start with 61… or 77… (accept +252/252/0-prefix).
+    // Expected Somalia national formats typically start with 61/62/68 or 7x (accept +252/252/0-prefix).
     if (national.length >= 1) {
       const first = national[0];
       if (first !== '6' && first !== '7') return t('teachers.form.validations.phoneInvalidHint');
     }
     if (national.length >= 2) {
-      const okStart = national.startsWith('61') || national.startsWith('77');
+      const okStart = /^6[128]/.test(national) || /^7\d/.test(national);
       if (!okStart) return t('teachers.form.validations.phoneInvalidHint');
     }
     if (national.length < 9) return t('teachers.form.validations.phoneTooShort');
@@ -266,7 +266,6 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     const v = String(form[field] ?? '');
     const hasValue = Boolean(v.trim());
     if (!hasValue) {
-      if (required && touched[field]) return 'invalid';
       return 'neutral';
     }
     return validateFourNames(v) ? 'valid' : 'invalid';
@@ -276,7 +275,6 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     const v = String(form[field] ?? '');
     const hasValue = Boolean(v.trim());
     if (!hasValue) {
-      if (required && touched[field]) return 'invalid';
       return 'neutral';
     }
     return isValidEmail(v) ? 'valid' : 'invalid';
@@ -285,15 +283,14 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
   const phoneFieldState = (field, required = false) => {
     const v = String(form[field] ?? '').trim();
     if (!v) {
-      if (required && touched[field]) return 'invalid';
       return 'neutral';
     }
     return isValidSomaliaPhone(v) ? 'valid' : 'invalid';
   };
 
   const stateToClass = (state) => {
-    if (state === 'invalid') return 'border-red-500 focus-visible:ring-red-500';
-    if (state === 'valid') return 'border-emerald-500 focus-visible:ring-emerald-500';
+    if (state === 'invalid') return 'border-red-500';
+    if (state === 'valid') return 'border-green-500';
     return '';
   };
 

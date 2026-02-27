@@ -32,9 +32,34 @@ const userSchema = new mongoose.Schema({
   username: { type: String, unique: true },
   email: { type: String, unique: true, sparse: true },
   phone: { type: String, unique: true, sparse: true },
+  // Secondary phone (not unique)
+  phone2: { type: String, trim: true, default: '' },
+
+  // Address fields (same shape as Teacher/Student for UI reuse)
+  nationality: { type: String, trim: true, default: 'Somalia' },
+  isSomali: { type: Boolean, default: true },
+  residenceRegionId: { type: String, trim: true, default: '' },
+  residenceDistrictId: { type: String, trim: true, default: '' },
+  residenceNeighborhood: { type: String, trim: true, default: '' },
 
   // Used by finance/payroll flows for staff/teacher salaries.
   salary: { type: Number, default: 0, min: 0 },
+
+  // Internal staff code for staff/admin accounts (auto-generated).
+  // Format: ST-000001
+  staffCode: { type: String, unique: true, sparse: true, index: true, trim: true },
+
+  // Derived from permissions (server source-of-truth).
+  unit: { type: String, trim: true, default: '' },
+  jobTitle: { type: String, trim: true, default: '' },
+
+  photo: {
+    url: { type: String, trim: true, default: '' },
+    path: { type: String, trim: true, default: '' },
+    mimeType: { type: String, trim: true, default: '' },
+    size: { type: Number, default: 0 },
+    uploadedAt: { type: Date, default: null },
+  },
 
   password: String,
 

@@ -36,6 +36,8 @@ import { useUsersRealtimeInvalidation } from '../useUsersRealtimeInvalidation';
 
 import { useI18n } from '../../../i18n/I18nProvider';
 
+import { normalizeSomaliaPhone, isValidSomaliaPhone } from '../../../shared/utils/phoneSomalia.js';
+
 import { MODULE_PERMISSIONS, MODULES } from "../../../shared/auth/permissionContract.js";
 
 /* ---------------- Role -> default permissions ---------------- */
@@ -55,6 +57,19 @@ const buildEmptyPermissions = () => {
 const emptyPermissions = buildEmptyPermissions();
 
 const buildEmptyPermissionsClone = () => JSON.parse(JSON.stringify(emptyPermissions));
+
+const sanitizeSomaliaPhoneInput = (value) => {
+  const raw = String(value ?? '');
+  const hasPlus = raw.startsWith('+');
+  const digits = raw.replace(/\D/g, '');
+  return hasPlus ? `+${digits}` : digits;
+};
+
+const normalizeSomaliaNationalDigits = (value) => {
+  const normalized = normalizeSomaliaPhone(value);
+  if (!normalized) return '';
+  return normalized.replace(/^\+252/, '');
+};
 
 /* ---------------- Component ---------------- */
 export default function UserManagementPage() {
@@ -122,9 +137,16 @@ export default function UserManagementPage() {
     username: "",
     email: "",
     phone: "",
+    phone2: "",
+    nationality: "Somalia",
+    isSomali: true,
+    residenceRegionId: "",
+    residenceDistrictId: "",
+    residenceNeighborhood: "",
     salary: "",
     password: "",
     confirmPassword: "",
+    photo: null,
     role: "staff",
     permissions: JSON.parse(JSON.stringify(emptyPermissions)),
     selectedModule: "",
@@ -161,9 +183,16 @@ export default function UserManagementPage() {
       username: u.username || "",
       email: u.email || "",
       phone: u.phone || "",
+      phone2: u.phone2 || "",
+      nationality: u.nationality || 'Somalia',
+      isSomali: u.isSomali !== false,
+      residenceRegionId: u.residenceRegionId || '',
+      residenceDistrictId: u.residenceDistrictId || '',
+      residenceNeighborhood: u.residenceNeighborhood || '',
       salary: u.salary ?? "",
       password: "",
       confirmPassword: "",
+      photo: null,
       role: u.role || "staff",
       permissions,
       // UI-only selection: preserve current selection so the admin keeps their place.
@@ -227,23 +256,29 @@ export default function UserManagementPage() {
    
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, files } = e.target;
     if (!hydratingRef.current) setIsDirty(true);
-    if (name === "phone") {
-      // Only allow digits
-      if (!/^\d*$/.test(value)) {
-        toast.error(t('users.toasts.phoneDigitsOnly'));
-        return;
-      }
-    
-      // Limit to 9 digits
-      if (value.length > 9) {
-        toast.error(t('users.toasts.phoneMaxDigits'));
-        return;
-      }
-    
-      // Update state if valid
-      setForm((prev) => ({ ...prev, phone: value }));
+
+    if (name === 'photo') {
+      const file = files && files[0] ? files[0] : null;
+      setForm((prev) => ({ ...prev, photo: file }));
+      return;
+    }
+    if (name === 'phone' || name === 'phone2') {
+      setForm((prev) => ({ ...prev, [name]: sanitizeSomaliaPhoneInput(value) }));
+      return;
+    }
+
+    if (name === 'isSomali') {
+      const nextIsSomali = String(value) !== 'notSomali';
+      setForm((prev) => ({
+        ...prev,
+        isSomali: nextIsSomali,
+        nationality: nextIsSomali ? 'Somalia' : (String(prev.nationality || '').trim().toLowerCase() === 'somalia' ? '' : prev.nationality),
+        residenceRegionId: nextIsSomali ? prev.residenceRegionId : '',
+        residenceDistrictId: nextIsSomali ? prev.residenceDistrictId : '',
+        residenceNeighborhood: nextIsSomali ? prev.residenceNeighborhood : '',
+      }));
       return;
     }
 
@@ -306,9 +341,16 @@ export default function UserManagementPage() {
       username: "",
       email: "",
       phone: "",
+      phone2: "",
+      nationality: 'Somalia',
+      isSomali: true,
+      residenceRegionId: '',
+      residenceDistrictId: '',
+      residenceNeighborhood: '',
       salary: "",
       password: "",
       confirmPassword: "",
+      photo: null,
       role: "staff",
       permissions: buildEmptyPermissionsClone(),
       selectedModule: "",
@@ -411,6 +453,28 @@ export default function UserManagementPage() {
  
   const handleSubmit = async (e) => {
     e.preventDefault();
+      // Phone validation (Teacher-like). Keep optional, but validate when provided.
+      const trimmedPhone = String(form.phone || '').trim();
+      const trimmedPhone2 = String(form.phone2 || '').trim();
+
+      const normalizedPhone = trimmedPhone ? normalizeSomaliaNationalDigits(trimmedPhone) : '';
+      if (trimmedPhone && (!normalizedPhone || !isValidSomaliaPhone(trimmedPhone))) {
+        toast.error(t('users.form.validations.phoneInvalid', { defaultValue: 'Invalid phone number' }));
+        return;
+      }
+      const normalizedPhone2 = trimmedPhone2 ? normalizeSomaliaNationalDigits(trimmedPhone2) : '';
+      if (trimmedPhone2 && (!normalizedPhone2 || !isValidSomaliaPhone(trimmedPhone2))) {
+        toast.error(t('users.form.validations.phone2Invalid', { defaultValue: 'Invalid secondary phone number' }));
+        return;
+      }
+
+      // Address validation (Teacher-like)
+      if (form.isSomali === false) {
+        if (!String(form.nationality || '').trim()) {
+          toast.error(t('users.form.validations.nationalityRequired', { defaultValue: 'Nationality is required' }));
+          return;
+        }
+      }
   
     // Password checks
     if (!editingUser && !form.password) {
@@ -466,23 +530,31 @@ export default function UserManagementPage() {
       fullName: form.fullName,
       username: form.username,
       email: form.email,
-      phone: form.phone,
+      phone: normalizedPhone || '',
+      phone2: normalizedPhone2 || '',
+      nationality: form.isSomali === false ? String(form.nationality || '').trim() : 'Somalia',
+      isSomali: form.isSomali !== false,
+      residenceRegionId: form.isSomali === false ? '' : (form.residenceRegionId || ''),
+      residenceDistrictId: form.isSomali === false ? '' : (form.residenceDistrictId || ''),
+      residenceNeighborhood: form.isSomali === false ? '' : (form.residenceNeighborhood || ''),
       salary: form.salary === '' || form.salary == null ? 0 : Number(form.salary),
       role: form.role,
       permissions: cleanedPermissions,
     };
     if (form.password) payload.password = form.password;
+    if (form.photo) payload.photo = form.photo;
   
     try {
       // Best-effort client-side uniqueness check only when we're showing the full list.
       const canClientValidateUnique = !debouncedSearch && !roleFilter && !statusFilter;
       if (canClientValidateUnique) {
+        const nextPhone = String(payload.phone || '').trim();
         const exists = users.some((u) => {
           if (editingUser && u._id === editingUser._id) return false;
           return (
             u.username === form.username ||
             (form.email && u.email === form.email) ||
-            (form.phone && u.phone === form.phone)
+            (nextPhone && u.phone === nextPhone)
           );
         });
         if (exists) {
@@ -518,6 +590,7 @@ export default function UserManagementPage() {
         })
         : user;
 
+      if (u) setEditingUser(u);
       hydrateFormFromUser(u);
     } catch (err) {
       console.error("Failed to load user details", err);

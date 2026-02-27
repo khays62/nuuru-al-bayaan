@@ -279,6 +279,16 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         const national = getSomaliaNationalDigits(value);
         if (!national) return '';
         if (national.length > 9) return t('students.form.validations.phoneTooLong');
+        // Show a helpful hint early when the number start is wrong (even before 9 digits).
+        // Expected Somalia national formats typically start with 61/62/68 or 7x (accept +252/252/0-prefix).
+        if (national.length >= 1) {
+            const first = national[0];
+            if (first !== '6' && first !== '7') return t('students.form.validations.phoneInvalidHint');
+        }
+        if (national.length >= 2) {
+            const okStart = /^6[128]/.test(national) || /^7\d/.test(national);
+            if (!okStart) return t('students.form.validations.phoneInvalidHint');
+        }
         if (national.length < 9) return t('students.form.validations.phoneTooShort');
         return isValidSomaliaPhone(value) ? '' : t('students.form.validations.phoneInvalidHint');
     };
@@ -287,7 +297,6 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         const v = String(formData[field] ?? '');
         const hasValue = Boolean(v.trim());
         if (!hasValue) {
-            if (required && touched[field]) return 'invalid';
             return 'neutral';
         }
         return validateFourNames(v) ? 'valid' : 'invalid';
@@ -296,15 +305,14 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
     const phoneFieldState = (field, required = false) => {
         const v = String(formData[field] ?? '').trim();
         if (!v) {
-            if (required && touched[field]) return 'invalid';
             return 'neutral';
         }
         return isValidSomaliaPhone(v) ? 'valid' : 'invalid';
     };
 
     const stateToClass = (state) => {
-        if (state === 'invalid') return 'border-red-500 focus-visible:ring-red-500';
-        if (state === 'valid') return 'border-emerald-500 focus-visible:ring-emerald-500';
+        if (state === 'invalid') return 'border-red-500';
+        if (state === 'valid') return 'border-green-500';
         return '';
     };
 
