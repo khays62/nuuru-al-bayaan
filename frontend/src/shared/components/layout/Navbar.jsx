@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../../auth/AuthContext';
 import Button from '../ui/Button';
-import { Menu, X, LogOut, ChevronLeft, ChevronRight, Search, User, Bell, ShieldAlert, Languages } from 'lucide-react';
+import { Menu, X, LogOut, ChevronLeft, ChevronRight, Search, User, Bell, ShieldAlert, Languages, Sparkles } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -20,11 +20,13 @@ import UiLoadingState from '../ui/LoadingState.jsx';
 import { useAnnouncementsStream } from '../../../features/announcements/hooks/useAnnouncementsStream';
 import { useRealtimeStream } from '../../realtime/useRealtimeStream';
 import { useI18n } from '../../../i18n/I18nProvider';
+import { useAiChat } from '../ai/AiChatContext.jsx';
 
 // This is the updated Navbar component with a new design.
 const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
     const { auth, logout, hasPermission } = useAuth();
     const { lang, setLang, isRTL, t } = useI18n();
+    const ai = useAiChat();
     const user = auth?.user;
     const queryClient = useQueryClient();
     const [openLocks, setOpenLocks] = React.useState(false);
@@ -333,6 +335,18 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         </div>
     );
 
+    const aiEl = (
+        <button
+            type="button"
+            onClick={() => ai?.toggle?.()}
+            className="p-2 rounded-md border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50) text-(--nb-color-fg)"
+            title={t('aiChat.title', { defaultValue: 'AI Assistant' })}
+            aria-label={t('aiChat.title', { defaultValue: 'AI Assistant' })}
+        >
+            <Sparkles size={18} className="text-(--nb-color-brand)" />
+        </button>
+    );
+
     const bellEl = canSeeLocks ? (
         <div className="relative" ref={locksRef}>
             <button
@@ -587,11 +601,13 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                     {logoutEl}
                     {userEl}
                     {bellEl}
+                    {aiEl}
                     {languageEl}
                 </>
             ) : (
                 <>
                     {languageEl}
+                    {aiEl}
                     {bellEl}
                     {userEl}
                     {logoutEl}

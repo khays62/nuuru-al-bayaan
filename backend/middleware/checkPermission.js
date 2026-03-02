@@ -29,7 +29,7 @@ const getAliasModules = (moduleName) => {
   return Array.isArray(list) ? list : [];
 };
 
-const hasPermission = (user, module, action) => {
+export const hasPermission = (user, module, action) => {
   if (!user) return false;
   if (user.role === "admin") return true;
 

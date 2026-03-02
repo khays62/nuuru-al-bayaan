@@ -6,6 +6,7 @@ import ExamType from '../models/ExamType.js';
 import Exam from '../models/Exam.js';
 import ExamScore from '../models/ExamScore.js';
 import User from '../models/User.js';
+import AiChatThread from '../models/AiChatThread.js';
 
 function inferDefaultsForExamType(typeName, idx, total) {
   const name = String(typeName || '').toLowerCase();
@@ -191,5 +192,13 @@ export async function ensureIndexes() {
     console.log('[indexes] Student indexes synchronized');
   } catch (e) {
     console.warn('[indexes] Could not sync Student indexes:', e.message);
+  }
+
+  // AI chat: per-user thread uniqueness
+  try {
+    await AiChatThread.syncIndexes();
+    console.log('[indexes] AiChatThread indexes synchronized');
+  } catch (e) {
+    console.warn('[indexes] Could not sync AiChatThread indexes:', e.message);
   }
 }

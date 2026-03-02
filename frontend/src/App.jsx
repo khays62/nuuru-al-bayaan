@@ -7,6 +7,8 @@ import { useAuth } from './auth/AuthContext';
 import ForcePasswordChangeModal from './auth/components/ForcePasswordChangeModal';
 import TeacherDashboardPrefetcher from './features/teachers/components/dashboard/TeacherDashboardPrefetcher.jsx';
 import { useI18n } from './i18n/I18nProvider';
+import { AiChatProvider } from './shared/components/ai/AiChatContext.jsx';
+import AiChatPanel from './shared/components/ai/AiChatPanel.jsx';
 
 export default function App() {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -104,26 +106,33 @@ export default function App() {
     );
 
     return (
-        <div className="flex h-screen bg-gray-100" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-            {String(auth?.user?.role || '').toLowerCase() === 'teacher' ? <TeacherDashboardPrefetcher /> : null}
+        <AiChatProvider>
+            <div className="flex h-screen bg-gray-100" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+                {String(auth?.user?.role || '').toLowerCase() === 'teacher' ? <TeacherDashboardPrefetcher /> : null}
 
-            <ForcePasswordChangeModal
-                isOpen={userForceOpen}
-                onSkip={skipUserPasswordChange}
-                onChanged={passwordChanged}
-                mode="user"
-            />
+                <ForcePasswordChangeModal
+                    isOpen={userForceOpen}
+                    onSkip={skipUserPasswordChange}
+                    onChanged={passwordChanged}
+                    mode="user"
+                />
 
-            {isRTL ? mainEl : sidebarEl}
-            {isRTL ? sidebarEl : mainEl}
+                {/* Keep AI split panel on the RIGHT for both LTR + RTL */}
+                {isRTL ? <AiChatPanel /> : null}
 
-            {isMobileMenuOpen && (
-                <div 
-                    className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden no-print" 
-                    onClick={closeMobileMenu}
-                ></div>
-            )}
-        </div>
+                {isRTL ? mainEl : sidebarEl}
+                {isRTL ? sidebarEl : mainEl}
+
+                {!isRTL ? <AiChatPanel /> : null}
+
+                {isMobileMenuOpen && (
+                    <div 
+                        className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden no-print" 
+                        onClick={closeMobileMenu}
+                    ></div>
+                )}
+            </div>
+        </AiChatProvider>
     );
 }
 
