@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function DropdownSelect({
   value,
@@ -26,7 +26,7 @@ export default function DropdownSelect({
   const [openUp, setOpenUp] = useState(false);
   const rootRef = useRef(null);
 
-  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
+  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Selectâ€¦' });
   const resolvedClearLabel = clearLabel ?? t('common.actions.clear', { defaultValue: 'Clear' });
   const resolvedNoOptions = t('common.select.noOptions', { defaultValue: 'No options.' });
 

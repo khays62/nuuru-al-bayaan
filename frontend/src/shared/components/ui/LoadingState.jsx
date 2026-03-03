@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
 import Skeleton from './Skeleton.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 function InlineSpinner({ className = '' }) {
   return (
@@ -28,7 +28,7 @@ export default function LoadingState({
   className = '',
 }) {
   const { t } = useI18n();
-  const text = message ?? label ?? t('common.loading', { defaultValue: 'Loading…' });
+  const text = message ?? label ?? t('common.loading', { defaultValue: 'Loadingâ€¦' });
 
   // Back-compat: older code used 'spinner' to mean the default loading card.
   const v = variant === 'spinner' ? 'card' : variant;

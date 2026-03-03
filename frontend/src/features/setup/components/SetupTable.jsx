@@ -6,7 +6,7 @@ import Alert from '../../../shared/components/ui/Alert.jsx';
 import LoadingState from '../../../shared/components/ui/LoadingState.jsx';
 import EmptyState from '../../../shared/components/ui/EmptyState.jsx';
 import DataTable from '../../../shared/components/table/DataTable.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function SetupTable({
   title,

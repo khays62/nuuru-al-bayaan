@@ -3,7 +3,7 @@ import StandardTable from '../../../../shared/components/table/StandardTable.jsx
 import TimetableGrid from '../../../timetable/components/TimetableGrid.jsx';
 import { useAuth } from '../../../../auth/AuthContext';
 import Card from '../../../../shared/components/ui/Card.jsx';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 export default function TeacherTimetablePanel({
   sections,
@@ -67,11 +67,11 @@ export default function TeacherTimetablePanel({
     });
 
     const dayKey = dayKeys[todayIdx];
-    const dayDefault = dayKey ? (dayKey.charAt(0).toUpperCase() + dayKey.slice(1)) : '—';
+    const dayDefault = dayKey ? (dayKey.charAt(0).toUpperCase() + dayKey.slice(1)) : 'â€”';
 
     return {
       todayIdx,
-      dayName: dayKey ? t(`common.days.long.${dayKey}`, { defaultValue: dayDefault }) : '—',
+      dayName: dayKey ? t(`common.days.long.${dayKey}`, { defaultValue: dayDefault }) : 'â€”',
       dateISO,
       slots: list,
     };
@@ -93,7 +93,7 @@ export default function TeacherTimetablePanel({
 
   const todayBody = (() => {
     if (todayLoading) {
-      return <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.timetable.fetchingToday', { defaultValue: "Fetching today’s schedule…" })}</div>;
+      return <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.timetable.fetchingToday', { defaultValue: "Fetching todayâ€™s scheduleâ€¦" })}</div>;
     }
     if (todayError) {
       return <div className="text-sm text-red-600">{String(todayError)}</div>;
@@ -114,7 +114,7 @@ export default function TeacherTimetablePanel({
           const subject = String(s?.subject?.subjectName || '-').trim() || '-';
           const klass = slotSectionLabel(s) || t('teachers.dashboard.timetable.classFallback', { defaultValue: 'Class' });
           const room = s?.room ? `${t('common.room', { defaultValue: 'Room' })} ${s.room}` : '';
-          const meta = [time, room].filter(Boolean).join(' • ');
+          const meta = [time, room].filter(Boolean).join(' â€¢ ');
           const key = String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${klass}_${subject}`);
           return (
             <div key={key} className="border border-(--nb-color-border) rounded-lg p-3 bg-(--nb-color-accent-50) shadow-sm">
@@ -160,7 +160,7 @@ export default function TeacherTimetablePanel({
         <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
           <div className="font-semibold">{t('teachers.dashboard.timetable.todayTitle', { defaultValue: "Today's Schedule" })}</div>
           <div className="text-xs text-white/80 mt-0.5">
-            {todayInfo.dayName}{todayInfo.dateISO ? ` • ${todayInfo.dateISO}` : ''}
+            {todayInfo.dayName}{todayInfo.dateISO ? ` â€¢ ${todayInfo.dateISO}` : ''}
           </div>
         </div>
         <div className="p-5">
@@ -226,7 +226,7 @@ export default function TeacherTimetablePanel({
                 renderBody: () => (
                   <>
                     {loading && (
-                      <tr><td className="px-3 py-2 text-sm text-(--nb-color-muted)" colSpan={2}>{t('teachers.dashboard.timetable.loadingSlots', { defaultValue: 'Loading slots…' })}</td></tr>
+                      <tr><td className="px-3 py-2 text-sm text-(--nb-color-muted)" colSpan={2}>{t('teachers.dashboard.timetable.loadingSlots', { defaultValue: 'Loading slotsâ€¦' })}</td></tr>
                     )}
                     {!loading && error && (
                       <tr><td className="px-3 py-2 text-sm text-red-600" colSpan={2}>{String(error)}</td></tr>

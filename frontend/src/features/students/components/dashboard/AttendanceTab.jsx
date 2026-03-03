@@ -8,7 +8,7 @@ import { useAuth } from '../../../../auth/AuthContext';
 import { getStudentAttendanceSelfWithOptions, getStudentSelfAttendanceWithOptions } from '../../../attendance/api/attendance';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 function isoDateOnly(d) {
   return new Date(d).toISOString().slice(0, 10);
@@ -195,7 +195,7 @@ export default function AttendanceTab() {
                         ? `${it.startTime}-${it.endTime}`
                         : String(it?.periodCode || '');
                       const title = subjectName || t('students.attendanceTab.lessonFallback');
-                      const subtitle = [timeLabel, teacherName].filter(Boolean).join(' • ');
+                      const subtitle = [timeLabel, teacherName].filter(Boolean).join(' â€¢ ');
                       const st = String(it?.status || '');
                       const remarks = String(it?.remarks || '').trim();
                       const showRemarks = remarks && !shouldHideRemarks(st);

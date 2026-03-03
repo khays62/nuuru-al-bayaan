@@ -9,7 +9,7 @@ import { studentKeys } from '../../queryKeys';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 function formatDate(value) {
   if (!value) return '-';

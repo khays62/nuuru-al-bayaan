@@ -12,7 +12,7 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import { useEntityList } from '../../../hooks/useEntityList';
 import { fetchJson } from '../../../shared/api/http';
 import toast from 'react-hot-toast';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection }) {
   const { t } = useI18n();
@@ -153,7 +153,7 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
       gradeName ? `${t('common.filters.grade', { defaultValue: 'Grade' })}: ${gradeName}` : null,
       sectionNum ? `${t('common.filters.section', { defaultValue: 'Section' })}: ${sectionNum}` : null,
       shiftName ? `${t('common.filters.shift', { defaultValue: 'Shift' })}: ${shiftName}` : null,
-    ].filter(Boolean).join(' • ');
+    ].filter(Boolean).join(' â€¢ ');
 
     return {
       filename: 'students-roster',
@@ -171,8 +171,8 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
     const shiftName = gradeSection?.shift?.shiftName || gradeSection?.shift?.name || '';
     const sectionNum = gradeSection?.section || '';
     const secPrefix = t('common.sectionPrefix', { defaultValue: 'Sec' });
-    const tail = [shiftName ? `${t('common.filters.shift', { defaultValue: 'Shift' })} ${shiftName}` : null].filter(Boolean).join(' • ');
-    return tail ? `${gradeName} • ${secPrefix} ${sectionNum} • ${tail}` : `${gradeName} • ${secPrefix} ${sectionNum}`;
+    const tail = [shiftName ? `${t('common.filters.shift', { defaultValue: 'Shift' })} ${shiftName}` : null].filter(Boolean).join(' â€¢ ');
+    return tail ? `${gradeName} â€¢ ${secPrefix} ${sectionNum} â€¢ ${tail}` : `${gradeName} â€¢ ${secPrefix} ${sectionNum}`;
   }, [gradeSection, t]);
 
   return (

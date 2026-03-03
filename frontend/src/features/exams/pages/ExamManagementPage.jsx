@@ -15,7 +15,7 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { getAssignments as getTeacherAssignments } from '../../teachers/api/teachersApi';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { useExamsRealtimeInvalidation } from '../useExamsRealtimeInvalidation';
@@ -748,7 +748,7 @@ export default function ExamManagementPage() {
                 </Card>
             ) : null}
 
-            {/* Main filter row: AY → Grade → Shift → Section → Subject */}
+            {/* Main filter row: AY â†’ Grade â†’ Shift â†’ Section â†’ Subject */}
             <Card className="p-4">
                 <FilterRow align="end">
                     <FilterItem grow minWidthClass="min-w-40">

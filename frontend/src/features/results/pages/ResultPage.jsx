@@ -23,7 +23,7 @@ import CopyTableButton from '../../../shared/components/exports/downloadButtons/
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { useResultsRealtimeInvalidation } from '../useResultsRealtimeInvalidation.js';
 import Card from '../../../shared/components/ui/Card.jsx';
@@ -476,7 +476,7 @@ export default function ResultPage() {
             filename: 'results.pdf',
             sheetName: t('results.page.export.sheetName'),
             title: minimalMeta ? '' : t('results.page.export.title'),
-            subtitle: subtitleParts.join(' • '),
+            subtitle: subtitleParts.join(' â€¢ '),
             headerImageSrc: headerImg,
             headers,
             rows,
@@ -809,13 +809,13 @@ export default function ResultPage() {
                                                     if (r?.__type === 'summary') {
                                                         if (col.key === 'subject') return <span className="font-medium text-(--nb-color-text)">{t('results.page.table.classAvgSubjects')}</span>;
                                                         if (col.key === 'avg') return Number((summary.classAverage ?? 0).toFixed?.(2));
-                                                        if (col.key === 'students') return '—';
+                                                        if (col.key === 'students') return 'â€”';
                                                         return '';
                                                     }
                                                     switch (col.key) {
                                                         case 'subject': return r.subjectName;
                                                         case 'avg': return Number((r.average ?? 0).toFixed?.(2));
-                                                        case 'students': return r.count ?? '—';
+                                                        case 'students': return r.count ?? 'â€”';
                                                         default: return '';
                                                     }
                                                 }}
@@ -916,7 +916,7 @@ export default function ResultPage() {
                                                     }
 
                                                     if (col.key === 'total') return fmt2(summary.classAverage ?? 0);
-                                                    if (col.key === 'avg') return '—';
+                                                    if (col.key === 'avg') return 'â€”';
                                                     return '';
                                                 }
 

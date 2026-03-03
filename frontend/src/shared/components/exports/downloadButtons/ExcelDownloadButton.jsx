@@ -3,7 +3,7 @@ import { FileDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToExcel } from '../../../../utils/exportTable';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 export default function ExcelDownloadButton({ getPayload, disabled = false, className = '', variant = 'outline' }) {
   const { t } = useI18n();
@@ -36,7 +36,7 @@ export default function ExcelDownloadButton({ getPayload, disabled = false, clas
         });
       }
     } catch (e) {
-      // Most common cause of “no download”: runtime exception while building XLSX.
+      // Most common cause of â€œno downloadâ€: runtime exception while building XLSX.
       // Surface the error so we can fix it quickly.
       // eslint-disable-next-line no-console
       console.error('Excel export failed:', e);

@@ -25,7 +25,7 @@ import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 import TeacherForm from '../components/TeacherForm';
 import TeacherAssignmentsModal from '../components/TeacherAssignmentsModal';
@@ -375,7 +375,7 @@ export default function TeachersPage() {
 			filename: t('teachers.export.filename'),
 			sheetName: t('teachers.export.sheetName'),
 			title: '',
-			subtitle: subtitleParts.join(' • '),
+			subtitle: subtitleParts.join(' â€¢ '),
 			headerImageSrc: headerImg,
 			headers,
 			rows,

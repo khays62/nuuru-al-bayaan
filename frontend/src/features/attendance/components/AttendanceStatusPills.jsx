@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function AttendanceStatusPills({
   value,
@@ -144,7 +144,7 @@ export default function AttendanceStatusPills({
             (disabled ? ' opacity-60 cursor-not-allowed' : '')
           }
         >
-          <span className="text-xs font-semibold">⋮</span>
+          <span className="text-xs font-semibold">â‹®</span>
           {isExtraSelected && (
             <span
               className="ml-1 text-xs font-medium whitespace-nowrap max-w-32 truncate"

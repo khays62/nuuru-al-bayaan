@@ -27,7 +27,7 @@ import { userKeys } from '../queryKeys';
 import { useUsersRealtimeInvalidation } from '../useUsersRealtimeInvalidation';
 import { getSomaliaDistrictLabel, getSomaliaRegionLabel } from '../../../shared/data/somaliaAdminDivisions.js';
 
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function UserProfilePage() {
   const { t, lang } = useI18n();
@@ -154,14 +154,14 @@ function firstChar(s) {
 }
 
 function safeStr(v) {
-  if (v == null) return '—';
+  if (v == null) return 'â€”';
   if (typeof v === 'number' && Number.isFinite(v)) return String(v);
   const s = String(v).trim();
-  return s || '—';
+  return s || 'â€”';
 }
 
 function fmtDate(value) {
-  if (!value) return '—';
+  if (!value) return 'â€”';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return safeStr(value);
   return d.toISOString().slice(0, 10);
@@ -214,7 +214,7 @@ function UserProfileCard({ user }) {
               </div>
               <div className="flex items-center gap-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-base text-(--nb-color-text) min-w-0">
                 <Hash size={18} className="text-(--nb-color-muted)" />
-                <span className="truncate">{t('users.form.fields.staffCode', { defaultValue: 'Staff Code' })}: {staffCode ? staffCode : '—'}</span>
+                <span className="truncate">{t('users.form.fields.staffCode', { defaultValue: 'Staff Code' })}: {staffCode ? staffCode : 'â€”'}</span>
               </div>
               <div className="flex items-center gap-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-base text-(--nb-color-text) min-w-0">
                 <Mail size={18} className="text-(--nb-color-muted)" />
@@ -286,7 +286,7 @@ function PermissionsItem({ label, permissions, icon }) {
           <span>{label}</span>
         </div>
         {granted.length === 0 ? (
-          <div className="text-sm font-semibold text-(--nb-color-text)">—</div>
+          <div className="text-sm font-semibold text-(--nb-color-text)">â€”</div>
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">
             {granted.map((p) => (
@@ -309,7 +309,7 @@ function BadgesItem({ label, values, icon, colSpanClass = 'sm:col-span-2' }) {
           <span>{label}</span>
         </div>
         {items.length === 0 ? (
-          <div className="text-sm font-semibold text-(--nb-color-text)">—</div>
+          <div className="text-sm font-semibold text-(--nb-color-text)">â€”</div>
         ) : (
           <div className="mt-2 flex flex-wrap gap-2">
             {items.map((v) => (
@@ -423,19 +423,19 @@ function UserDetailsCards({ user, lang }) {
           />
           <InfoItem
             label={t('users.form.nationalityDetail', { defaultValue: 'Nationality (details)' })}
-            value={isSomali ? '—' : (user?.nationality || '—')}
+            value={isSomali ? 'â€”' : (user?.nationality || 'â€”')}
           />
           <InfoItem
             label={t('students.address.region.label', { defaultValue: 'Region' })}
-            value={!isSomali ? '—' : (regionLabel || user?.residenceRegionId)}
+            value={!isSomali ? 'â€”' : (regionLabel || user?.residenceRegionId)}
           />
           <InfoItem
             label={t('students.address.district.label', { defaultValue: 'District' })}
-            value={!isSomali ? '—' : (districtLabel || user?.residenceDistrictId)}
+            value={!isSomali ? 'â€”' : (districtLabel || user?.residenceDistrictId)}
           />
           <InfoItem
             label={t('students.address.neighborhood.label', { defaultValue: 'Neighborhood' })}
-            value={!isSomali ? '—' : user?.residenceNeighborhood}
+            value={!isSomali ? 'â€”' : user?.residenceNeighborhood}
           />
         </div>
       </Card>

@@ -10,7 +10,7 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function StudentFinanceEditTab() {
     const { t } = useI18n();
@@ -108,7 +108,7 @@ export default function StudentFinanceEditTab() {
             key: 'id',
             label: t('finance.studentFinance.editTab.columns.id', { defaultValue: 'ID' }),
             render: (row) => (
-                <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row.student?.studentId || '—'}</span>
+                <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row.student?.studentId || 'â€”'}</span>
             ),
         },
         {
@@ -116,7 +116,7 @@ export default function StudentFinanceEditTab() {
             label: t('finance.studentFinance.editTab.columns.studentName', { defaultValue: 'Student Name' }),
             render: (row) => (
                 <div className="flex flex-col">
-                    <span className="font-bold text-(--nb-color-fg)">{row.student?.fullName || '—'}</span>
+                    <span className="font-bold text-(--nb-color-fg)">{row.student?.fullName || 'â€”'}</span>
                     {row.student?.admissionDate ? (
                         <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-tighter">
                             {t('finance.studentFinance.editTab.labels.regPrefix', { defaultValue: 'Reg:' })}{' '}
@@ -129,14 +129,14 @@ export default function StudentFinanceEditTab() {
         {
             key: 'contact',
             label: t('finance.studentFinance.editTab.columns.contact', { defaultValue: 'Contact' }),
-            render: (row) => row.student?.phoneNumber || row.student?.contactNumber || '—',
+            render: (row) => row.student?.phoneNumber || row.student?.contactNumber || 'â€”',
         },
         {
             key: 'class',
             label: t('finance.studentFinance.editTab.columns.class', { defaultValue: 'Class' }),
             render: (row) => (
                 <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
-                    {row.student?.currentClass || '—'}
+                    {row.student?.currentClass || 'â€”'}
                 </span>
             ),
         },
@@ -185,7 +185,7 @@ export default function StudentFinanceEditTab() {
                         <Input
                             type="text"
                             className="h-11 pl-10 pr-4 font-medium"
-                            placeholder={t('finance.studentFinance.editTab.placeholders.search', { defaultValue: 'Search Student ID, Name or Phone…' })}
+                            placeholder={t('finance.studentFinance.editTab.placeholders.search', { defaultValue: 'Search Student ID, Name or Phoneâ€¦' })}
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                         />
@@ -219,7 +219,7 @@ export default function StudentFinanceEditTab() {
                     searchable
                     maxVisible={6}
                     placeholder={t('common.filters.section', { defaultValue: 'Section' })}
-                    searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
+                    searchPlaceholder={t('common.search', { defaultValue: 'Searchâ€¦' })}
                     className="h-11 min-w-50 font-bold text-sm"
                 />
                 <Button onClick={handleSearch} variant="brand" size="lg" className="h-11 px-8 font-black text-sm uppercase tracking-widest">
@@ -240,7 +240,7 @@ export default function StudentFinanceEditTab() {
             <div className="bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-xl shadow-(--nb-shadow-sm)">
                 <StandardTable
                     isLoading={loading}
-                    loadingMessage={t('finance.studentFinance.editTab.loading.fetchingProfiles', { defaultValue: 'Fetching Profiles…' })}
+                    loadingMessage={t('finance.studentFinance.editTab.loading.fetchingProfiles', { defaultValue: 'Fetching Profilesâ€¦' })}
                     items={students}
                     rows={currentRows}
                     columns={columns}

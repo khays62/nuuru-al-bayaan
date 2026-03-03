@@ -35,7 +35,7 @@ import GradeForm from '../components/GradeForm.jsx';
 import GradeSectionRosterModal from '../components/GradeSectionRosterModal.jsx';
 import { gradeSectionKeys } from '../queryKeys';
 import { useGradeSectionsRealtimeInvalidation } from '../useGradeSectionsRealtimeInvalidation';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function GradePage() {
 	const { auth } = useAuth();
@@ -230,7 +230,7 @@ function GradePageInner() {
 			filename: 'grade-sections',
 			sheetName: t('gradeSections.export.sheetName', { defaultValue: 'Grade Sections' }),
 			title: t('gradeSections.export.title', { defaultValue: 'Grade Sections' }),
-			subtitle: subtitleParts.join(' • '),
+			subtitle: subtitleParts.join(' â€¢ '),
 			headerImageSrc: headerImg,
 			headers,
 			rows,

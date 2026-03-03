@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { getShifts } from '../api/lookups';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function ShiftSelect({
   value,
@@ -23,8 +23,8 @@ export default function ShiftSelect({
   const [loading, setLoading] = useState(false);
 
   const resolvedPlaceholder = placeholder ?? t('common.filters.any', { defaultValue: 'Any' });
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
-  const loadingLabel = t('common.loading', { defaultValue: 'Loading…' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' });
+  const loadingLabel = t('common.loading', { defaultValue: 'Loadingâ€¦' });
 
   useEffect(() => {
     let ignore = false;

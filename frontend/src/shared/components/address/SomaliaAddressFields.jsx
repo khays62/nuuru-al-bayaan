@@ -4,7 +4,7 @@ import Label from '../ui/Label.jsx';
 import Input from '../ui/Input.jsx';
 import DropdownSelect from '../ui/DropdownSelect.jsx';
 import SearchableSelect from '../ui/SearchableSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { getSomaliaDistrictOptions, getSomaliaRegionOptions } from '../../data/somaliaAdminDivisions';
 
 export default function SomaliaAddressFields({
@@ -80,7 +80,7 @@ export default function SomaliaAddressFields({
                 disabled={disabled}
                 className={controlClassName}
                 maxVisible={6}
-                searchPlaceholder={t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' })}
+                searchPlaceholder={t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' })}
               />
             </div>
           </div>
@@ -98,7 +98,7 @@ export default function SomaliaAddressFields({
                 disabled={disabled || !regionId}
                 className={controlClassName}
                 maxVisible={6}
-                searchPlaceholder={t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' })}
+                searchPlaceholder={t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' })}
               />
             </div>
           </div>

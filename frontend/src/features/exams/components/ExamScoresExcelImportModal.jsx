@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import { importExamScores } from '../api/exams.js';
 
 function readTextCell(v) {
@@ -63,7 +63,7 @@ function buildErrorDisplay({ err, index }) {
   if (header) parts.push(String(header).trim());
   if (value !== undefined && value !== '' && value !== null) parts.push(`Value: ${String(value)}`);
   if (studentLabel) parts.push(`Student: ${studentLabel}`);
-  const context = parts.length ? ` — ${parts.join(' | ')}` : '';
+  const context = parts.length ? ` â€” ${parts.join(' | ')}` : '';
   return `${rawMsg}${context}`;
 }
 

@@ -19,7 +19,7 @@ import Card from '../ui/Card.jsx';
 import UiLoadingState from '../ui/LoadingState.jsx';
 import { useAnnouncementsStream } from '../../../features/announcements/hooks/useAnnouncementsStream';
 import { useRealtimeStream } from '../../realtime/useRealtimeStream';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAiChat } from '../ai/AiChatContext.jsx';
 
 // This is the updated Navbar component with a new design.
@@ -74,10 +74,10 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const isAdmin = roleLower === 'admin';
     const isStaff = roleLower === 'staff';
     const canSeeLocks = isAdmin || (isStaff && hasPermission('security', 'view'));
-    const displayName = user?.fullName || user?.name || user?.username || '—';
+    const displayName = user?.fullName || user?.name || user?.username || 'â€”';
     const displayRole = user?.role ? String(user.role).toUpperCase() : '';
     const displayEmail = user?.email || '';
-    const meta = [displayRole, displayEmail].filter(Boolean).join(' • ');
+    const meta = [displayRole, displayEmail].filter(Boolean).join(' â€¢ ');
 
     const lockCountQuery = useQuery({
         queryKey: ['security', 'authLocks', 'count'],
@@ -270,7 +270,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                 <input
                     dir={isRTL ? 'rtl' : 'ltr'}
                     type="text"
-                    placeholder={t('common.search', { defaultValue: 'Search…' })}
+                    placeholder={t('common.search', { defaultValue: 'Searchâ€¦' })}
                     className={
                         "w-full py-2 border border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) placeholder:text-(--nb-color-muted) rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2 " +
                         (isRTL ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4')
@@ -306,7 +306,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         }
                     >
                         <span>{t('common.english', { defaultValue: 'English' })}</span>
-                        {lang === 'en' ? <span className="text-(--nb-color-accent)">✓</span> : null}
+                        {lang === 'en' ? <span className="text-(--nb-color-accent)">âœ“</span> : null}
                     </button>
                     <button
                         type="button"
@@ -317,7 +317,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         }
                     >
                         <span>{t('common.somali', { defaultValue: 'Somali' })}</span>
-                        {lang === 'so' ? <span className="text-(--nb-color-accent)">✓</span> : null}
+                        {lang === 'so' ? <span className="text-(--nb-color-accent)">âœ“</span> : null}
                     </button>
                     <button
                         type="button"
@@ -328,7 +328,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         }
                     >
                         <span>{t('common.arabic', { defaultValue: 'Arabic' })}</span>
-                        {lang === 'ar' ? <span className="text-(--nb-color-accent)">✓</span> : null}
+                        {lang === 'ar' ? <span className="text-(--nb-color-accent)">âœ“</span> : null}
                     </button>
                 </Card>
             ) : null}
@@ -390,7 +390,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                     {locksQuery.isLoading && (
                                         <div className="p-3">
                                             <UiLoadingState
-                                                label={t('common.loading', { defaultValue: 'Loading…' })}
+                                                label={t('common.loading', { defaultValue: 'Loadingâ€¦' })}
                                                 className="border-0 bg-transparent p-0 justify-start"
                                             />
                                         </div>
@@ -440,9 +440,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         const displayName = isUnknown
                                             ? t('common.securityBell.unknownUser', {
                                                 defaultValue: 'Unknown: {{username}}',
-                                                username: ev.username || '—',
+                                                username: ev.username || 'â€”',
                                             })
-                                            : (ev.fullName || ev.username || '—');
+                                            : (ev.fullName || ev.username || 'â€”');
                                         const showUsername = Boolean(ev.fullName) && Boolean(ev.username);
                                         const r = String(ev.role || '').toUpperCase();
                                         const until = ev.lockUntil ? new Date(ev.lockUntil).toLocaleString() : '';
@@ -469,9 +469,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                         <div className="text-xs text-(--nb-color-muted)">
                                                             {r || t('common.securityBell.userRoleFallback', { defaultValue: 'USER' })}
                                                             {isInactiveAccount
-                                                                ? ` • ${t('common.securityBell.inactiveTag', { defaultValue: 'INACTIVE' })}`
+                                                                ? ` â€¢ ${t('common.securityBell.inactiveTag', { defaultValue: 'INACTIVE' })}`
                                                                 : (until
-                                                                    ? ` • ${t('common.securityBell.until', {
+                                                                    ? ` â€¢ ${t('common.securityBell.until', {
                                                                         defaultValue: 'until {{date}}',
                                                                         date: until,
                                                                     })}`
@@ -498,7 +498,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                         disabled={resetBusy || unlockBusy || disableSecurityActions}
                                                                     >
                                                                         {resetBusy
-                                                                            ? t('common.securityBell.states.resetting', { defaultValue: 'Resetting…' })
+                                                                            ? t('common.securityBell.states.resetting', { defaultValue: 'Resettingâ€¦' })
                                                                             : t('common.actions.resetPassword', { defaultValue: 'Reset Password' })}
                                                                     </button>
                                                                 ))
@@ -511,7 +511,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                         disabled={unlockBusy || resetBusy || disableSecurityActions}
                                                                     >
                                                                         {unlockBusy
-                                                                            ? t('common.securityBell.states.unlocking', { defaultValue: 'Unlocking…' })
+                                                                            ? t('common.securityBell.states.unlocking', { defaultValue: 'Unlockingâ€¦' })
                                                                             : t('common.actions.unlock', { defaultValue: 'Unlock' })}
                                                                     </button>
                                                                 ))
@@ -527,7 +527,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                     disabled={toggleBusy || resetBusy || unlockBusy}
                                                                 >
                                                                     {activeBusy
-                                                                        ? t('common.securityBell.states.activating', { defaultValue: 'Activating…' })
+                                                                        ? t('common.securityBell.states.activating', { defaultValue: 'Activatingâ€¦' })
                                                                         : t('common.status.active', { defaultValue: 'Active' })}
                                                                 </button>
                                                                 ) : null
@@ -541,7 +541,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                                     disabled={toggleBusy || resetBusy || unlockBusy}
                                                                 >
                                                                     {inactiveBusy
-                                                                        ? t('common.securityBell.states.inactivating', { defaultValue: 'Inactivating…' })
+                                                                        ? t('common.securityBell.states.inactivating', { defaultValue: 'Inactivatingâ€¦' })
                                                                         : t('common.status.inactive', { defaultValue: 'Inactive' })}
                                                                 </button>
                                                                 ) : null
@@ -556,7 +556,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                             disabled={clearBusy}
                                                         >
                                                             {clearBusy
-                                                                ? t('common.securityBell.states.clearing', { defaultValue: 'Clearing…' })
+                                                                ? t('common.securityBell.states.clearing', { defaultValue: 'Clearingâ€¦' })
                                                                 : t('common.actions.clear', { defaultValue: 'Clear' })}
                                                         </button>
                                                     </div>

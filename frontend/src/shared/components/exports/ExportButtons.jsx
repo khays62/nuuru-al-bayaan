@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FileDown } from 'lucide-react';
 import ActionButton from '../ui/ActionButton';
 import { exportTableToCSV, exportTableToExcel, exportTableToPDF } from '../../../utils/exportTable';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 function withExtension(filename, ext) {
   const base = String(filename || '').trim();

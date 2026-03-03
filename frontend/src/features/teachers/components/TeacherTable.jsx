@@ -4,7 +4,7 @@ import { Eye, KeyRound, ListChecks, Pencil, RotateCcw, Trash2 } from 'lucide-rea
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TeacherTable({
   items = [],

@@ -28,7 +28,7 @@ import ResultsChartsCard from '../components/ResultsChartsCard.jsx';
 import ScoreActivityCard from '../components/ScoreActivityCard.jsx';
 import AnnouncementsMixCard from '../components/AnnouncementsMixCard.jsx';
 import { useDashboardRealtimeInvalidation } from '../useDashboardRealtimeInvalidation';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 // Token-driven tones (single source of truth via CSS variables in index.css)
 const tones = {
@@ -134,9 +134,9 @@ const QuickCard = ({ title, description, to, Icon, tone = 'indigo', disabled = f
 };
 
 const fmtCount = (value) => {
-    if (value === null || value === undefined) return '—';
+    if (value === null || value === undefined) return 'â€”';
     const n = Number(value);
-    if (!Number.isFinite(n)) return '—';
+    if (!Number.isFinite(n)) return 'â€”';
     return new Intl.NumberFormat().format(n);
 };
 
@@ -306,7 +306,7 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
     const hoverX = typeof hoverIdx === 'number' ? toX(hoverIdx) : null;
     const hoverY = typeof hoverIdx === 'number' ? toY(hover?.y) : null;
 
-    const tipText = hover ? `${String(hover.x)} • ${fmtCount(hover.y)}` : '';
+    const tipText = hover ? `${String(hover.x)} â€¢ ${fmtCount(hover.y)}` : '';
     const tipW = Math.max(120, Math.min(220, tipText.length * 7.2));
     const tipH = 28;
     const tipX = hoverX !== null ? Math.min(hoverX + 12, w - padR - tipW) : 0;
@@ -404,7 +404,7 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
                 return (
                     <g key={`x-${i}`} transform={`translate(${xx},${yy}) rotate(35)`}>
                         <text textAnchor="start" fontSize="10" fill="var(--nb-color-muted)">
-                            {label.length > 14 ? `${label.slice(0, 14)}…` : label}
+                            {label.length > 14 ? `${label.slice(0, 14)}â€¦` : label}
                         </text>
                     </g>
                 );

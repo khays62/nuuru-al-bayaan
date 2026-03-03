@@ -1,6 +1,6 @@
 import React from 'react';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TimingSelector({ value, onChange }) {
   const { t } = useI18n();

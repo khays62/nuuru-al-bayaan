@@ -3,7 +3,7 @@ import { FileDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToPDF } from '../../../../utils/exportTable';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 export default function PdfDownloadButton({
   getPayload,

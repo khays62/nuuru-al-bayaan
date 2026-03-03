@@ -12,7 +12,7 @@ import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/Fi
 import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import DataTable from '../../../shared/components/table/DataTable.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
   const { t } = useI18n();
@@ -235,7 +235,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
               onChange={onSectionChange}
               options={(sections || []).map((s) => ({
                 value: s._id,
-                label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • ${t('students.export.sectionPrefix')} ${s.section}`,
+                label: `${s.grade?.gradeName || ''} â€¢ ${s.shift?.shiftName || ''} â€¢ ${t('students.export.sectionPrefix')} ${s.section}`,
               }))}
               placeholder={t('teachers.assignments.selectSection')}
               disabled={!gradeId || !shiftId}

@@ -12,7 +12,7 @@ import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import { studentKeys } from '../queryKeys';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import SomaliaAddressFields from '../../../shared/components/address/SomaliaAddressFields.jsx';
 import { normalizeSomaliaPhone, isValidSomaliaPhone } from '../../../shared/utils/phoneSomalia.js';
 
@@ -606,7 +606,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                                             }))}
                                             placeholder={t('students.form.selectCohort')}
                                             maxVisible={5}
-                                            searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
+                                            searchPlaceholder={t('common.search', { defaultValue: 'Searchâ€¦' })}
                                             disabled={submitting || !formData.academicYearId}
                                         />
                                     </div>

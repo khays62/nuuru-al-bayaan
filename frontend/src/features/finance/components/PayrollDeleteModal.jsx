@@ -10,7 +10,7 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function PayrollDeleteModal({
     onClose,
@@ -177,9 +177,9 @@ export default function PayrollDeleteModal({
                                 value={form.staffId}
                                 onChange={(v) => setForm((prev) => ({ ...prev, staffId: v }))}
                                 options={staffOptions}
-                                placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employee…' })}
+                                placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employeeâ€¦' })}
                                 maxVisible={5}
-                                searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employees…' })}
+                                searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employeesâ€¦' })}
                             />
                         </FormField>
                     ) : null}
@@ -193,7 +193,7 @@ export default function PayrollDeleteModal({
                             value={form.academicYear}
                             onChange={(v) => setForm((prev) => ({ ...prev, academicYear: v }))}
                             maxVisible={5}
-                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
                         />
                     </FormField>
                 </div>
@@ -203,7 +203,7 @@ export default function PayrollDeleteModal({
                         {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                     </Button>
                     <Button type="submit" variant="danger" disabled={loading}>
-                        {loading ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.delete', { defaultValue: 'Delete' })}
+                        {loading ? t('common.working', { defaultValue: 'WORKINGâ€¦' }) : t('common.actions.delete', { defaultValue: 'Delete' })}
                     </Button>
                 </div>
             </form>
@@ -244,7 +244,7 @@ export default function PayrollDeleteModal({
                                 disabled={loading || String(paidConfirmText || '').trim().toUpperCase() !== 'DELETE PAID'}
                                 onClick={confirmDeletePaid}
                             >
-                                {loading ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.delete', { defaultValue: 'Delete' })}
+                                {loading ? t('common.working', { defaultValue: 'WORKINGâ€¦' }) : t('common.actions.delete', { defaultValue: 'Delete' })}
                             </Button>
                         </div>
                     </div>

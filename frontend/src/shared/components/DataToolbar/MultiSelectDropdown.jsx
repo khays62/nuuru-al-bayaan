@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Card from '../ui/Card.jsx';
 import Checkbox from '../ui/Checkbox.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function MultiSelectDropdown({ value = [], onChange, options = [], placeholder, className = '' }) {
   const { t } = useI18n();
@@ -24,7 +24,7 @@ export default function MultiSelectDropdown({ value = [], onChange, options = []
   };
   const clearAll = () => onChange([]);
 
-  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
+  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Selectâ€¦' });
 
   const label = (Array.isArray(value) && value.length)
     ? options.filter(o => value.includes(o.value)).map(o => o.label).join(', ')

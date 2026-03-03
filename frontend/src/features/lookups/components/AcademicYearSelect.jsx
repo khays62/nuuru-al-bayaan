@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { getAcademicYears, invalidateAcademicYearsCache } from '../api/lookups';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import Select from '../../../shared/components/ui/Select.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function AcademicYearSelect({
   value,
@@ -25,7 +25,7 @@ export default function AcademicYearSelect({
   const [loading, setLoading] = useState(false);
 
   const resolvedPlaceholder = placeholder ?? t('common.filters.any', { defaultValue: 'Any' });
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' });
 
   // refreshKey: when changed by parent, re-fetch the academic years
   useEffect(() => {

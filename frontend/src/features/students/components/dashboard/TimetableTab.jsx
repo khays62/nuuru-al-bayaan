@@ -11,7 +11,7 @@ import { getSlotsWithOptions } from '../../../timetable/api/timetable';
 import { useAuth } from '../../../../auth/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 function uniqPeriodsFromSlots(slots = []) {
   const seen = new Set();
@@ -153,7 +153,7 @@ export default function TimetableTab() {
         <>
           <div className="mb-4 border border-(--nb-color-border) rounded-lg bg-(--nb-color-bg-card) overflow-hidden shadow-sm">
             <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
-              <div className="font-semibold">{t('students.timetableTab.todayLabel')} {todayInfo.dayName || '—'}{todayInfo.dateISO ? ` • ${todayInfo.dateISO}` : ''}</div>
+              <div className="font-semibold">{t('students.timetableTab.todayLabel')} {todayInfo.dayName || 'â€”'}{todayInfo.dateISO ? ` â€¢ ${todayInfo.dateISO}` : ''}</div>
               <div className="text-xs text-white/80 mt-0.5">{t('students.timetableTab.todaySubtitle')}</div>
             </div>
             <div className="p-4">
@@ -164,7 +164,7 @@ export default function TimetableTab() {
                   const byTeacher = new Map();
                   for (const s of todayInfo.slots) {
                     if (s?.isBreak) continue;
-                    const teacherName = String(s?.teacher?.fullName || '—').trim() || '—';
+                    const teacherName = String(s?.teacher?.fullName || 'â€”').trim() || 'â€”';
                     const list = byTeacher.get(teacherName) || [];
                     list.push(s);
                     byTeacher.set(teacherName, list);
@@ -191,7 +191,7 @@ export default function TimetableTab() {
                           <div className="px-4 py-2 bg-(--nb-color-brand-50) text-(--nb-color-fg) border-b border-(--nb-color-border)">
                             <div className="font-semibold truncate">{card.teacherName}</div>
                             {card.subjects.length > 0 ? (
-                              <div className="text-xs text-(--nb-color-muted) mt-0.5 truncate">{card.subjects.join(' • ')}</div>
+                              <div className="text-xs text-(--nb-color-muted) mt-0.5 truncate">{card.subjects.join(' â€¢ ')}</div>
                             ) : null}
                           </div>
                           <div className="p-4 space-y-2">
@@ -199,7 +199,7 @@ export default function TimetableTab() {
                               const time = `${String(s?.startTime || '').trim()} - ${String(s?.endTime || '').trim()}`.trim();
                               const subject = String(s?.subject?.subjectName || '-').trim() || '-';
                               const room = s?.room ? `${t('common.room')} ${s.room}` : '';
-                              const meta = [time, room].filter(Boolean).join(' • ');
+                              const meta = [time, room].filter(Boolean).join(' â€¢ ');
                               return (
                                 <div key={String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${subject}`)} className="border border-(--nb-color-border) rounded-lg p-3 bg-(--nb-color-bg-card)">
                                   <div className="font-medium text-(--nb-color-text) truncate">{subject}</div>
@@ -259,7 +259,7 @@ export default function TimetableTab() {
               const byTeacher = new Map();
               for (const s of slots) {
                 if (s?.isBreak) continue;
-                const teacherName = String(s?.teacher?.fullName || '—').trim() || '—';
+                const teacherName = String(s?.teacher?.fullName || 'â€”').trim() || 'â€”';
                 const subject = String(s?.subject?.subjectName || '-').trim() || '-';
                 const entry = byTeacher.get(teacherName) || { teacherName, subjects: new Set(), firstStart: '' };
                 entry.subjects.add(subject);
@@ -271,7 +271,7 @@ export default function TimetableTab() {
               const rows = Array.from(byTeacher.values())
                 .map((r) => ({
                   teacherName: r.teacherName,
-                  subjects: Array.from(r.subjects).filter(Boolean).sort((a, b) => a.localeCompare(b)).join(' • '),
+                  subjects: Array.from(r.subjects).filter(Boolean).sort((a, b) => a.localeCompare(b)).join(' â€¢ '),
                   firstStart: r.firstStart,
                 }))
                 .sort((a, b) => {
@@ -308,7 +308,7 @@ export default function TimetableTab() {
                     getRowKey={(r) => r.teacherName}
                     renderCell={(r, col) => {
                       if (col.key === 'teacherName') return r.teacherName;
-                      if (col.key === 'subjects') return r.subjects || '—';
+                      if (col.key === 'subjects') return r.subjects || 'â€”';
                       return '';
                     }}
                     tableProps={{

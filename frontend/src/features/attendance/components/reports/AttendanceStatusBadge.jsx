@@ -1,4 +1,4 @@
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 export default function AttendanceStatusBadge({ status }) {
   const { t } = useI18n();
@@ -17,7 +17,7 @@ export default function AttendanceStatusBadge({ status }) {
   const label =
     norm === 'not_marked'
       ? t('attendance.status.notMarked')
-      : (translated && translated !== translatedKey ? translated : (status || '—'));
+      : (translated && translated !== translatedKey ? translated : (status || 'â€”'));
 
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border border-current/25 whitespace-nowrap ${cls}`}>

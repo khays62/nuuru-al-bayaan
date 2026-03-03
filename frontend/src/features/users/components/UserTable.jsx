@@ -5,7 +5,7 @@ import { Eye, Pencil, Repeat, RotateCcw, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import StatusBadge from '../../../shared/components/ui/badges/StatusBadge.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function UserTable({
   isLoading,

@@ -7,7 +7,7 @@ import Card from '../../../shared/components/ui/Card.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import {
   getExamTemplateVersions,
   getExamTemplateDetail,

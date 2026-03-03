@@ -20,7 +20,7 @@ import {
 
 import AcademicYearSelect from '../../lookups/components/AcademicYearSelect.jsx';
 
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 const getLogoUrl = () => {
     try {
@@ -170,7 +170,7 @@ export default function PayrollPrintModal({
             monthLabel ? t('finance.payroll.export.month', { defaultValue: 'Month: {{month}}', month: monthLabel }) : null,
             academicYearName ? t('finance.payroll.export.academicYear', { defaultValue: 'Academic Year: {{year}}', year: academicYearName }) : null,
             form.status ? t('finance.payroll.export.status', { defaultValue: 'Status: {{status}}', status: form.status }) : null,
-        ].filter(Boolean).join(' • ');
+        ].filter(Boolean).join(' â€¢ ');
 
         return {
             filename: `payroll-${form.month || 'all'}`,
@@ -359,7 +359,7 @@ export default function PayrollPrintModal({
                             value={form.academicYear}
                             onChange={(v) => setForm((prev) => ({ ...prev, academicYear: v }))}
                             maxVisible={5}
-                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
                         />
                     </FormField>
 
@@ -378,7 +378,7 @@ export default function PayrollPrintModal({
                             [
                                 monthLabel ? t('finance.payroll.export.month', { defaultValue: 'Month: {{month}}', month: monthLabel }) : null,
                                 academicYearName ? t('finance.payroll.export.academicYear', { defaultValue: 'Academic Year: {{year}}', year: academicYearName }) : null,
-                            ].filter(Boolean).join(' • ')
+                            ].filter(Boolean).join(' â€¢ ')
                         }
                         className="sm:col-span-2"
                     >
@@ -402,7 +402,7 @@ export default function PayrollPrintModal({
                         disabled={!canRun || loading}
                         title={getPrimaryActionText(form.exportType)}
                     >
-                        {loading ? t('common.loading', { defaultValue: 'Loading…' }) : getPrimaryActionText(form.exportType)}
+                        {loading ? t('common.loading', { defaultValue: 'Loadingâ€¦' }) : getPrimaryActionText(form.exportType)}
                     </ActionButton>
                 </div>
             </form>

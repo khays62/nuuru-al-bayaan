@@ -8,7 +8,7 @@ import { useAuth } from '../../../auth/AuthContext';
 import Badge from '../ui/Badge.jsx';
 import { useAnnouncementsUnread } from '../../../features/announcements/hooks/useAnnouncementsUnread';
 import { MODULE_PERMISSIONS } from '../../auth/permissionContract.js';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu }) {
   const { isRTL, t } = useI18n();

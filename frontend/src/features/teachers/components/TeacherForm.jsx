@@ -8,7 +8,7 @@ import Textarea from '../../../shared/components/ui/Textarea.jsx';
 import Label from '../../../shared/components/ui/Label.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SomaliaAddressFields from '../../../shared/components/address/SomaliaAddressFields.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { isValidSomaliaPhone, normalizeSomaliaPhone } from '../../../shared/utils/phoneSomalia';
 import { getSubjects } from '../../subjects/api/subjects';
 

@@ -24,7 +24,7 @@ import TransfersCandidatesTable from '../components/TransfersCandidatesTable.jsx
 import TransfersLogsTable from '../components/TransfersLogsTable.jsx';
 import { transferKeys } from '../queryKeys';
 import { useTransfersRealtimeInvalidation } from '../useTransfersRealtimeInvalidation';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TransfersPage() {
 	const { t } = useI18n();
@@ -346,7 +346,7 @@ export default function TransfersPage() {
 								onChange={(v) => { setAy(v); setPage(1); }}
 								searchable
 								maxVisible={5}
-								searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+								searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
 							/>
 						</FilterItem>
 
@@ -361,7 +361,7 @@ export default function TransfersPage() {
 								onChange={(v) => { setShift(v); setPage(1); }}
 								searchable
 								maxVisible={5}
-								searchPlaceholder={t('common.searchPlaceholders.shifts', { defaultValue: 'Search shifts…' })}
+								searchPlaceholder={t('common.searchPlaceholders.shifts', { defaultValue: 'Search shiftsâ€¦' })}
 							/>
 						</FilterItem>
 
@@ -374,7 +374,7 @@ export default function TransfersPage() {
 								placeholder={t('common.filters.section', { defaultValue: 'Section' })}
 								searchable
 								maxVisible={5}
-								searchPlaceholder={t('common.searchPlaceholders.sections', { defaultValue: 'Search sections…' })}
+								searchPlaceholder={t('common.searchPlaceholders.sections', { defaultValue: 'Search sectionsâ€¦' })}
 							/>
 						</FilterItem>
 					</FilterRow>
@@ -462,7 +462,7 @@ export default function TransfersPage() {
 					{modalLoading ? (
 						<div className="py-6 text-sm text-(--nb-color-muted) flex items-center gap-2">
 							<Spinner size={18} />
-							<span>{t('transfers.modal.loadingEnrollment', { defaultValue: 'Loading current enrollment…' })}</span>
+							<span>{t('transfers.modal.loadingEnrollment', { defaultValue: 'Loading current enrollmentâ€¦' })}</span>
 						</div>
 					) : (
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -496,13 +496,13 @@ export default function TransfersPage() {
 							{busy ? (
 								<>
 									<Spinner size={16} color="currentColor" />
-									<span>{t('transfers.actions.transferring', { defaultValue: 'Transferring…' })}</span>
+									<span>{t('transfers.actions.transferring', { defaultValue: 'Transferringâ€¦' })}</span>
 								</>
 							) : (
 								modalLoading ? (
 									<>
 										<Spinner size={16} color="currentColor" />
-										<span>{t('common.loading', { defaultValue: 'Loading…' })}</span>
+										<span>{t('common.loading', { defaultValue: 'Loadingâ€¦' })}</span>
 									</>
 								) : (
 									t('transfers.actions.confirmTransfer', { defaultValue: 'Confirm Transfer' })

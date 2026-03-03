@@ -15,7 +15,7 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 
 export default function PreviousBalanceTab() {
@@ -263,10 +263,10 @@ export default function PreviousBalanceTab() {
         const list = Array.isArray(students) ? students : [];
         return list.map((s) => ({
             _id: s._id,
-            studentId: s.studentId || '—',
-            fullName: s.fullName || '—',
-            contact: s.phone || '—',
-            className: s.className || '—',
+            studentId: s.studentId || 'â€”',
+            fullName: s.fullName || 'â€”',
+            contact: s.phone || 'â€”',
+            className: s.className || 'â€”',
             prevBalance: Number(s.prevBalance || 0),
             raw: s,
         }));
@@ -356,7 +356,7 @@ export default function PreviousBalanceTab() {
                         searchable
                         maxVisible={6}
                         placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.section', { defaultValue: 'Section' })}
-                        searchPlaceholder={t('finance.studentFinance.previousBalanceTab.placeholders.searchShort', { defaultValue: 'Search…' })}
+                        searchPlaceholder={t('finance.studentFinance.previousBalanceTab.placeholders.searchShort', { defaultValue: 'Searchâ€¦' })}
                         className="h-11 min-w-50 font-bold text-sm"
                     />
 
@@ -451,20 +451,20 @@ export default function PreviousBalanceTab() {
                         const raw = row?.raw;
                         switch (col.key) {
                             case 'studentId':
-                                return <span className="p-0 font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || '—'}</span>;
+                                return <span className="p-0 font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || 'â€”'}</span>;
                             case 'fullName':
                                 return (
                                     <div className="flex flex-col items-start">
-                                        <span className="font-bold text-(--nb-color-fg)">{row?.fullName || '—'}</span>
+                                        <span className="font-bold text-(--nb-color-fg)">{row?.fullName || 'â€”'}</span>
                                         <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-widest">{t('finance.studentFinance.previousBalanceTab.table.bfAccount', { defaultValue: 'B/F ACCOUNT' })}</span>
                                     </div>
                                 );
                             case 'contact':
-                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || '—'}</span>;
+                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || 'â€”'}</span>;
                             case 'className':
                                 return (
                                     <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
-                                        {row?.className || '—'}
+                                        {row?.className || 'â€”'}
                                     </span>
                                 );
                             case 'prevBalance':

@@ -14,7 +14,7 @@ import { useAuth } from '../../../auth/AuthContext';
 import TeacherAttendanceChartsCard from '../components/dashboard/TeacherAttendanceChartsCard';
 import TeacherResultsChartsCard from '../components/dashboard/TeacherResultsChartsCard';
 import TeacherDashboardPrefetcher from '../components/dashboard/TeacherDashboardPrefetcher';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 const QuickCard = ({ title, description, to, Icon, tone = 'indigo' }) => {
 	const base =

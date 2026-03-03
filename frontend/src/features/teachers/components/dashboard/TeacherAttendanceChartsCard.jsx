@@ -8,7 +8,7 @@ import { useAuth } from '../../../../auth/AuthContext';
 import DropdownSelect from '../../../../shared/components/ui/DropdownSelect.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { getSlotsWithOptions } from '../../../timetable/api/timetable';
@@ -651,7 +651,7 @@ export default function TeacherAttendanceChartsCard() {
                 value={sectionId}
                 onChange={(v) => { setSectionId(v); setReport(null); }}
                 disabled={!isTeacher || assignmentsLoading || !teacherRef}
-                placeholder={assignmentsLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('teachers.dashboard.common.selectSection', { defaultValue: 'Select section' })}
+                placeholder={assignmentsLoading ? t('common.loading', { defaultValue: 'Loadingâ€¦' }) : t('teachers.dashboard.common.selectSection', { defaultValue: 'Select section' })}
                 options={sectionOptions}
               />
             </div>
@@ -694,12 +694,12 @@ export default function TeacherAttendanceChartsCard() {
 
           <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
             <div className="text-xs text-(--nb-color-muted)">
-              {subjectSlotsLoading ? t('teachers.dashboard.attendance.loadingTimetablePeriods', { defaultValue: 'Loading timetable periods…' }) : (subjectId && sectionId && subjectPeriodCodes.length === 0 ? t('teachers.dashboard.attendance.noPeriodsForSubject', { defaultValue: 'No timetable periods for this subject.' }) : '')}
+              {subjectSlotsLoading ? t('teachers.dashboard.attendance.loadingTimetablePeriods', { defaultValue: 'Loading timetable periodsâ€¦' }) : (subjectId && sectionId && subjectPeriodCodes.length === 0 ? t('teachers.dashboard.attendance.noPeriodsForSubject', { defaultValue: 'No timetable periods for this subject.' }) : '')}
               {assignmentsError ? ` ${assignmentsError}` : ''}
             </div>
             <div className="text-xs text-(--nb-color-text)">
-              <span className="font-medium">{t('teachers.dashboard.attendance.kpis.allDayPct', { defaultValue: 'All-day%' })}</span>: {kpis.dayPct}% • <span className="font-medium">{t('teachers.dashboard.attendance.kpis.perPeriodPct', { defaultValue: 'Per-period%' })}</span>: {kpis.periodPct}%
-              {kpis.roster ? ` • ` : ''}{kpis.roster ? (<><span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>: {kpis.roster}</>) : null}
+              <span className="font-medium">{t('teachers.dashboard.attendance.kpis.allDayPct', { defaultValue: 'All-day%' })}</span>: {kpis.dayPct}% â€¢ <span className="font-medium">{t('teachers.dashboard.attendance.kpis.perPeriodPct', { defaultValue: 'Per-period%' })}</span>: {kpis.periodPct}%
+              {kpis.roster ? ` â€¢ ` : ''}{kpis.roster ? (<><span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>: {kpis.roster}</>) : null}
             </div>
           </div>
         </div>
@@ -712,7 +712,7 @@ export default function TeacherAttendanceChartsCard() {
           <Alert variant="danger">{error}</Alert>
         ) : loading ? (
           <div className="space-y-2">
-            <UiLoadingState label={t('teachers.dashboard.attendance.loading', { defaultValue: 'Loading attendance…' })} className="border-0 bg-transparent p-0 justify-start" />
+            <UiLoadingState label={t('teachers.dashboard.attendance.loading', { defaultValue: 'Loading attendanceâ€¦' })} className="border-0 bg-transparent p-0 justify-start" />
             {Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)}
           </div>
         ) : !canRun ? (
@@ -739,7 +739,7 @@ export default function TeacherAttendanceChartsCard() {
               </div>
               <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-3">
                 <div className="text-xs font-semibold text-(--nb-color-text)">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</div>
-                <div className="text-xl font-bold text-(--nb-color-text) tabular-nums">{Number(kpis.roster || 0) || '—'}</div>
+                <div className="text-xl font-bold text-(--nb-color-text) tabular-nums">{Number(kpis.roster || 0) || 'â€”'}</div>
                 <div className="text-[11px] text-(--nb-color-muted)">{t('teachers.dashboard.attendance.performance.rosterNote', { defaultValue: 'From report meta' })}</div>
               </div>
             </div>
@@ -836,7 +836,7 @@ export default function TeacherAttendanceChartsCard() {
         <div className="pt-2 border-t border-(--nb-color-border) flex items-center justify-between gap-3 flex-wrap">
           <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.attendance.source', { defaultValue: 'Source: Attendance Reports summary (teacher-scoped)' })}</div>
           <div className="text-xs text-(--nb-color-muted)">
-            {t('teachers.dashboard.common.kpis', { defaultValue: 'KPIs' })}: <span className="font-medium">{t('teachers.dashboard.attendance.kpis.attendancePct', { defaultValue: 'Attendance %' })}</span> • <span className="font-medium">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</span> • <span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>
+            {t('teachers.dashboard.common.kpis', { defaultValue: 'KPIs' })}: <span className="font-medium">{t('teachers.dashboard.attendance.kpis.attendancePct', { defaultValue: 'Attendance %' })}</span> â€¢ <span className="font-medium">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</span> â€¢ <span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>
           </div>
         </div>
       </div>

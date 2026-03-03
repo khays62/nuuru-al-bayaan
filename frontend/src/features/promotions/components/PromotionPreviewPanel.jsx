@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import Card from '../../../shared/components/ui/Card.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function PromotionPreviewPanel({
   preview,
@@ -52,7 +52,7 @@ export default function PromotionPreviewPanel({
 
                 switch (col.key) {
                   case 'student':
-                    return `${it.studentId} — ${it.fullName}`;
+                    return `${it.studentId} â€” ${it.fullName}`;
                   case 'from':
                     return formatFrom(from) || '-';
                   case 'to':

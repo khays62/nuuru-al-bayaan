@@ -3,7 +3,7 @@ import { NavLink, Outlet, useParams, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../../auth/AuthContext';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { getStudentProfile } from '../api/studentsApi';
 import { studentKeys } from '../queryKeys';
 import Card from '../../../shared/components/ui/Card.jsx';
@@ -97,7 +97,7 @@ function TabNav({ tabs = [] }) {
               className="text-xs text-(--nb-color-muted) px-2 py-1 rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-bg) flex items-center justify-center w-10"
               title={t('students.dashboard.moreTabs')}
             >
-              <span className="font-semibold tracking-wider">⋯</span>
+              <span className="font-semibold tracking-wider">â‹¯</span>
             </button>
             {open && (
               <Card className="absolute right-0 mt-2 w-40 z-10">

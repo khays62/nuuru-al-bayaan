@@ -31,7 +31,7 @@ import { useAuth } from '../../../auth/AuthContext';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { transcriptKeys } from '../queryKeys';
 import { useTranscriptRealtimeInvalidation } from '../useTranscriptRealtimeInvalidation';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TranscriptPage() {
   const { t } = useI18n();
@@ -509,7 +509,7 @@ export default function TranscriptPage() {
           `${t('common.filters.section')}: ${en.gradeSection?.section || '-'}`,
           `${t('common.filters.shift')}: ${en.gradeSection?.shift || '-'}`,
           `${t('common.filters.status')}: ${formatEnrollmentStatus(en.status) || ''}`,
-        ].join(' • ');
+        ].join(' â€¢ ');
 
         const pageBreakBefore = isFirstEnrollmentForStudent && sIdx > 0;
         // Keep the full title in payload for Excel/Copy, but allow PDF to suppress repeats.

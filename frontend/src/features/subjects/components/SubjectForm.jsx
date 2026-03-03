@@ -3,7 +3,7 @@ import Label from '../../../shared/components/ui/Label.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 // Kani waa foomka oo si buuxda u shaqaynaya
 export default function SubjectForm({ subject, onClose, onSubmit, allGrades, isSubmitting=false, onDirty }) {
@@ -109,7 +109,7 @@ export default function SubjectForm({ subject, onClose, onSubmit, allGrades, isS
                 </Button>
                 <Button type="submit" variant="brand" disabled={isSubmitting}>
                     {isSubmitting
-                      ? (subject ? t('common.updating', { defaultValue: 'Updating…' }) : t('common.saving', { defaultValue: 'Saving…' }))
+                      ? (subject ? t('common.updating', { defaultValue: 'Updatingâ€¦' }) : t('common.saving', { defaultValue: 'Savingâ€¦' }))
                       : (subject ? t('subjects.actions.updateSubject', { defaultValue: 'Update Subject' }) : t('subjects.actions.saveSubject', { defaultValue: 'Save Subject' }))
                     }
                 </Button>

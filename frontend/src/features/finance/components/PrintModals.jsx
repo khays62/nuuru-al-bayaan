@@ -12,7 +12,7 @@ import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import {
     printHtmlDocument,
 } from '../../../utils/exportTable';
@@ -28,7 +28,7 @@ const PrintModalWrapper = ({
     primaryActionLabel = 'Print',
     primaryActionIcon = <Printer size={16} />,
     closeLabel = 'Close',
-    generatingLabel = 'Generating…',
+    generatingLabel = 'Generatingâ€¦',
 }) => (
     <Modal isOpen onClose={onClose} title={title}>
         {subtitle ? (
@@ -141,7 +141,7 @@ const getShiftLabelForInvoice = (inv, fallbackShift) => {
         (typeof rawShift === 'string'
             ? (isMongoObjectIdString(rawShift) ? '' : rawShift)
             : (rawShift?.name || rawShift?.shiftName || rawShift?.label || rawShift?.shiftName)) ||
-        '—'
+        'â€”'
     );
 };
 
@@ -314,8 +314,8 @@ export function openMonthlyInvoicesPreview({ month, invoices, students, i18n }) 
     const cardsHtml = (eligible || []).map((inv) => {
         const dateNow = new Date().toLocaleString(lang || undefined);
         const recNo = `RV-${String(inv?._id || '').slice(-6).toUpperCase()}`;
-        const studentName = inv.student?.fullName || '—';
-        const studentId = inv.student?.studentId || '—';
+        const studentName = inv.student?.fullName || 'â€”';
+        const studentId = inv.student?.studentId || 'â€”';
         const gradeName = inv.class?.grade?.gradeName || inv.class?.grade?.name || inv.class?.gradeName || '';
         const section = inv.class?.section || inv.class?.sectionName || '';
         const classLabel = (
@@ -324,10 +324,10 @@ export function openMonthlyInvoicesPreview({ month, invoices, students, i18n }) 
             `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
             inv.student?.currentClass ||
             inv.student?.classLabel ||
-            '—'
+            'â€”'
         );
         const shiftLabel = getShiftLabelForInvoice(inv, inv?.shiftLabel);
-        const billingMonth = inv.billingMonth || month || '—';
+        const billingMonth = inv.billingMonth || month || 'â€”';
         const billingMonthLabel = `${billingMonth}${isInvoiceHormaris(inv) ? labels.hormarisSuffix : ''}`;
         const description = inv.title || inv.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
@@ -344,7 +344,7 @@ export function openMonthlyInvoicesPreview({ month, invoices, students, i18n }) 
             headerSrc: logoUrl,
             labels,
             dateNow,
-            academicYear: inv.academicYear?.yearName || '—',
+            academicYear: inv.academicYear?.yearName || 'â€”',
             recNo,
             classLabel,
             studentId,
@@ -452,8 +452,8 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         const dateNow = new Date(first?.createdAt || Date.now()).toLocaleString(lang || undefined);
         const recNo = `RV-${String(groupId).slice(-6).toUpperCase()}`;
 
-        const studentName = first?.student?.fullName || '—';
-        const studentId = first?.student?.studentId || '—';
+        const studentName = first?.student?.fullName || 'â€”';
+        const studentId = first?.student?.studentId || 'â€”';
         const firstInv = first?.invoice;
 
         const gradeName = firstInv?.class?.grade?.gradeName || firstInv?.class?.grade?.name || firstInv?.class?.gradeName || '';
@@ -464,7 +464,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
             first?.student?.currentClass ||
             first?.student?.classLabel ||
-            '—'
+            'â€”'
         );
         const shiftLabel = getShiftLabelForInvoice(firstInv, first?.shiftLabel ?? first?.shift);
 
@@ -490,16 +490,16 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             const isHormaris = typeof inv?.isHormaris === 'boolean'
                 ? inv.isHormaris
                 : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-            const monthLabel = `${inv?.billingMonth || '—'}${isHormaris ? labels.hormarisSuffix : ''}`;
+            const monthLabel = `${inv?.billingMonth || 'â€”'}${isHormaris ? labels.hormarisSuffix : ''}`;
             const desc = inv?.title || inv?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
             return `
                 <tr>
                     <td style="text-align:left">${desc}</td>
                     <td style="text-align:left">${monthLabel}</td>
-                    <td style="text-align:right">${isFree ? '—' : `$${Number(paidInGroup || 0).toFixed(2)}`}</td>
+                    <td style="text-align:right">${isFree ? 'â€”' : `$${Number(paidInGroup || 0).toFixed(2)}`}</td>
                     <td style="text-align:right">$${Number(balance || 0).toFixed(2)}</td>
-                    <td style="text-align:right">${isFree ? '—' : `$${Number(grossFee || 0).toFixed(2)}`}</td>
+                    <td style="text-align:right">${isFree ? 'â€”' : `$${Number(grossFee || 0).toFixed(2)}`}</td>
                 </tr>
             `;
         }).join('');
@@ -515,7 +515,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         if (!hasHormaris && invoices.length === 1) {
             const inv = invoices[0];
             const paidInGroup = Number(txByInvoice.get(String(inv._id)) || 0);
-            const billingMonth = inv?.billingMonth || '—';
+            const billingMonth = inv?.billingMonth || 'â€”';
             const billingMonthLabel = `${billingMonth}${isInvoiceHormaris(inv) ? labels.hormarisSuffix : ''}`;
             const description = inv?.title || inv?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
             const paidHtml = `<span class="money">${labels.paid} $${Number(paidInGroup || 0).toFixed(2)}</span>`;
@@ -529,7 +529,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
                 headerSrc: logoUrl,
                 labels,
                 dateNow,
-                academicYear: inv?.academicYear?.yearName || '—',
+                academicYear: inv?.academicYear?.yearName || 'â€”',
                 recNo,
                 classLabel,
                 studentId,
@@ -553,7 +553,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             headerSrc: logoUrl,
             labels,
             dateNow,
-            academicYear: firstInv?.academicYear?.yearName || '—',
+            academicYear: firstInv?.academicYear?.yearName || 'â€”',
             recNo,
             classLabel,
             studentId,
@@ -569,8 +569,8 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         const dateNow = new Date(t?.createdAt || Date.now()).toLocaleString(lang || undefined);
         const recNo = `RV-${String(t?._id || '').slice(-6).toUpperCase()}`;
 
-        const studentName = t.student?.fullName || '—';
-        const studentId = t.student?.studentId || '—';
+        const studentName = t.student?.fullName || 'â€”';
+        const studentId = t.student?.studentId || 'â€”';
 
         const gradeName = t.invoice?.class?.grade?.gradeName || t.invoice?.class?.grade?.name || t.invoice?.class?.gradeName || '';
         const section = t.invoice?.class?.section || t.invoice?.class?.sectionName || '';
@@ -580,7 +580,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
             t.student?.currentClass ||
             t.student?.classLabel ||
-            '—'
+            'â€”'
         );
 
         const shiftLabel = getShiftLabelForInvoice(t?.invoice, t?.shiftLabel ?? t?.shift);
@@ -591,7 +591,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         const isHormaris = typeof t.invoice?.isHormaris === 'boolean'
             ? t.invoice.isHormaris
             : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-        const monthLabel = `${t.invoice?.billingMonth || '—'}${isHormaris ? labels.hormarisSuffix : ''}`;
+        const monthLabel = `${t.invoice?.billingMonth || 'â€”'}${isHormaris ? labels.hormarisSuffix : ''}`;
         const desc = t.invoice?.title || t.invoice?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
         if (!isHormaris) {
@@ -605,7 +605,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
                 headerSrc: logoUrl,
                 labels,
                 dateNow,
-                academicYear: t.invoice?.academicYear?.yearName || '—',
+                academicYear: t.invoice?.academicYear?.yearName || 'â€”',
                 recNo,
                 classLabel,
                 studentId,
@@ -624,9 +624,9 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             <tr>
                 <td style="text-align:left">${desc}</td>
                 <td style="text-align:left">${monthLabel}</td>
-                <td style="text-align:right">${isFree ? '—' : `$${Number(t.amount || 0).toFixed(2)}`}</td>
+                <td style="text-align:right">${isFree ? 'â€”' : `$${Number(t.amount || 0).toFixed(2)}`}</td>
                 <td style="text-align:right">$${Number(balance || 0).toFixed(2)}</td>
-                <td style="text-align:right">${isFree ? '—' : `$${Number(grossFee || 0).toFixed(2)}`}</td>
+                <td style="text-align:right">${isFree ? 'â€”' : `$${Number(grossFee || 0).toFixed(2)}`}</td>
             </tr>
         `;
 
@@ -639,7 +639,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             headerSrc: logoUrl,
             labels,
             dateNow,
-            academicYear: t.invoice?.academicYear?.yearName || '—',
+            academicYear: t.invoice?.academicYear?.yearName || 'â€”',
             recNo,
             classLabel,
             studentId,
@@ -812,7 +812,7 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
                 </div>
 
                 <div class="meta-bar">
-                    <div><span class="meta-lbl">${labels.academicYear}:</span> ${yearLabel || '—'}</div>
+                    <div><span class="meta-lbl">${labels.academicYear}:</span> ${yearLabel || 'â€”'}</div>
                     <div><span class="meta-lbl">${labels.date}:</span> ${nowLabel}</div>
                 </div>
 
@@ -825,12 +825,12 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
 
                 <div class="main-grid">
                     <div class="info-box">
-                        <div class="row"><div class="lbl">${labels.studentName}</div><div class="val">${c.fullName || '—'}</div></div>
-                        <div class="row"><div class="lbl">${labels.classLabel}</div><div class="val">${c.classLabel || '—'}</div></div>
+                        <div class="row"><div class="lbl">${labels.studentName}</div><div class="val">${c.fullName || 'â€”'}</div></div>
+                        <div class="row"><div class="lbl">${labels.classLabel}</div><div class="val">${c.classLabel || 'â€”'}</div></div>
                         <div class="row"><div class="lbl">${labels.shift}</div><div class="val">${(typeof c.shift === 'string' ? c.shift : shiftToLabel(c.shift)) || 'MAIN'}</div></div>
-                        <div class="row"><div class="lbl">${labels.id}</div><div class="val" style="font-family:monospace">${c.studentId || '—'}</div></div>
-                        <div class="row"><div class="lbl">${labels.room}</div><div class="val">${c.room || '—'}</div></div>
-                        <div class="row"><div class="lbl">${labels.hall}</div><div class="val">${c.hall || '—'}</div></div>
+                        <div class="row"><div class="lbl">${labels.id}</div><div class="val" style="font-family:monospace">${c.studentId || 'â€”'}</div></div>
+                        <div class="row"><div class="lbl">${labels.room}</div><div class="val">${c.room || 'â€”'}</div></div>
+                        <div class="row"><div class="lbl">${labels.hall}</div><div class="val">${c.hall || 'â€”'}</div></div>
                     </div>
 
                     <div class="photo-box">
@@ -1094,7 +1094,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
             loading={loading}
             primaryActionLabel={tr('finance.printModals.actions.print', { defaultValue: 'Print' })}
             closeLabel={tr('finance.printModals.actions.close', { defaultValue: 'Close' })}
-            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generating…' })}
+            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generatingâ€¦' })}
         >
             <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
@@ -1126,7 +1126,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                         onChange={setSelectedCategory}
                         options={(amountTypes || []).map((t) => ({ value: t?._id, label: t?.name }))}
                         placeholder={tr('finance.printModals.common.placeholders.allFeeTypes', { defaultValue: 'All Fee Types' })}
-                        searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Search…' })}
+                        searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Searchâ€¦' })}
                         maxVisible={7}
                     />
                 </div>
@@ -1163,7 +1163,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
                             searchable
                             maxVisible={7}
                             placeholder={tr('finance.printModals.common.placeholders.campusWide', { defaultValue: 'Campus Wide (Default)' })}
-                            searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Search…' })}
+                            searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Searchâ€¦' })}
                             className="h-11 font-bold"
                         />
                     </div>
@@ -1236,7 +1236,7 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
             loading={loading}
             primaryActionLabel={tr('finance.printModals.actions.print', { defaultValue: 'Print' })}
             closeLabel={tr('finance.printModals.actions.close', { defaultValue: 'Close' })}
-            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generating…' })}
+            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generatingâ€¦' })}
         >
             <div className="space-y-5">
                 <div className="grid grid-cols-2 gap-4">
@@ -1372,7 +1372,7 @@ export const PrintPassCardModal = ({ onClose }) => {
             loading={loading}
             primaryActionLabel={tr('finance.printModals.actions.print', { defaultValue: 'Print' })}
             closeLabel={tr('finance.printModals.actions.close', { defaultValue: 'Close' })}
-            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generating…' })}
+            generatingLabel={tr('finance.printModals.actions.generating', { defaultValue: 'Generatingâ€¦' })}
         >
             <div className="space-y-5">
                 <div className="space-y-1.5">
@@ -1414,7 +1414,7 @@ export const PrintPassCardModal = ({ onClose }) => {
                             searchable
                             maxVisible={7}
                             placeholder={tr('finance.printModals.common.placeholders.allClasses', { defaultValue: 'All Classes' })}
-                            searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Search…' })}
+                            searchPlaceholder={tr('finance.printModals.common.placeholders.search', { defaultValue: 'Searchâ€¦' })}
                             className="h-11 font-bold"
                         />
                     </div>

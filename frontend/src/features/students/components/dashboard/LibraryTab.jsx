@@ -2,7 +2,7 @@ import React from 'react';
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 export default function LibraryTab() {
   const { t } = useI18n();

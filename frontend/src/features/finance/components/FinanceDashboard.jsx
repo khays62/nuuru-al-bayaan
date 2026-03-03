@@ -5,7 +5,7 @@ import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRi
 import financeService from '../api/finance';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import Alert from '../../../shared/components/ui/Alert.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
     PieChart, Pie, Cell, BarChart, Bar, Legend
@@ -382,13 +382,13 @@ export default function FinanceDashboard() {
                         renderCell={(row, col) => {
                             switch (col.key) {
                                 case 'student':
-                                    return `${row?.student?.firstName || ''} ${row?.student?.lastName || ''}`.trim() || '—';
+                                    return `${row?.student?.firstName || ''} ${row?.student?.lastName || ''}`.trim() || 'â€”';
                                 case 'amount':
                                     return formatCurrency(row?.amount || 0);
                                 case 'method':
-                                    return row?.method || '—';
+                                    return row?.method || 'â€”';
                                 case 'date':
-                                    return row?.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—';
+                                    return row?.createdAt ? new Date(row.createdAt).toLocaleDateString() : 'â€”';
                                 case 'status':
                                     return (
                                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-(--nb-color-accent-50) text-(--nb-color-brand) border border-(--nb-color-accent-100)">
@@ -396,7 +396,7 @@ export default function FinanceDashboard() {
                                         </span>
                                     );
                                 default:
-                                    return '—';
+                                    return 'â€”';
                             }
                         }}
                     />

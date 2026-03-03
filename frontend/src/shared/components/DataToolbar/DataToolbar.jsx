@@ -4,7 +4,7 @@ import React from 'react';
 import ActionButton from '../ui/ActionButton';
 import { RotateCcw } from 'lucide-react';
 import Card from '../ui/Card.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function DataToolbar({
   searchSlot,

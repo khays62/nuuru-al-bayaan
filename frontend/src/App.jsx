@@ -6,7 +6,7 @@ import { navItems } from './config/navigation'; // Import from the new central c
 import { useAuth } from './auth/AuthContext';
 import ForcePasswordChangeModal from './auth/components/ForcePasswordChangeModal';
 import TeacherDashboardPrefetcher from './features/teachers/components/dashboard/TeacherDashboardPrefetcher.jsx';
-import { useI18n } from './i18n/I18nProvider';
+import { useI18n } from './i18n/useI18n';
 import { AiChatProvider } from './shared/components/ai/AiChatContext.jsx';
 import AiChatPanel from './shared/components/ai/AiChatPanel.jsx';
 

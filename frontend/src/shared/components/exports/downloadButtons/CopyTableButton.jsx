@@ -3,7 +3,7 @@ import { Copy } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToClipboard } from '../../../../utils/exportTable';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 export default function CopyTableButton({ getPayload, disabled = false, className = '', variant = 'outline' }) {
   const { t } = useI18n();

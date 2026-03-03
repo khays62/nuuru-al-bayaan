@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Megaphone } from 'lucide-react';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 const fmt = (n) => {
     const v = Number(n || 0);
@@ -10,7 +10,7 @@ const fmt = (n) => {
 
 const fmtOrDash = (n) => {
     const v = Number(n);
-    if (!Number.isFinite(v)) return '—';
+    if (!Number.isFinite(v)) return 'â€”';
     return fmt(v);
 };
 
@@ -186,7 +186,7 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
                     <div>
                         {bucketLabel(range)}: <span className="font-semibold text-white">{fmt(selectedTotal)}</span>
                     </div>
-                    <div className="text-white/60">•</div>
+                    <div className="text-white/60">â€¢</div>
                     <div>
                         {t('dashboard.cards.announcementsMix.labels.allCreated')}: <span className="font-semibold text-white">{fmt(allTimeCreatedTotal)}</span>
                     </div>

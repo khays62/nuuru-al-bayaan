@@ -1,5 +1,5 @@
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function AttendanceFooter({
   canAct,
@@ -68,7 +68,7 @@ export default function AttendanceFooter({
                       : t('attendance.marking.modes.perLesson'),
                   })
                   : t('attendance.marking.footer.notSavedYet'))}
-            {!dirty && selectionHasRecords && lastSavedAt ? <span className="text-(--nb-color-muted)"> • {new Date(lastSavedAt).toLocaleTimeString()}</span> : null}
+            {!dirty && selectionHasRecords && lastSavedAt ? <span className="text-(--nb-color-muted)"> â€¢ {new Date(lastSavedAt).toLocaleTimeString()}</span> : null}
           </div>
         )}
       </div>

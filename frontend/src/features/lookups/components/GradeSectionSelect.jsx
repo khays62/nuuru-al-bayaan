@@ -4,7 +4,7 @@ import { listGradeSections } from '../../grades/api/gradeSections';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import toast from 'react-hot-toast';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 // AY-agnostic: GradeSection is reusable across years; filter by Grade + Shift only.
 export default function GradeSectionSelect({
@@ -105,9 +105,9 @@ export default function GradeSectionSelect({
         onChange={(v) => onChange?.(v)}
         disabled={disabled || loading || !gradeId || !shiftId}
         options={options}
-        placeholder={loading ? t('common.loading', { defaultValue: 'Loading…' }) : (placeholder ?? t('common.filters.any', { defaultValue: 'Any' }))}
+        placeholder={loading ? t('common.loading', { defaultValue: 'Loadingâ€¦' }) : (placeholder ?? t('common.filters.any', { defaultValue: 'Any' }))}
         maxVisible={maxVisible}
-        searchPlaceholder={searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' })}
+        searchPlaceholder={searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' })}
         className={className}
         buttonProps={rest}
       />
@@ -136,7 +136,7 @@ export default function GradeSectionSelect({
       onChange={(v) => onChange?.(v)}
       disabled={disabled || loading || !gradeId || !shiftId}
       options={options}
-      placeholder={loading ? t('common.loading', { defaultValue: 'Loading…' }) : (placeholder ?? t('common.filters.any', { defaultValue: 'Any' }))}
+      placeholder={loading ? t('common.loading', { defaultValue: 'Loadingâ€¦' }) : (placeholder ?? t('common.filters.any', { defaultValue: 'Any' }))}
       className={className}
       maxHeightClassName="max-h-72"
       buttonProps={rest}

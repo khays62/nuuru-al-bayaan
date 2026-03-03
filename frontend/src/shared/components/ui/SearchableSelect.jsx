@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function SearchableSelect({
   value,
@@ -26,11 +26,11 @@ export default function SearchableSelect({
   const [query, setQuery] = useState('');
   const rootRef = useRef(null);
 
-  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
+  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Selectâ€¦' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' });
   const resolvedClearLabel = clearLabel ?? t('common.actions.clear', { defaultValue: 'Clear' });
   const resolvedNoOptionsFound = t('common.select.noOptionsFound', { defaultValue: 'No options found.' });
-  const resolvedTypeToSearchMore = t('common.select.typeToSearchMore', { defaultValue: 'Type to search more…' });
+  const resolvedTypeToSearchMore = t('common.select.typeToSearchMore', { defaultValue: 'Type to search moreâ€¦' });
 
   useEffect(() => {
     const onDocClick = (e) => {

@@ -19,7 +19,7 @@ import CopyTableButton from '../../../shared/components/exports/downloadButtons/
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 import GradeSetupForm from '../components/GradeSetupForm.jsx';
 
@@ -205,7 +205,7 @@ export default function GradesSetupPage() {
       sheetName: t('setup.grades.sheetName', { defaultValue: 'Grades' }),
       title: '',
       subtitle: t('common.export.subtitle', {
-        defaultValue: 'Total: {{count}} • Generated: {{date}}',
+        defaultValue: 'Total: {{count}} â€¢ Generated: {{date}}',
         count: sorted.length,
         date: new Date().toLocaleString(),
       }),

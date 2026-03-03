@@ -9,7 +9,7 @@ import CohortSelect from '../../lookups/components/CohortSelect';
 import Button from '../../../shared/components/ui/Button';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import TimingSelector from './TimingSelector.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function PromotionsToolbar({
   timing,
@@ -45,7 +45,7 @@ export default function PromotionsToolbar({
               placeholder={t('common.filters.academicYearShort', { defaultValue: 'AY' })}
               searchable
               maxVisible={5}
-              searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+              searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
             />
           </FilterItem>
 
@@ -88,7 +88,7 @@ export default function PromotionsToolbar({
               placeholder={t('common.filters.cohort', { defaultValue: 'Cohort' })}
               searchable
               maxVisible={5}
-              searchPlaceholder={t('common.searchPlaceholders.cohorts', { defaultValue: 'Search cohorts…' })}
+              searchPlaceholder={t('common.searchPlaceholders.cohorts', { defaultValue: 'Search cohortsâ€¦' })}
             />
           </FilterItem>
         </FilterRow>

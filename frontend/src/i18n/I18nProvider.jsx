@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import React from 'react';
 import i18n, {
   initI18n,
@@ -8,7 +7,7 @@ import i18n, {
   setStoredLanguage,
 } from './i18n';
 
-const I18nContext = React.createContext(null);
+import { I18nContext } from './I18nContext';
 
 export function I18nProvider({ children }) {
   // Ensure i18n is initialized exactly once.
@@ -45,17 +44,4 @@ export function I18nProvider({ children }) {
   }, [lang, setLang]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
-}
-
-export function useI18n() {
-  const ctx = React.useContext(I18nContext);
-  if (!ctx) {
-    return {
-      lang: String(i18n.language || initialLanguage),
-      isRTL: isRtlLanguage(i18n.language || initialLanguage),
-      setLang: () => {},
-      t: (key, options) => i18n.t(key, options),
-    };
-  }
-  return ctx;
 }

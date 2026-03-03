@@ -38,7 +38,7 @@ import { useClientSort } from '../../../shared/hooks/useClientSort';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 import { useAuth } from '../../../auth/AuthContext';
 import { useDebounce } from '../../../hooks/useDebounce';
@@ -469,7 +469,7 @@ export default function StudentPage() {
             filename: t('students.export.filename'),
             sheetName: t('students.export.sheetName'),
             title: '',
-            subtitle: subtitleParts.join(' • '),
+            subtitle: subtitleParts.join(' â€¢ '),
             headerImageSrc: headerImg,
             headers,
             rows,

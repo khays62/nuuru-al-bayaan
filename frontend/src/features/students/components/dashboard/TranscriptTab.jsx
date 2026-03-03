@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 export default function TranscriptTab() {
   const { studentId: paramStudentId } = useParams();
@@ -176,14 +176,14 @@ export default function TranscriptTab() {
                   <div className="text-sm">
                     <span className="font-semibold text-(--nb-color-fg)">{t('students.table.columns.academicYear')}:</span>{' '}
                     <span className="text-(--nb-color-fg)">{en.academicYear?.yearName || '-'}</span>
-                    <span className="mx-2 text-(--nb-color-muted)">•</span>
+                    <span className="mx-2 text-(--nb-color-muted)">â€¢</span>
                     <span className="font-semibold text-(--nb-color-fg)">{t('students.table.columns.grade')}:</span>{' '}
                     <span className="text-(--nb-color-fg)">{en.grade?.gradeName || en.gradeSection?.grade?.gradeName || '-'}</span>
-                    <span className="mx-2 text-(--nb-color-muted)">•</span>
+                    <span className="mx-2 text-(--nb-color-muted)">â€¢</span>
                     <span className="font-semibold text-(--nb-color-fg)">{t('students.table.columns.section')}:</span>{' '}
                     <span className="text-(--nb-color-fg)">{en.gradeSection?.section || '-'}</span>
                     {en.gradeSection?.shift && (<>
-                      <span className="mx-2 text-(--nb-color-muted)">•</span>
+                      <span className="mx-2 text-(--nb-color-muted)">â€¢</span>
                       <span className="font-semibold text-(--nb-color-fg)">{t('students.table.columns.shift')}:</span>{' '}
                       <span className="text-(--nb-color-fg)">{en.shift?.shiftName || en.gradeSection?.shift?.shiftName || en.gradeSection?.shift || '-'}</span>
                     </>)}
@@ -305,7 +305,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
     };
   }, [open]);
 
-  // Mobile-only: haddii user uu ka doorto overflow (⋯), ka dhig id-ga la doortay inuu galo primary (swap la samee last primary)
+  // Mobile-only: haddii user uu ka doorto overflow (â‹¯), ka dhig id-ga la doortay inuu galo primary (swap la samee last primary)
   const promote = (id) => {
     setOrder(prev => {
       const idx = prev.indexOf(id);
@@ -335,7 +335,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
   };
 
   const handleSelectMobile = (id) => {
-    // Mobile: haddii uu ka yimid overflow (⋯), samee swap
+    // Mobile: haddii uu ka yimid overflow (â‹¯), samee swap
     if (effectiveOverflow.includes(id)) promote(id);
     setActiveEnrId(id);
     setActiveTab(id);
@@ -360,13 +360,13 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
               key={id}
               onClick={() => handleSelectDesktop(id)}
               className={`${active ? 'border-b-2 border-(--nb-color-brand) text-(--nb-color-brand)' : 'text-(--nb-color-muted) hover:text-(--nb-color-text)'} pb-2 px-1 text-sm whitespace-nowrap`}
-              title={`${en.academicYear?.yearName || ''} • ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} • ${t('students.table.columns.section')} ${en.gradeSection?.section || ''}`}
+              title={`${en.academicYear?.yearName || ''} â€¢ ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} â€¢ ${t('students.table.columns.section')} ${en.gradeSection?.section || ''}`}
             >{label}</button>
           );
         })}
       </div>
 
-      {/* Mobile: primary + overflow menu (⋯) */}
+      {/* Mobile: primary + overflow menu (â‹¯) */}
       <div className="flex md:hidden items-center justify-between border-b border-(--nb-color-border)">
         <div className="flex items-center gap-3 flex-1 min-w-0 overflow-x-auto">
           <button
@@ -383,7 +383,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
                 key={id}
                 onClick={() => handleSelectMobile(id)}
                 className={`${active ? 'border-b-2 border-(--nb-color-brand) text-(--nb-color-brand)' : 'text-(--nb-color-muted) hover:text-(--nb-color-text)'} pb-2 px-1 text-xs whitespace-nowrap shrink-0`}
-                title={`${en.academicYear?.yearName || ''} • ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} • ${t('students.table.columns.section')} ${en.gradeSection?.section || ''}`}
+                title={`${en.academicYear?.yearName || ''} â€¢ ${en.grade?.gradeName || en.gradeSection?.grade?.gradeName || ''} â€¢ ${t('students.table.columns.section')} ${en.gradeSection?.section || ''}`}
               >{label}</button>
             );
           })}
@@ -400,7 +400,7 @@ function LevelsTabs({ enrollments, activeTab, activeEnrId, setActiveTab, setActi
               title={t('students.transcriptTab.moreLevelsTooltip')}
               ref={btnRef}
             >
-              <span className="font-semibold tracking-wider">⋯</span>
+              <span className="font-semibold tracking-wider">â‹¯</span>
             </button>
             {open && (
               <FixedMenu btnRef={btnRef} setMenuPos={setMenuPos} menuPos={menuPos}>

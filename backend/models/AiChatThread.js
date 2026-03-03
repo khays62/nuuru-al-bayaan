@@ -17,6 +17,27 @@ const messageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const threadSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: false,
+      trim: true,
+      maxlength: 80,
+      default: 'New chat',
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    messages: {
+      type: [messageSchema],
+      default: [],
+    },
+  },
+  { timestamps: true }
+);
+
 const aiChatThreadSchema = new mongoose.Schema(
   {
     principalModel: {
@@ -35,6 +56,20 @@ const aiChatThreadSchema = new mongoose.Schema(
       trim: true,
       maxlength: 8,
     },
+
+    // Active conversation pointer (subdocument _id).
+    activeThreadId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+    },
+
+    // Conversations for this principal.
+    threads: {
+      type: [threadSchema],
+      default: [],
+    },
+
+    // Legacy single-thread storage (kept for smooth upgrade).
     messages: {
       type: [messageSchema],
       default: [],

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Banknote, ReceiptText, Wallet, Briefcase, LayoutDashboard } from 'lucide-react';
 
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 import FinanceDashboard from '../components/FinanceDashboard.jsx';
 import AccountManagement from '../components/AccountManagement.jsx';
@@ -14,7 +14,7 @@ export default function FinancePage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { t } = useI18n();
 
-  // Realtime → Events → Invalidate Queries → UI updated (Finance)
+  // Realtime â†’ Events â†’ Invalidate Queries â†’ UI updated (Finance)
   useFinanceRealtimeInvalidation();
 
   const tabs = useMemo(() => ([

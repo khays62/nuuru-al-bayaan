@@ -20,7 +20,7 @@ import { listGradeSections } from '../../grades/api/gradeSections';
 import { getDashboardSummary } from '../services/dashboardApi';
 import { dashboardKeys } from '../services/queryKeys';
 import { getSessionSignal } from '../../../api/sessionAbort';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
     return (
@@ -449,12 +449,12 @@ export default function AttendanceChartsCard() {
 
     const exportFilterSummary = useMemo(() => {
         const parts = [];
-        parts.push(`${t('common.range.title')}: ${from} → ${to}`);
+        parts.push(`${t('common.range.title')}: ${from} â†’ ${to}`);
         if (academicYearId) parts.push(`${t('common.filters.academicYearShort')}: ${yearLabel || t('common.selected')}`);
         if (gradeId) parts.push(`${t('common.filters.level')}: ${gradeLabel || t('common.selected')}`);
         if (shiftId) parts.push(`${t('common.filters.shift')}: ${shiftLabel || t('common.selected')}`);
         if (gradeSectionId) parts.push(`${t('common.filters.section')}: ${sectionLabel || t('common.selected')}`);
-        return parts.join(' • ');
+        return parts.join(' â€¢ ');
     }, [t, from, to, academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel]);
 
     if (shouldHide) return null;
@@ -590,7 +590,7 @@ export default function AttendanceChartsCard() {
                             />
                         </div>
                         <div className="text-xs text-gray-700">
-                            <span className="font-medium">{t('dashboard.cards.attendance.kpis.presentPct')}</span>: {Number(performanceAgg.presentPct || 0).toFixed(1)}% •{' '}
+                            <span className="font-medium">{t('dashboard.cards.attendance.kpis.presentPct')}</span>: {Number(performanceAgg.presentPct || 0).toFixed(1)}% â€¢{' '}
                             <span className="font-medium">{t('dashboard.cards.attendance.kpis.days')}</span>: {trend.length}
                         </div>
                     </div>

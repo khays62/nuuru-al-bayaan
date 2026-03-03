@@ -6,6 +6,7 @@ import { hasPermission } from '../middleware/checkPermission.js';
 
 import Admin from '../models/Admin.js';
 import User from '../models/User.js';
+import AcademicYear from '../models/AcademicYear.js';
 import Student from '../models/Student.js';
 import Teacher from '../models/Teacher.js';
 import Enrollment from '../models/Enrollment.js';
@@ -22,10 +23,17 @@ import AttendanceRecord from '../models/AttendanceRecord.js';
 import TransferLog from '../models/TransferLog.js';
 import AuditLog from '../models/AuditLog.js';
 import Announcement from '../models/Announcement.js';
+import Cohort from '../models/Cohort.js';
 
 import Timetable from '../models/Timetable.js';
 import Expense from '../models/Expense.js';
 import FeeInvoice from '../models/FeeInvoice.js';
+import FeeTransaction from '../models/FeeTransaction.js';
+import Account from '../models/Account.js';
+import Payroll from '../models/Payroll.js';
+import Donation from '../models/Donation.js';
+import Donor from '../models/Donor.js';
+import FinanceCategory from '../models/FinanceCategory.js';
 
 class AiToolError extends Error {
   constructor(message, status = 403) {
@@ -353,16 +361,69 @@ async function toolDashboardSummary({ user }) {
   const allowTeachers = isRole(user, 'admin') || hasPermission(user, 'teachers', 'view');
   const allowExams = isRole(user, 'admin') || hasPermission(user, 'exams', 'view');
 
-  const [studentsCount, teachersCount, examsCount] = await Promise.all([
+  const allowAnnouncements = isRole(user, 'admin') || staffHasAny(user, 'announcements', ['add', 'edit', 'delete', 'full']);
+  const allowGrades = isRole(user, 'admin') || hasPermission(user, 'grades', 'view');
+  const allowSubjects = isRole(user, 'admin') || hasPermission(user, 'subjects', 'view');
+  const allowCohorts = isRole(user, 'admin') || hasPermission(user, 'cohorts', 'view');
+  const allowClasses = isRole(user, 'admin') || staffHasAnyOfModules(user, ['students', 'timetable', 'attendance'], ['view', 'full']);
+  const allowStaffUsers = isRole(user, 'admin');
+
+  const allowSubjectsPerLevel = Boolean(allowGrades && allowSubjects && allowClasses);
+
+  const [
+    studentsCount,
+    teachersCount,
+    examsCount,
+    announcementsCount,
+    gradesCount,
+    subjectsCount,
+    cohortsCount,
+    classesCount,
+    staffUsersCount,
+    subjectsPerLevel,
+  ] = await Promise.all([
     allowStudents ? Student.countDocuments({ status: 'Active' }) : Promise.resolve(null),
     allowTeachers ? Teacher.countDocuments({ status: 'active' }) : Promise.resolve(null),
     allowExams ? Exam.countDocuments({}) : Promise.resolve(null),
+    allowAnnouncements ? Announcement.countDocuments({}) : Promise.resolve(null),
+    allowGrades ? Grade.countDocuments({}) : Promise.resolve(null),
+    allowSubjects ? Subject.countDocuments({}) : Promise.resolve(null),
+    allowCohorts ? Cohort.countDocuments({}) : Promise.resolve(null),
+    allowClasses ? GradeSection.countDocuments({}) : Promise.resolve(null),
+    allowStaffUsers ? User.countDocuments({ role: 'staff', status: 'active' }) : Promise.resolve(null),
+    allowSubjectsPerLevel
+      ? (async () => {
+        const agg = await GradeSection.aggregate([
+          { $unwind: '$subjects' },
+          { $group: { _id: { grade: '$grade', subject: '$subjects' } } },
+          { $group: { _id: '$_id.grade', subjectsCount: { $sum: 1 } } },
+        ]);
+
+        const byGradeId = new Map(agg.map((x) => [String(x._id), Number(x.subjectsCount || 0)]));
+        const grades = await Grade.find({}).select('gradeName').sort({ gradeName: 1 }).lean();
+
+        return Array.isArray(grades)
+          ? grades.map((g) => ({
+            gradeId: String(g._id),
+            gradeName: g.gradeName,
+            subjectsCount: byGradeId.get(String(g._id)) || 0,
+          }))
+          : [];
+      })()
+      : Promise.resolve(null),
   ]);
 
   return {
     studentsActive: studentsCount,
     teachersActive: teachersCount,
     examsTotal: examsCount,
+    announcementsTotal: announcementsCount,
+    levelsTotal: gradesCount,
+    subjectsTotal: subjectsCount,
+    cohortsTotal: cohortsCount,
+    classesTotal: classesCount,
+    staffActive: staffUsersCount,
+    subjectsPerLevel,
     scope: 'admin_staff',
   };
 }
@@ -443,6 +504,134 @@ async function toolStudentsList({ user, args }) {
       status: s.status,
     })),
     note: 'Use gradeSectionId for class roster',
+  };
+}
+
+const argsAcademicYearsList = z
+  .object({
+    q: z.string().trim().max(40).optional(),
+    limit: z.number().int().min(1).max(20).optional(),
+  })
+  .strip();
+
+async function toolAcademicYearsList({ user, args }) {
+  requireAuthUser(user);
+  const limit = clampLimit(args?.limit, 20, 10);
+  const q = String(args?.q || '').trim();
+  const safe = q ? q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+
+  const filter = {};
+  if (safe) filter.yearName = { $regex: safe, $options: 'i' };
+
+  const rows = await AcademicYear.find(filter)
+    .select('yearName createdAt')
+    .sort({ yearName: -1, _id: -1 })
+    .limit(limit)
+    .lean();
+
+  return {
+    scope: 'academic_years_list',
+    q: q || null,
+    returned: rows.length,
+    items: rows.map((y) => ({ academicYearId: String(y._id), yearName: y.yearName })),
+  };
+}
+
+const argsGradeSectionsList = z
+  .object({
+    q: z.string().trim().max(80).optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+  })
+  .strip();
+
+async function toolGradeSectionsList({ user, args }) {
+  requireAuthUser(user);
+  if (!isStaffOrAdmin(user)) throw new AiToolError('Forbidden', 403);
+  if (
+    isRole(user, 'staff')
+    && !staffHasAnyOfModules(user, ['students', 'timetable', 'attendance'], ['view', 'full', 'add', 'edit', 'delete', 'print', 'download'])
+  ) {
+    throw new AiToolError('Missing permission: students.view', 403);
+  }
+
+  const limit = clampLimit(args?.limit, 50, 30);
+  const q = String(args?.q || '').trim();
+  const safe = q ? q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+
+  const filter = {};
+  if (safe) {
+    // We filter after population since grade/shift are refs.
+    // Keep initial query wide and limit on output.
+  }
+
+  const rows = await GradeSection.find(filter)
+    .select('section grade shift')
+    .populate([{ path: 'grade', select: 'gradeName' }, { path: 'shift', select: 'shiftName' }])
+    .sort({ section: 1, _id: 1 })
+    .limit(500)
+    .lean();
+
+  let items = rows.map((gs) => ({
+    gradeSectionId: String(gs._id),
+    grade: gs.grade?.gradeName || null,
+    shift: gs.shift?.shiftName || null,
+    section: gs.section || null,
+  }));
+
+  if (safe) {
+    const re = new RegExp(safe, 'i');
+    items = items.filter((it) => re.test(String(it.grade || '')) || re.test(String(it.shift || '')) || re.test(String(it.section || '')));
+  }
+
+  items = items.slice(0, limit);
+
+  return {
+    scope: 'grade_sections_list',
+    q: q || null,
+    returned: items.length,
+    items,
+    note: rows.length > items.length ? 'List truncated by limit' : '',
+  };
+}
+
+const argsSubjectsList = z
+  .object({
+    q: z.string().trim().max(80).optional(),
+    limit: z.number().int().min(1).max(80).optional(),
+  })
+  .strip();
+
+async function toolSubjectsList({ user, args }) {
+  requireAuthUser(user);
+  if (!isStaffOrAdmin(user)) throw new AiToolError('Forbidden', 403);
+  if (isRole(user, 'staff') && !staffHasAnyOfModules(user, ['subjects', 'timetable', 'results', 'exams', 'transcript'], ['view', 'full', 'print', 'download'])) {
+    throw new AiToolError('Missing permission: subjects.view', 403);
+  }
+
+  const limit = clampLimit(args?.limit, 80, 40);
+  const q = String(args?.q || '').trim();
+  const safe = q ? q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+
+  const filter = {};
+  if (safe) {
+    filter.$or = [{ subjectName: { $regex: safe, $options: 'i' } }, { subjectCode: { $regex: safe, $options: 'i' } }];
+  }
+
+  const rows = await Subject.find(filter)
+    .select('subjectName subjectCode')
+    .sort({ subjectName: 1 })
+    .limit(limit)
+    .lean();
+
+  return {
+    scope: 'subjects_list',
+    q: q || null,
+    returned: rows.length,
+    items: rows.map((s) => ({
+      subjectId: String(s._id),
+      subjectName: s.subjectName || null,
+      subjectCode: s.subjectCode || null,
+    })),
   };
 }
 
@@ -1553,6 +1742,71 @@ async function toolStudentAttendanceSelfRangeSummary({ user, args }) {
   };
 }
 
+const argsStudentFeeInvoicesSelf = z
+  .object({
+    month: z.string().trim().regex(/^\d{4}-\d{2}$/).optional(),
+    limit: z.number().int().min(1).max(30).optional(),
+    includeItems: z.boolean().optional(),
+  })
+  .strip();
+
+async function toolStudentFeeInvoicesSelfSummary({ user, args }) {
+  requireAuthUser(user);
+  requireRole(user, ['student']);
+
+  const studentId = toId(user.studentRef);
+  if (!studentId) throw new AiToolError('Student profile not linked', 403);
+
+  const limit = clampLimit(args?.limit, 30, 12);
+  const includeItems = Boolean(args?.includeItems);
+
+  const q = { student: studentId };
+  if (args?.month) q.billingMonth = args.month;
+
+  const rows = await FeeInvoice.find(q)
+    .select(includeItems ? 'title billingMonth status amount paidAmount balance dueDate items discounts isWaived waiverReason isHormaris' : 'title billingMonth status amount paidAmount balance dueDate isWaived isHormaris')
+    .sort({ dueDate: -1, createdAt: -1, _id: -1 })
+    .limit(limit)
+    .lean();
+
+  const totals = rows.reduce(
+    (acc, inv) => {
+      acc.count += 1;
+      acc.totalAmount += Number(inv.amount || 0);
+      acc.totalPaidAmount += Number(inv.paidAmount || 0);
+      acc.totalBalance += Number(inv.balance || 0);
+      return acc;
+    },
+    { count: 0, totalAmount: 0, totalPaidAmount: 0, totalBalance: 0 }
+  );
+
+  return {
+    scope: 'student_fee_invoices_self_summary',
+    month: args?.month || null,
+    totals: {
+      count: Number(totals.count || 0),
+      totalAmount: Number(totals.totalAmount || 0),
+      totalPaidAmount: Number(totals.totalPaidAmount || 0),
+      totalBalance: Number(totals.totalBalance || 0),
+    },
+    returned: rows.length,
+    items: rows.map((inv) => ({
+      title: inv.title,
+      billingMonth: inv.billingMonth || null,
+      status: inv.status,
+      amount: Number(inv.amount || 0),
+      paidAmount: Number(inv.paidAmount || 0),
+      balance: Number(inv.balance || 0),
+      dueDate: inv.dueDate || null,
+      isWaived: Boolean(inv.isWaived),
+      isHormaris: Boolean(inv.isHormaris),
+      items: includeItems ? (inv.items || []).map((it) => ({ name: it.name, amount: Number(it.amount || 0) })) : undefined,
+      discounts: includeItems ? (inv.discounts || []).map((d) => ({ name: d.name, type: d.type, value: Number(d.value || 0), amountOff: Number(d.amountOff || 0) })) : undefined,
+    })),
+    note: rows.length >= limit ? 'List truncated by limit' : '',
+  };
+}
+
 const argsAttendanceClassRange = z.object({
   gradeSectionId: z.string().trim().min(1),
   from: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -1963,6 +2217,457 @@ async function toolFinanceUnpaidStudentsSummary({ user, args }) {
   };
 }
 
+const argsFinanceFeeTransactions = z
+  .object({
+    from: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    to: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    groupBy: z.enum(['transactionType', 'method', 'status', 'account']).optional(),
+  })
+  .strip();
+
+async function toolFinanceFeeTransactionsSummary({ user, args }) {
+  requireAuthUser(user);
+  if (!isStaffOrAdmin(user)) throw new AiToolError('Forbidden', 403);
+  if (isRole(user, 'staff') && !staffHasAnyOfModules(user, ['financeStudentReceipt', 'financeDashboard', 'financeAudit'], ['view', 'full'])) {
+    throw new AiToolError('Missing permission: financeStudentReceipt.view', 403);
+  }
+
+  const fromDt = parseISODateOnly(args.from);
+  const toDt = parseISODateOnly(args.to);
+  if (!fromDt || !toDt) throw new AiToolError('Invalid date range', 400);
+
+  const from = startOfDayUTC(fromDt);
+  const to = endOfDayUTC(toDt);
+  if (Number(from) > Number(to)) throw new AiToolError('Invalid date range (from > to)', 400);
+  enforceMaxRangeDays({ user, from, to });
+
+  const groupBy = String(args?.groupBy || 'transactionType');
+  const match = { date: { $gte: from, $lte: to } };
+
+  const groupExpr =
+    groupBy === 'method'
+      ? '$method'
+      : groupBy === 'status'
+        ? '$status'
+        : groupBy === 'account'
+          ? '$account'
+          : '$transactionType';
+
+  const [agg, totalsAgg] = await Promise.all([
+    FeeTransaction.aggregate([
+      { $match: match },
+      { $group: { _id: groupExpr, totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } },
+      { $sort: { totalAmount: -1, count: -1 } },
+    ]),
+    FeeTransaction.aggregate([
+      { $match: match },
+      { $group: { _id: null, totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const totals = totalsAgg?.[0] || { totalAmount: 0, count: 0 };
+
+  let breakdown = agg.map((r) => ({ key: r._id ?? 'Unknown', totalAmount: Number(r.totalAmount || 0), count: Number(r.count || 0) }));
+  if (groupBy === 'account') {
+    const ids = breakdown.map((b) => String(b.key || '')).filter((x) => mongoose.isValidObjectId(x));
+    const accounts = await Account.find({ _id: { $in: ids } }).select('name type institution branch currency status').lean();
+    const byId = new Map(accounts.map((a) => [String(a._id), a]));
+    breakdown = breakdown.map((b) => {
+      const a = byId.get(String(b.key || ''));
+      return {
+        ...b,
+        key: a ? { id: String(a._id), name: a.name, type: a.type, institution: a.institution, branch: a.branch, currency: a.currency, status: a.status } : null,
+      };
+    });
+  }
+
+  return {
+    scope: 'finance_fee_transactions_summary',
+    from: args.from,
+    to: args.to,
+    groupBy,
+    totals: { totalAmount: Number(totals.totalAmount || 0), count: Number(totals.count || 0) },
+    breakdown,
+  };
+}
+
+const argsFinanceAccountsBalances = z
+  .object({
+    status: z.enum(['active', 'inactive']).optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+  })
+  .strip();
+
+async function toolFinanceAccountsBalances({ user, args }) {
+  requireAuthUser(user);
+  if (!isStaffOrAdmin(user)) throw new AiToolError('Forbidden', 403);
+  if (isRole(user, 'staff') && !staffHasAnyOfModules(user, ['financeAccountsOverview', 'financeAccountsLedger', 'financeDashboard', 'financeAudit'], ['view', 'full'])) {
+    throw new AiToolError('Missing permission: financeAccountsOverview.view', 403);
+  }
+
+  const limit = clampLimit(args?.limit, 50, 20);
+  const status = args?.status ? String(args.status) : 'active';
+
+  const rows = await Account.find({ status })
+    .select('name type institution branch accountNumber balance currency status')
+    .sort({ balance: -1, name: 1 })
+    .limit(limit)
+    .lean();
+
+  const totalBalance = rows.reduce((sum, a) => sum + Number(a.balance || 0), 0);
+
+  return {
+    scope: 'finance_accounts_balances',
+    status,
+    returned: rows.length,
+    totals: { totalBalance: Number(totalBalance || 0) },
+    items: rows.map((a) => ({
+      name: a.name,
+      type: a.type,
+      institution: a.institution,
+      branch: a.branch,
+      accountNumber: a.accountNumber,
+      balance: Number(a.balance || 0),
+      currency: a.currency,
+      status: a.status,
+    })),
+  };
+}
+
+const argsFinanceFoundationDonations = z
+  .object({
+    from: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    to: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+    groupBy: z.enum(['method', 'project', 'account']).optional(),
+    limit: z.number().int().min(1).max(30).optional(),
+    includeTopDonors: z.boolean().optional(),
+  })
+  .strip();
+
+async function toolFinanceFoundationDonationsSummary({ user, args }) {
+  requireAuthUser(user);
+  if (!isStaffOrAdmin(user)) throw new AiToolError('Forbidden', 403);
+  if (isRole(user, 'staff') && !staffHasAny(user, 'financeFoundation', ['view', 'add', 'edit', 'delete', 'full'])) {
+    throw new AiToolError('Missing permission: financeFoundation.view', 403);
+  }
+
+  const fromDt = parseISODateOnly(args.from);
+  const toDt = parseISODateOnly(args.to);
+  if (!fromDt || !toDt) throw new AiToolError('Invalid date range', 400);
+  const from = startOfDayUTC(fromDt);
+  const to = endOfDayUTC(toDt);
+  if (Number(from) > Number(to)) throw new AiToolError('Invalid date range (from > to)', 400);
+  enforceMaxRangeDays({ user, from, to });
+
+  const groupBy = String(args?.groupBy || 'method');
+  const limit = clampLimit(args?.limit, 30, 10);
+  const includeTopDonors = Boolean(args?.includeTopDonors);
+
+  const match = { date: { $gte: from, $lte: to } };
+
+  const groupExpr = groupBy === 'project' ? '$project' : groupBy === 'account' ? '$account' : '$method';
+
+  const [agg, totalsAgg] = await Promise.all([
+    Donation.aggregate([
+      { $match: match },
+      { $group: { _id: groupExpr, totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } },
+      { $sort: { totalAmount: -1, count: -1 } },
+    ]),
+    Donation.aggregate([
+      { $match: match },
+      { $group: { _id: null, totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const totals = totalsAgg?.[0] || { totalAmount: 0, count: 0 };
+
+  let breakdown = agg.map((r) => ({ key: r._id ?? 'Unknown', totalAmount: Number(r.totalAmount || 0), count: Number(r.count || 0) }));
+
+  if (groupBy === 'account') {
+    const ids = breakdown.map((b) => String(b.key || '')).filter((x) => mongoose.isValidObjectId(x));
+    const accounts = await Account.find({ _id: { $in: ids } }).select('name type institution branch currency status').lean();
+    const byId = new Map(accounts.map((a) => [String(a._id), a]));
+    breakdown = breakdown.map((b) => {
+      const a = byId.get(String(b.key || ''));
+      return {
+        ...b,
+        key: a ? { id: String(a._id), name: a.name, type: a.type, institution: a.institution, branch: a.branch, currency: a.currency, status: a.status } : null,
+      };
+    });
+  }
+
+  if (groupBy === 'project') {
+    const ids = breakdown.map((b) => String(b.key || '')).filter((x) => mongoose.isValidObjectId(x));
+    const cats = await FinanceCategory.find({ _id: { $in: ids } }).select('name type status').lean();
+    const byId = new Map(cats.map((c) => [String(c._id), c]));
+    breakdown = breakdown.map((b) => {
+      const c = byId.get(String(b.key || ''));
+      return {
+        ...b,
+        key: c ? { id: String(c._id), name: c.name, type: c.type, status: c.status } : null,
+      };
+    });
+  }
+
+  let topDonors = [];
+  if (includeTopDonors) {
+    const top = await Donation.aggregate([
+      { $match: match },
+      { $group: { _id: '$donor', totalAmount: { $sum: '$amount' }, count: { $sum: 1 } } },
+      { $sort: { totalAmount: -1, count: -1 } },
+      { $limit: limit },
+    ]);
+
+    const donorIds = top.map((t) => String(t._id || '')).filter((x) => mongoose.isValidObjectId(x));
+    const donors = await Donor.find({ _id: { $in: donorIds } }).select('name type status').lean();
+    const byId = new Map(donors.map((d) => [String(d._id), d]));
+    topDonors = top.map((t) => {
+      const d = byId.get(String(t._id || ''));
+      return {
+        donor: d ? { id: String(d._id), name: d.name, type: d.type, status: d.status } : null,
+        totalAmount: Number(t.totalAmount || 0),
+        count: Number(t.count || 0),
+      };
+    });
+  }
+
+  return {
+    scope: 'finance_foundation_donations_summary',
+    from: args.from,
+    to: args.to,
+    groupBy,
+    totals: { totalAmount: Number(totals.totalAmount || 0), count: Number(totals.count || 0) },
+    breakdown,
+    topDonors: includeTopDonors ? topDonors : undefined,
+    note: includeTopDonors ? 'Top donors list truncated by limit' : 'Set includeTopDonors=true to include a truncated top donors list',
+  };
+}
+
+const argsFinancePayrollMonthSummary = z
+  .object({
+    month: z.string().trim().regex(/^\d{4}-\d{2}$/),
+    status: z.enum(['Draft', 'Approved', 'Paid']).optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+    includeStaffList: z.boolean().optional(),
+  })
+  .strip();
+
+async function toolFinancePayrollMonthSummary({ user, args }) {
+  requireAuthUser(user);
+  if (!isStaffOrAdmin(user)) throw new AiToolError('Forbidden', 403);
+  if (isRole(user, 'staff') && !staffHasAny(user, 'financePayroll', ['view', 'add', 'edit', 'delete', 'full'])) {
+    throw new AiToolError('Missing permission: financePayroll.view', 403);
+  }
+
+  const match = { month: args.month };
+  if (args?.status) match.status = args.status;
+
+  const [byStatus, totalsAgg] = await Promise.all([
+    Payroll.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalBasicSalary: { $sum: '$basicSalary' },
+          totalNetSalary: { $sum: '$netSalary' },
+          totalPaidAmount: { $sum: '$paidAmount' },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    Payroll.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalBasicSalary: { $sum: '$basicSalary' },
+          totalNetSalary: { $sum: '$netSalary' },
+          totalPaidAmount: { $sum: '$paidAmount' },
+        },
+      },
+    ]),
+  ]);
+
+  const totals = totalsAgg?.[0] || { count: 0, totalBasicSalary: 0, totalNetSalary: 0, totalPaidAmount: 0 };
+  const breakdown = byStatus.map((r) => ({
+    status: r._id || 'Unknown',
+    count: Number(r.count || 0),
+    totalBasicSalary: Number(r.totalBasicSalary || 0),
+    totalNetSalary: Number(r.totalNetSalary || 0),
+    totalPaidAmount: Number(r.totalPaidAmount || 0),
+  }));
+
+  const includeStaffList = Boolean(args?.includeStaffList);
+  const limit = clampLimit(args?.limit, 50, 20);
+
+  let topStaff = [];
+  if (includeStaffList) {
+    const rows = await Payroll.find(match)
+      .select('staff month status basicSalary netSalary paidAmount paymentDate paymentMethod')
+      .sort({ netSalary: -1, _id: -1 })
+      .limit(limit)
+      .populate({ path: 'staff', select: 'fullName username email role status' })
+      .lean();
+
+    topStaff = rows.map((p) => ({
+      staff: p.staff
+        ? {
+            fullName: p.staff.fullName || null,
+            username: p.staff.username || null,
+            email: p.staff.email || null,
+            role: p.staff.role || null,
+            status: p.staff.status || null,
+          }
+        : null,
+      month: p.month,
+      status: p.status,
+      basicSalary: Number(p.basicSalary || 0),
+      netSalary: Number(p.netSalary || 0),
+      paidAmount: Number(p.paidAmount || 0),
+      paymentDate: p.paymentDate || null,
+      paymentMethod: p.paymentMethod || null,
+    }));
+  }
+
+  return {
+    scope: 'finance_payroll_month_summary',
+    month: args.month,
+    filter: { status: args?.status || null },
+    totals: {
+      count: Number(totals.count || 0),
+      totalBasicSalary: Number(totals.totalBasicSalary || 0),
+      totalNetSalary: Number(totals.totalNetSalary || 0),
+      totalPaidAmount: Number(totals.totalPaidAmount || 0),
+    },
+    breakdown,
+    topStaff: includeStaffList ? topStaff : undefined,
+    note: includeStaffList ? 'Staff list is truncated by limit' : 'Set includeStaffList=true to include a truncated staff list',
+  };
+}
+
+const argsFinancePayrollStaffSearch = z
+  .object({
+    q: z.string().trim().min(1).max(80),
+    limit: z.number().int().min(1).max(20).optional(),
+  })
+  .strip();
+
+async function toolFinancePayrollStaffSearch({ user, args }) {
+  requireAuthUser(user);
+  if (!isStaffOrAdmin(user)) throw new AiToolError('Forbidden', 403);
+  if (isRole(user, 'staff') && !staffHasAny(user, 'financePayroll', ['view', 'add', 'edit', 'delete', 'full'])) {
+    throw new AiToolError('Missing permission: financePayroll.view', 403);
+  }
+
+  const limit = clampLimit(args?.limit, 20, 8);
+  const q = String(args.q || '').trim();
+  const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const rows = await User.find({
+    $or: [{ fullName: { $regex: safe, $options: 'i' } }, { username: { $regex: safe, $options: 'i' } }, { email: { $regex: safe, $options: 'i' } }],
+  })
+    .select('fullName username email role status')
+    .sort({ fullName: 1 })
+    .limit(limit)
+    .lean();
+
+  return {
+    scope: 'finance_payroll_staff_search',
+    q,
+    returned: rows.length,
+    items: rows.map((u) => ({
+      userId: String(u._id),
+      fullName: u.fullName || null,
+      username: u.username || null,
+      email: u.email || null,
+      role: u.role || null,
+      status: u.status || null,
+    })),
+  };
+}
+
+const argsFinancePayrollStaffLedger = z
+  .object({
+    staffUserId: z.string().trim().min(1),
+    fromMonth: z.string().trim().regex(/^\d{4}-\d{2}$/).optional(),
+    toMonth: z.string().trim().regex(/^\d{4}-\d{2}$/).optional(),
+    limit: z.number().int().min(1).max(60).optional(),
+  })
+  .strip();
+
+async function toolFinancePayrollStaffLedger({ user, args }) {
+  requireAuthUser(user);
+  if (!isStaffOrAdmin(user)) throw new AiToolError('Forbidden', 403);
+  if (isRole(user, 'staff') && !staffHasAny(user, 'financePayroll', ['view', 'add', 'edit', 'delete', 'full'])) {
+    throw new AiToolError('Missing permission: financePayroll.view', 403);
+  }
+
+  const staffUserId = toId(args.staffUserId);
+  if (!staffUserId) throw new AiToolError('Invalid staffUserId', 400);
+
+  const fromMonth = args?.fromMonth ? String(args.fromMonth) : null;
+  const toMonth = args?.toMonth ? String(args.toMonth) : null;
+  if (fromMonth && toMonth && fromMonth > toMonth) throw new AiToolError('Invalid month range (fromMonth > toMonth)', 400);
+
+  const staffUser = await User.findById(staffUserId).select('fullName username email role status').lean();
+  if (!staffUser) throw new AiToolError('Staff user not found', 404);
+
+  const q = { staff: staffUserId };
+  if (fromMonth || toMonth) {
+    q.month = {};
+    if (fromMonth) q.month.$gte = fromMonth;
+    if (toMonth) q.month.$lte = toMonth;
+  }
+
+  const limit = clampLimit(args?.limit, 60, 24);
+  const rows = await Payroll.find(q)
+    .select('month status basicSalary netSalary paidAmount paymentDate paymentMethod')
+    .sort({ month: -1, _id: -1 })
+    .limit(limit)
+    .lean();
+
+  const totals = rows.reduce(
+    (acc, r) => {
+      acc.count += 1;
+      acc.totalNetSalary += Number(r.netSalary || 0);
+      acc.totalPaidAmount += Number(r.paidAmount || 0);
+      return acc;
+    },
+    { count: 0, totalNetSalary: 0, totalPaidAmount: 0 }
+  );
+
+  return {
+    scope: 'finance_payroll_staff_ledger',
+    staff: {
+      userId: String(staffUser._id),
+      fullName: staffUser.fullName || null,
+      username: staffUser.username || null,
+      email: staffUser.email || null,
+      role: staffUser.role || null,
+      status: staffUser.status || null,
+    },
+    filter: { fromMonth, toMonth },
+    totals: {
+      count: Number(totals.count || 0),
+      totalNetSalary: Number(totals.totalNetSalary || 0),
+      totalPaidAmount: Number(totals.totalPaidAmount || 0),
+    },
+    returned: rows.length,
+    items: rows.map((p) => ({
+      month: p.month,
+      status: p.status,
+      basicSalary: Number(p.basicSalary || 0),
+      netSalary: Number(p.netSalary || 0),
+      paidAmount: Number(p.paidAmount || 0),
+      paymentDate: p.paymentDate || null,
+      paymentMethod: p.paymentMethod || null,
+    })),
+    note: rows.length >= limit ? 'List truncated by limit' : '',
+  };
+}
+
 async function toolMyPermissions({ user }) {
   requireAuthUser(user);
   requireRole(user, ['admin', 'staff']);
@@ -1998,6 +2703,10 @@ const TOOL_REGISTRY = Object.freeze({
     schema: z.object({}).strip(),
     run: toolDashboardSummary,
   },
+  academic_years_list: {
+    schema: argsAcademicYearsList,
+    run: toolAcademicYearsList,
+  },
   my_permissions: {
     schema: z.object({}).strip(),
     run: toolMyPermissions,
@@ -2007,6 +2716,14 @@ const TOOL_REGISTRY = Object.freeze({
   students_list: {
     schema: argsStudentsList,
     run: toolStudentsList,
+  },
+  grade_sections_list: {
+    schema: argsGradeSectionsList,
+    run: toolGradeSectionsList,
+  },
+  subjects_list: {
+    schema: argsSubjectsList,
+    run: toolSubjectsList,
   },
   teacher_profile: {
     schema: argsTeacherLookup,
@@ -2092,9 +2809,33 @@ const TOOL_REGISTRY = Object.freeze({
     schema: argsFinanceRange,
     run: toolFinanceExpensesSummary,
   },
+  finance_fee_transactions_summary: {
+    schema: argsFinanceFeeTransactions,
+    run: toolFinanceFeeTransactionsSummary,
+  },
+  finance_accounts_balances: {
+    schema: argsFinanceAccountsBalances,
+    run: toolFinanceAccountsBalances,
+  },
+  finance_foundation_donations_summary: {
+    schema: argsFinanceFoundationDonations,
+    run: toolFinanceFoundationDonationsSummary,
+  },
   finance_unpaid_students_summary: {
     schema: argsFinanceUnpaid,
     run: toolFinanceUnpaidStudentsSummary,
+  },
+  finance_payroll_month_summary: {
+    schema: argsFinancePayrollMonthSummary,
+    run: toolFinancePayrollMonthSummary,
+  },
+  finance_payroll_staff_search: {
+    schema: argsFinancePayrollStaffSearch,
+    run: toolFinancePayrollStaffSearch,
+  },
+  finance_payroll_staff_ledger: {
+    schema: argsFinancePayrollStaffLedger,
+    run: toolFinancePayrollStaffLedger,
   },
 
   // Teacher scoped
@@ -2126,6 +2867,10 @@ const TOOL_REGISTRY = Object.freeze({
     schema: z.object({}).strip(),
     run: toolStudentSelfSummary,
   },
+  student_fee_invoices_self_summary: {
+    schema: argsStudentFeeInvoicesSelf,
+    run: toolStudentFeeInvoicesSelfSummary,
+  },
 });
 
 export function getAllowedAiToolNamesForUser(user) {
@@ -2133,8 +2878,11 @@ export function getAllowedAiToolNamesForUser(user) {
   if (role === 'admin') {
     return [
       'dashboard_summary',
+      'academic_years_list',
       'my_permissions',
       'students_list',
+      'grade_sections_list',
+      'subjects_list',
       'teacher_profile',
       'attendance_class_summary',
       'attendance_class_range_summary',
@@ -2158,12 +2906,22 @@ export function getAllowedAiToolNamesForUser(user) {
 
       // Finance summaries
       'finance_expenses_summary',
+      'finance_fee_transactions_summary',
+      'finance_accounts_balances',
+      'finance_foundation_donations_summary',
       'finance_unpaid_students_summary',
+
+      // Payroll (admin-only)
+      'finance_payroll_month_summary',
+      'finance_payroll_staff_search',
+      'finance_payroll_staff_ledger',
     ];
   }
   if (role === 'staff') {
-    const out = ['dashboard_summary', 'my_permissions'];
+    const out = ['dashboard_summary', 'academic_years_list', 'my_permissions'];
     if (staffHasAny(user, 'students', ['view', 'full'])) out.push('students_list');
+    if (staffHasAnyOfModules(user, ['students', 'timetable', 'attendance'], ['view', 'full'])) out.push('grade_sections_list');
+    if (staffHasAnyOfModules(user, ['subjects', 'timetable', 'results', 'exams', 'transcript'], ['view', 'full', 'print', 'download'])) out.push('subjects_list');
     if (staffHasAny(user, 'teachers', ['view', 'full'])) out.push('teacher_profile');
     if (staffHasAny(user, 'attendance', ['view', 'full'])) out.push('attendance_class_summary');
     if (staffHasAny(user, 'attendance', ['view', 'full'])) out.push('attendance_class_range_summary');
@@ -2200,13 +2958,30 @@ export function getAllowedAiToolNamesForUser(user) {
     if (staffHasAnyOfModules(user, ['financeExpensesLedger', 'financeExpenses', 'financeDashboard', 'financeAudit'], ['view', 'full'])) {
       out.push('finance_expenses_summary');
     }
+    if (staffHasAnyOfModules(user, ['financeStudentReceipt', 'financeDashboard', 'financeAudit'], ['view', 'full'])) {
+      out.push('finance_fee_transactions_summary');
+    }
+    if (staffHasAnyOfModules(user, ['financeAccountsOverview', 'financeAccountsLedger', 'financeDashboard', 'financeAudit'], ['view', 'full'])) {
+      out.push('finance_accounts_balances');
+    }
+    if (staffHasAny(user, 'financeFoundation', ['view', 'add', 'edit', 'delete', 'full'])) {
+      out.push('finance_foundation_donations_summary');
+    }
     if (staffHasAnyOfModules(user, ['financeStudentReceipt', 'financeDashboard', 'financeAudit'], ['view', 'full', 'add', 'edit', 'delete'])) {
       out.push('finance_unpaid_students_summary');
+    }
+
+    // Payroll (very sensitive) - only for staff with financePayroll module access.
+    if (staffHasAny(user, 'financePayroll', ['view', 'add', 'edit', 'delete', 'full'])) {
+      out.push('finance_payroll_month_summary');
+      out.push('finance_payroll_staff_search');
+      out.push('finance_payroll_staff_ledger');
     }
     return out;
   }
   if (role === 'teacher') {
     return [
+      'academic_years_list',
       'teacher_assignments',
       'teacher_class_roster',
       'teacher_attendance_class_summary',
@@ -2218,7 +2993,9 @@ export function getAllowedAiToolNamesForUser(user) {
   }
   if (role === 'student') {
     return [
+      'academic_years_list',
       'student_self_summary',
+      'student_fee_invoices_self_summary',
       'student_timetable_self',
       'student_attendance_self_range_summary',
       'transcript_self_index',

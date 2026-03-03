@@ -3,7 +3,7 @@ import Card from '../../../shared/components/ui/Card.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox';
 import Chip from '../../../shared/components/ui/Chip.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function StudentsRosterTable({
   filtersReady,
@@ -112,7 +112,7 @@ export default function StudentsRosterTable({
               case 'student':
                 return (
                   <span className="whitespace-nowrap">
-                    {s.studentId} — {s.fullName}
+                    {s.studentId} â€” {s.fullName}
                   </span>
                 );
               case 'current':

@@ -12,7 +12,7 @@ import PromotionsToolbar from '../components/PromotionsToolbar.jsx';
 import StudentsRosterTable from '../components/StudentsRosterTable.jsx';
 import PromotionPreviewPanel from '../components/PromotionPreviewPanel.jsx';
 import { formatApiErrorToast, formatCurrent, formatFrom, formatTo } from '../utils/formatters.js';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function PromotionPage() {
   const { t } = useI18n();
@@ -103,7 +103,7 @@ export default function PromotionPage() {
   const [loadingPromote, setLoadingPromote] = useState(false);
   const [ayRefreshKey, setAyRefreshKey] = useState(0);
 
-  // Also clear preview if the selected set of students changes — this prevents running Promote
+  // Also clear preview if the selected set of students changes â€” this prevents running Promote
   // against a preview that was generated for a different selection.
   useEffect(() => {
     setPreview(null);

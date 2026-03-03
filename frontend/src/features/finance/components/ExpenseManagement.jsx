@@ -26,7 +26,7 @@ import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 
 import NewExpenseModal from './NewExpenseModal';
 
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 
 export default function ExpenseManagement() {
@@ -402,7 +402,7 @@ export default function ExpenseManagement() {
             filename: `expenses-${selectedMonth || 'all'}`,
             sheetName: 'Expenses',
             title: t('finance.expenses.export.title', { defaultValue: 'Expenses' }),
-            subtitle: subtitleParts.join(' • '),
+            subtitle: subtitleParts.join(' â€¢ '),
             headerImageSrc: headerImg,
             headers,
             rows,
@@ -587,7 +587,7 @@ export default function ExpenseManagement() {
                             isLoading={isLoading}
                             error={expensesQuery.isError ? (expensesQuery.error?.data?.message || expensesQuery.error?.message || t('finance.expenses.toasts.loadFailed', { defaultValue: 'Failed to load expenses' })) : null}
                             items={sortedItems}
-                            loadingMessage={t('finance.expenses.ledger.loading', { defaultValue: 'Loading expenses…' })}
+                            loadingMessage={t('finance.expenses.ledger.loading', { defaultValue: 'Loading expensesâ€¦' })}
                             loadingVariant="table"
                             loadingRows={6}
                             loadingColumns={7}
@@ -621,17 +621,17 @@ export default function ExpenseManagement() {
                             renderCell={(row, col) => {
                                 switch (col.key) {
                                     case 'date':
-                                        return row?.date ? new Date(row.date).toLocaleDateString() : '—';
+                                        return row?.date ? new Date(row.date).toLocaleDateString() : 'â€”';
                                     case 'category':
-                                        return String(row?.category || '—');
+                                        return String(row?.category || 'â€”');
                                     case 'title':
-                                        return String(row?.title || '—');
+                                        return String(row?.title || 'â€”');
                                     case 'description':
                                         return row?.description ? renderDescription(row.description) : '';
                                     case 'amount':
                                         return `$${Number(row?.amount || 0).toLocaleString()}`;
                                     case 'auditor':
-                                        return row?.approvedBy?.fullName || row?.approvedBy?.name || '—';
+                                        return row?.approvedBy?.fullName || row?.approvedBy?.name || 'â€”';
                                     case 'actions':
                                         return (
                                             <RowActionButtons
@@ -705,7 +705,7 @@ export default function ExpenseManagement() {
                                         disabled={createCategoryMutation.isPending}
                                     >
                                         {createCategoryMutation.isPending
-                                            ? t('common.working', { defaultValue: 'WORKING…' })
+                                            ? t('common.working', { defaultValue: 'WORKINGâ€¦' })
                                             : t('finance.expenses.actions.createCategory', { defaultValue: 'Create Category' })}
                                     </ActionButton>
                                 </div>
@@ -715,7 +715,7 @@ export default function ExpenseManagement() {
                         <div className="bg-(--nb-color-bg-card) rounded-3xl border border-(--nb-color-border) shadow-(--nb-shadow-md) p-6">
                             {categoriesQuery.isLoading && categoriesQuery.data == null ? (
                                 <div className="py-16 text-center text-(--nb-color-muted) font-bold uppercase tracking-widest italic">
-                                    {t('finance.expenses.categories.loading', { defaultValue: 'Loading categories…' })}
+                                    {t('finance.expenses.categories.loading', { defaultValue: 'Loading categoriesâ€¦' })}
                                 </div>
                             ) : categories.length === 0 ? (
                                 <div className="py-16 text-center">
@@ -743,7 +743,7 @@ export default function ExpenseManagement() {
                                             >
                                                 <div className="flex justify-between items-start gap-3 mb-5">
                                                     <div className="min-w-0">
-                                                                <p className="text-lg font-black text-(--nb-color-fg) truncate">{catName || '—'}</p>
+                                                                <p className="text-lg font-black text-(--nb-color-fg) truncate">{catName || 'â€”'}</p>
                                                         <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1 truncate">
                                                             {selectedMonth
                                                                 ? t('finance.expenses.categories.monthTag', { defaultValue: 'Month: {{month}}', month: selectedMonth })
@@ -791,7 +791,7 @@ export default function ExpenseManagement() {
                                                             <div className="bg-(--nb-color-bg) rounded-2xl p-4 border border-(--nb-color-border) shadow-(--nb-shadow-sm)">
                                                                 <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">{t('finance.expenses.categories.budget', { defaultValue: 'Budget' })}</p>
                                                                 <p className="mt-1 text-2xl font-black text-(--nb-color-fg) tracking-tighter">
-                                                            {hasBudget ? `$${Number(budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
+                                                            {hasBudget ? `$${Number(budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: 'â€”' })}
                                                         </p>
                                                         {hasBudget ? (
                                                                     <p className={"text-[10px] font-bold uppercase tracking-widest mt-1 " + (over ? 'text-red-600' : 'text-(--nb-color-muted)')}>
@@ -854,7 +854,7 @@ export default function ExpenseManagement() {
                                 {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                             </Button>
                             <Button type="submit" variant="brand" disabled={updateCategoryMutation.isPending}>
-                                {updateCategoryMutation.isPending ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+                                {updateCategoryMutation.isPending ? t('common.working', { defaultValue: 'WORKINGâ€¦' }) : t('common.actions.save', { defaultValue: 'Save' })}
                             </Button>
                         </div>
                     </form>

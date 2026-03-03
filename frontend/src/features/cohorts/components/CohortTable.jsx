@@ -3,7 +3,7 @@ import { Archive, ArchiveRestore, Edit, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function CohortTable({
   isLoading,
@@ -37,7 +37,7 @@ export default function CohortTable({
       isLoading={isLoading}
       error={error}
       items={items}
-      loadingMessage={t('common.loading', { defaultValue: 'Loading…' })}
+      loadingMessage={t('common.loading', { defaultValue: 'Loadingâ€¦' })}
       loadingVariant="table"
       loadingRows={6}
       loadingColumns={5}
@@ -50,7 +50,7 @@ export default function CohortTable({
         <div className="flex justify-between items-center mb-2 text-sm text-gray-600 no-print">
           <div>
             {t('common.pagination.pageSummary', {
-              defaultValue: 'Page {{page}} of {{pages}} — {{total}} total',
+              defaultValue: 'Page {{page}} of {{pages}} â€” {{total}} total',
               page: meta.page,
               pages: meta.totalPages || meta.pages || 1,
               total: meta.total,

@@ -3,7 +3,7 @@ import { CheckCircle, Wallet, Calendar, Users, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useChargeStudentFeesMutation } from '../hooks/studentFinanceHooks';
 import { useFinanceCategoriesQuery, useFeeTypesQuery } from '../hooks/financeConfigHooks';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
@@ -226,7 +226,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                                             searchable
                                             maxVisible={6}
                                             placeholder={t('finance.studentFinance.chargeModal.placeholders.section', { defaultValue: 'Section' })}
-                                            searchPlaceholder={t('finance.studentFinance.chargeModal.placeholders.search', { defaultValue: 'Search…' })}
+                                            searchPlaceholder={t('finance.studentFinance.chargeModal.placeholders.search', { defaultValue: 'Searchâ€¦' })}
                                             className="h-11 font-bold"
                                         />
                                     </div>
@@ -260,7 +260,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                                         onChange={(v) => setAmountTypeId(v)}
                                         options={amountTypeOptions}
                                         placeholder={t('finance.studentFinance.chargeModal.placeholders.selectType', { defaultValue: '-- Select Type --' })}
-                                        searchPlaceholder={t('finance.studentFinance.chargeModal.placeholders.searchAmountTypes', { defaultValue: 'Search amount types…' })}
+                                        searchPlaceholder={t('finance.studentFinance.chargeModal.placeholders.searchAmountTypes', { defaultValue: 'Search amount typesâ€¦' })}
                                         maxVisible={6}
                                         className="h-11 font-bold text-sm"
                                     />

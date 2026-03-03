@@ -25,7 +25,7 @@ import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 import { listAccounts as listAccountsApi, createAccount as createAccountApi, updateAccount as updateAccountApi, deleteAccount as deleteAccountApi, transferFunds as transferFundsApi, recordIncome as recordIncomeApi } from '../api/accountsApi';
 import { accountKeys } from '../queryKeys';
 
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 
 export default function AccountManagement() {
@@ -55,7 +55,7 @@ export default function AccountManagement() {
         if (v === 'Bank') return t('finance.accounts.options.accountType.bank', { defaultValue: 'Bank' });
         if (v === 'Cash') return t('finance.accounts.options.accountType.cash', { defaultValue: 'Cash' });
         if (v === 'Mobile Money') return t('finance.accounts.options.accountType.mobileMoney', { defaultValue: 'Mobile Money' });
-        return v || '—';
+        return v || 'â€”';
     }, [t]);
 
     const [expandedSection, setExpandedSection] = useState('list');
@@ -566,7 +566,7 @@ export default function AccountManagement() {
 
                                     <div className="space-y-1 mb-6">
                                         <h3 className="font-bold text-xl text-slate-900 truncate tracking-tight">{acc.name}</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{acc.institution || '—'} {acc.branch ? `• ${acc.branch}` : ''}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{acc.institution || 'â€”'} {acc.branch ? `â€¢ ${acc.branch}` : ''}</p>
                                         <p className="font-mono text-[10px] text-slate-400 uppercase tracking-tighter">{t('finance.accounts.cards.refPrefix', { defaultValue: 'REF' })}: {acc.accountNumber}</p>
                                     </div>
 
@@ -653,7 +653,7 @@ export default function AccountManagement() {
                                 isLoading={ledgerIsLoading}
                                 error={ledgerQuery.isError ? (ledgerQuery.error?.data?.message || ledgerQuery.error?.message || t('finance.accounts.ledger.loadFailed', { defaultValue: 'Failed to load ledger' })) : null}
                                 items={ledgerSortedItems}
-                                loadingMessage={t('finance.accounts.ledger.loading', { defaultValue: 'Loading ledger…' })}
+                                loadingMessage={t('finance.accounts.ledger.loading', { defaultValue: 'Loading ledgerâ€¦' })}
                                 loadingVariant="table"
                                 loadingRows={6}
                                 loadingColumns={5}
@@ -692,9 +692,9 @@ export default function AccountManagement() {
                                                         <span className="font-mono text-[10px] text-slate-900 font-bold">{new Date(row.createdAt).toLocaleTimeString()}</span>
                                                     </div>
                                                 )
-                                                : '—';
+                                                : 'â€”';
                                         case 'targetModel':
-                                            return <span className="px-3 py-1 bg-slate-100 rounded-lg text-[9px] font-black text-slate-600 uppercase tracking-tighter">{row?.targetModel || '—'}</span>;
+                                            return <span className="px-3 py-1 bg-slate-100 rounded-lg text-[9px] font-black text-slate-600 uppercase tracking-tighter">{row?.targetModel || 'â€”'}</span>;
                                         case 'action':
                                             {
                                                 const action = String(row?.action || '');
@@ -704,7 +704,7 @@ export default function AccountManagement() {
                                                         ? 'bg-blue-50 text-blue-600'
                                                         : 'bg-green-50 text-green-600';
                                                 return (
-                                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${tone}`}>{action || '—'}</span>
+                                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${tone}`}>{action || 'â€”'}</span>
                                                 );
                                             }
                                         case 'user':
@@ -745,7 +745,7 @@ export default function AccountManagement() {
                             value={transferData.fromAccountId}
                             onChange={(v) => setTransferData({ ...transferData, fromAccountId: v })}
                             disabled={isTransferring}
-                            placeholder={t('finance.accounts.transfer.sourcePlaceholder', { defaultValue: 'Source account…' })}
+                            placeholder={t('finance.accounts.transfer.sourcePlaceholder', { defaultValue: 'Source accountâ€¦' })}
                             options={activeAccounts.map((a) => ({
                                 value: a._id,
                                 label: `${a.name} (${a.accountNumber || t('finance.accounts.placeholders.notAvailable', { defaultValue: 'N/A' })})`,
@@ -758,7 +758,7 @@ export default function AccountManagement() {
                             value={transferData.toAccountId}
                             onChange={(v) => setTransferData({ ...transferData, toAccountId: v })}
                             disabled={isTransferring}
-                            placeholder={t('finance.accounts.transfer.targetPlaceholder', { defaultValue: 'Target account…' })}
+                            placeholder={t('finance.accounts.transfer.targetPlaceholder', { defaultValue: 'Target accountâ€¦' })}
                             options={activeAccounts
                                 .filter((a) => String(a._id) !== String(transferData.fromAccountId || ''))
                                 .map((a) => ({
@@ -795,7 +795,7 @@ export default function AccountManagement() {
                             }
                         >
                             {isTransferring
-                                ? t('common.working', { defaultValue: 'WORKING…' })
+                                ? t('common.working', { defaultValue: 'WORKINGâ€¦' })
                                 : t('finance.accounts.actions.executeFunds', { defaultValue: 'Execute Funds' })}
                         </Button>
                     </div>
@@ -886,7 +886,7 @@ export default function AccountManagement() {
                             }
                         >
                             {isCreating
-                                ? t('common.saving', { defaultValue: 'Saving…' })
+                                ? t('common.saving', { defaultValue: 'Savingâ€¦' })
                                 : t('finance.accounts.actions.createAccount', { defaultValue: 'Create Account' })}
                         </Button>
                     </div>
@@ -905,7 +905,7 @@ export default function AccountManagement() {
                             value={incomeData.accountId}
                             onChange={(v) => setIncomeData({ ...incomeData, accountId: v })}
                             disabled={isRecordingIncome}
-                            placeholder={t('finance.accounts.income.depositToPlaceholder', { defaultValue: 'Select account…' })}
+                            placeholder={t('finance.accounts.income.depositToPlaceholder', { defaultValue: 'Select accountâ€¦' })}
                             options={activeAccounts.map((a) => ({ value: a._id, label: a.name }))}
                         />
                     </FormField>
@@ -963,7 +963,7 @@ export default function AccountManagement() {
                             }
                         >
                             {isRecordingIncome
-                                ? t('common.working', { defaultValue: 'WORKING…' })
+                                ? t('common.working', { defaultValue: 'WORKINGâ€¦' })
                                 : t('finance.accounts.actions.recordIncome', { defaultValue: 'Record Income' })}
                         </Button>
                     </div>
@@ -1050,7 +1050,7 @@ export default function AccountManagement() {
                             </Button>
                             <Button type="submit" variant="brand" disabled={isUpdating}>
                                 {isUpdating
-                                    ? t('common.updating', { defaultValue: 'Updating…' })
+                                    ? t('common.updating', { defaultValue: 'Updatingâ€¦' })
                                     : t('finance.accounts.actions.saveChanges', { defaultValue: 'Save Changes' })}
                             </Button>
                         </div>

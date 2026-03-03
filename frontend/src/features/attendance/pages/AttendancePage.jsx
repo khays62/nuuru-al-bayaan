@@ -19,7 +19,7 @@ import AttendanceFooter from '../components/AttendanceFooter';
 import { useAuth } from '../../../auth/AuthContext';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { useAttendanceRealtimeInvalidation } from '../useAttendanceRealtimeInvalidation';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function AttendancePage() {
   const { t } = useI18n();
@@ -464,8 +464,8 @@ export default function AttendancePage() {
       const code = `${s.startTime}-${s.endTime}`;
       const subjName = s.subject?.subjectName || t('attendance.marking.periodOptions.noSubject');
       const teacherName = s.teacher?.fullName || '';
-      const baseLabel = `${fmt12(s.startTime)}-${fmt12(s.endTime)} • ${subjName}`;
-      const label = isTeacher ? baseLabel : (teacherName ? `${baseLabel} • ${teacherName}` : baseLabel);
+      const baseLabel = `${fmt12(s.startTime)}-${fmt12(s.endTime)} â€¢ ${subjName}`;
+      const label = isTeacher ? baseLabel : (teacherName ? `${baseLabel} â€¢ ${teacherName}` : baseLabel);
       options.push({ value: code, label });
       meta[code] = {
         startTime: s.startTime,
@@ -478,7 +478,7 @@ export default function AttendancePage() {
     }
     const optionsWithDay = options.map(o => ({
       ...o,
-      label: dayLabel ? `${dayLabel} • ${o.label}` : o.label,
+      label: dayLabel ? `${dayLabel} â€¢ ${o.label}` : o.label,
     }));
 
     const teacherId = String(auth?.user?.teacherRef || '');
@@ -515,7 +515,7 @@ export default function AttendancePage() {
         .filter(code => !existingValues.has(code))
         .map(code => ({
           value: code,
-          label: `${selectedDayLabel ? `${selectedDayLabel} • ` : ''}${t('attendance.marking.periodOptions.savedPeriodLabel')} • ${code}`,
+          label: `${selectedDayLabel ? `${selectedDayLabel} â€¢ ` : ''}${t('attendance.marking.periodOptions.savedPeriodLabel')} â€¢ ${code}`,
         }));
       if (injected.length) {
         filtered = [...filtered, ...injected];

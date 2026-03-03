@@ -23,7 +23,7 @@ import TeacherTimetablePanel from '../../teachers/components/dashboard/TeacherTi
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { timetableKeys } from '../queryKeys.js';
 import { useTimetableRealtimeInvalidation } from '../useTimetableRealtimeInvalidation.js';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TimetablePage() {
   const { auth, hasPermission } = useAuth();
@@ -649,7 +649,7 @@ export default function TimetablePage() {
         <div className="text-xl font-semibold">{t('nav.timetable')}</div>
         <div className="mt-1 text-sm text-(--nb-color-fg)">
           {selectedSection
-            ? `${selectedSection.grade?.gradeName || ''} • ${selectedSection.shift?.shiftName || ''} • ${t('common.sectionPrefix')} ${selectedSection.section}`
+            ? `${selectedSection.grade?.gradeName || ''} â€¢ ${selectedSection.shift?.shiftName || ''} â€¢ ${t('common.sectionPrefix')} ${selectedSection.section}`
             : t('timetable.page.print.selectSection')}
         </div>
       </div>
@@ -707,7 +707,7 @@ export default function TimetablePage() {
                     <FilterDropdownSelect
                       value={sectionId}
                       onChange={setSectionId}
-                      options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} • ${s.shift?.shiftName || ''} • ${t('common.sectionPrefix')} ${s.section}` }))}
+                      options={(sections||[]).map(s => ({ value: s._id, label: `${s.grade?.gradeName || ''} â€¢ ${s.shift?.shiftName || ''} â€¢ ${t('common.sectionPrefix')} ${s.section}` }))}
                       placeholder={t('common.filters.section')}
                       searchPlaceholder={t('common.searchPlaceholders.sections')}
                     />

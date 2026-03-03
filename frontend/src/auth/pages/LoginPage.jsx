@@ -4,7 +4,7 @@ import { useAuth } from '../AuthContext';
 import toast from 'react-hot-toast';
 import Input from '../../shared/components/ui/Input';
 import Button from '../../shared/components/ui/Button';
-import { useI18n } from '../../i18n/I18nProvider';
+import { useI18n } from '../../i18n/useI18n';
 import appLogo from '../../assets/Logo.jpeg';
 
 export default function LoginPage() {
@@ -388,7 +388,7 @@ export default function LoginPage() {
                     className="w-full justify-center py-3 font-semibold"
                   >
                     {loading
-                      ? t('auth.login.actions.signingIn', { defaultValue: 'Signing in…' })
+                      ? t('auth.login.actions.signingIn', { defaultValue: 'Signing inâ€¦' })
                       : (
                         cooldownRemainingSeconds > 0
                           ? (cooldownKind === 'LOCKED_24H'

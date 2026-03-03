@@ -15,7 +15,7 @@ import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { getExamSummaryAbort, getExamTypes } from '../../../exams/api/exams';
 import { teacherKeys } from '../../queryKeys';
 import { getSessionSignal } from '../../../../api/sessionAbort';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
   return (
@@ -509,7 +509,7 @@ export default function TeacherResultsChartsCard() {
                 value={gradeSectionId}
                 onChange={setGradeSectionId}
                 disabled={!isTeacher || assignmentsLoading || !teacherRef}
-                placeholder={assignmentsLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('teachers.dashboard.common.selectSection', { defaultValue: 'Select section' })}
+                placeholder={assignmentsLoading ? t('common.loading', { defaultValue: 'Loadingâ€¦' }) : t('teachers.dashboard.common.selectSection', { defaultValue: 'Select section' })}
                 options={sectionOptions}
               />
             </div>
@@ -567,9 +567,9 @@ export default function TeacherResultsChartsCard() {
         ) : error ? (
           <Alert variant="danger">{error}</Alert>
         ) : (view === 'performance' && perfLoading) ? (
-          <UiLoadingState label={t('teachers.dashboard.results.loadingPerformance', { defaultValue: 'Loading performance…' })} className="border-0 bg-transparent p-0 justify-start" />
+          <UiLoadingState label={t('teachers.dashboard.results.loadingPerformance', { defaultValue: 'Loading performanceâ€¦' })} className="border-0 bg-transparent p-0 justify-start" />
         ) : loading ? (
-          <UiLoadingState label={t('teachers.dashboard.results.loading', { defaultValue: 'Loading results…' })} className="border-0 bg-transparent p-0 justify-start" />
+          <UiLoadingState label={t('teachers.dashboard.results.loading', { defaultValue: 'Loading resultsâ€¦' })} className="border-0 bg-transparent p-0 justify-start" />
         ) : !canRun ? (
           <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.results.selectFilters', { defaultValue: 'Select Academic Year + Section + (Subject/Exam Type) to view charts.' })}</div>
         ) : (view === 'performance' && (perf?.rows || []).length === 0) ? (
@@ -583,11 +583,11 @@ export default function TeacherResultsChartsCard() {
               <div className="text-xs text-white/80">
                 {t((mode === 'subject' && subjectId) ? 'teachers.dashboard.results.performance.subjectMode' : 'teachers.dashboard.results.performance.overallMode', {
                   defaultValue: (mode === 'subject' && subjectId) ? 'Subject' : 'Overall',
-                })} • {t('teachers.dashboard.results.performance.template', { defaultValue: 'Template' })} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : '—'}
+                })} â€¢ {t('teachers.dashboard.results.performance.template', { defaultValue: 'Template' })} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : 'â€”'}
               </div>
             </div>
             <div className="p-4 space-y-3">
-              <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.results.performance.help', { defaultValue: 'Vertical bars = exam types • Left axis = percentage (avg / maxScore)' })}</div>
+              <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.results.performance.help', { defaultValue: 'Vertical bars = exam types â€¢ Left axis = percentage (avg / maxScore)' })}</div>
               <ExamTypeBarChart rows={perf.rows} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {perf.rows.map((r) => (
@@ -611,7 +611,7 @@ export default function TeacherResultsChartsCard() {
                 <HistogramBar key={b.label} label={b.label} value={b.value} max={maxBin} />
               ))}
               <div className="rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-50) px-3 py-2 text-xs text-(--nb-color-fg) mt-2">
-                {t('teachers.dashboard.results.distribution.kpiIdea', { defaultValue: 'KPI idea:' })} <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg', { defaultValue: 'Class Avg' })}</span> • <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct', { defaultValue: 'Pass %' })}</span> • <span className="font-medium">{t('teachers.dashboard.results.kpis.topBottom', { defaultValue: 'Top/Bottom' })}</span>
+                {t('teachers.dashboard.results.distribution.kpiIdea', { defaultValue: 'KPI idea:' })} <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg', { defaultValue: 'Class Avg' })}</span> â€¢ <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct', { defaultValue: 'Pass %' })}</span> â€¢ <span className="font-medium">{t('teachers.dashboard.results.kpis.topBottom', { defaultValue: 'Top/Bottom' })}</span>
               </div>
             </div>
           </div>

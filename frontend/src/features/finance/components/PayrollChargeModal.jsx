@@ -11,7 +11,7 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function PayrollChargeModal({
     onClose,
@@ -160,7 +160,7 @@ export default function PayrollChargeModal({
                             value={form.academicYear}
                             onChange={(v) => setForm((prev) => ({ ...prev, academicYear: v }))}
                             maxVisible={5}
-                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
                         />
                     </FormField>
 
@@ -188,9 +188,9 @@ export default function PayrollChargeModal({
                                 value={form.staffId}
                                 onChange={(v) => setForm((prev) => ({ ...prev, staffId: v }))}
                                 options={staffOptions}
-                                placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employee…' })}
+                                placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employeeâ€¦' })}
                                 maxVisible={5}
-                                searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employees…' })}
+                                searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employeesâ€¦' })}
                             />
                         </FormField>
                     ) : null}
@@ -204,7 +204,7 @@ export default function PayrollChargeModal({
                             value={form.accountId}
                             onChange={(v) => setForm((prev) => ({ ...prev, accountId: v }))}
                             options={accountOptions}
-                            placeholder={t('finance.payroll.placeholders.account', { defaultValue: 'Select account…' })}
+                            placeholder={t('finance.payroll.placeholders.account', { defaultValue: 'Select accountâ€¦' })}
                             disabled={!isFullPayment}
                         />
                     </FormField>
@@ -224,7 +224,7 @@ export default function PayrollChargeModal({
                         {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                     </Button>
                     <Button type="submit" variant="brand" disabled={!canSubmit || loading}>
-                        {loading ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+                        {loading ? t('common.saving', { defaultValue: 'Savingâ€¦' }) : t('common.actions.save', { defaultValue: 'Save' })}
                     </Button>
                 </div>
             </form>

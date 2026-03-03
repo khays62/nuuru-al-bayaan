@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { PenLine } from 'lucide-react';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 const fmt = (n) => {
     const v = Number(n || 0);
@@ -10,7 +10,7 @@ const fmt = (n) => {
 
 const fmtOrDash = (n) => {
     const v = Number(n);
-    if (!Number.isFinite(v)) return '—';
+    if (!Number.isFinite(v)) return 'â€”';
     return fmt(v);
 };
 

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 
 import Button from '../ui/Button.jsx';
 import { fetchJson } from '../../api/http.js';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 function normalizeMessages(raw) {
   if (!Array.isArray(raw)) return [];
@@ -149,7 +149,7 @@ export default function AiChatWidget() {
 
           <div ref={listRef} className="flex-1 min-h-0 overflow-auto p-4 space-y-3">
             {loadingHistory ? (
-              <div className="text-sm text-(--nb-color-muted)">{t('common.loading', { defaultValue: 'Loading…' })}</div>
+              <div className="text-sm text-(--nb-color-muted)">{t('common.loading', { defaultValue: 'Loadingâ€¦' })}</div>
             ) : null}
 
             {!loadingHistory && messages.length === 0 ? (
@@ -179,7 +179,7 @@ export default function AiChatWidget() {
             {sending ? (
               <div className="flex justify-start">
                 <div className="max-w-[85%] rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-sm text-(--nb-color-muted)">
-                  {t('aiChat.thinking', { defaultValue: 'Thinking…' })}
+                  {t('aiChat.thinking', { defaultValue: 'Thinkingâ€¦' })}
                 </div>
               </div>
             ) : null}
@@ -197,7 +197,7 @@ export default function AiChatWidget() {
                   'bg-(--nb-color-bg-card) px-3 py-2 text-sm text-(--nb-color-fg) ' +
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand)'
                 }
-                placeholder={t('aiChat.placeholder', { defaultValue: 'Type a message…' })}
+                placeholder={t('aiChat.placeholder', { defaultValue: 'Type a messageâ€¦' })}
                 disabled={sending}
               />
               <Button

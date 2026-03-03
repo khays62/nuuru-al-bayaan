@@ -12,7 +12,7 @@ import Textarea from '../../../shared/components/ui/Textarea.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function NewExpenseModal({
     isOpen,
@@ -163,7 +163,7 @@ export default function NewExpenseModal({
             .filter((a) => a && a?._id)
             .map((a) => ({
                 value: String(a._id),
-                label: `${a.name} (${a.type})${a.accountNumber ? ` • ${a.accountNumber}` : ''}`,
+                label: `${a.name} (${a.type})${a.accountNumber ? ` â€¢ ${a.accountNumber}` : ''}`,
             }));
     }, [accountsQuery.data]);
 
@@ -248,7 +248,7 @@ export default function NewExpenseModal({
                     <DropdownSelect
                         value={formData.categoryId}
                         onChange={(v) => setFormData({ ...formData, categoryId: v })}
-                        placeholder={t('finance.expenses.placeholders.category', { defaultValue: 'Select category…' })}
+                        placeholder={t('finance.expenses.placeholders.category', { defaultValue: 'Select categoryâ€¦' })}
                         options={categoriesOptions}
                         disabled={isSubmitting || categoriesQuery.isLoading}
                         clearable={false}
@@ -274,7 +274,7 @@ export default function NewExpenseModal({
                                     {t('finance.expenses.budgetInfo.budget', { defaultValue: 'Budget' })}
                                 </div>
                                 <div className="text-sm font-black text-(--nb-color-fg)">
-                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
+                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: 'â€”' })}
                                 </div>
                             </div>
                             <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-2">
@@ -290,7 +290,7 @@ export default function NewExpenseModal({
                                     {t('finance.expenses.budgetInfo.remaining', { defaultValue: 'Remaining' })}
                                 </div>
                                 <div className={'text-sm font-black ' + (budgetInfo.over ? 'text-red-600' : 'text-(--nb-color-fg)')}>
-                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.remaining || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '—' })}
+                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.remaining || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: 'â€”' })}
                                 </div>
                             </div>
                         </div>
@@ -307,7 +307,7 @@ export default function NewExpenseModal({
                     <DropdownSelect
                         value={formData.accountId}
                         onChange={(v) => setFormData({ ...formData, accountId: v })}
-                        placeholder={t('finance.expenses.placeholders.account', { defaultValue: 'Select account…' })}
+                        placeholder={t('finance.expenses.placeholders.account', { defaultValue: 'Select accountâ€¦' })}
                         options={accountsOptions}
                         disabled={isSubmitting || accountsQuery.isLoading}
                         clearable={false}
@@ -319,7 +319,7 @@ export default function NewExpenseModal({
                         rows={4}
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder={t('finance.expenses.placeholders.description', { defaultValue: 'Additional details…' })}
+                        placeholder={t('finance.expenses.placeholders.description', { defaultValue: 'Additional detailsâ€¦' })}
                         disabled={isSubmitting}
                     />
                 </FormField>
@@ -341,7 +341,7 @@ export default function NewExpenseModal({
                         }
                     >
                         {isSubmitting
-                            ? t('common.working', { defaultValue: 'WORKING…' })
+                            ? t('common.working', { defaultValue: 'WORKINGâ€¦' })
                             : mode === 'edit'
                                 ? t('common.actions.save', { defaultValue: 'Save' })
                                 : t('finance.expenses.actions.recordExpense', { defaultValue: 'Record Expense' })}

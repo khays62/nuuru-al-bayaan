@@ -8,7 +8,7 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
 import GradeSectionSelect from '../../lookups/components/GradeSectionSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 
 export default function StudentFinancePrintTab() {
@@ -151,7 +151,7 @@ export default function StudentFinancePrintTab() {
                 `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
                 student?.currentClass ||
                 student?.classLabel ||
-                '—'
+                'â€”'
             );
 
             const shift =
@@ -187,9 +187,9 @@ export default function StudentFinancePrintTab() {
                     </div>
                 );
             case 'studentId':
-                return row?.student?.studentId || '—';
+                return row?.student?.studentId || 'â€”';
             case 'fullName':
-                return row?.student?.fullName || '—';
+                return row?.student?.fullName || 'â€”';
             case 'balance':
                 return (
                     <span className={balance > 0 ? 'text-red-500' : 'text-green-600'}>
@@ -253,7 +253,7 @@ export default function StudentFinancePrintTab() {
                                     searchable
                                     maxVisible={7}
                                     placeholder={t('common.filters.section', { defaultValue: 'Section' })}
-                                    searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
+                                    searchPlaceholder={t('common.search', { defaultValue: 'Searchâ€¦' })}
                                     className="h-14 px-6 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-2xl font-black text-xs uppercase"
                                 />
                             </div>
@@ -315,7 +315,7 @@ export default function StudentFinancePrintTab() {
                         <div className="max-h-150 overflow-y-auto">
                             <StandardTable
                                 isLoading={loading}
-                                loadingMessage={t('finance.studentFinance.printTab.loading.streamingRegistry', { defaultValue: 'Streaming Registry Data…' })}
+                                loadingMessage={t('finance.studentFinance.printTab.loading.streamingRegistry', { defaultValue: 'Streaming Registry Dataâ€¦' })}
                                 items={students}
                                 rows={(students || []).slice(0, Math.max(1, Number(limit) || 20))}
                                 columns={[

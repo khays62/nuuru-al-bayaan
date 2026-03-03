@@ -13,7 +13,7 @@ import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import { printHtmlDocument } from '../../../utils/exportTable';
 import { useAuth } from '../../../auth/AuthContext';
 
@@ -320,7 +320,7 @@ export default function PayrollEmployeeInfoModal({
             </head>
             <body>
                 <h1>${safe(receiptTitle)}</h1>
-                <div class="sub">${safe(row.month)} · ${safe(staff?.fullName || '')}</div>
+                <div class="sub">${safe(row.month)} Â· ${safe(staff?.fullName || '')}</div>
                 <table>
                     <tr><th>${safe(labelSendNumber)}</th><td>${safe(row.sendNumber)}</td></tr>
                     <tr><th>${safe(labelDescription)}</th><td>${safe(row.description)}</td></tr>
@@ -399,9 +399,9 @@ export default function PayrollEmployeeInfoModal({
                             value={selected.staffId}
                             onChange={(v) => setSelected((prev) => ({ ...prev, staffId: v }))}
                             options={staffOptions}
-                            placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employee…' })}
+                            placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employeeâ€¦' })}
                             maxVisible={5}
-                            searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employees…' })}
+                            searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employeesâ€¦' })}
                         />
                     </FormField>
 
@@ -409,9 +409,9 @@ export default function PayrollEmployeeInfoModal({
                         <AcademicYearSelect
                             value={selected.academicYear}
                             onChange={(v) => setSelected((prev) => ({ ...prev, academicYear: v }))}
-                            placeholder={t('common.select', { defaultValue: 'Select…' })}
+                            placeholder={t('common.select', { defaultValue: 'Selectâ€¦' })}
                             maxVisible={5}
-                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
                         />
                     </FormField>
 
@@ -420,7 +420,7 @@ export default function PayrollEmployeeInfoModal({
                             value={selected.accountId}
                             onChange={(v) => setSelected((prev) => ({ ...prev, accountId: v }))}
                             options={accountOptions}
-                            placeholder={t('finance.payroll.placeholders.account', { defaultValue: 'Select account…' })}
+                            placeholder={t('finance.payroll.placeholders.account', { defaultValue: 'Select accountâ€¦' })}
                             disabled={!canInput}
                         />
                     </FormField>
@@ -454,7 +454,7 @@ export default function PayrollEmployeeInfoModal({
                         error={tableError}
                         items={computedRows}
                         rows={computedRows}
-                        loadingMessage={t('finance.payroll.employeeInfo.loading', { defaultValue: 'Loading…' })}
+                        loadingMessage={t('finance.payroll.employeeInfo.loading', { defaultValue: 'Loadingâ€¦' })}
                         loadingVariant="table"
                         loadingRows={6}
                         loadingColumns={12}
@@ -643,7 +643,7 @@ export default function PayrollEmployeeInfoModal({
                                         );
                                     }
                                 default:
-                                    return '—';
+                                    return 'â€”';
                             }
                         }}
                     />

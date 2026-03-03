@@ -20,7 +20,7 @@ Muhiim: `args` **ma aha query**; waa input kooban oo server-ku validate + enforc
 
 ## 1) Ujeeddo (Goal)
 
-In la helo AI (Gemini) oo:
+In la helo AI provider (OpenAI-compatible, tusaale GitHub Models) oo:
 - la falgali kara DB *si ammaan ah*,
 - u sameyn kara analysis/summary, xitaa taariikh hore,
 - iyadoo si adag loo ilaalinayo:
@@ -49,9 +49,9 @@ In la helo AI (Gemini) oo:
 
 ### 3.1 Flow (Planner → Execute → Answer)
 
-**A) Planner step (Gemini, JSON-only)**
-- Gemini waxaa la siiyaa: allowed tools + args shapes + role context.
-- Gemini wuxuu soo saaraa JSON keliya:
+**A) Planner step (AI model, JSON-only)**
+- AI model-ka waxaa la siiyaa: allowed tools + args shapes + role context.
+- AI model-ku wuxuu soo saaraa JSON keliya:
   - `{ "tool": null, "args": {} }` haddii tool aan loo baahnayn
   - ama `{ "tool": "tool_name", "args": {...} }`
 
@@ -61,9 +61,9 @@ In la helo AI (Gemini) oo:
 - Backend wuxuu sameeyaa permission + scope enforcement.
 - Backend wuxuu DB ka keenaa natiijo xadidan oo la nadiifiyey.
 
-**C) Final answer step (Gemini)**
-- Gemini waxaa lagu quudiyaa `TRUSTED_DB_TOOL_RESULT_JSON`.
-- Gemini wuxuu bixiyaa jawaab luqadda user-ka, isagoo sameynaya analysis/summary.
+**C) Final answer step (AI model)**
+- AI model-ka waxaa lagu quudiyaa `TRUSTED_DB_TOOL_RESULT_JSON`.
+- AI model-ku wuxuu bixiyaa jawaab luqadda user-ka, isagoo sameynaya analysis/summary.
 
 
 ## 4) System Prompt (Design)
@@ -75,7 +75,7 @@ In la helo AI (Gemini) oo:
 - Haddii toolResult la helay, ku koobnow xogtaas.
 
 #### 4.1.1 Reliability (Quota/Busy) — Xeerar dheeraad ah
-Marka AI provider-ka (tusaale Gemini) uu diido request sababo la xiriira **quota** ama **mashquul (high demand)**:
+Marka AI provider-ka (tusaale OpenAI-compatible provider) uu diido request sababo la xiriira **quota** ama **mashquul (high demand)**:
 
 - Haddii aad hesho macluumaad “retry after” (tusaale: `Retry in 35s`), u sheeg user-ka si cad inuu **sugo** waqtigaas kadibna mar kale isku dayo.
 - Ha bixin jawaab “qiyaas” ah (ha allifin natiijo) haddii aad toolResult heli weydo.

@@ -9,7 +9,7 @@ import { emitStudentsChanged } from '../../../utils/events';
 import DataTable from '../../../shared/components/table/DataTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 // Displays students returned by backend list endpoint
 const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total, onLimit }) => {

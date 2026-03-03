@@ -8,7 +8,7 @@ import { getAssignments as getTeacherAssignments } from '../../api/teachersApi';
 import { teacherKeys } from '../../queryKeys';
 import { EVENTS } from '../../../../utils/events';
 import { useRealtimeInvalidation } from '../../../../shared/realtime/useRealtimeInvalidation';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 const CARD_THEMES = [
 	{ header: 'bg-gradient-to-r from-(--nb-color-brand) to-(--nb-color-accent)' },
@@ -49,7 +49,7 @@ const buildSectionLabel = (gs, { sectionPrefix = 'Sec' } = {}) => {
 	const shiftName = titleCaseWords(gs?.shift?.shiftName);
 	return [gradeName || null, sectionNum ? `${sectionPrefix} ${sectionNum}` : null, shiftName || null]
 		.filter(Boolean)
-		.join(' • ');
+		.join(' â€¢ ');
 };
 
 export default function TeacherClassesPage() {
@@ -203,7 +203,7 @@ export default function TeacherClassesPage() {
 			</div>
 
 			{assignmentsQuery.isLoading && cards.length === 0 ? (
-				<div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.classes.loading', { defaultValue: 'Loading classes…' })}</div>
+				<div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.classes.loading', { defaultValue: 'Loading classesâ€¦' })}</div>
 			) : assignmentsQuery.isError ? (
 				<div className="text-sm text-red-600">{t('teachers.dashboard.classes.loadFailed', { defaultValue: 'Failed to load classes' })}</div>
 			) : cards.length === 0 ? (
@@ -214,7 +214,7 @@ export default function TeacherClassesPage() {
 						{cards.map((c, idx) => {
 							const info = countsBySectionId?.[c.id] || { loading: false, total: 0, error: '' };
 							const countText = info.loading
-								? t('teachers.dashboard.classes.checkingStudents', { defaultValue: 'Checking students…' })
+								? t('teachers.dashboard.classes.checkingStudents', { defaultValue: 'Checking studentsâ€¦' })
 								: info.error
 									? t('teachers.dashboard.classes.studentsUnavailable', { defaultValue: 'Students unavailable' })
 									: info.total > 0
@@ -276,7 +276,7 @@ export default function TeacherClassesPage() {
 				)}
 			>
 				{loadingStudents ? (
-					<div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.classes.loadingRoster', { defaultValue: 'Loading roster…' })}</div>
+					<div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.classes.loadingRoster', { defaultValue: 'Loading rosterâ€¦' })}</div>
 				) : (studentsError ? (
 					<div className="text-sm text-red-600">{studentsError}</div>
 				) : ((students || []).length === 0 ? (
@@ -312,11 +312,11 @@ export default function TeacherClassesPage() {
 							renderCell={(st, col) => {
 								switch (col.key) {
 									case 'studentId':
-										return st?.studentId || '—';
+										return st?.studentId || 'â€”';
 									case 'fullName':
-										return st?.fullName || '—';
+										return st?.fullName || 'â€”';
 									case 'gender':
-										return st?.gender || '—';
+										return st?.gender || 'â€”';
 									default:
 										return '';
 								}

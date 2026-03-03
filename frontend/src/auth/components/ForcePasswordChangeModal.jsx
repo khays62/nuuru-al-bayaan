@@ -5,7 +5,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { fetchJson } from '../../shared/api/http';
 import Input from '../../shared/components/ui/Input';
 import Button from '../../shared/components/ui/Button';
-import { useI18n } from '../../i18n/I18nProvider';
+import { useI18n } from '../../i18n/useI18n';
 
 export default function ForcePasswordChangeModal({
   isOpen,
@@ -168,7 +168,7 @@ export default function ForcePasswordChangeModal({
             disabled={saving || !canSubmit}
           >
             {saving
-              ? t('auth.forcePasswordChange.states.saving', { defaultValue: 'Saving…' })
+              ? t('auth.forcePasswordChange.states.saving', { defaultValue: 'Savingâ€¦' })
               : t('auth.forcePasswordChange.actions.save', { defaultValue: 'Save' })}
           </Button>
         </div>

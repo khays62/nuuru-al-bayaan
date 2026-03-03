@@ -34,7 +34,7 @@ import UserFormModal from "../components/UserFormModal.jsx";
 import { userKeys } from '../queryKeys';
 import { useUsersRealtimeInvalidation } from '../useUsersRealtimeInvalidation';
 
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 import { normalizeSomaliaPhone, isValidSomaliaPhone } from '../../../shared/utils/phoneSomalia.js';
 
@@ -308,7 +308,7 @@ export default function UserManagementPage() {
     setForm((prev) => {
       const permissions = structuredClone(prev.permissions);
   
-      // ✅ FULL ACCESS clicked
+      // âœ… FULL ACCESS clicked
       if (permission === "full") {
         const next = !permissions[module].full;
   
@@ -319,15 +319,15 @@ export default function UserManagementPage() {
         return { ...prev, permissions };
       }
   
-      // ✅ Toggle individual permission
+      // âœ… Toggle individual permission
       permissions[module][permission] = !permissions[module][permission];
   
-      // ✅ Check if ALL non-full permissions are true
+      // âœ… Check if ALL non-full permissions are true
       const allChecked = MODULE_PERMISSIONS[module]
         .filter((p) => p !== "full")
         .every((p) => permissions[module][p]);
   
-      // ✅ Sync FULL correctly
+      // âœ… Sync FULL correctly
       permissions[module].full = allChecked;
   
       return { ...prev, permissions };
@@ -690,7 +690,7 @@ export default function UserManagementPage() {
     },
   });
   
-  // 2️⃣ Pagination slice
+  // 2ï¸âƒ£ Pagination slice
   const indexOfLast = currentPage * limit;
   const indexOfFirst = indexOfLast - limit;
   const currentUsers = sortedUsersForView.slice(indexOfFirst, indexOfLast);
@@ -771,7 +771,7 @@ export default function UserManagementPage() {
       filename: t('users.export.filename'),
       sheetName: t('users.export.sheetName'),
       title: '',
-      subtitle: subtitleParts.join(' • '),
+      subtitle: subtitleParts.join(' â€¢ '),
       headerImageSrc: headerImg,
       headers,
       rows,

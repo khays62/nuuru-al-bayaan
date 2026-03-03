@@ -11,7 +11,7 @@ import { setCachedSubjects, invalidateSubjectsCache } from './subjectsCache';
 import Button from '../../../shared/components/ui/Button.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 
 const GradeForm = ({ cls, onClose, onSuccess }) => {
@@ -247,11 +247,11 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
           {/* Academic Year field removed (managed via Enrollment) */}
           <div>
             <label htmlFor="gradeform-grade" className="block text-sm font-medium text-gray-700">{t('common.filters.grade', { defaultValue: 'Grade' })}</label>
-            <GradeSelect id="gradeform-grade" name="gradeform-grade" disabled={submitting} value={grade} onChange={(v)=> onGradeChange({ target: { value: v } })} className="mt-1 w-full" placeholder={t('common.select.placeholder', { defaultValue: 'Select…' })} />
+            <GradeSelect id="gradeform-grade" name="gradeform-grade" disabled={submitting} value={grade} onChange={(v)=> onGradeChange({ target: { value: v } })} className="mt-1 w-full" placeholder={t('common.select.placeholder', { defaultValue: 'Selectâ€¦' })} />
           </div>
           <div>
             <label htmlFor="gradeform-shift" className="block text-sm font-medium text-gray-700">{t('common.filters.shift', { defaultValue: 'Shift' })}</label>
-            <ShiftSelect id="gradeform-shift" name="gradeform-shift" disabled={submitting} value={shift} onChange={(v)=>setShift(v)} className="mt-1 w-full" placeholder={t('common.select.placeholder', { defaultValue: 'Select…' })} />
+            <ShiftSelect id="gradeform-shift" name="gradeform-shift" disabled={submitting} value={shift} onChange={(v)=>setShift(v)} className="mt-1 w-full" placeholder={t('common.select.placeholder', { defaultValue: 'Selectâ€¦' })} />
           </div>
           {/* Cohort field removed (managed via Enrollment) */}
           <div className="md:col-span-2">
@@ -266,7 +266,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
               >
                 <RotateCcw size={14} className={loadingSubs ? 'animate-spin' : ''} />
               </button>
-              {loadingSubs && <span className="text-xs text-gray-400">({t('common.loading', { defaultValue: 'Loading…' })})</span>}
+              {loadingSubs && <span className="text-xs text-gray-400">({t('common.loading', { defaultValue: 'Loadingâ€¦' })})</span>}
             </label>
             <div className="mt-1 max-h-56 overflow-y-auto border border-gray-300 rounded-md px-3 py-2 divide-y divide-gray-100">
               {gradeSubjects.length === 0 && (
@@ -311,7 +311,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
             {submitting
               ? (submittingPhase === 'resync'
                 ? t('gradeSections.form.states.resyncing', { defaultValue: 'Resyncing...' })
-                : (isEdit ? t('gradeSections.form.states.updating', { defaultValue: 'Updating...' }) : t('common.saving', { defaultValue: 'Saving…' })))
+                : (isEdit ? t('gradeSections.form.states.updating', { defaultValue: 'Updating...' }) : t('common.saving', { defaultValue: 'Savingâ€¦' })))
               : (isEdit ? t('common.actions.update', { defaultValue: 'Update' }) : t('common.actions.save', { defaultValue: 'Save' }))}
           </Button>
         </div>

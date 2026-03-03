@@ -12,7 +12,7 @@ import SomaliaAddressFields from '../../../shared/components/address/SomaliaAddr
 import { isValidSomaliaPhone } from '../../../shared/utils/phoneSomalia.js';
 import { checkUsernameAvailability } from '../api/usersApi.js';
 
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 const MODULE_GROUPS = Object.freeze([
   {
@@ -234,7 +234,7 @@ export default function UserFormModal({
     if (value.length < 4 || value.length > 6) {
       setUsernameCheck({
         status: 'invalid',
-        message: t('users.form.validations.usernameLength', { defaultValue: 'Username must be 4–6 characters' }),
+        message: t('users.form.validations.usernameLength', { defaultValue: 'Username must be 4â€“6 characters' }),
       });
       return;
     }

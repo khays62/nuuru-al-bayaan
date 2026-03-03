@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Columns, Check, ChevronDown } from 'lucide-react';
 import ActionButton from '../ui/ActionButton.jsx';
 import Card from '../ui/Card.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function ColumnVisibilityMenu({
   columns = [],

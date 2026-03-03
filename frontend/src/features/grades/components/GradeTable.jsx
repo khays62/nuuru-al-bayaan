@@ -3,7 +3,7 @@ import { Eye, Pencil, Trash2 } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import RowActionButtons from '../../../shared/components/table/RowActionButtons.jsx';
 import { useAuth } from '../../../auth/AuthContext';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 // GradeTable shows section + grade + shift + subjects count; no AY/Cohort columns
 const GradeTable = ({
@@ -72,8 +72,8 @@ const GradeTable = ({
         limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
       }}
       renderCell={(cls, col) => {
-        const gradeName = cls.grade?.gradeName || cls.grade?.name || cls.grade || '—';
-        const shiftName = cls.shift?.shiftName || cls.shift?.name || '—';
+        const gradeName = cls.grade?.gradeName || cls.grade?.name || cls.grade || 'â€”';
+        const shiftName = cls.shift?.shiftName || cls.shift?.name || 'â€”';
 
         switch (col.key) {
           case 'section':
@@ -85,7 +85,7 @@ const GradeTable = ({
           case 'subjects':
             return (cls.subjects || []).length;
           case 'capacity':
-            return cls.capacity ?? '—';
+            return cls.capacity ?? 'â€”';
           case 'actions':
             return (
               <RowActionButtons

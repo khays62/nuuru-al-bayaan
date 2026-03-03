@@ -28,7 +28,7 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import { getAttendanceReportDetailsWithOptions, getAttendanceReportSummaryWithOptions } from '../api/attendanceReports';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function AttendanceReportsPage() {
   const { t, isRTL } = useI18n();
@@ -75,7 +75,7 @@ export default function AttendanceReportsPage() {
 
   const formatDateWithDay = (isoDateOnly) => {
     const dn = dayNameUTC(isoDateOnly);
-    return dn ? `${dn} • ${isoDateOnly}` : String(isoDateOnly || '');
+    return dn ? `${dn} â€¢ ${isoDateOnly}` : String(isoDateOnly || '');
   };
 
   const statusLabel = (status) => {
@@ -94,8 +94,8 @@ export default function AttendanceReportsPage() {
 
 
   const formatActor = (actor) => {
-    if (!actor) return '—';
-    const name = String(actor?.name || '').trim() || '—';
+    if (!actor) return 'â€”';
+    const name = String(actor?.name || '').trim() || 'â€”';
     const role = String(actor?.role || '').trim();
     return role ? `${name} (${role})` : name;
   };
@@ -464,8 +464,8 @@ export default function AttendanceReportsPage() {
           const subjectName = String(s?.subject?.subjectName || '').trim();
           const teacherName = String(s?.teacher?.fullName || '').trim();
           next[`${dow}__${periodCode}`] = {
-            subjectName: subjectName || '—',
-            teacherName: teacherName || '—',
+            subjectName: subjectName || 'â€”',
+            teacherName: teacherName || 'â€”',
           };
         }
 
@@ -550,16 +550,16 @@ export default function AttendanceReportsPage() {
         formatDateWithDay(r.date),
         ...summaryMatrix.periodCodes.map((code) => {
           const c = r.byPeriod?.[code];
-          if (!c) return '—';
-          const m = c?.markedBy ? formatActor(c.markedBy) : '—';
-          const u = c?.updatedBy ? formatActor(c.updatedBy) : '—';
+          if (!c) return 'â€”';
+          const m = c?.markedBy ? formatActor(c.markedBy) : 'â€”';
+          const u = c?.updatedBy ? formatActor(c.updatedBy) : 'â€”';
           let subjLine = '';
           let teacherLine = '';
           if (!isTeacher && code !== 'DAY') {
             const dow = getTimetableDayIndexFromISODate(r.date);
             const info = (dow == null) ? null : (sectionSlotInfoByKey?.[`${dow}__${String(code)}`] || null);
-            subjLine = `\n${t('attendance.reports.labels.subject')}: ${info?.subjectName || '—'}`;
-            teacherLine = `\n${t('attendance.reports.labels.teacher')}: ${info?.teacherName || '—'}`;
+            subjLine = `\n${t('attendance.reports.labels.subject')}: ${info?.subjectName || 'â€”'}`;
+            teacherLine = `\n${t('attendance.reports.labels.teacher')}: ${info?.teacherName || 'â€”'}`;
           }
           const countsLine = t('attendance.reports.summaryCell.counts', { present: c.present, absent: c.absent, late: c.late, excused: c.excused });
           return `${countsLine}\n${t('attendance.reports.labels.markedBy')}: ${m}\n${t('attendance.reports.labels.updatedBy')}: ${u}${subjLine}${teacherLine}`;
@@ -614,7 +614,7 @@ export default function AttendanceReportsPage() {
     const headers = [
       t('attendance.reports.columns.studentId'),
       t('attendance.reports.columns.fullName'),
-      ...flatCols.map((c) => `${formatDateWithDay(c.date)} • ${c.period === 'DAY' ? t('attendance.marking.modes.allDay') : c.period}`),
+      ...flatCols.map((c) => `${formatDateWithDay(c.date)} â€¢ ${c.period === 'DAY' ? t('attendance.marking.modes.allDay') : c.period}`),
     ];
 
     const rows = (Array.isArray(detailsGrid?.rows) ? detailsGrid.rows : []).map((r) => {
@@ -900,7 +900,7 @@ export default function AttendanceReportsPage() {
     }
   }
 
-  // Auto-run on filter changes (debounced) — no Run button.
+  // Auto-run on filter changes (debounced) â€” no Run button.
   useEffect(() => {
     if (!canRun) return;
 
@@ -980,17 +980,17 @@ export default function AttendanceReportsPage() {
         skeletonClassName: 'w-40',
         render: (r) => {
           const c = r.byPeriod?.[code];
-          if (!c) return '—';
-          const m = c?.markedBy ? formatActor(c.markedBy) : '—';
-          const u = c?.updatedBy ? formatActor(c.updatedBy) : '—';
+          if (!c) return 'â€”';
+          const m = c?.markedBy ? formatActor(c.markedBy) : 'â€”';
+          const u = c?.updatedBy ? formatActor(c.updatedBy) : 'â€”';
 
           let subjectName = '';
           let teacherName = '';
           if (!isTeacher && code !== 'DAY') {
             const dow = getTimetableDayIndexFromISODate(r.date);
             const info = (dow == null) ? null : (sectionSlotInfoByKey?.[`${dow}__${String(code)}`] || null);
-            subjectName = String(info?.subjectName || '—');
-            teacherName = String(info?.teacherName || '—');
+            subjectName = String(info?.subjectName || 'â€”');
+            teacherName = String(info?.teacherName || 'â€”');
           }
 
           return (
@@ -1210,7 +1210,7 @@ export default function AttendanceReportsPage() {
             <div className="text-lg font-semibold">{t('attendance.reports.title')}</div>
             {meta && (
               <div className="text-sm text-gray-700">
-                {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(meta.to)}</span> · {t('attendance.reports.labels.rosterCount')}: <span className="font-medium">{meta.rosterCount}</span>
+                {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(meta.to)}</span> Â· {t('attendance.reports.labels.rosterCount')}: <span className="font-medium">{meta.rosterCount}</span>
               </div>
             )}
             {shouldPrintFitWide ? (
@@ -1249,7 +1249,7 @@ export default function AttendanceReportsPage() {
             {printContext === 'student' && printStudent ? (
               <>
                 <div className="text-sm text-gray-700">
-                  {t('attendance.reports.labels.student')}: <span className="font-medium">{printStudent.fullName}</span> · {t('attendance.reports.labels.studentId')}: <span className="font-medium">{printStudent.studentId}</span>
+                  {t('attendance.reports.labels.student')}: <span className="font-medium">{printStudent.fullName}</span> Â· {t('attendance.reports.labels.studentId')}: <span className="font-medium">{printStudent.studentId}</span>
                 </div>
                 {renderStudentCards(printStudent, { print: true })}
               </>
@@ -1522,7 +1522,7 @@ export default function AttendanceReportsPage() {
       <div className="no-print">
         {!loading && isSummary && meta && (
           <div className="text-sm text-gray-700">
-            {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(meta.to)}</span> · {t('attendance.reports.labels.rosterCount')}: <span className="font-medium">{meta.rosterCount}</span>
+            {t('attendance.reports.labels.range')}: <span className="font-medium">{formatDateWithDay(meta.from)}</span> {t('common.to')} <span className="font-medium">{formatDateWithDay(meta.to)}</span> Â· {t('attendance.reports.labels.rosterCount')}: <span className="font-medium">{meta.rosterCount}</span>
           </div>
         )}
 

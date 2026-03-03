@@ -4389,4 +4389,21 @@ export default {
       },
     },
   },
+
+  aiChat: {
+    title: 'Kaaliyaha AI',
+    subtitle: 'Wadahadalku wuxuu ku kaydsan yahay akoonkaaga',
+    placeholder: 'Qor fariin…',
+    send: 'Dir',
+    thinking: 'Wuu fikirayaa…',
+    empty: 'Weydii wax kasta oo ku saabsan sida nidaamka loo isticmaalo.',
+    resize: 'Jiidi si aad u ballaariso',
+    history: 'Taariikhda',
+    newChat: 'Chat cusub',
+    deleteChat: 'Tirtir',
+    deleteConfirm: 'Ma tirtiraysaa chat-kan?',
+    errors: {
+      emptyReply: 'AI ayaa soo celiyay jawaab madhan',
+    },
+  },
 };

@@ -23,7 +23,7 @@ import CopyTableButton from '../../../shared/components/exports/downloadButtons/
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 // API services (existing ones for now)
 import { getSubjects, addSubject, updateSubject, deleteSubject } from '../api/subjects';
@@ -263,7 +263,7 @@ export default function SubjectPage() {
       filename: 'subjects',
       title: t('modules.subjects', { defaultValue: 'Subjects' }),
       subtitle: t('common.export.subtitle', {
-        defaultValue: 'Total: {{count}} • Generated: {{date}}',
+        defaultValue: 'Total: {{count}} â€¢ Generated: {{date}}',
         count: sortedSubjectsForView.length,
         date: new Date().toLocaleString(),
       }),

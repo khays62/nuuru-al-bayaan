@@ -10,7 +10,7 @@ import {
 } from '../hooks/financeConfigHooks';
 
 import { useFinanceRealtimeInvalidation } from '../useFinanceRealtimeInvalidation';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
@@ -190,7 +190,7 @@ export default function FeeTypeTab() {
       // If it's a reference/in-use error, show clear English toast immediately
       if (e?.response?.data?.code === 'FEE_TYPE_IN_USE' || /referenc|in use|constraint|linked|foreign/i.test(msg)) {
         // show a clear English validation toast and prevent deletion
-        toast.error(t('finance.feeTypes.toasts.deleteBlocked', { defaultValue: 'Cannot delete — this fee type is referenced by other records.' }));
+        toast.error(t('finance.feeTypes.toasts.deleteBlocked', { defaultValue: 'Cannot delete â€” this fee type is referenced by other records.' }));
         return;
       }
       toast.error(msg || t('finance.feeTypes.toasts.operationFailed', { defaultValue: 'Operation failed' }));

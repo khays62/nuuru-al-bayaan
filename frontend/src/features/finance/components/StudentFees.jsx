@@ -10,7 +10,7 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import Card from '../../../shared/components/ui/Card.jsx';
 import Tabs from '../../attendance/components/Tabs.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 import GradeSelect from '../../lookups/components/GradeSelect.jsx';
 import ShiftSelect from '../../lookups/components/ShiftSelect.jsx';
@@ -161,7 +161,7 @@ const ReceiptTab = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success(t('finance.studentFinance.receiptTab.toasts.exporting', { defaultValue: 'Exporting to Excel…' }));
+        toast.success(t('finance.studentFinance.receiptTab.toasts.exporting', { defaultValue: 'Exporting to Excelâ€¦' }));
     };
 
     useEffect(() => {
@@ -214,10 +214,10 @@ const ReceiptTab = () => {
 
             return {
                 _id: s._id,
-                studentId: s.studentId || '—',
-                fullName: s.fullName || '—',
-                contact: s.phone || s.parentPhone || '—',
-                className: s.className || '—',
+                studentId: s.studentId || 'â€”',
+                fullName: s.fullName || 'â€”',
+                contact: s.phone || s.parentPhone || 'â€”',
+                className: s.className || 'â€”',
                 balance,
                 balanceColor,
                 hasHormaris: Number(s.hormarisOutstandingAmount || 0) > 0,
@@ -360,7 +360,7 @@ const ReceiptTab = () => {
                             <Input
                                 type="text"
                                 className="h-11 pl-10 pr-4 font-medium"
-                                placeholder={t('finance.studentFinance.receiptTab.placeholders.search', { defaultValue: 'Search ID, Name or Phone…' })}
+                                placeholder={t('finance.studentFinance.receiptTab.placeholders.search', { defaultValue: 'Search ID, Name or Phoneâ€¦' })}
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                             />
@@ -398,7 +398,7 @@ const ReceiptTab = () => {
                         searchable
                         maxVisible={6}
                         placeholder={t('common.filters.section', { defaultValue: 'Section' })}
-                        searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
+                        searchPlaceholder={t('common.search', { defaultValue: 'Searchâ€¦' })}
                         className="h-11 min-w-50 font-bold text-sm"
                     />
 
@@ -449,7 +449,7 @@ const ReceiptTab = () => {
                     isLoading={loading}
                     error={null}
                     items={sortedItems}
-                    loadingMessage={t('finance.studentFinance.receiptTab.loading.syncingLedger', { defaultValue: 'Syncing Ledger…' })}
+                    loadingMessage={t('finance.studentFinance.receiptTab.loading.syncingLedger', { defaultValue: 'Syncing Ledgerâ€¦' })}
                     loadingVariant="table"
                     loadingRows={8}
                     loadingColumns={6}
@@ -482,15 +482,15 @@ const ReceiptTab = () => {
                     renderCell={(row, col) => {
                         switch (col.key) {
                             case 'studentId':
-                                return <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || '—'}</span>;
+                                return <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || 'â€”'}</span>;
                             case 'fullName':
-                                return <span className="font-bold text-(--nb-color-fg)">{row?.fullName || '—'}</span>;
+                                return <span className="font-bold text-(--nb-color-fg)">{row?.fullName || 'â€”'}</span>;
                             case 'contact':
-                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || '—'}</span>;
+                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || 'â€”'}</span>;
                             case 'className':
                                 return (
                                     <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
-                                        {row?.className || '—'}
+                                        {row?.className || 'â€”'}
                                     </span>
                                 );
                             case 'balance':

@@ -3,7 +3,7 @@ import React from 'react';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import Spinner from '../../../shared/components/feedback/Spinner.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TransfersCandidatesTable({
 	items,
@@ -93,7 +93,7 @@ export default function TransfersCandidatesTable({
 								{openingId === st._id ? (
 									<>
 										<Spinner size={14} color="currentColor" />
-										<span>{t('transfers.actions.opening', { defaultValue: 'Opening…' })}</span>
+										<span>{t('transfers.actions.opening', { defaultValue: 'Openingâ€¦' })}</span>
 									</>
 								) : (
 									t('common.actions.transfer', { defaultValue: 'Transfer' })

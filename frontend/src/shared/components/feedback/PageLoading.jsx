@@ -1,11 +1,11 @@
 import React from 'react';
 import Spinner from './Spinner';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import Skeleton from '../ui/Skeleton.jsx';
 
 export default function PageLoading({ title, subtitle = '' }) {
   const { t } = useI18n();
-  const resolvedTitle = title ?? t('common.loading', { defaultValue: 'Loading…' });
+  const resolvedTitle = title ?? t('common.loading', { defaultValue: 'Loadingâ€¦' });
 
   return (
     <div className="min-h-[50vh] w-full rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-(--nb-shadow-sm) overflow-hidden">
@@ -17,7 +17,7 @@ export default function PageLoading({ title, subtitle = '' }) {
       <div className="p-6">
         <div className="flex items-center gap-3">
           <Spinner size={22} />
-          <div className="text-sm text-(--nb-color-muted)">{t('common.pleaseWait', { defaultValue: 'Please wait…' })}</div>
+          <div className="text-sm text-(--nb-color-muted)">{t('common.pleaseWait', { defaultValue: 'Please waitâ€¦' })}</div>
         </div>
 
         <div className="mt-5 space-y-3">

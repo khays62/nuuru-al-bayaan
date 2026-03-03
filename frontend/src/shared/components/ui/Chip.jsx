@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 const variants = {
   // Back-compat: keep `indigo` key but map it to our brand/accent palette.
@@ -45,7 +45,7 @@ export default function Chip({
           aria-label={resolvedRemoveLabel}
           title={resolvedRemoveLabel}
         >
-          ×
+          Ã—
         </button>
       ) : null}
     </span>

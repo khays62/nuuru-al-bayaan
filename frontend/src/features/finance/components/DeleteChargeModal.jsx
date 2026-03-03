@@ -3,7 +3,7 @@ import { Trash2, AlertCircle, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useDeleteMonthlyChargesMutation } from '../hooks/studentFinanceHooks';
 import { useFinanceCategoriesQuery } from '../hooks/financeConfigHooks';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
 import Checkbox from '../../../shared/components/ui/Checkbox.jsx';
@@ -217,7 +217,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                                         searchable
                                         maxVisible={6}
                                         placeholder={t('finance.studentFinance.deleteChargesModal.placeholders.section', { defaultValue: 'Section' })}
-                                        searchPlaceholder={t('finance.studentFinance.deleteChargesModal.placeholders.search', { defaultValue: 'Search…' })}
+                                        searchPlaceholder={t('finance.studentFinance.deleteChargesModal.placeholders.search', { defaultValue: 'Searchâ€¦' })}
                                         className="h-11 font-bold text-sm"
                                     />
                                 </div>
@@ -248,7 +248,7 @@ export default function DeleteChargeModal({ onClose, onSuccess }) {
                                 onChange={(v) => setAmountTypeId(v)}
                                 options={amountTypeOptions}
                                 placeholder={t('finance.studentFinance.deleteChargesModal.placeholders.allTypes', { defaultValue: '-- All Types --' })}
-                                searchPlaceholder={t('finance.studentFinance.deleteChargesModal.placeholders.searchAmountTypes', { defaultValue: 'Search amount types…' })}
+                                searchPlaceholder={t('finance.studentFinance.deleteChargesModal.placeholders.searchAmountTypes', { defaultValue: 'Search amount typesâ€¦' })}
                                 maxVisible={6}
                                 className="h-11 font-bold text-sm"
                             />

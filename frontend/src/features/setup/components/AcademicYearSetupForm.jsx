@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Button from '../../../shared/components/ui/Button.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import FormField from '../../../shared/components/ui/FormField.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function AcademicYearSetupForm({ initial, onCancel, onSubmit, isSubmitting }) {
   const { t } = useI18n();
@@ -50,7 +50,7 @@ export default function AcademicYearSetupForm({ initial, onCancel, onSubmit, isS
           {t('common.actions.cancel', { defaultValue: 'Cancel' })}
         </Button>
         <Button type="submit" variant="brand" disabled={isSubmitting}>
-          {isSubmitting ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+          {isSubmitting ? t('common.saving', { defaultValue: 'Savingâ€¦' }) : t('common.actions.save', { defaultValue: 'Save' })}
         </Button>
       </div>
     </form>

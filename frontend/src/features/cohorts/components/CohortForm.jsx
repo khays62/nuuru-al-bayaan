@@ -3,7 +3,7 @@ import { getAcademicYears } from '../../lookups/api/lookups';
 import Button from '../../../shared/components/ui/Button.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Select from '../../../shared/components/ui/Select.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function CohortForm({ initial = {}, onSubmit, onCancel }) {
   const { t } = useI18n();
@@ -86,7 +86,7 @@ export default function CohortForm({ initial = {}, onSubmit, onCancel }) {
           {t('common.actions.cancel', { defaultValue: 'Cancel' })}
         </Button>
         <Button type="submit" variant="brand" disabled={submitting}>
-          {submitting ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+          {submitting ? t('common.saving', { defaultValue: 'Savingâ€¦' }) : t('common.actions.save', { defaultValue: 'Save' })}
         </Button>
       </div>
     </form>

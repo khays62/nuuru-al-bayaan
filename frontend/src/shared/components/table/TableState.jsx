@@ -3,7 +3,7 @@ import LoadingState from '../ui/LoadingState.jsx';
 import EmptyState from '../ui/EmptyState.jsx';
 import Button from '../ui/Button.jsx';
 import Alert from '../ui/Alert.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TableState({
   isLoading = false,
@@ -31,7 +31,7 @@ export default function TableState({
     ? isEmpty
     : (Array.isArray(items) ? items.length === 0 : false);
 
-  const resolvedLoadingMessage = loadingMessage ?? t('common.loading', { defaultValue: 'Loading…' });
+  const resolvedLoadingMessage = loadingMessage ?? t('common.loading', { defaultValue: 'Loadingâ€¦' });
   const resolvedEmptyTitle = emptyTitle ?? t('common.emptyStates.noDataFound', { defaultValue: 'No data found' });
 
   if (isLoading) {

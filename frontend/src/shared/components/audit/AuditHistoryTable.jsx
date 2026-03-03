@@ -7,7 +7,7 @@ import ActionButton from '../ui/ActionButton.jsx';
 import Card from '../ui/Card.jsx';
 import { useClientSort } from '../../hooks/useClientSort.js';
 import { formatAuditDescription, formatDeviceDisplay, formatIpDisplay, prettifyAuditAction } from '../../utils/auditFormat.js';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function AuditHistoryTable({
   logs = [],

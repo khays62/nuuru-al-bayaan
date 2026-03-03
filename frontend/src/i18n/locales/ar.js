@@ -4569,4 +4569,21 @@ export default {
       },
     },
   },
+
+  aiChat: {
+    title: 'مساعد الذكاء الاصطناعي',
+    subtitle: 'يتم حفظ المحادثة لحسابك',
+    placeholder: 'اكتب رسالة…',
+    send: 'إرسال',
+    thinking: 'يفكر…',
+    empty: 'اسأل أي شيء عن كيفية استخدام النظام.',
+    resize: 'اسحب لتغيير الحجم',
+    history: 'السجل',
+    newChat: 'محادثة جديدة',
+    deleteChat: 'حذف',
+    deleteConfirm: 'هل تريد حذف هذه المحادثة؟',
+    errors: {
+      emptyReply: 'أعاد الذكاء الاصطناعي ردًا فارغًا',
+    },
+  },
 };

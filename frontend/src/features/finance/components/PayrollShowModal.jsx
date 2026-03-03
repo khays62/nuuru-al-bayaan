@@ -5,7 +5,7 @@ import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function PayrollShowModal({
     onClose,
@@ -57,7 +57,7 @@ export default function PayrollShowModal({
                 <div className="overflow-x-auto border border-(--nb-color-border) rounded-xl">
                     <StandardTable
                         isLoading={isLoading}
-                        loadingMessage={t('finance.payroll.table.loading', { defaultValue: 'Loading…' })}
+                        loadingMessage={t('finance.payroll.table.loading', { defaultValue: 'Loadingâ€¦' })}
                         items={rows}
                         rows={rows}
                         columns={[
@@ -79,7 +79,7 @@ export default function PayrollShowModal({
                         renderCell={(row, col) => {
                             switch (col.key) {
                                 case 'id':
-                                    return String(row?.staff?.employeeId || row?.staff?.username || row?._id?.slice(-6) || '—');
+                                    return String(row?.staff?.employeeId || row?.staff?.username || row?._id?.slice(-6) || 'â€”');
                                 case 'name':
                                     return <span className="font-bold">{row?.staff?.fullName || '-'}</span>;
                                 case 'phone':
@@ -93,7 +93,7 @@ export default function PayrollShowModal({
                                         </Button>
                                     );
                                 default:
-                                    return '—';
+                                    return 'â€”';
                             }
                         }}
                     />

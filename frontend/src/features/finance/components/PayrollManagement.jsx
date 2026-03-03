@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import financeService from '../api/finance';
 import { usePayrollsQuery } from '../hooks/payrollHooks';
 
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
@@ -216,7 +216,7 @@ export default function PayrollManagement() {
                                     onChange={(v) => setAcademicYear(v)}
                                     maxVisible={5}
                                     placeholder={t('common.filters.any', { defaultValue: 'Any' })}
-                                    searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                                    searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
                                 />
                             </div>
                         </FilterItem>
@@ -308,7 +308,7 @@ export default function PayrollManagement() {
                     isLoading={isLoading}
                     error={null}
                     items={sortedItems}
-                    loadingMessage={t('finance.payroll.table.loading', { defaultValue: 'Loading payroll…' })}
+                    loadingMessage={t('finance.payroll.table.loading', { defaultValue: 'Loading payrollâ€¦' })}
                     loadingVariant="table"
                     loadingRows={6}
                     loadingColumns={9}

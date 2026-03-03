@@ -8,7 +8,7 @@ import {
     useFinanceCategoriesQuery,
     useUpdateFinanceCategoryMutation,
 } from '../hooks/financeConfigHooks';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
@@ -228,7 +228,7 @@ export default function AmountTypeTab() {
             toast.error(t('finance.studentFinance.amountTypeTab.toasts.noDeletePermission', { defaultValue: 'You do not have permission to delete amount types' }));
             return;
         }
-        if (!window.confirm(t('finance.studentFinance.amountTypeTab.confirms.delete', { defaultValue: "Delete this Amount Type permanently? If it is already used in invoices/appointments, deletion will be blocked — set it Inactive instead." }))) return;
+        if (!window.confirm(t('finance.studentFinance.amountTypeTab.confirms.delete', { defaultValue: "Delete this Amount Type permanently? If it is already used in invoices/appointments, deletion will be blocked â€” set it Inactive instead." }))) return;
         try {
             const res = await deleteMutation.mutateAsync(id);
             toast.success(res?.message || t('finance.studentFinance.amountTypeTab.toasts.deleted', { defaultValue: 'Deleted successfully' }));

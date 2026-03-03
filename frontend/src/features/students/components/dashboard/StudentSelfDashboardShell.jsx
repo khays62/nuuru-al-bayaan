@@ -13,7 +13,7 @@ import { studentKeys } from '../../queryKeys';
 import PageLoading from '../../../../shared/components/feedback/PageLoading.jsx';
 import ForcePasswordChangeModal from '../../../../auth/components/ForcePasswordChangeModal';
 import { useStudentDashboardRealtimeInvalidation } from './useStudentDashboardRealtimeInvalidation';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 function isoDateOnly(d) {
   return new Date(d).toISOString().slice(0, 10);
@@ -791,7 +791,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
       .sort((a, b) => String(a?.startTime || '').localeCompare(String(b?.startTime || '')));
     return {
       todayIdx,
-      dayName: dayNames[todayIdx] || '—',
+      dayName: dayNames[todayIdx] || 'â€”',
       dateISO,
       slots: list,
     };
@@ -800,7 +800,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   const levelLinePoints = useMemo(() => {
     const arr = Array.isArray(levelStats) ? levelStats : [];
     return arr.map((x) => ({
-      label: x.yearName ? `${x.label} • ${x.yearName}` : x.label,
+      label: x.yearName ? `${x.label} â€¢ ${x.yearName}` : x.label,
       value: Number(x.average || 0),
     }));
   }, [levelStats]);
@@ -816,7 +816,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
       'fill-(--nb-color-accent)',
     ];
     return arr.map((x, idx) => ({
-      label: x.yearName ? `${x.label} • ${x.yearName}` : x.label,
+      label: x.yearName ? `${x.label} â€¢ ${x.yearName}` : x.label,
       value: Number(x.total || 0) || Number(x.average || 0),
       className: palette[idx % palette.length],
     }));
@@ -876,7 +876,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
           <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('nav.attendance')}</div>
             <div className="text-xs text-white/80 mt-0.5">
-              {currentLevelLabel ? `${currentLevelLabel} • ` : ''}{t('students.selfDashboard.attendance.overview')}
+              {currentLevelLabel ? `${currentLevelLabel} â€¢ ` : ''}{t('students.selfDashboard.attendance.overview')}
             </div>
           </div>
           <div className="p-5 h-full">
@@ -933,7 +933,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
         <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('students.selfDashboard.todayScheduleTitle')}</div>
-            <div className="text-xs text-white/80 mt-0.5">{todaySchedule.dayName} • {todaySchedule.dateISO}</div>
+            <div className="text-xs text-white/80 mt-0.5">{todaySchedule.dayName} â€¢ {todaySchedule.dateISO}</div>
           </div>
           <div className="p-5">
             {historyLoading || timetableLoading ? (
@@ -949,9 +949,9 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                 {todaySchedule.slots.map((s) => {
                   const time = `${String(s?.startTime || '').trim()} - ${String(s?.endTime || '').trim()}`.trim();
                   const subject = String(s?.subject?.subjectName || '-').trim() || '-';
-                  const teacher = String(s?.teacher?.fullName || '—').trim() || '—';
+                  const teacher = String(s?.teacher?.fullName || 'â€”').trim() || 'â€”';
                   const room = s?.room ? `${t('common.room')} ${s.room}` : '';
-                  const meta = [time, room].filter(Boolean).join(' • ');
+                  const meta = [time, room].filter(Boolean).join(' â€¢ ');
                   const key = String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${subject}`);
                   return (
                     <div key={key} className="border border-(--nb-color-border) rounded-lg p-3 bg-(--nb-color-bg-card) shadow-sm">

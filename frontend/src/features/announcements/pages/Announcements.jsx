@@ -12,7 +12,7 @@ import { useAuth } from "../../../auth/AuthContext";
 import { getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, markAnnouncementsRead } from "../../../api";
 import { announcementKeys } from '../queryKeys';
 import { useAnnouncementsRealtimeInvalidation } from '../useAnnouncementsRealtimeInvalidation';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function AnnouncementsPage() {
   const { t } = useI18n();
@@ -99,7 +99,7 @@ export default function AnnouncementsPage() {
    
 
 
-  // 📝 Create
+  // ðŸ“ Create
 const handlePost = async () => {
   if (posting) return;
   if (!newTitle.trim() || !newBody.trim()) {
@@ -126,7 +126,7 @@ const handlePost = async () => {
   }
 };
 
-// ✏️ Edit
+// âœï¸ Edit
 const handleEdit = async (id) => {
   if (updatingId) return;
   try {
@@ -147,7 +147,7 @@ const handleEdit = async (id) => {
   }
 };
 
-// ❌ Delete
+// âŒ Delete
 const handleDelete = async (id) => {
   if (deletingId) return;
   if (!window.confirm(t('announcements.page.confirmDelete', { defaultValue: 'Are you sure you want to delete this announcement?' })))
@@ -183,13 +183,13 @@ const handleDelete = async (id) => {
             type="text"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
-            placeholder={t('announcements.page.form.titlePlaceholder', { defaultValue: 'Announcement title…' })}
+            placeholder={t('announcements.page.form.titlePlaceholder', { defaultValue: 'Announcement titleâ€¦' })}
             className="mb-3"
           />
           <Textarea
             value={newBody}
             onChange={(e) => setNewBody(e.target.value)}
-            placeholder={t('announcements.page.form.bodyPlaceholder', { defaultValue: 'Write your announcement details…' })}
+            placeholder={t('announcements.page.form.bodyPlaceholder', { defaultValue: 'Write your announcement detailsâ€¦' })}
             className="mb-3 resize-none"
             rows={4}
           />
@@ -199,14 +199,14 @@ const handleDelete = async (id) => {
             disabled={posting}
             icon={posting ? <LoadingState variant="inline" className="border-t-white" /> : <Send size={18} />}
           >
-            {posting ? t('announcements.page.status.posting', { defaultValue: 'Posting…' }) : t('announcements.page.actions.post', { defaultValue: 'Post' })}
+            {posting ? t('announcements.page.status.posting', { defaultValue: 'Postingâ€¦' }) : t('announcements.page.actions.post', { defaultValue: 'Post' })}
           </Button>
         </Card>
       )}
 
       <div className="space-y-4">
         {isLoading ? (
-          <p className="text-gray-500 italic">{t('announcements.page.loading', { defaultValue: 'Loading announcements…' })}</p>
+          <p className="text-gray-500 italic">{t('announcements.page.loading', { defaultValue: 'Loading announcementsâ€¦' })}</p>
         ) : isError || announcements.length === 0 ? (
           <p className="text-gray-500 italic">{t('announcements.page.empty', { defaultValue: 'No announcements yet.' })}</p>
         ) : (
@@ -236,7 +236,7 @@ const handleDelete = async (id) => {
                       disabled={updatingId === a._id}
                       icon={updatingId === a._id ? <LoadingState variant="inline" className="border-t-white" /> : null}
                     >
-                      {updatingId === a._id ? t('announcements.page.status.updating', { defaultValue: 'Updating…' }) : t('common.actions.update', { defaultValue: 'Update' })}
+                      {updatingId === a._id ? t('announcements.page.status.updating', { defaultValue: 'Updatingâ€¦' }) : t('common.actions.update', { defaultValue: 'Update' })}
                     </Button>
                     <Button
                       onClick={() => setEditingId(null)}
@@ -305,7 +305,7 @@ const handleDelete = async (id) => {
                               ? {
                                   key: 'delete',
                                   label: t('common.actions.delete', { defaultValue: 'Delete' }),
-                                  title: deletingId === a._id ? t('announcements.page.status.deleting', { defaultValue: 'Deleting…' }) : t('common.actions.delete', { defaultValue: 'Delete' }),
+                                  title: deletingId === a._id ? t('announcements.page.status.deleting', { defaultValue: 'Deletingâ€¦' }) : t('common.actions.delete', { defaultValue: 'Delete' }),
                                   tone: 'delete',
                                   icon: deletingId === a._id ? <LoadingState variant="inline" /> : <Trash2 size={16} />,
                                   disabled: deletingId === a._id || updatingId === a._id,

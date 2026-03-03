@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, GraduationCap, DollarSign, Receipt, Printer, History } from 'lucide-react';
 import financeService from '../api/finance';
 import toast from 'react-hot-toast';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function GraduationPaymentModal({ student, row, onClose, onSuccess }) {
     const { t } = useI18n();

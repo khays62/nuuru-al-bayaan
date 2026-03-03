@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FileDown } from 'lucide-react';
 import ActionButton from '../../ui/ActionButton';
 import { exportTableToCSV } from '../../../../utils/exportTable';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 
 export default function CsvDownloadButton({ getPayload, disabled = false, className = '', variant = 'outline' }) {
   const { t } = useI18n();

@@ -13,7 +13,7 @@ import Input from '../../../../shared/components/ui/Input.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
-import { useI18n } from '../../../../i18n/I18nProvider';
+import { useI18n } from '../../../../i18n/useI18n';
 import { getSomaliaDistrictLabel, getSomaliaRegionLabel } from '../../../../shared/data/somaliaAdminDivisions.js';
 
 export default function ProfileTab() {

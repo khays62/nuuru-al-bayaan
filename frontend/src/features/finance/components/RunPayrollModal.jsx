@@ -3,7 +3,7 @@ import financeService from '../api/finance';
 import { X, ChevronRight, Check, Search, ArrowLeft, Users, Calendar, Calculator, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from '../api/axios';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function RunPayrollModal({ onClose, onSuccess }) {
     const { t } = useI18n();

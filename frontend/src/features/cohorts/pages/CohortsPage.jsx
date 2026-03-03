@@ -24,7 +24,7 @@ import { cohortsKeys } from '../queryKeys';
 import { useCohortsRealtimeInvalidation } from '../useCohortsRealtimeInvalidation';
 import { useAuth } from '../../../auth/AuthContext';
 import headerImg from '../../../assets/nuuruBayaanHeader.png';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function CohortsPage() {
   const { t } = useI18n();
@@ -189,7 +189,7 @@ export default function CohortsPage() {
       filename: 'cohorts',
       title: t('modules.cohorts', { defaultValue: 'Cohorts' }),
       subtitle: t('common.export.subtitle', {
-        defaultValue: 'Total: {{count}} • Generated: {{date}}',
+        defaultValue: 'Total: {{count}} â€¢ Generated: {{date}}',
         count: sortedItemsForView.length,
         date: new Date().toLocaleString(),
       }),
@@ -241,7 +241,7 @@ export default function CohortsPage() {
                     placeholder={t('cohorts.filters.startAy', { defaultValue: 'Start AY' })}
                     searchable
                     maxVisible={5}
-                    searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                    searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
                   />
                 </FilterItem>
 

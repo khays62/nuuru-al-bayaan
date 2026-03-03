@@ -76,5 +76,8 @@ frontend/*.out
 # Backend local test capture outputs (do not commit)
 backend/test_*.txt
 
+# Root-level backend test capture outputs (do not commit)
+backend_test_*.txt
+
 # Uploads (student photos, etc.)
 backend/uploads/

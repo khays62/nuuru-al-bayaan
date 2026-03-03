@@ -1,7 +1,7 @@
 import React from 'react';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function TransfersLogsTable({
 	items,

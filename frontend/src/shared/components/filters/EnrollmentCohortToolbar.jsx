@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import Tabs from '../../../features/attendance/components/Tabs';
 import CohortSelect from '../../../features/lookups/components/CohortSelect';
 import Card from '../ui/Card.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 const defaultEnrollmentStatusValues = ['active', 'inactive', 'promoted', 'graduated', 'transferred', 'withdrawn', 'all'];
 

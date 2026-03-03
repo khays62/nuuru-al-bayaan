@@ -1,14 +1,14 @@
 import React from 'react';
 import SearchableSelect from '../ui/SearchableSelect.jsx';
 import DropdownSelect from '../ui/DropdownSelect.jsx';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 /**
  * FilterDropdownSelect
  * - Single-select dropdown intended for filter toolbars.
  * - Uses the shared SearchableSelect primitive to keep dropdown UX consistent:
  *   - default view shows up to maxVisible options
- *   - shows "Type to search more…" hint when more options exist
+ *   - shows "Type to search moreâ€¦" hint when more options exist
  */
 export default function FilterDropdownSelect({
   value,
@@ -27,8 +27,8 @@ export default function FilterDropdownSelect({
   buttonProps,
 }) {
   const { t } = useI18n();
-  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Select…' });
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search…' });
+  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Selectâ€¦' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' });
 
   if (searchable) {
     return (

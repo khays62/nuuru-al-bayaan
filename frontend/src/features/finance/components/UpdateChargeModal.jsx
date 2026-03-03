@@ -9,7 +9,7 @@ import {
 } from '../hooks/studentFinanceHooks';
 import { useFinanceCategoriesQuery } from '../hooks/financeConfigHooks';
 
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 
 import Input from '../../../shared/components/ui/Input.jsx';
 import Textarea from '../../../shared/components/ui/Textarea.jsx';
@@ -278,7 +278,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                                         onChange={(v) => setFormData({ ...formData, amountTypeId: v })}
                                         options={amountTypeOptions}
                                         placeholder={t('finance.studentFinance.updateChargeModal.placeholders.chooseFee', { defaultValue: 'Choose Fee...' })}
-                                        searchPlaceholder={t('finance.studentFinance.updateChargeModal.placeholders.searchFeeCategories', { defaultValue: 'Search fee categories…' })}
+                                        searchPlaceholder={t('finance.studentFinance.updateChargeModal.placeholders.searchFeeCategories', { defaultValue: 'Search fee categoriesâ€¦' })}
                                         maxVisible={6}
                                         className="h-11 font-bold text-sm"
                                     />
@@ -415,7 +415,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                             size="md"
                         >
                             {loading
-                                ? t('finance.studentFinance.updateChargeModal.actions.processing', { defaultValue: 'Processing…' })
+                                ? t('finance.studentFinance.updateChargeModal.actions.processing', { defaultValue: 'Processingâ€¦' })
                                 : t('finance.studentFinance.updateChargeModal.actions.execute', { defaultValue: 'Execute' })}
                         </Button>
                     ) : null}

@@ -3,7 +3,7 @@ import financeService from '../api/finance';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFinanceCategoriesQuery } from '../hooks/financeConfigHooks';
-import { useI18n } from '../../../i18n/I18nProvider';
+import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 
 export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {

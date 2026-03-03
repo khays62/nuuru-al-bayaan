@@ -10,7 +10,7 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import Input from '../../../shared/components/ui/Input.jsx';
 import Button from '../../../shared/components/ui/Button.jsx';
-import { useI18n } from '../../../i18n/I18nProvider.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 export default function PayrollUpdateModal({
     onClose,
@@ -144,9 +144,9 @@ export default function PayrollUpdateModal({
                             value={form.employee}
                             onChange={(v) => setForm((prev) => ({ ...prev, employee: v }))}
                             options={staffOptions}
-                            placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employee…' })}
+                            placeholder={t('finance.payroll.placeholders.employee', { defaultValue: 'Select employeeâ€¦' })}
                             maxVisible={5}
-                            searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employees…' })}
+                            searchPlaceholder={t('common.searchPlaceholders.employees', { defaultValue: 'Search employeesâ€¦' })}
                         />
                     </FormField>
 
@@ -163,7 +163,7 @@ export default function PayrollUpdateModal({
                             value={form.academicYear}
                             onChange={(v) => setForm((prev) => ({ ...prev, academicYear: v }))}
                             maxVisible={5}
-                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic years…' })}
+                            searchPlaceholder={t('common.searchPlaceholders.academicYears', { defaultValue: 'Search academic yearsâ€¦' })}
                         />
                     </FormField>
 
@@ -182,7 +182,7 @@ export default function PayrollUpdateModal({
                         {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                     </Button>
                     <Button type="submit" variant="brand" disabled={loading}>
-                        {loading ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.update', { defaultValue: 'Update' })}
+                        {loading ? t('common.working', { defaultValue: 'WORKINGâ€¦' }) : t('common.actions.update', { defaultValue: 'Update' })}
                     </Button>
                 </div>
             </form>
@@ -223,7 +223,7 @@ export default function PayrollUpdateModal({
                                 disabled={loading || String(paidConfirmText || '').trim().toUpperCase() !== 'UPDATE PAID'}
                                 onClick={confirmUpdatePaid}
                             >
-                                {loading ? t('common.working', { defaultValue: 'WORKING…' }) : t('common.actions.update', { defaultValue: 'Update' })}
+                                {loading ? t('common.working', { defaultValue: 'WORKINGâ€¦' }) : t('common.actions.update', { defaultValue: 'Update' })}
                             </Button>
                         </div>
                     </div>

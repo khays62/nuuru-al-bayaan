@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { protect } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validate.js';
 import AiChatThread from '../models/AiChatThread.js';
-import { geminiGenerateReply } from '../services/geminiChat.js';
+import { aiGenerateReply } from '../services/aiChat.js';
 import { executeAiTool, getAllowedAiToolNamesForUser, isAiToolError } from '../services/aiDbTools.js';
 
 const router = express.Router();
@@ -12,6 +12,31 @@ const router = express.Router();
 const messageBody = z
   .object({
     message: z.string().trim().min(1).max(2000),
+    threadId: z.string().trim().optional(),
+  })
+  .strip();
+
+const threadsCreateBody = z
+  .object({
+    title: z.string().trim().min(1).max(80).optional(),
+  })
+  .strip();
+
+const threadsQuery = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(50).optional(),
+  })
+  .strip();
+
+const historyQuery = z
+  .object({
+    threadId: z.string().trim().optional(),
+  })
+  .strip();
+
+const threadIdParams = z
+  .object({
+    threadId: z.string().trim().min(1),
   })
   .strip();
 
@@ -35,7 +60,7 @@ function buildSystemInstruction({ locale, role }) {
   const scopeLine = roleLower === 'admin'
     ? 'The user is an ADMIN (full access), but you still must not claim to access databases or private records unless explicitly provided in the conversation.'
     : roleLower === 'staff'
-      ? 'The user is STAFF (permission-based). Do not provide sensitive aggregates or private records; provide guidance and ask for the exact screen/data they are looking at.'
+      ? 'The user is STAFF (permission-based). You may provide sensitive/finance data ONLY when the server provides trusted tool results (JSON). Otherwise, provide guidance and ask for the exact screen/data they are looking at.'
       : roleLower === 'teacher'
         ? 'The user is a TEACHER (assignment-scoped). Never provide school-wide aggregates (especially finance) or other students\' private info.'
         : 'The user is a STUDENT (self-scoped). Never provide any other student\'s info or school-wide aggregates (especially finance).';
@@ -71,10 +96,15 @@ function buildToolPlannerInstruction({ locale, role, allowedTools }) {
         : 'User is STUDENT (self-scoped).';
 
   const toolLines = (Array.isArray(allowedTools) ? allowedTools : []).map((t) => {
-    if (t === 'dashboard_summary') return `- dashboard_summary (args: {}): counts overview (admin/staff)`;
+    if (t === 'dashboard_summary') return `- dashboard_summary (args: {}): system counts overview (students/teachers/staff/exams + announcements/classes/subjects/levels/cohorts when permitted) (admin/staff)`;
+    if (t === 'academic_years_list') return `- academic_years_list (args: { q?: string, limit?: number<=20 }): list academic years (all roles; used to get academicYearId)`;
     if (t === 'my_permissions') return `- my_permissions (args: {}): show my permission matrix (admin/staff)`;
     if (t === 'students_list')
       return `- students_list (args: { q?: string, gradeSectionId?: string, limit?: number<=50 }): list students (admin or staff with students.view)`;
+    if (t === 'grade_sections_list')
+      return `- grade_sections_list (args: { q?: string, limit?: number<=50 }): list grade sections/classes (admin or staff with students/timetable/attendance permissions)`;
+    if (t === 'subjects_list')
+      return `- subjects_list (args: { q?: string, limit?: number<=80 }): list subjects (admin or staff with subjects/results/exams/timetable permissions)`;
     if (t === 'teacher_profile')
       return `- teacher_profile (args: { q: string, limit?: number<=20 }): lookup teacher personal/profile fields (admin or staff with teachers.view)`;
     if (t === 'attendance_class_summary')
@@ -127,14 +157,30 @@ function buildToolPlannerInstruction({ locale, role, allowedTools }) {
     // Finance summaries
     if (t === 'finance_expenses_summary')
       return `- finance_expenses_summary (args: { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', groupBy?: 'category'|'source'|'status' }): expenses totals (admin/staff with finance permissions)`;
+    if (t === 'finance_fee_transactions_summary')
+      return `- finance_fee_transactions_summary (args: { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', groupBy?: 'transactionType'|'method'|'status'|'account' }): fee transactions totals (admin/staff with finance permissions)`;
+    if (t === 'finance_accounts_balances')
+      return `- finance_accounts_balances (args: { status?: 'active'|'inactive', limit?: number<=50 }): account balances snapshot (admin/staff with finance permissions)`;
     if (t === 'finance_unpaid_students_summary')
       return `- finance_unpaid_students_summary (args: { month: 'YYYY-MM', gradeSectionId?: string, limit?: number<=50, includeAmounts?: boolean }): unpaid/partial invoices list (admin/staff with finance permissions)`;
+    if (t === 'finance_foundation_donations_summary')
+      return `- finance_foundation_donations_summary (args: { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', groupBy?: 'method'|'project'|'account', limit?: number<=30, includeTopDonors?: boolean }): donations totals (admin/staff with financeFoundation permissions)`;
+
+    // Payroll (admin-only)
+    if (t === 'finance_payroll_month_summary')
+      return `- finance_payroll_month_summary (args: { month: 'YYYY-MM', status?: 'Draft'|'Approved'|'Paid', limit?: number<=50, includeStaffList?: boolean }): payroll totals by status for a month (admin/staff with financePayroll)`;
+    if (t === 'finance_payroll_staff_search')
+      return `- finance_payroll_staff_search (args: { q: string, limit?: number<=20 }): find staff userId for payroll lookup (admin/staff with financePayroll)`;
+    if (t === 'finance_payroll_staff_ledger')
+      return `- finance_payroll_staff_ledger (args: { staffUserId: string, fromMonth?: 'YYYY-MM', toMonth?: 'YYYY-MM', limit?: number<=60 }): payroll history for one staff user (admin/staff with financePayroll)`;
     if (t === 'teacher_assignments') return `- teacher_assignments (args: {}): my assigned grade sections (teacher)`;
     if (t === 'teacher_class_roster')
       return `- teacher_class_roster (args: { gradeSectionId: string, limit?: number<=80 }): roster for my assigned class only (teacher)`;
     if (t === 'teacher_attendance_class_summary')
       return `- teacher_attendance_class_summary (args: { date: 'YYYY-MM-DD', gradeSectionId: string, periodCode?: string, limit?: number<=80 }): attendance for my assigned class only (teacher)`;
     if (t === 'student_self_summary') return `- student_self_summary (args: {}): my own profile summary (student)`;
+    if (t === 'student_fee_invoices_self_summary')
+      return `- student_fee_invoices_self_summary (args: { month?: 'YYYY-MM', limit?: number<=30, includeItems?: boolean }): my fee invoices + balance summary (student self-only)`;
     return `- ${t}`;
   });
 
@@ -149,6 +195,7 @@ function buildToolPlannerInstruction({ locale, role, allowedTools }) {
     '{"tool": string|null, "args": object}',
     'Rules:',
     '- If the question can be answered without DB data, output {"tool": null, "args": {}}.',
+    '- If the user asks for counts/totals/overview (e.g., "how many announcements/classes/subjects/levels/cohorts/staff/teachers/students"), and dashboard_summary is available, output {"tool": "dashboard_summary", "args": {}}.',
     '- If the request is outside the user\'s role/scope or permission, output {"tool": null, "args": {}}.',
   ].join('\n');
 }
@@ -168,36 +215,187 @@ function extractJsonObject(text) {
 }
 
 async function getOrCreateThread({ principalModel, principalId, locale }) {
+  const nextLocale = String(locale || 'en').toLowerCase();
   const existing = await AiChatThread.findOne({ principalModel, principalId });
+
   if (existing) {
-    // Keep last known locale updated for better responses.
-    const nextLocale = String(locale || 'en').toLowerCase();
     if (nextLocale && existing.locale !== nextLocale) {
       existing.locale = nextLocale;
-      await existing.save();
     }
+
+    // Lazy-migrate legacy single-thread `messages` -> first `threads` entry.
+    const legacyMessages = Array.isArray(existing.messages) ? existing.messages : [];
+    const hasThreads = Array.isArray(existing.threads) && existing.threads.length > 0;
+    if (!hasThreads && legacyMessages.length) {
+      existing.threads = [{ title: 'Chat', messages: legacyMessages }];
+      existing.activeThreadId = existing.threads?.[0]?._id || null;
+      existing.messages = [];
+    }
+
+    if (!Array.isArray(existing.threads)) existing.threads = [];
+    if (existing.threads.length === 0) {
+      existing.threads.push({ title: 'New chat', messages: [] });
+      existing.activeThreadId = existing.threads?.[0]?._id || null;
+    }
+
+    await existing.save();
     return existing;
   }
 
-  return AiChatThread.create({
+  const created = await AiChatThread.create({
     principalModel,
     principalId,
-    locale: String(locale || 'en').toLowerCase(),
+    locale: nextLocale,
+    threads: [{ title: 'New chat', messages: [] }],
+    activeThreadId: null,
     messages: [],
   });
+
+  created.activeThreadId = created.threads?.[0]?._id || null;
+  await created.save();
+  return created;
 }
 
-// Fetch the current user's chat history (single persistent thread)
-router.get('/chat/history', protect, async (req, res, next) => {
+function safeTitleFromText(text) {
+  const s = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!s) return 'New chat';
+  return s.length > 60 ? `${s.slice(0, 60)}…` : s;
+}
+
+function pickThreadOrFallback(store, threadId) {
+  const id = String(threadId || '').trim();
+  const byId = id ? store?.threads?.id?.(id) : null;
+  if (byId && !byId.deletedAt) return byId;
+
+  const activeId = store?.activeThreadId ? String(store.activeThreadId) : '';
+  const active = activeId ? store?.threads?.id?.(activeId) : null;
+  if (active && !active.deletedAt) return active;
+
+  const threads = Array.isArray(store?.threads) ? store.threads : [];
+  const newest = threads
+    .filter((t) => t && !t.deletedAt)
+    .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+  return newest || null;
+}
+
+// List chat threads (per account)
+router.get('/chat/threads', protect, validate({ query: threadsQuery }), async (req, res, next) => {
+  try {
+    const principalModel = getPrincipalModel(req);
+    const principalId = req.user?._id;
+    const locale = req.locale || 'en';
+    const store = await getOrCreateThread({ principalModel, principalId, locale });
+
+    const limit = Number(req.query?.limit || 20);
+    const threads = (Array.isArray(store.threads) ? store.threads : [])
+      .filter((t) => t && !t.deletedAt)
+      .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+      .slice(0, limit)
+      .map((t) => {
+        const msgs = Array.isArray(t.messages) ? t.messages : [];
+        const last = msgs.length ? msgs[msgs.length - 1] : null;
+        const preview = last?.content ? String(last.content).slice(0, 120) : '';
+        const lastMessageAt = last?.createdAt || null;
+        return {
+          threadId: String(t._id),
+          title: String(t.title || 'New chat'),
+          updatedAt: t.updatedAt,
+          createdAt: t.createdAt,
+          lastMessageAt,
+          preview,
+          isActive: store?.activeThreadId ? String(store.activeThreadId) === String(t._id) : false,
+        };
+      });
+
+    return res.json({
+      activeThreadId: store?.activeThreadId ? String(store.activeThreadId) : null,
+      threads,
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Create a new chat thread
+router.post('/chat/threads', protect, validate({ body: threadsCreateBody }), async (req, res, next) => {
+  try {
+    const principalModel = getPrincipalModel(req);
+    const principalId = req.user?._id;
+    const locale = req.locale || 'en';
+    const store = await getOrCreateThread({ principalModel, principalId, locale });
+
+    const title = String(req.body?.title || '').trim();
+    store.threads.push({ title: title || 'New chat', messages: [] });
+    const created = store.threads[store.threads.length - 1];
+    store.activeThreadId = created?._id || store.activeThreadId;
+    await store.save();
+
+    return res.status(201).json({
+      threadId: String(created._id),
+      title: String(created.title || 'New chat'),
+      createdAt: created.createdAt,
+      updatedAt: created.updatedAt,
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Delete a chat thread
+router.delete('/chat/threads/:threadId', protect, validate({ params: threadIdParams }), async (req, res, next) => {
+  try {
+    const principalModel = getPrincipalModel(req);
+    const principalId = req.user?._id;
+    const locale = req.locale || 'en';
+    const store = await getOrCreateThread({ principalModel, principalId, locale });
+
+    const threadId = String(req.params.threadId);
+    const t = store.threads?.id?.(threadId);
+    if (!t || t.deletedAt) {
+      return res.status(404).json({ success: false, message: 'Thread not found' });
+    }
+
+    t.deleteOne();
+
+    const wasActive = store?.activeThreadId && String(store.activeThreadId) === threadId;
+    if (wasActive) {
+      const fallback = (Array.isArray(store.threads) ? store.threads : [])
+        .filter((x) => x && !x.deletedAt)
+        .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+
+      if (fallback) store.activeThreadId = fallback._id;
+      else {
+        store.threads.push({ title: 'New chat', messages: [] });
+        store.activeThreadId = store.threads?.[0]?._id || null;
+      }
+    }
+
+    await store.save();
+    return res.json({ success: true });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Fetch the current user's chat history (single thread)
+router.get('/chat/history', protect, validate({ query: historyQuery }), async (req, res, next) => {
   try {
     const principalModel = getPrincipalModel(req);
     const principalId = req.user?._id;
     const locale = req.locale || 'en';
 
-    const thread = await getOrCreateThread({ principalModel, principalId, locale });
+    const store = await getOrCreateThread({ principalModel, principalId, locale });
+    const thread = pickThreadOrFallback(store, req.query?.threadId);
+    if (!thread) {
+      return res.json({ threadId: null, messages: [] });
+    }
+
+    store.activeThreadId = thread._id;
+    await store.save();
 
     return res.json({
       threadId: String(thread._id),
+      title: String(thread.title || 'New chat'),
       messages: (thread.messages || []).map((m) => ({
         role: m.role,
         content: m.content,
@@ -217,11 +415,25 @@ router.post('/chat/message', protect, validate({ body: messageBody }), async (re
     const locale = req.locale || 'en';
     const role = req.user?.role;
 
-    const thread = await getOrCreateThread({ principalModel, principalId, locale });
+    const store = await getOrCreateThread({ principalModel, principalId, locale });
+    let thread = pickThreadOrFallback(store, req.body?.threadId);
+    if (!thread) {
+      store.threads.push({ title: 'New chat', messages: [] });
+      thread = store.threads?.[store.threads.length - 1] || null;
+    }
+    if (!thread) {
+      return res.status(500).json({ success: false, message: 'Chat thread failed to initialize' });
+    }
+
+    store.activeThreadId = thread._id;
 
     const userMessage = String(req.body?.message || '').trim();
 
     thread.messages.push({ role: 'user', content: userMessage });
+    thread.updatedAt = new Date();
+    if (!thread.title || String(thread.title).toLowerCase() === 'new chat') {
+      thread.title = safeTitleFromText(userMessage);
+    }
 
     // Keep the context bounded.
     const maxHistory = 20;
@@ -234,10 +446,10 @@ router.post('/chat/message', protect, validate({ body: messageBody }), async (re
 
     if (allowedTools.length) {
       const plannerInstruction = buildToolPlannerInstruction({ locale, role, allowedTools });
-      const plannerOut = await geminiGenerateReply({
+      const plannerOut = await aiGenerateReply({
         systemInstruction: plannerInstruction,
         messages: recent,
-        locale,
+        mode: 'json',
       });
 
       const parsed = extractJsonObject(plannerOut);
@@ -262,21 +474,24 @@ router.post('/chat/message', protect, validate({ body: messageBody }), async (re
     const systemInstruction = buildSystemInstruction({ locale, role })
       + (toolResult ? `\n\nTRUSTED_DB_TOOL_RESULT_JSON:\n${JSON.stringify(toolResult)}` : '');
 
-    const assistantText = await geminiGenerateReply({
+    const assistantText = await aiGenerateReply({
       systemInstruction,
       messages: recent,
-      locale,
+      mode: 'text',
     });
 
     thread.messages.push({ role: 'assistant', content: assistantText });
-    await thread.save();
+    thread.updatedAt = new Date();
+    await store.save();
 
     return res.json({
+      threadId: String(thread._id),
+      title: String(thread.title || 'New chat'),
       reply: assistantText,
     });
   } catch (err) {
     // Localize missing key / config issues.
-    if (String(err?.message || '').includes('GEMINI_API_KEY')) {
+    if (String(err?.message || '').includes('AI_API_KEY')) {
       err.status = err.status || 500;
       err.message = req.t('ai.missingApiKey', null, 'AI is not configured on the server');
     }
