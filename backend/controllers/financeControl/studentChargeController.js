@@ -5,6 +5,18 @@ import AuditLog from '../../models/AuditLog.js';
 import { publishRealtime } from '../../utils/realtimeBus.js';
 import FeeType from '../../models/FeeType.js';
 
+function publishStudentFinanceChanged(studentIds) {
+  try {
+    const ids = Array.from(new Set((studentIds || []).map((x) => String(x || '')).filter(Boolean)));
+    const ts = Date.now();
+    for (const studentId of ids) {
+      publishRealtime({ type: 'studentFinance:changed', studentId, ts });
+    }
+  } catch {
+    // ignore
+  }
+}
+
 const isValidObjectId = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
 
 function monthToDueDate(month) {
@@ -292,11 +304,7 @@ export async function chargeStudentFees(req, res) {
       });
     }
 
-    try {
-      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
-    } catch {
-      // ignore
-    }
+    publishStudentFinanceChanged(targets.map(t => t.studentId));
 
     res.status(201).json({
       message: 'Charge process complete',
@@ -379,11 +387,7 @@ export async function applyMonthlyDiscount(req, res) {
 
     if (updated.length === 0) return res.status(404).json({ message: 'Invoice not found', missingMonths });
 
-    try {
-      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
-    } catch {
-      // ignore
-    }
+    publishStudentFinanceChanged([resolvedStudentId]);
 
     return res.json({
       message: 'Discount applied',
@@ -436,11 +440,7 @@ export async function applyBulkDiscount(req, res) {
       await inv.save();
     }
 
-    try {
-      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
-    } catch {
-      // ignore
-    }
+    publishStudentFinanceChanged(invoices.map(i => i.student));
 
     res.json({ message: `Bulk discount applied to ${invoices.length} invoices` });
   } catch (error) {
@@ -485,11 +485,7 @@ export async function recordCorrection(req, res) {
 
     await invoice.save();
 
-    try {
-      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
-    } catch {
-      // ignore
-    }
+    publishStudentFinanceChanged([query.student]);
 
     res.json({ message: 'Correction recorded', invoice });
   } catch (error) {
@@ -547,6 +543,8 @@ export async function deleteMonthlyCharges(req, res) {
       });
     }
 
+    const impactedStudentIds = await FeeInvoice.distinct('student', query);
+
     // SOFT DELETE
     const result = await FeeInvoice.updateMany(query, { $set: { status: 'Cancelled' } });
 
@@ -571,11 +569,7 @@ export async function deleteMonthlyCharges(req, res) {
       description: `Charges cancelled: ${reason || 'Manual undo'}`,
     });
 
-    try {
-      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
-    } catch {
-      // ignore
-    }
+    publishStudentFinanceChanged(impactedStudentIds);
 
     res.json({ message: 'Charges Cancelled (Soft Deleted)', cancelledCount: result.modifiedCount || 0 });
   } catch (error) {
@@ -671,11 +665,7 @@ export async function updateChargeAmount(req, res) {
 
     if (updated.length === 0) return res.status(404).json({ message: 'No active charge found for this criteria', missingMonths });
 
-    try {
-      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
-    } catch {
-      // ignore
-    }
+    publishStudentFinanceChanged([resolvedStudentId]);
 
     return res.json({
       message: 'Charge corrected and balance updated',

@@ -3,6 +3,7 @@ import { X, DollarSign, Save, Printer, Calendar, Info, History, Layers, CheckCir
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import { useI18n } from '../../../i18n/useI18n';
 
 import { accountKeys } from '../queryKeys';
 import { listAccounts as listAccountsApi } from '../api/accountsApi';
@@ -10,6 +11,7 @@ import { useFinanceCategoriesQuery } from '../hooks/financeConfigHooks';
 import { useInvoicesQuery, usePayChargedMonthMutation } from '../hooks/studentFinanceHooks';
 
 export default function StudentResponsibilityModal({ student, row, onClose, onSuccess }) {
+    const { t } = useI18n();
     const [view, setView] = useState('finance'); // finance (ledger), history (responsible history)
     const [accountId, setAccountId] = useState('');
     const [paymentType, setPaymentType] = useState('level'); // level or receipt
@@ -260,7 +262,7 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="bg-(--nb-color-bg) text-(--nb-color-fg) px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">{inv.billingMonth || '—'}</span>
                                                                         {isHormaris ? (
-                                                                            <span className="bg-(--nb-color-brand) text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">Hormaris</span>
+                                                                            <span className="bg-(--nb-color-brand) text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">{t('finance.studentFinance.receiptTab.labels.hormaris', { defaultValue: 'Advance' })}</span>
                                                                         ) : null}
                                                                     </div>
                                                                 </td>
@@ -296,7 +298,7 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
                                                                     <div className="flex flex-col items-end leading-tight">
                                                                         <span className="text-red-500">${Number(balance || 0).toFixed(2)}</span>
                                                                         {isHormaris && balance > 0 ? (
-                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-red-600">Hormaris</span>
+                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-red-600">{t('finance.studentFinance.receiptTab.labels.hormaris', { defaultValue: 'Advance' })}</span>
                                                                         ) : null}
                                                                     </div>
                                                                 </td>

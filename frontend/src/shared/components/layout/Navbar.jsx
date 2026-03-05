@@ -74,10 +74,10 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const isAdmin = roleLower === 'admin';
     const isStaff = roleLower === 'staff';
     const canSeeLocks = isAdmin || (isStaff && hasPermission('security', 'view'));
-    const displayName = user?.fullName || user?.name || user?.username || 'â€”';
+    const displayName = user?.fullName || user?.name || user?.username || '-';
     const displayRole = user?.role ? String(user.role).toUpperCase() : '';
     const displayEmail = user?.email || '';
-    const meta = [displayRole, displayEmail].filter(Boolean).join(' â€¢ ');
+    const meta = [displayRole, displayEmail].filter(Boolean).join(' - ');
 
     const lockCountQuery = useQuery({
         queryKey: ['security', 'authLocks', 'count'],
@@ -440,9 +440,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         const displayName = isUnknown
                                             ? t('common.securityBell.unknownUser', {
                                                 defaultValue: 'Unknown: {{username}}',
-                                                username: ev.username || 'â€”',
+                                                username: ev.username || '-',
                                             })
-                                            : (ev.fullName || ev.username || 'â€”');
+                                            : (ev.fullName || ev.username || '-');
                                         const showUsername = Boolean(ev.fullName) && Boolean(ev.username);
                                         const r = String(ev.role || '').toUpperCase();
                                         const until = ev.lockUntil ? new Date(ev.lockUntil).toLocaleString() : '';
@@ -469,9 +469,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                                         <div className="text-xs text-(--nb-color-muted)">
                                                             {r || t('common.securityBell.userRoleFallback', { defaultValue: 'USER' })}
                                                             {isInactiveAccount
-                                                                ? ` â€¢ ${t('common.securityBell.inactiveTag', { defaultValue: 'INACTIVE' })}`
+                                                                ? ` - ${t('common.securityBell.inactiveTag', { defaultValue: 'INACTIVE' })}`
                                                                 : (until
-                                                                    ? ` â€¢ ${t('common.securityBell.until', {
+                                                                    ? ` - ${t('common.securityBell.until', {
                                                                         defaultValue: 'until {{date}}',
                                                                         date: until,
                                                                     })}`

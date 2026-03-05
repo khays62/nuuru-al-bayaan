@@ -19,7 +19,7 @@ export default function StatusBadge({ status, className = '' }) {
       ? t('common.status.active', { defaultValue: status || 'Active' })
       : norm === 'inactive'
         ? t('common.status.inactive', { defaultValue: status || 'Inactive' })
-        : (status || 'â€”');
+        : (status || '-');
   return (
     <Badge variant={variant} className={className}>
       {label}

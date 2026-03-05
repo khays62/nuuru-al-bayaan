@@ -40,6 +40,8 @@ export const MODULE_PERMISSIONS = Object.freeze({
   attendance: ['view', 'edit', 'print', 'download', 'full'],
   attendanceReports: ['view', 'print', 'download', 'full'],
   announcements: ['add', 'edit', 'delete', 'full'],
+  // Digital Library resources (PDFs/links)
+  library: ['view', 'add', 'edit', 'delete', 'download', 'full'],
   cohorts: ['view', 'add', 'edit', 'delete', 'full'],
   promotions: ['view', 'preview', 'promote', 'full'],
   transcript: ['view', 'print', 'download', 'full'],

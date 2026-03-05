@@ -35,6 +35,8 @@ import FinanceStudentFinancePage from '../features/finance/pages/FinanceStudentF
 import FinancePayrollPage from '../features/finance/pages/FinancePayrollPage.jsx';
 import FinanceExpensesPage from '../features/finance/pages/FinanceExpensesPage.jsx';
 
+import LibraryManagementPage from '../features/library/pages/LibraryManagementPage.jsx';
+
 import GradesSetupPage from '../features/setup/pages/GradesSetupPage.jsx';
 import ShiftsSetupPage from '../features/setup/pages/ShiftsSetupPage.jsx';
 import AcademicYearsSetupPage from '../features/setup/pages/AcademicYearsSetupPage.jsx';
@@ -47,6 +49,7 @@ import AttendanceTab from '../features/students/components/dashboard/AttendanceT
 import TimetableTab from '../features/students/components/dashboard/TimetableTab';
 import LibraryTab from '../features/students/components/dashboard/LibraryTab';
 import TransfersTab from '../features/students/components/dashboard/TransfersTab';
+import FinanceTab from '../features/students/components/dashboard/FinanceTab.jsx';
 
 import StudentSelfDashboardShell, {
   StudentSelfHomeCards,
@@ -74,6 +77,7 @@ import {
   financeExpensesPageAny,
   financePayrollAny,
   financeStudentFinanceAny,
+  libraryAny,
 } from './permissions';
 
 export const router = createBrowserRouter([
@@ -156,6 +160,7 @@ export const router = createBrowserRouter([
           { path: 'timetable', element: <TimetableTab /> },
           { path: 'library', element: <LibraryTab /> },
           { path: 'transfers', element: <TransfersTab /> },
+          { path: 'finance', element: <FinanceTab /> },
         ],
       },
       {
@@ -219,6 +224,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['admin', 'staff', 'teacher']} allowedPermissions={timetableAny}>
             <TimetablePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'library',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff', 'teacher']} allowedPermissions={libraryAny}>
+            <LibraryManagementPage />
           </ProtectedRoute>
         ),
       },
@@ -385,6 +398,7 @@ export const router = createBrowserRouter([
           { path: 'transcript', element: <TranscriptTab /> },
           { path: 'attendance', element: <AttendanceTab /> },
           { path: 'timetable', element: <TimetableTab /> },
+          { path: 'finance', element: <FinanceTab /> },
           { path: 'library', element: <LibraryTab /> },
           { path: 'profile', element: <ProfileTab /> },
           { path: 'enrollments', element: <EnrollmentsTab /> },

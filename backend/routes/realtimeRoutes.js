@@ -33,6 +33,8 @@ router.get('/stream', protect, authorizeRoles('admin', 'staff', 'teacher', 'stud
     'exams:changed',
     'results:changed',
     'transcript:changed',
+    // Student finance
+    'studentFinance:changed',
   ]);
 
   const canSendToStudent = (payload) => {
@@ -45,6 +47,13 @@ router.get('/stream', protect, authorizeRoles('admin', 'staff', 'teacher', 'stud
     if ((type === 'students:changed' || type === 'transfers:changed') && studentRefId) {
       const eventStudentId = payload?.studentId ? String(payload.studentId) : (payload?.id ? String(payload.id) : null);
       if (eventStudentId && eventStudentId !== studentRefId) return false;
+    }
+
+    // Finance MUST be explicitly scoped, otherwise it could leak cross-student refresh signals.
+    if (type === 'studentFinance:changed' && studentRefId) {
+      const eventStudentId = payload?.studentId ? String(payload.studentId) : (payload?.id ? String(payload.id) : null);
+      if (!eventStudentId) return false;
+      if (eventStudentId !== studentRefId) return false;
     }
 
     return true;

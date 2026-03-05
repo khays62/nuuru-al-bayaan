@@ -627,6 +627,11 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   const studentRefId = rawStudentRef?._id || rawStudentRef || null;
   const studentId = studentIdOverride || (auth?.user?.role === 'student' ? studentRefId : null);
 
+  const cardsBasePath = useMemo(() => {
+    if (studentIdOverride) return `/students/${String(studentIdOverride)}`;
+    return '/student-dashboard';
+  }, [studentIdOverride]);
+
   const profileNameQuery = useQuery({
     queryKey: studentKeys.profile(studentId),
     enabled: !!studentId && !isStudentSelf,
@@ -791,7 +796,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
       .sort((a, b) => String(a?.startTime || '').localeCompare(String(b?.startTime || '')));
     return {
       todayIdx,
-      dayName: dayNames[todayIdx] || 'â€”',
+      dayName: dayNames[todayIdx] || '-',
       dateISO,
       slots: list,
     };
@@ -800,7 +805,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   const levelLinePoints = useMemo(() => {
     const arr = Array.isArray(levelStats) ? levelStats : [];
     return arr.map((x) => ({
-      label: x.yearName ? `${x.label} â€¢ ${x.yearName}` : x.label,
+      label: x.yearName ? `${x.label} • ${x.yearName}` : x.label,
       value: Number(x.average || 0),
     }));
   }, [levelStats]);
@@ -816,7 +821,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
       'fill-(--nb-color-accent)',
     ];
     return arr.map((x, idx) => ({
-      label: x.yearName ? `${x.label} â€¢ ${x.yearName}` : x.label,
+      label: x.yearName ? `${x.label} • ${x.yearName}` : x.label,
       value: Number(x.total || 0) || Number(x.average || 0),
       className: palette[idx % palette.length],
     }));
@@ -835,35 +840,35 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
             <Card
-              to="transcript"
+              to={`${cardsBasePath}/transcript`}
               title={t('nav.transcript')}
               description={t('students.selfDashboard.cards.transcriptDesc')}
               Icon={BarChart2}
               tone="indigo"
             />
             <Card
-              to="attendance"
+              to={`${cardsBasePath}/attendance`}
               title={t('nav.attendance')}
               description={t('students.selfDashboard.cards.attendanceDesc')}
               Icon={ClipboardList}
               tone="emerald"
             />
             <Card
-              to="timetable"
+              to={`${cardsBasePath}/timetable`}
               title={t('nav.timetable')}
               description={t('students.selfDashboard.cards.timetableDesc')}
               Icon={CalendarDays}
               tone="sky"
             />
             <Card
-              to="library"
+              to={`${cardsBasePath}/library`}
               title={t('nav.library')}
               description={t('students.selfDashboard.cards.libraryDesc')}
               Icon={BookOpenCheck}
               tone="amber"
             />
             <Card
-              to="profile"
+              to={`${cardsBasePath}/profile`}
               title={t('nav.profile')}
               description={t('students.selfDashboard.cards.profileDesc')}
               Icon={Users}
@@ -876,7 +881,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
           <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('nav.attendance')}</div>
             <div className="text-xs text-white/80 mt-0.5">
-              {currentLevelLabel ? `${currentLevelLabel} â€¢ ` : ''}{t('students.selfDashboard.attendance.overview')}
+              {currentLevelLabel ? `${currentLevelLabel} • ` : ''}{t('students.selfDashboard.attendance.overview')}
             </div>
           </div>
           <div className="p-5 h-full">
@@ -933,7 +938,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
         <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('students.selfDashboard.todayScheduleTitle')}</div>
-            <div className="text-xs text-white/80 mt-0.5">{todaySchedule.dayName} â€¢ {todaySchedule.dateISO}</div>
+            <div className="text-xs text-white/80 mt-0.5">{todaySchedule.dayName} • {todaySchedule.dateISO}</div>
           </div>
           <div className="p-5">
             {historyLoading || timetableLoading ? (
@@ -949,9 +954,9 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
                 {todaySchedule.slots.map((s) => {
                   const time = `${String(s?.startTime || '').trim()} - ${String(s?.endTime || '').trim()}`.trim();
                   const subject = String(s?.subject?.subjectName || '-').trim() || '-';
-                  const teacher = String(s?.teacher?.fullName || 'â€”').trim() || 'â€”';
+                  const teacher = String(s?.teacher?.fullName || '-').trim() || '-';
                   const room = s?.room ? `${t('common.room')} ${s.room}` : '';
-                  const meta = [time, room].filter(Boolean).join(' â€¢ ');
+                  const meta = [time, room].filter(Boolean).join(' • ');
                   const key = String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${subject}`);
                   return (
                     <div key={key} className="border border-(--nb-color-border) rounded-lg p-3 bg-(--nb-color-bg-card) shadow-sm">

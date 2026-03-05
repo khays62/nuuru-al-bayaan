@@ -12,7 +12,7 @@ function buildPageItems(_current, total) {
 	if (totalPages <= 6) {
 		return Array.from({ length: totalPages }, (_, i) => i + 1);
 	}
-	return [1, 2, 3, 4, 'â€¦', totalPages - 1, totalPages];
+	return [1, 2, 3, 4, '…', totalPages - 1, totalPages];
 }
 
 export default function PaginationControls({
@@ -71,13 +71,13 @@ export default function PaginationControls({
 				</button>
 
 				{items.map((it, idx) => {
-					if (it === 'â€¦') {
+					if (it === '…') {
 						return (
 							<span
 								key={`ellipsis-${idx}`}
 								className="px-3 py-2 text-sm text-(--nb-color-brand) select-none border-r border-(--nb-color-border) flex items-center"
 							>
-								â€¦
+								…
 							</span>
 						);
 					}
@@ -126,7 +126,7 @@ export default function PaginationControls({
 						start != null && end != null ? (
 							<span>
 								{t('common.showing', { defaultValue: 'Showing' })}{' '}
-								<span className="font-medium text-(--nb-color-fg)">{start}â€“{end}</span>{' '}
+								<span className="font-medium text-(--nb-color-fg)">{start}–{end}</span>{' '}
 								{t('common.of', { defaultValue: 'of' })}{' '}
 								<span className="font-medium text-(--nb-color-fg)">{tot}</span>{' '}
 								{t('common.rows', { defaultValue: 'Rows' })}
@@ -148,7 +148,7 @@ export default function PaginationControls({
 							{tot != null ? (
 								<>
 									{' '}
-									â€” <span className="font-medium text-(--nb-color-fg)">{tot}</span> {t('common.total', { defaultValue: 'total' })}
+									— <span className="font-medium text-(--nb-color-fg)">{tot}</span> {t('common.total', { defaultValue: 'total' })}
 								</>
 							) : null}
 						</span>
@@ -156,7 +156,7 @@ export default function PaginationControls({
 						start != null && end != null ? (
 							<span>
 								{t('common.showing', { defaultValue: 'Showing' })}{' '}
-								<span className="font-medium text-(--nb-color-fg)">{start}â€“{end}</span>{' '}
+								<span className="font-medium text-(--nb-color-fg)">{start}–{end}</span>{' '}
 								{t('common.of', { defaultValue: 'of' })}{' '}
 								<span className="font-medium text-(--nb-color-fg)">{tot}</span>
 							</span>

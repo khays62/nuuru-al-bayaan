@@ -15,6 +15,7 @@ import Alert from '../../../../shared/components/ui/Alert.jsx';
 import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 import { useI18n } from '../../../../i18n/useI18n';
 import { getSomaliaDistrictLabel, getSomaliaRegionLabel } from '../../../../shared/data/somaliaAdminDivisions.js';
+import { displayText } from '../../../../utils/displayText';
 
 export default function ProfileTab() {
   const { studentId: paramStudentId } = useParams();
@@ -273,8 +274,8 @@ export default function ProfileTab() {
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <InfoItem label={t('students.form.transfer.isTransfer')} value={transferLabel} />
-                  <InfoItem label={t('students.form.transfer.previousSchoolName')} value={transferIsEnabled ? student?.transfer?.previousSchoolName : ''} />
-                  <InfoItem label={t('students.form.transfer.transferReason')} value={transferIsEnabled ? student?.transfer?.transferReason : ''} />
+                  <InfoItem label={t('students.form.transfer.previousSchoolName')} value={transferIsEnabled ? student?.transfer?.previousSchoolName : '-'} />
+                  <InfoItem label={t('students.form.transfer.transferReason')} value={transferIsEnabled ? student?.transfer?.transferReason : '-'} />
                 </div>
               </Card>
 
@@ -427,7 +428,7 @@ function InfoItem({ label, value }) {
   return (
     <div>
       <div className="text-xs text-(--nb-color-muted)">{label}</div>
-      <div className="font-medium wrap-break-word">{value ?? '-'}</div>
+      <div className="font-medium wrap-break-word">{displayText(value, '-')}</div>
     </div>
   );
 }

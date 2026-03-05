@@ -28,6 +28,7 @@ import { useTeachersRealtimeInvalidation } from '../../useTeachersRealtimeInvali
 import { useI18n } from '../../../../i18n/useI18n';
 import { getSomaliaDistrictLabel, getSomaliaRegionLabel } from '../../../../shared/data/somaliaAdminDivisions.js';
 import { getSlotsWithOptions } from '../../../timetable/api/timetable';
+import { displayText } from '../../../../utils/displayText';
 
 function firstChar(s) {
 	const t = String(s || '').trim();
@@ -35,10 +36,7 @@ function firstChar(s) {
 }
 
 function safeStr(v) {
-	if (v == null) return 'â€”';
-	if (typeof v === 'number' && Number.isFinite(v)) return String(v);
-	const s = String(v).trim();
-	return s || 'â€”';
+	return displayText(v, '-');
 }
 
 function SmallStat({ label, value, tone = 'indigo' }) {
@@ -51,7 +49,7 @@ function SmallStat({ label, value, tone = 'indigo' }) {
 	return (
 		<div className={`rounded-lg border px-4 py-3 ${tones[tone] || tones.indigo}`}>
 			<div className="text-xs font-medium opacity-80">{label}</div>
-			<div className="text-base font-semibold tabular-nums">{value ?? 'â€”'}</div>
+			<div className="text-base font-semibold tabular-nums">{displayText(value, '-')}</div>
 		</div>
 	);
 }
@@ -103,7 +101,7 @@ export default function TeacherProfileCard({ user, summary }) {
 							</div>
 							<div className="flex items-center gap-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-base text-(--nb-color-text) min-w-0">
 								<Hash size={18} className="text-(--nb-color-muted)" />
-								<span className="truncate">{t('teachers.form.employeeId', { defaultValue: 'Employee ID' })}: {publicTeacherId ? publicTeacherId : 'â€”'}</span>
+								<span className="truncate">{t('teachers.form.employeeId', { defaultValue: 'Employee ID' })}: {displayText(publicTeacherId, '-')}</span>
 							</div>
 							<div className="flex items-center gap-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-base text-(--nb-color-text) min-w-0">
 								<Mail size={18} className="text-(--nb-color-muted)" />
@@ -116,10 +114,10 @@ export default function TeacherProfileCard({ user, summary }) {
 						</div>
 
 						<div className="mt-5 flex flex-wrap gap-3">
-							<SmallStat label={t('teachers.dashboard.profile.stats.classes', { defaultValue: 'Classes' })} value={Number.isFinite(stats?.classesCount) ? stats.classesCount : 'â€”'} tone="indigo" />
-							<SmallStat label={t('teachers.dashboard.profile.stats.subjects', { defaultValue: 'Subjects' })} value={Number.isFinite(stats?.subjectsCount) ? stats.subjectsCount : 'â€”'} tone="blue" />
-							<SmallStat label={t('teachers.dashboard.profile.stats.today', { defaultValue: 'Today' })} value={Number.isFinite(stats?.todayLessons) ? stats.todayLessons : 'â€”'} tone="emerald" />
-							<SmallStat label={t('teachers.dashboard.profile.stats.week', { defaultValue: 'Week' })} value={Number.isFinite(stats?.weeklyLessons) ? stats.weeklyLessons : 'â€”'} tone="violet" />
+							<SmallStat label={t('teachers.dashboard.profile.stats.classes', { defaultValue: 'Classes' })} value={Number.isFinite(stats?.classesCount) ? stats.classesCount : null} tone="indigo" />
+							<SmallStat label={t('teachers.dashboard.profile.stats.subjects', { defaultValue: 'Subjects' })} value={Number.isFinite(stats?.subjectsCount) ? stats.subjectsCount : null} tone="blue" />
+							<SmallStat label={t('teachers.dashboard.profile.stats.today', { defaultValue: 'Today' })} value={Number.isFinite(stats?.todayLessons) ? stats.todayLessons : null} tone="emerald" />
+							<SmallStat label={t('teachers.dashboard.profile.stats.week', { defaultValue: 'Week' })} value={Number.isFinite(stats?.weeklyLessons) ? stats.weeklyLessons : null} tone="violet" />
 						</div>
 
 						<div className="mt-4 flex items-center gap-2 text-xs text-(--nb-color-muted)">
@@ -201,13 +199,13 @@ function InfoItem({ label, value }) {
 	return (
 		<div className="min-w-0">
 			<div className="text-xs text-(--nb-color-muted)">{label}</div>
-			<div className="text-sm font-semibold text-(--nb-color-text) wrap-break-word">{safeStr(value)}</div>
+			<div className="text-sm font-semibold text-(--nb-color-text) wrap-break-word">{displayText(value, '-')}</div>
 		</div>
 	);
 }
 
 function fmtDate(value) {
-	if (!value) return 'â€”';
+	if (!value) return '-';
 	const d = new Date(value);
 	if (Number.isNaN(d.getTime())) return safeStr(value);
 	return d.toISOString().slice(0, 10);
@@ -215,7 +213,7 @@ function fmtDate(value) {
 
 function formatGender(v, t) {
 	const s = String(v || '').trim();
-	if (!s) return 'â€”';
+	if (!s) return '-';
 	if (s.toLowerCase() === 'male') return t('teachers.form.genderOptions.male', { defaultValue: 'Male' });
 	if (s.toLowerCase() === 'female') return t('teachers.form.genderOptions.female', { defaultValue: 'Female' });
 	return s;
@@ -223,7 +221,7 @@ function formatGender(v, t) {
 
 function formatEmploymentType(v, t) {
 	const s = String(v || '').trim();
-	if (!s) return 'â€”';
+	if (!s) return '-';
 	if (s === 'fullTime') return t('teachers.form.employmentTypeOptions.fullTime', { defaultValue: 'Full-time' });
 	if (s === 'partTime') return t('teachers.form.employmentTypeOptions.partTime', { defaultValue: 'Part-time' });
 	if (s === 'contract') return t('teachers.form.employmentTypeOptions.contract', { defaultValue: 'Contract' });
@@ -232,7 +230,7 @@ function formatEmploymentType(v, t) {
 
 function formatTeacherStatus(v, t) {
 	const s = String(v || '').trim();
-	if (!s) return 'â€”';
+	if (!s) return '-';
 	if (s.toLowerCase() === 'active') return t('teachers.form.active', { defaultValue: 'Active' });
 	if (s.toLowerCase() === 'inactive') return t('teachers.form.inactive', { defaultValue: 'Inactive' });
 	return s;
@@ -240,7 +238,7 @@ function formatTeacherStatus(v, t) {
 
 function formatQualification(v, t) {
 	const s = String(v || '').trim();
-	if (!s) return 'â€”';
+	if (!s) return '-';
 	if (s === 'certificate') return t('teachers.form.qualificationOptions.certificate', { defaultValue: 'Certificate' });
 	if (s === 'diploma') return t('teachers.form.qualificationOptions.diploma', { defaultValue: 'Diploma' });
 	if (s === 'bachelor') return t('teachers.form.qualificationOptions.bachelor', { defaultValue: "Bachelor's" });
@@ -313,19 +311,19 @@ function TeacherDetailsCards({ teacher, lang }) {
 					/>
 					<InfoItem
 						label={t('teachers.form.nationalityDetail', { defaultValue: 'Nationality (details)' })}
-						value={isSomali ? 'â€”' : (teacher?.nationality || 'â€”')}
+						value={isSomali ? '-' : (teacher?.nationality || '-')}
 					/>
 					<InfoItem
 						label={t('students.address.region.label', { defaultValue: 'Region' })}
-						value={!isSomali ? 'â€”' : (regionLabel || teacher?.residenceRegionId)}
+						value={!isSomali ? '-' : (regionLabel || teacher?.residenceRegionId)}
 					/>
 					<InfoItem
 						label={t('students.address.district.label', { defaultValue: 'District' })}
-						value={!isSomali ? 'â€”' : (districtLabel || teacher?.residenceDistrictId)}
+						value={!isSomali ? '-' : (districtLabel || teacher?.residenceDistrictId)}
 					/>
 					<InfoItem
 						label={t('students.address.neighborhood.label', { defaultValue: 'Neighborhood' })}
-						value={!isSomali ? 'â€”' : teacher?.residenceNeighborhood}
+						value={!isSomali ? '-' : teacher?.residenceNeighborhood}
 					/>
 				</div>
 			</Card>

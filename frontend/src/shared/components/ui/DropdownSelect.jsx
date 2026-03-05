@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
 import { useI18n } from '../../../i18n/useI18n';
+import { fixMojibake } from '../../../utils/fixMojibake';
 
 export default function DropdownSelect({
   value,
@@ -26,9 +27,9 @@ export default function DropdownSelect({
   const [openUp, setOpenUp] = useState(false);
   const rootRef = useRef(null);
 
-  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Selectâ€¦' });
-  const resolvedClearLabel = clearLabel ?? t('common.actions.clear', { defaultValue: 'Clear' });
-  const resolvedNoOptions = t('common.select.noOptions', { defaultValue: 'No options.' });
+  const resolvedPlaceholder = fixMojibake(placeholder ?? t('common.select.placeholder', { defaultValue: 'Selectâ€¦' }));
+  const resolvedClearLabel = fixMojibake(clearLabel ?? t('common.actions.clear', { defaultValue: 'Clear' }));
+  const resolvedNoOptions = fixMojibake(t('common.select.noOptions', { defaultValue: 'No options.' }));
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -67,7 +68,7 @@ export default function DropdownSelect({
 
   const safeOptions = useMemo(() => (Array.isArray(options) ? options : []).map((o) => ({
     value: String(o?.value ?? ''),
-    label: String(o?.label ?? ''),
+    label: fixMojibake(String(o?.label ?? '')),
   })), [options]);
 
   const selectedLabel = useMemo(() => {

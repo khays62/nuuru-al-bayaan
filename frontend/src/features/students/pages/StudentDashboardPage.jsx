@@ -49,18 +49,21 @@ function TabNav({ tabs = [] }) {
   const primary = tabsOrder.slice(0, PRIMARY_SIZE);
   const overflow = tabsOrder.slice(PRIMARY_SIZE);
   return (
-    <div className="border-b border-(--nb-color-border) mb-4">
+    <div className="mb-4">
       {/* Desktop: show all */}
-      <nav className="hidden md:flex -mb-px gap-4" aria-label={t('common.aria.tabs', { defaultValue: 'Tabs' })}>
+      <nav
+        className="hidden md:flex items-center gap-2 p-1 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-x-auto"
+        aria-label={t('common.aria.tabs', { defaultValue: 'Tabs' })}
+      >
         {tabsOrder.map(t => (
           <NavLink
             key={t.to}
             to={t.to}
             className={({ isActive }) =>
-              `whitespace-nowrap py-4 px-1 border-b-2 text-sm font-medium ${
+              `whitespace-nowrap px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-colors ${
                 isActive
-                  ? 'border-(--nb-color-brand) text-(--nb-color-brand)'
-                  : 'border-transparent text-(--nb-color-muted) hover:text-(--nb-color-text) hover:border-(--nb-color-border)'
+                  ? 'bg-(--nb-color-brand) text-white shadow-(--nb-shadow-sm)'
+                  : 'text-(--nb-color-muted) hover:bg-(--nb-color-brand-50) hover:text-(--nb-color-fg)'
               }`
             }
             end
@@ -71,16 +74,19 @@ function TabNav({ tabs = [] }) {
       </nav>
       {/* Mobile: limited + dynamic overflow */}
       <div className="flex md:hidden items-center justify-between">
-        <nav className="-mb-px flex gap-3 overflow-x-auto" aria-label={t('common.aria.tabs', { defaultValue: 'Tabs' })}>
+        <nav
+          className="flex-1 flex items-center gap-2 p-1 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-x-auto"
+          aria-label={t('common.aria.tabs', { defaultValue: 'Tabs' })}
+        >
           {primary.map(t => (
             <NavLink
               key={t.to}
               to={t.to}
               className={({ isActive }) =>
-                `whitespace-nowrap py-3 px-1 border-b-2 text-xs font-medium ${
+                `whitespace-nowrap px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-colors ${
                   isActive
-                    ? 'border-(--nb-color-brand) text-(--nb-color-brand)'
-                    : 'border-transparent text-(--nb-color-muted) hover:text-(--nb-color-text) hover:border-(--nb-color-border)'
+                    ? 'bg-(--nb-color-brand) text-white shadow-(--nb-shadow-sm)'
+                    : 'text-(--nb-color-muted) hover:bg-(--nb-color-brand-50) hover:text-(--nb-color-fg)'
                 }`
               }
               end
@@ -94,10 +100,10 @@ function TabNav({ tabs = [] }) {
             <button
               type="button"
               onClick={() => setOpen(o => !o)}
-              className="text-xs text-(--nb-color-muted) px-2 py-1 rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-bg) flex items-center justify-center w-10"
+              className="text-xs text-(--nb-color-muted) px-2 py-2 rounded-lg border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-bg) flex items-center justify-center w-10"
               title={t('students.dashboard.moreTabs')}
             >
-              <span className="font-semibold tracking-wider">â‹¯</span>
+              <span className="font-semibold tracking-wider">⋯</span>
             </button>
             {open && (
               <Card className="absolute right-0 mt-2 w-40 z-10">
@@ -108,7 +114,7 @@ function TabNav({ tabs = [] }) {
                         to={t.to}
                         onClick={() => promote(t.to)}
                         className={({ isActive }) =>
-                          `block px-3 py-1 ${isActive ? 'text-(--nb-color-brand) font-medium bg-(--nb-color-brand-50)' : 'text-(--nb-color-text) hover:bg-(--nb-color-bg)'}`
+                          `block px-3 py-2 ${isActive ? 'text-(--nb-color-brand) font-bold bg-(--nb-color-brand-50)' : 'text-(--nb-color-text) hover:bg-(--nb-color-bg)'}`
                         }
                         end
                       >
@@ -182,21 +188,23 @@ function StudentDashboardInner({ studentId }) {
       out.push({ to: `${base}/transfers`, label: t('nav.transfers') });
     }
 
-    // Note: "Library" isn't permission-modeled for staff/admin yet, so we hide it here.
+    if (
+      canAny('financeStudent', ['view', 'add', 'edit', 'delete', 'download'])
+      || canAny('financeStudentReceipt', ['view', 'add', 'edit', 'delete', 'download'])
+      || canAny('financeStudentPreviousBalance', ['view', 'add', 'edit', 'delete'])
+      || canAny('financeStudentReceiptModal', ['view'])
+      || canAny('financeStudentPreviousBalanceModal', ['view'])
+    ) {
+      out.push({ to: `${base}/finance`, label: t('nav.finance') });
+    }
+
+    // Digital Library: read is allowed for any authenticated user; writes are permission/role-gated.
+    out.push({ to: `${base}/library`, label: t('nav.library') });
     return out;
   }, [base, hasPermission, t]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{t('students.dashboard.title')}</h1>
-          <div className="text-sm text-(--nb-color-muted)">
-            {profileQuery.isLoading ? t('students.dashboard.loadingStudent') : studentName}
-          </div>
-        </div>
-      </div>
-
       <TabNav tabs={tabs} />
       <Suspense fallback={<div>{t('common.loading')}</div>}>
         <Outlet />

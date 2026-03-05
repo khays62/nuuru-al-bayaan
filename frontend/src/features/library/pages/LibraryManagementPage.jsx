@@ -2,19 +2,17 @@ import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Upload } from 'lucide-react';
 
-import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
-import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
-import Card from '../../../../shared/components/ui/Card.jsx';
-import Button from '../../../../shared/components/ui/Button.jsx';
-import Modal from '../../../../shared/components/ui/Modal.jsx';
-import Alert from '../../../../shared/components/ui/Alert.jsx';
-import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
+import Card from '../../../shared/components/ui/Card.jsx';
+import Button from '../../../shared/components/ui/Button.jsx';
+import Modal from '../../../shared/components/ui/Modal.jsx';
+import Alert from '../../../shared/components/ui/Alert.jsx';
+import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 
-import { useAuth } from '../../../../auth/AuthContext';
-import { useI18n } from '../../../../i18n/useI18n';
+import { useAuth } from '../../../auth/AuthContext';
+import { useI18n } from '../../../i18n/useI18n';
 
-import { studentKeys } from '../../queryKeys';
-import { createLibraryResource, listLibraryResources } from '../../api/library';
+import { createLibraryResource, deleteLibraryResource, listLibraryResources } from '../api/library';
+import { libraryKeys } from '../queryKeys';
 
 function formatDateShort(d) {
   try {
@@ -32,11 +30,11 @@ function kindLabel(row, t) {
   if (k === 'pdf') {
     const mt = String(row?.file?.mimeType || '').toLowerCase();
     const name = String(row?.file?.originalName || '').toLowerCase();
-    const isDocs = mt === 'application/msword'
+    const isDocs =
+      mt === 'application/msword'
       || mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       || name.endsWith('.doc')
       || name.endsWith('.docx');
-
     return isDocs
       ? t('students.libraryTab.kinds.docs', { defaultValue: 'Docs' })
       : t('students.libraryTab.kinds.pdf', { defaultValue: 'PDF' });
@@ -44,15 +42,20 @@ function kindLabel(row, t) {
   return '-';
 }
 
-export default function LibraryTab() {
+export default function LibraryManagementPage() {
   const queryClient = useQueryClient();
   const { auth, hasPermission } = useAuth();
   const { t } = useI18n();
 
   const role = String(auth?.user?.role || '').toLowerCase();
+
   const canUpload = role === 'admin'
     || role === 'teacher'
     || (role === 'staff' && (hasPermission?.('library', 'add') || hasPermission?.('library', 'full')));
+
+  const canDelete = role === 'admin'
+    || role === 'teacher'
+    || (role === 'staff' && (hasPermission?.('library', 'delete') || hasPermission?.('library', 'full')));
 
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState('pdf'); // pdf | docs | link
@@ -63,14 +66,16 @@ export default function LibraryTab() {
   const [file, setFile] = useState(null);
 
   const isLink = kind === 'link';
-  const pdfAccept = '.pdf,application/pdf';
   const docsAccept = '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const pdfAccept = '.pdf,application/pdf';
   const fileAccept = kind === 'docs' ? docsAccept : pdfAccept;
 
+  const deleteConfirmMessage = t('students.libraryTab.confirmDelete', { defaultValue: 'Delete this resource?' });
+
   const listQuery = useQuery({
-    queryKey: studentKeys.libraryList({ q: '', limit: 200 }),
+    queryKey: libraryKeys.list({ q: '', limit: 500 }),
     queryFn: async ({ signal }) => {
-      return await listLibraryResources({ limit: 200 }, { signal });
+      return await listLibraryResources({ limit: 500 }, { signal });
     },
     staleTime: 60_000,
   });
@@ -89,7 +94,7 @@ export default function LibraryTab() {
       return res;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: studentKeys.libraryListBase() });
+      await queryClient.invalidateQueries({ queryKey: libraryKeys.listBase() });
       setOpen(false);
       setKind('pdf');
       setTitle('');
@@ -100,11 +105,26 @@ export default function LibraryTab() {
     },
   });
 
-  const loadError = listQuery.isError ? (listQuery.error?.message || t('students.libraryTab.loadFailed', { defaultValue: 'Library load failed' })) : null;
+  const deleteMut = useMutation({
+    mutationFn: async (id) => {
+      const res = await deleteLibraryResource(id);
+      const ok = res?.success !== false;
+      if (!ok) throw new Error(res?.message || 'Delete failed');
+      return res;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: libraryKeys.listBase() });
+    },
+  });
+
+  const loadError = listQuery.isError
+    ? (listQuery.error?.message || t('students.libraryTab.loadFailed', { defaultValue: 'Library load failed' }))
+    : null;
 
   const columns = useMemo(() => {
     const th = 'text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide';
     const td = 'px-4 py-3 text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)';
+
     return [
       {
         key: 'title',
@@ -142,33 +162,54 @@ export default function LibraryTab() {
         render: (row) => formatDateShort(row?.createdAt),
       },
       {
-        key: 'open',
-        label: t('students.libraryTab.columns.open', { defaultValue: 'Open' }),
+        key: 'actions',
+        label: t('common.table.actions', { defaultValue: 'Actions' }),
         thClassName: `${th} text-center`,
         tdClassName: `${td} whitespace-nowrap text-center`,
         render: (row) => {
           const k = String(row?.kind || '').toLowerCase();
           const href = k === 'pdf' ? row?.file?.url : (k === 'link' ? row?.linkUrl : '');
-          const label = k === 'pdf'
+          const openLabel = k === 'pdf'
             ? t('students.libraryTab.actions.download', { defaultValue: 'Download' })
             : t('students.libraryTab.actions.open', { defaultValue: 'Open' });
-          if (!href) return '-';
+
+          const id = row?._id || row?.id;
+
           return (
-            <Button
-              as="a"
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              variant="outline"
-              size="sm"
-            >
-              {label}
-            </Button>
+            <div className="inline-flex items-center gap-2 justify-center">
+              {href ? (
+                <Button
+                  as="a"
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  variant="outline"
+                  size="sm"
+                >
+                  {openLabel}
+                </Button>
+              ) : null}
+
+              {canDelete && id ? (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  disabled={deleteMut.isPending}
+                  onClick={() => {
+                    const ok = window.confirm(deleteConfirmMessage);
+                    if (!ok) return;
+                    deleteMut.mutate(String(id));
+                  }}
+                >
+                  {t('common.actions.delete', { defaultValue: 'Delete' })}
+                </Button>
+              ) : null}
+            </div>
           );
         },
       },
     ];
-  }, [t]);
+  }, [t, canDelete, deleteMut.isPending, deleteConfirmMessage]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -180,6 +221,7 @@ export default function LibraryTab() {
     const k = String(kind || '').toLowerCase();
     const fd = new FormData();
     fd.append('title', titleStr);
+    // API supports kind=pdf|link. We treat "docs" as kind=pdf (file) based on uploaded mime type.
     fd.append('kind', k === 'link' ? 'link' : 'pdf');
     if (category && String(category).trim()) fd.append('category', String(category).trim());
     if (description && String(description).trim()) fd.append('description', String(description).trim());
@@ -197,9 +239,7 @@ export default function LibraryTab() {
   };
 
   return (
-    <Card className="p-4 with-print-header with-print-footer">
-      <PrintHeader />
-
+    <Card className="p-4">
       <div className="mb-4">
         <div className="border-l-4 border-(--nb-color-brand) bg-(--nb-color-brand-50) rounded px-3 py-2 flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -217,6 +257,14 @@ export default function LibraryTab() {
         </div>
       </div>
 
+      {deleteMut.isError ? (
+        <Alert
+          variant="danger"
+          className="mb-3"
+          title={String(deleteMut.error?.message || t('common.errors.failedToDelete', { defaultValue: 'Failed to delete' }))}
+        />
+      ) : null}
+
       <div className="overflow-x-auto border border-(--nb-color-border) rounded-xl">
         <StandardTable
           isLoading={listQuery.isLoading}
@@ -224,10 +272,10 @@ export default function LibraryTab() {
           items={rows}
           rows={rows}
           columns={columns}
-          storageKey="students.library.table"
+          storageKey="library.management.table"
           loadingMessage={t('common.loading')}
           loadingVariant="table"
-          loadingRows={6}
+          loadingRows={8}
           loadingColumns={5}
           isEmpty={!listQuery.isLoading && !loadError && rows.length === 0}
           emptyTitle={t('students.libraryTab.emptyTitle', { defaultValue: 'No resources yet' })}
@@ -377,8 +425,6 @@ export default function LibraryTab() {
           </div>
         </form>
       </Modal>
-
-      <PrintFooter />
     </Card>
   );
 }

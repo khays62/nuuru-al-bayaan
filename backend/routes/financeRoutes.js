@@ -68,6 +68,7 @@ import {
   payChargedMonth,
   paySelectedMonths,
   getStudentMonthHistory,
+  getStudentMonthHistoryViewer,
   discountChargedMonth,
   editPaymentGroup,
   revertPaymentGroup,
@@ -124,6 +125,7 @@ import { backfillInvoiceBillingMonth } from '../controllers/financeControl/finan
 
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { checkAnyPermission, checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+import { allowStudentSelfOr } from '../middleware/studentSelf.js';
 
 import mongoose from 'mongoose';
 import FinanceCategory from '../models/FinanceCategory.js';
@@ -546,6 +548,40 @@ router.get(
     { module: 'financeStudentPreviousBalanceModal', action: 'view' },
   ]),
   getStudentMonthHistory
+);
+
+// Student Finance (Viewer) - student self-service read-only history
+// - Students can only access their own :studentId (enforced by allowStudentSelfOr)
+// - Staff/Admin must have Student Finance view permissions
+router.get(
+  '/student/:studentId/month-history',
+  protect,
+  authorizeRoles('admin', 'staff', 'student'),
+  allowStudentSelfOr(
+    checkAnyPermission([
+      { module: 'financeStudent', action: 'view' },
+      { module: 'financeStudent', action: 'add' },
+      { module: 'financeStudent', action: 'edit' },
+      { module: 'financeStudent', action: 'delete' },
+      { module: 'financeStudent', action: 'download' },
+
+      { module: 'financeStudentReceipt', action: 'view' },
+      { module: 'financeStudentReceipt', action: 'add' },
+      { module: 'financeStudentReceipt', action: 'edit' },
+      { module: 'financeStudentReceipt', action: 'delete' },
+      { module: 'financeStudentReceipt', action: 'download' },
+
+      { module: 'financeStudentPreviousBalance', action: 'view' },
+      { module: 'financeStudentPreviousBalance', action: 'add' },
+      { module: 'financeStudentPreviousBalance', action: 'edit' },
+      { module: 'financeStudentPreviousBalance', action: 'delete' },
+
+      { module: 'financeStudentReceiptModal', action: 'view' },
+      { module: 'financeStudentPreviousBalanceModal', action: 'view' },
+    ]),
+    { param: 'studentId' }
+  ),
+  getStudentMonthHistoryViewer
 );
 router.post('/receipt/discount', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), discountChargedMonth);
 router.post('/receipt/payment-group/edit', protect, authorizeRoles('admin', 'staff'), checkPermission('financeStudentReceipt', 'edit'), editPaymentGroup);

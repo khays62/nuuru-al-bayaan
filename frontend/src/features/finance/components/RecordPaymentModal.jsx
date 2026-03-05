@@ -92,7 +92,7 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
                             {t('finance.studentFinance.recordPaymentModal.title', { defaultValue: 'Record Payment' })}
                         </h3>
                         <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest leading-none mt-1">
-                            {t('finance.studentFinance.recordPaymentModal.subtitle', { defaultValue: 'Invoice or Hormaris credit' })}
+                            {t('finance.studentFinance.recordPaymentModal.subtitle', { defaultValue: 'Invoice or advance credit' })}
                         </p>
                     </div>
                     <button onClick={onClose} className="text-(--nb-color-muted) hover:text-(--nb-color-fg) transition-colors p-2 hover:bg-(--nb-color-bg) rounded-full">
@@ -116,7 +116,7 @@ export default function RecordPaymentModal({ invoice, onClose, onSuccess }) {
                                 checked={paymentType === 'Hormaris'}
                                 onChange={() => setPaymentType('Hormaris')}
                             />
-                                {t('finance.studentFinance.recordPaymentModal.types.hormaris', { defaultValue: 'Hormaris (Advance)' })}
+                                {t('finance.studentFinance.recordPaymentModal.types.hormaris', { defaultValue: 'Advance' })}
                         </label>
                     </div>
 

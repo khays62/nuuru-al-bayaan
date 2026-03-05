@@ -131,6 +131,7 @@ import {
         { key: 'attendance', path: "/attendance", label: "Attendance", labelKey: 'nav.attendance', roles: ["admin", "staff", "teacher"], module: "attendance" },
         { key: 'attendance-reports', path: "/attendance-reports", label: "Attendance Reports", labelKey: 'nav.attendanceReports', roles: ["admin", "staff", "teacher"], module: "attendanceReports" },
         { key: 'timetable', path: "/timetable", label: "Timetable", labelKey: 'nav.timetable', roles: ["admin", "staff", "teacher"], module: "timetable" },
+        { key: 'library', path: "/library", label: "Library", labelKey: 'nav.library', roles: ["admin", "staff", "teacher"], module: "library", icon: BookOpenCheck },
       ],
     },
   
@@ -139,6 +140,7 @@ import {
     { key: 'student-transcript', path: "/student-dashboard/transcript", label: "Transcript", labelKey: 'nav.transcript', roles: ["student"], studentNav: true, icon: BarChart2 },
     { key: 'student-attendance', path: "/student-dashboard/attendance", label: "Attendance", labelKey: 'nav.attendance', roles: ["student"], studentNav: true, icon: ClipboardList },
     { key: 'student-timetable', path: "/student-dashboard/timetable", label: "Timetable", labelKey: 'nav.timetable', roles: ["student"], studentNav: true, icon: CalendarDays },
+    { key: 'student-finance', path: "/student-dashboard/finance", label: "Finance", labelKey: 'nav.finance', roles: ["student"], studentNav: true, icon: Banknote },
     { key: 'student-library', path: "/student-dashboard/library", label: "Library", labelKey: 'nav.library', roles: ["student"], studentNav: true, icon: BookOpenCheck },
     { key: 'student-enrollments', path: "/student-dashboard/enrollments", label: "Enrollments", labelKey: 'nav.enrollments', roles: ["student"], studentNav: true, icon: Layers3 },
     { key: 'student-transfers', path: "/student-dashboard/transfers", label: "Transfers", labelKey: 'nav.transfers', roles: ["student"], studentNav: true, icon: Repeat },

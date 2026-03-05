@@ -587,6 +587,132 @@ export async function getStudentMonthHistory(req, res) {
 }
 
 /**
+ * Viewer month history for a student (read-only).
+ * - Supports student self-service (scoped by route middleware).
+ * - Includes unpaid months (balance > 0) in addition to paid months.
+ * Route params:
+ * - :studentId (required)
+ * Query:
+ * - academicYearId (optional)
+ */
+export async function getStudentMonthHistoryViewer(req, res) {
+  try {
+    const { academicYearId } = req.query;
+    const studentId = req.params?.studentId;
+
+    if (!studentId) return res.status(400).json({ message: 'studentId is required' });
+
+    let finalStudentId = studentId;
+    if (!isValidObjectId(studentId)) {
+      const student = await Student.findOne({ studentId: studentId });
+      if (!student) return res.status(404).json({ message: 'Student not found' });
+      finalStudentId = student._id;
+    }
+
+    const invoiceQuery = { student: finalStudentId, status: { $ne: 'Cancelled' } };
+    if (academicYearId) invoiceQuery.academicYear = academicYearId;
+
+    const invoices = await FeeInvoice.find(invoiceQuery)
+      .populate('class', 'section')
+      .populate('academicYear', 'yearName')
+      .populate('items.category', 'name type')
+      .sort({ dueDate: 1 });
+
+    const invoiceIds = invoices.map(i => i._id);
+
+    const payments = invoiceIds.length
+      ? await FeeTransaction.find({
+        invoice: { $in: invoiceIds },
+        transactionType: 'Payment',
+        status: 'Completed',
+      })
+        .populate('account', 'name type')
+        .sort({ date: 1 })
+      : [];
+
+    const buckets = new Map();
+    const bucketByInvoiceId = new Map();
+
+    for (const inv of invoices) {
+      const month = monthFromInvoice(inv);
+      if (!month) continue;
+      const key = `${month}__${String(inv.academicYear?._id || 'na')}__${String(inv.class?._id || 'na')}`;
+      if (!buckets.has(key)) {
+        buckets.set(key, {
+          month,
+          academicYear: inv.academicYear || null,
+          class: inv.class || null,
+          descriptions: new Set(),
+          amountTypes: new Set(),
+          amount: 0,
+          paid: 0,
+          balance: 0,
+          discount: 0,
+          invoiceIds: [],
+          paymentGroups: new Map(),
+        });
+      }
+
+      const b = buckets.get(key);
+      b.amount += Number(inv.amount || 0);
+      b.paid += Number(inv.paidAmount || 0);
+      b.balance += Number(inv.balance || 0);
+      b.discount += (inv.discounts || []).reduce((s, d) => s + (d.amountOff || 0), 0);
+      if (inv?.title) b.descriptions.add(String(inv.title));
+
+      b.invoiceIds.push(inv._id);
+      bucketByInvoiceId.set(String(inv._id), b);
+
+      for (const item of inv.items || []) {
+        const label = item?.category?.name || item?.name;
+        if (label) b.amountTypes.add(label);
+      }
+    }
+
+    for (const p of payments) {
+      const b = bucketByInvoiceId.get(String(p.invoice));
+      if (!b) continue;
+
+      const groupId = p.paymentGroup ? String(p.paymentGroup) : String(p._id);
+      if (!b.paymentGroups.has(groupId)) {
+        b.paymentGroups.set(groupId, {
+          paymentGroupId: p.paymentGroup || p._id,
+          date: p.date,
+          account: p.account || null,
+          method: p.method,
+          totalPaid: 0,
+          transactionIds: [],
+        });
+      }
+      const g = b.paymentGroups.get(groupId);
+      g.totalPaid += Number(p.amount || 0);
+      g.transactionIds.push(p._id);
+    }
+
+    const rows = Array.from(buckets.values())
+      .map(b => ({
+        id: `${b.month}_${String(b.academicYear?._id || 'na')}_${String(b.class?._id || 'na')}`,
+        month: b.month,
+        academicYear: b.academicYear,
+        class: b.class,
+        description: Array.from(b.descriptions.values()).join(' • '),
+        amountType: Array.from(b.amountTypes).join(', '),
+        amount: round2(b.amount || 0),
+        discount: round2(b.discount || 0),
+        paid: round2(b.paid || 0),
+        balance: round2(b.balance || 0),
+        paymentGroups: Array.from(b.paymentGroups.values()).sort((a, c) => new Date(a.date) - new Date(c.date)),
+      }))
+      .sort((a, b) => String(b.month || '').localeCompare(String(a.month || '')));
+
+    res.json({ studentId: finalStudentId, academicYearId: academicYearId || null, rows });
+  } catch (error) {
+    console.error('getStudentMonthHistoryViewer Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+}
+
+/**
  * Apply fixed discount.
  */
 export async function discountChargedMonth(req, res) {
@@ -769,7 +895,7 @@ export async function editPaymentGroup(req, res) {
     await session.commitTransaction();
 
     try {
-      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+      publishRealtime({ type: 'studentFinance:changed', studentId: String(studentId), ts: Date.now() });
       publishRealtime({ type: 'accounts:changed', ts: Date.now() });
     } catch {
       // ignore
@@ -852,7 +978,11 @@ export async function revertPaymentGroup(req, res) {
     await session.commitTransaction();
 
     try {
-      publishRealtime({ type: 'studentFinance:changed', ts: Date.now() });
+      const impactedStudentIds = Array.from(new Set(invoices.map(i => String(i.student)).filter(Boolean)));
+      const ts = Date.now();
+      for (const sid of impactedStudentIds) {
+        publishRealtime({ type: 'studentFinance:changed', studentId: sid, ts });
+      }
       publishRealtime({ type: 'accounts:changed', ts: Date.now() });
     } catch {
       // ignore

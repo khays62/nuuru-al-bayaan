@@ -775,7 +775,7 @@ const en = {
           total: 'Total',
         },
         hormaris: {
-          selectMonths: 'Select Hormaris Months',
+          selectMonths: 'Select Advance Months',
         },
         actions: {
           paySelected: 'Pay Selected',
@@ -835,7 +835,7 @@ const en = {
           selectAccountShort: 'Select account',
           enterValidAmount: 'Enter a valid amount',
           phoneRefRequired: 'Phone/Ref is required',
-          selectHormarisMonths: 'Select Hormaris months',
+          selectHormarisMonths: 'Select advance months',
           invalidAmountForMonth: 'Invalid amount for {{month}}',
           amountExceedsBalanceForMonth: 'Amount exceeds balance for {{month}}',
         },
@@ -846,9 +846,9 @@ const en = {
           failedRevertPayments: 'Failed to revert payments',
           paymentRecorded: 'Payment recorded',
           paymentFailed: 'Payment failed',
-          processingHormaris: 'Processing Hormaris payment...',
-          hormarisRecorded: 'Hormaris payment recorded',
-          hormarisFailed: 'Hormaris payment failed',
+          processingHormaris: 'Processing advance payment...',
+          hormarisRecorded: 'Advance payment recorded',
+          hormarisFailed: 'Advance payment failed',
           preparingStatement: 'Preparing statement...',
           printFailed: 'Print failed',
         },
@@ -870,7 +870,7 @@ const en = {
             paid: 'Paid This Month',
             unpaid: 'Unpaid This Month',
             uncharged: 'Not Charged This Month',
-            hormaris: 'Hormaris',
+            hormaris: 'Advance',
           },
         },
         actions: {
@@ -885,7 +885,7 @@ const en = {
           viewInfo: 'View Info',
         },
         labels: {
-          hormaris: 'Hormaris',
+          hormaris: 'Advance',
         },
         loading: {
           syncingLedger: 'Syncing Ledger…',
@@ -1601,6 +1601,49 @@ const en = {
       },
     },
 
+    libraryTab: {
+      subtitle: 'PDFs, notes, past papers and links.',
+      loadFailed: 'Failed to load library',
+      uploadFailed: 'Upload failed',
+      confirmDelete: 'Delete this resource?',
+      emptyTitle: 'No resources yet',
+      empty: 'There are no library resources available right now.',
+      kinds: {
+        pdf: 'PDF',
+        docs: 'Docs',
+        doc: 'DOC',
+        docx: 'DOCX',
+        link: 'Link',
+      },
+      columns: {
+        title: 'Title',
+        type: 'Type',
+        category: 'Category',
+        added: 'Added',
+        open: 'Open',
+      },
+      actions: {
+        add: 'Add Resource',
+        open: 'Open',
+        download: 'Download',
+      },
+      modal: {
+        title: 'Add Library Resource',
+      },
+      form: {
+        title: 'Title',
+        titlePlaceholder: 'e.g., Math Notes - Unit 1',
+        category: 'Category (optional)',
+        categoryPlaceholder: 'Notes / Past Papers / Link',
+        type: 'Resource Type',
+        file: 'File',
+        pdfHint: 'Supported: PDF, DOC, DOCX.',
+        link: 'Link URL',
+        description: 'Description (optional)',
+        descriptionPlaceholder: 'Short description...',
+      },
+    },
+
     transferTimeline: {
       empty: 'No transfers.',
       transferred: 'Transferred',
@@ -1646,10 +1689,6 @@ const en = {
         subject: 'Subject',
         total: 'Total',
       },
-    },
-
-    libraryTab: {
-      placeholder: 'Library content will appear here.',
     },
 
     transfersTab: {

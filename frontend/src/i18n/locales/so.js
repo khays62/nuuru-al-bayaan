@@ -1458,7 +1458,46 @@ export default {
     },
 
     libraryTab: {
-      placeholder: 'Waxyaabaha maktabadda halkan ayay ka muuqan doonaan.',
+      subtitle: 'PDF-yada, qoraallada, waraaqaha imtixaanka iyo links.',
+      loadFailed: 'Laguma guulaysan in la raro maktabadda',
+      uploadFailed: 'Soo gelinta waa fashilantay',
+      confirmDelete: 'Ma tirtirtaa resource-kan?',
+      emptyTitle: 'Weli ma jiraan waxyaabo',
+      empty: 'Hadda waxyaabo maktabad ah lama hayo.',
+      kinds: {
+        pdf: 'PDF',
+        docs: 'Docs',
+        doc: 'DOC',
+        docx: 'DOCX',
+        link: 'Link',
+      },
+      columns: {
+        title: 'Cinwaan',
+        type: 'Nooc',
+        category: 'Qayb',
+        added: 'La daray',
+        open: 'Fur',
+      },
+      actions: {
+        add: 'Ku dar',
+        open: 'Fur',
+        download: 'Soo dejiso',
+      },
+      modal: {
+        title: 'Ku dar wax maktabad ah',
+      },
+      form: {
+        title: 'Cinwaan',
+        titlePlaceholder: 'Tusaale: Qoraallada Xisaabta - Cutubka 1',
+        category: 'Qayb (ikhtiyaari)',
+        categoryPlaceholder: 'Qoraallo / Imtixaan hore / Link',
+        type: 'Nooca',
+        file: 'Fayl',
+        pdfHint: 'La taageero: PDF, DOC, DOCX.',
+        link: 'Link URL',
+        description: 'Sharaxaad (ikhtiyaari)',
+        descriptionPlaceholder: 'Sharaxaad kooban...',
+      },
     },
 
     transfersTab: {
@@ -2989,6 +3028,18 @@ export default {
         studentFinance: 'Maaliyadda Ardayda',
         payroll: 'Payroll',
         expenses: 'Kharashyo',
+      },
+    },
+
+    viewer: {
+      subtitle: 'Fee-yada bilaha, lacagaha la bixiyay, iyo lacagta ku hartay',
+      loadFailed: 'Taariikhda maaliyadda lama soo dejin',
+      empty: 'Weli ma jiro taariikh maaliyadeed.',
+      stats: {
+        totalBilled: 'Wadarta la dallacay',
+        totalPaid: 'Wadarta la bixiyay',
+        totalDiscount: 'Wadarta dhimista',
+        outstanding: 'Lacagta ku hartay',
       },
     },
 

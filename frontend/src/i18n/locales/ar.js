@@ -1600,6 +1600,49 @@ export default {
       },
     },
 
+    libraryTab: {
+      subtitle: 'ملفات PDF، ملاحظات، أوراق امتحانات وروابط.',
+      loadFailed: 'فشل تحميل المكتبة',
+      uploadFailed: 'فشل الرفع',
+      confirmDelete: 'حذف هذا المورد؟',
+      emptyTitle: 'لا توجد موارد بعد',
+      empty: 'لا توجد موارد مكتبة متاحة حالياً.',
+      kinds: {
+        pdf: 'PDF',
+        docs: 'مستندات',
+        doc: 'DOC',
+        docx: 'DOCX',
+        link: 'رابط',
+      },
+      columns: {
+        title: 'العنوان',
+        type: 'النوع',
+        category: 'الفئة',
+        added: 'أضيف',
+        open: 'فتح',
+      },
+      actions: {
+        add: 'إضافة مورد',
+        open: 'فتح',
+        download: 'تحميل',
+      },
+      modal: {
+        title: 'إضافة مورد للمكتبة',
+      },
+      form: {
+        title: 'العنوان',
+        titlePlaceholder: 'مثال: ملاحظات الرياضيات - الوحدة 1',
+        category: 'الفئة (اختياري)',
+        categoryPlaceholder: 'ملاحظات / أوراق سابقة / رابط',
+        type: 'نوع المورد',
+        file: 'ملف',
+        pdfHint: 'المدعوم: PDF، DOC، DOCX.',
+        link: 'رابط URL',
+        description: 'الوصف (اختياري)',
+        descriptionPlaceholder: 'وصف قصير...',
+      },
+    },
+
     timetableTab: {
       subtitle: 'الجدول الأسبوعي للتسجيل الحالي.',
       loading: 'جارٍ تحميل الجدول…',
@@ -1639,10 +1682,6 @@ export default {
         subject: 'المادة',
         total: 'المجموع',
       },
-    },
-
-    libraryTab: {
-      placeholder: 'سيظهر محتوى المكتبة هنا.',
     },
 
     transfersTab: {
@@ -3173,6 +3212,18 @@ export default {
       },
     },
 
+    viewer: {
+      subtitle: 'الرسوم الشهرية، المدفوعات، والرصيد المتبقي',
+      loadFailed: 'فشل تحميل سجل المالية',
+      empty: 'لا يوجد سجل مالي بعد.',
+      stats: {
+        totalBilled: 'إجمالي المفوتر',
+        totalPaid: 'إجمالي المدفوع',
+        totalDiscount: 'إجمالي الخصم',
+        outstanding: 'الرصيد المتبقي',
+      },
+    },
+
     dashboard: {
       header: {
         title: 'لوحة التحكم المالية',
@@ -3864,8 +3915,8 @@ export default {
           discount: 'خصم',
         },
         note: '* ملاحظة: هذا الإيصال يمثل المبلغ المتفق عليه حسب المستوى.',
-        hormarisSuffix: ' (Hormaris)',
-        hormarisPayment: 'دفع Hormaris ({{count}} شهر)',
+        hormarisSuffix: ' (مقدم)',
+        hormarisPayment: 'دفع مقدم ({{count}} شهر)',
         defaults: {
           monthlyFee: 'رسوم شهرية',
         },
@@ -3972,7 +4023,7 @@ export default {
           total: 'الإجمالي',
         },
         hormaris: {
-          selectMonths: 'اختر أشهر Hormaris',
+          selectMonths: 'اختر أشهر الدفع المقدم',
         },
         actions: {
           paySelected: 'ادفع المحدد',
@@ -4032,7 +4083,7 @@ export default {
           selectAccountShort: 'اختر حسابًا',
           enterValidAmount: 'أدخل مبلغًا صحيحًا',
           phoneRefRequired: 'الهاتف/المرجع مطلوب',
-          selectHormarisMonths: 'اختر أشهر Hormaris',
+          selectHormarisMonths: 'اختر أشهر الدفع المقدم',
           invalidAmountForMonth: 'مبلغ غير صحيح لشهر {{month}}',
           amountExceedsBalanceForMonth: 'المبلغ يتجاوز الرصيد لشهر {{month}}',
         },
@@ -4043,9 +4094,9 @@ export default {
           failedRevertPayments: 'فشل إرجاع المدفوعات',
           paymentRecorded: 'تم تسجيل الدفع',
           paymentFailed: 'فشل الدفع',
-          processingHormaris: 'جارٍ معالجة دفع Hormaris...',
-          hormarisRecorded: 'تم تسجيل دفع Hormaris',
-          hormarisFailed: 'فشل دفع Hormaris',
+          processingHormaris: 'جارٍ معالجة الدفع المقدم...',
+          hormarisRecorded: 'تم تسجيل الدفع المقدم',
+          hormarisFailed: 'فشل الدفع المقدم',
           preparingStatement: 'جارٍ تجهيز البيان...',
           printFailed: 'فشلت الطباعة',
         },
@@ -4185,7 +4236,7 @@ export default {
             paid: 'تم الدفع هذا الشهر',
             unpaid: 'غير مدفوع هذا الشهر',
             uncharged: 'غير مفوتر هذا الشهر',
-            hormaris: 'Hormaris',
+            hormaris: 'مقدم',
           },
         },
         actions: {
@@ -4200,7 +4251,7 @@ export default {
           viewInfo: 'عرض المعلومات',
         },
         labels: {
-          hormaris: 'Hormaris',
+          hormaris: 'مقدم',
         },
         loading: {
           syncingLedger: 'جارٍ مزامنة السجل…',
@@ -4424,10 +4475,10 @@ export default {
 
       recordPaymentModal: {
         title: 'تسجيل دفعة',
-        subtitle: 'فاتورة أو رصيد هرمريس',
+        subtitle: 'فاتورة أو رصيد مقدم',
         types: {
           invoice: 'دفع الفاتورة',
-          hormaris: 'هرمريس (مقدم)',
+          hormaris: 'مقدم',
         },
         summary: {
           payingFor: 'الدفع مقابل:',

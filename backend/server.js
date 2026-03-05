@@ -26,6 +26,7 @@ import examRoutes from './routes/examRoutes.js';
 import cohortRoutes from './routes/cohortRoutes.js';
 import promotionRoutes from './routes/promotionRoutes.js';
 import transferRoutes from './routes/transferRoutes.js';
+import libraryRoutes from './routes/libraryRoutes.js';
 import transcriptRoutes from './routes/transcriptRoutes.js';
 import teacherRoutes from './routes/teacherRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
@@ -209,6 +210,7 @@ const startServer = async () => {
   app.use('/api/exams', examRoutes);
   app.use('/api/cohorts', cohortRoutes);
   app.use('/api/promotions', promotionRoutes);
+  app.use('/api/library', libraryRoutes);
   app.use('/api/transfers', transferRoutes);
   app.use('/api/transcripts', transcriptRoutes);
   app.use('/api/teachers', teacherRoutes);

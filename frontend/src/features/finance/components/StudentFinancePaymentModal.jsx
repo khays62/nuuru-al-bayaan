@@ -14,6 +14,8 @@ import RowActionButtons from '../../../shared/components/table/RowActionButtons.
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import { useI18n } from '../../../i18n/useI18n';
 import { printHtmlDocument } from '../../../utils/exportTable';
+import { useRealtimeInvalidation } from '../../../shared/realtime/useRealtimeInvalidation';
+import { EVENTS } from '../../../utils/events';
 import {
     useInvoicesQuery,
     useStudentMonthHistoryQuery,
@@ -107,11 +109,31 @@ export default function StudentFinancePaymentModal({
 
     const invoicesQuery = useInvoicesQuery(
         { studentId: student?._id, limit: 200 },
-        { enabled: Boolean(canViewPerm) && !!student?._id }
+        {
+            enabled: Boolean(canViewPerm) && !!student?._id,
+            staleTime: 0,
+            refetchOnMount: 'always',
+        }
     );
 
     const historyQuery = useStudentMonthHistoryQuery(
         { studentId: student?._id },
+        {
+            enabled: Boolean(canViewPerm) && !!student?._id,
+            staleTime: 0,
+            refetchOnMount: 'always',
+        }
+    );
+
+    useRealtimeInvalidation(
+        EVENTS.STUDENT_FINANCE_CHANGED,
+        (detail) => {
+            const evtStudentId = detail?.studentId;
+            if (evtStudentId && student?._id && String(evtStudentId) !== String(student._id)) return;
+
+            invoicesQuery.refetch?.();
+            historyQuery.refetch?.();
+        },
         { enabled: Boolean(canViewPerm) && !!student?._id }
     );
 
@@ -332,7 +354,7 @@ export default function StudentFinancePaymentModal({
         const lblDiscount = t('finance.printModals.voucher.labels.discount', { defaultValue: 'Discount' });
         const note = t('finance.printModals.voucher.note', { defaultValue: '* Note: This receipt represents the level-agreed amount.' });
         const monthlyFeeFallback = t('finance.printModals.voucher.defaults.monthlyFee', { defaultValue: 'Monthly fee' });
-        const hormarisSuffix = t('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Hormaris)' });
+        const hormarisSuffix = t('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Advance)' });
 
         const recNo = meta?.paymentGroupId
             ? `RV-${String(meta.paymentGroupId).slice(-6).toUpperCase()}`
@@ -346,9 +368,9 @@ export default function StudentFinancePaymentModal({
             `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
             meta.student.currentClass ||
             meta.student.classLabel ||
-            'â€”'
+			'—'
         );
-        const studentId = meta.student.studentId || 'â€”';
+        const studentId = meta.student.studentId || '—';
 
         const isMongoObjectIdString = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
         const rawShift = firstInv?.class?.shift ?? firstInv?.shift ?? meta.student.shift ?? meta.student.currentShift;
@@ -356,7 +378,7 @@ export default function StudentFinancePaymentModal({
             (typeof rawShift === 'string'
                 ? (isMongoObjectIdString(rawShift) ? '' : rawShift)
                 : (rawShift?.name || rawShift?.shiftName || rawShift?.label)) ||
-            'â€”';
+			'—';
 
         const txByInvoice = meta?.txByInvoice instanceof Map ? meta.txByInvoice : new Map();
         const fmtMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
@@ -374,7 +396,7 @@ export default function StudentFinancePaymentModal({
                 const isHormaris = typeof inv?.isHormaris === 'boolean'
                     ? inv.isHormaris
                     : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-                const billingMonthLabel = `${inv.billingMonth || 'â€”'}${isHormaris ? hormarisSuffix : ''}`;
+                const billingMonthLabel = `${inv.billingMonth || '—'}${isHormaris ? hormarisSuffix : ''}`;
 
                 const paidInThisGroup = Number(txByInvoice.get(String(inv._id)) || 0);
 
@@ -382,8 +404,8 @@ export default function StudentFinancePaymentModal({
                     <tr>
                         <td>${inv.title || monthlyFeeFallback}</td>
                         <td>${billingMonthLabel}</td>
-                        ${showDiscount ? `<td style="text-align:right">${isFree ? 'â€”' : fmtMoney(totalDiscount)}</td>` : ''}
-                        <td style="text-align:right">${isFree ? 'â€”' : fmtMoney(paidInThisGroup)}</td>
+                        ${showDiscount ? `<td style="text-align:right">${isFree ? '—' : fmtMoney(totalDiscount)}</td>` : ''}
+                        <td style="text-align:right">${isFree ? '—' : fmtMoney(paidInThisGroup)}</td>
                         <td style="text-align:right">${fmtMoney(currentBalance)}</td>
                         <td style="text-align:right">${fmtMoney(grossFee)}</td>
                     </tr>
@@ -448,7 +470,7 @@ export default function StudentFinancePaymentModal({
                                 </tr>
                                 <tr>
                                     <td>${lblDescription}</td>
-                                    <td>${t('finance.printModals.voucher.hormarisPayment', { defaultValue: 'Hormaris payment ({{count}} month)', count: invList.length })} &nbsp;&nbsp; <span class="cell-muted">${lblPaid}:</span> ${fmtMoney(totalPaid)}</td>
+                                    <td>${t('finance.printModals.voucher.hormarisPayment', { defaultValue: 'Advance payment ({{count}} month)', count: invList.length })} &nbsp;&nbsp; <span class="cell-muted">${lblPaid}:</span> ${fmtMoney(totalPaid)}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -478,12 +500,12 @@ export default function StudentFinancePaymentModal({
 
     const handlePaySelectedHormaris = async () => {
         if (!canSavePerm) return;
-        if (!selectedHormarisMonths.length) return toast.error(t('finance.studentFinance.paymentModal.validation.selectHormarisMonths', { defaultValue: 'Select Hormaris months' }));
+        if (!selectedHormarisMonths.length) return toast.error(t('finance.studentFinance.paymentModal.validation.selectHormarisMonths', { defaultValue: 'Select advance months' }));
         if (!accountId) return toast.error(t('finance.studentFinance.paymentModal.validation.selectAccountShort', { defaultValue: 'Select account' }));
         const reference = String(hormarisReference || '').trim();
         if (!reference) return toast.error(t('finance.studentFinance.paymentModal.validation.phoneRefRequired', { defaultValue: 'Phone/Ref is required' }));
         try {
-            toast.loading(t('finance.studentFinance.paymentModal.toasts.processingHormaris', { defaultValue: 'Processing Hormaris payment...' }));
+            toast.loading(t('finance.studentFinance.paymentModal.toasts.processingHormaris', { defaultValue: 'Processing advance payment...' }));
             const months = [...selectedHormarisMonths].sort();
 
             const totalsByMonth = new Map((hormarisMonthOptions || []).map(o => [o.month, Number(o.total || 0)]));
@@ -509,7 +531,7 @@ export default function StudentFinancePaymentModal({
                 method: paymentMethod,
                 date: paymentDate,
                 reference,
-                description: `Hormaris payment for ${months.join(', ')}`,
+                description: `Advance payment for ${months.join(', ')}`,
             });
 
             const [invRefetch, histRefetch] = await Promise.all([invoicesQuery.refetch(), historyQuery.refetch()]);
@@ -544,11 +566,11 @@ export default function StudentFinancePaymentModal({
             setSelectedHormarisAmounts({});
             setHormarisReference('');
             toast.dismiss();
-            toast.success(t('finance.studentFinance.paymentModal.toasts.hormarisRecorded', { defaultValue: 'Hormaris payment recorded' }));
+            toast.success(t('finance.studentFinance.paymentModal.toasts.hormarisRecorded', { defaultValue: 'Advance payment recorded' }));
             onPaid?.();
         } catch (err) {
             toast.dismiss();
-            const msg = err?.response?.data?.message || err?.message || t('finance.studentFinance.paymentModal.toasts.hormarisFailed', { defaultValue: 'Hormaris payment failed' });
+            const msg = err?.response?.data?.message || err?.message || t('finance.studentFinance.paymentModal.toasts.hormarisFailed', { defaultValue: 'Advance payment failed' });
             toast.error(msg);
         }
     };
@@ -645,7 +667,7 @@ export default function StudentFinancePaymentModal({
         const lblDiscount = t('finance.printModals.voucher.labels.discount', { defaultValue: 'Discount' });
         const note = t('finance.printModals.voucher.note', { defaultValue: '* Note: This receipt represents the level-agreed amount.' });
         const monthlyFeeFallback = t('finance.printModals.voucher.defaults.monthlyFee', { defaultValue: 'Monthly fee' });
-        const hormarisSuffix = t('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Hormaris)' });
+        const hormarisSuffix = t('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Advance)' });
         const arrearsLabel = t('finance.studentFinance.paymentModal.print.arrears', { defaultValue: 'Arrears' });
         const totalDiscount = inv.discounts?.reduce((s, d) => s + (d.amountOff || 0), 0) || 0;
         const isFree = !!inv.isWaived || !!inv.student?.isFree || !!meta.student?.isFree;
@@ -670,7 +692,7 @@ export default function StudentFinancePaymentModal({
         const isHormaris = typeof inv?.isHormaris === 'boolean'
             ? inv.isHormaris
             : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-        const billingMonthLabel = `${inv.billingMonth || 'â€”'}${isHormaris ? hormarisSuffix : ''}`;
+        const billingMonthLabel = `${inv.billingMonth || '—'}${isHormaris ? hormarisSuffix : ''}`;
 
         const recNo = `RV-${String(inv?._id || '').slice(-6).toUpperCase()}`;
         const gradeName = inv.class?.grade?.gradeName || inv.class?.grade?.name || inv.class?.gradeName || '';
@@ -681,9 +703,9 @@ export default function StudentFinancePaymentModal({
             `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
             meta.student.currentClass ||
             meta.student.classLabel ||
-            'â€”'
+            '—'
         );
-        const studentId = meta.student.studentId || 'â€”';
+        const studentId = meta.student.studentId || '—';
         const description = inv.title || monthlyFeeFallback;
         const isMongoObjectIdString = (value) => typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
         const rawShift = inv.class?.shift ?? inv.shift ?? meta.student.shift ?? meta.student.currentShift;
@@ -691,7 +713,7 @@ export default function StudentFinancePaymentModal({
             (typeof rawShift === 'string'
                 ? (isMongoObjectIdString(rawShift) ? '' : rawShift)
                 : (rawShift?.name || rawShift?.shiftName || rawShift?.label)) ||
-            'â€”';
+            '—';
 
         const paidSpan = isFree ? '' : `<span class="money">${lblPaid} $${Number(displayPaid || 0).toFixed(2)}</span>`;
 
@@ -797,7 +819,7 @@ export default function StudentFinancePaymentModal({
                             <Wallet className="w-4 h-4 text-(--nb-color-fg)" />
                         </div>
                         <div className="min-w-0">
-                            <div className="font-bold text-(--nb-color-fg) truncate">{student?.fullName || 'â€”'}</div>
+                            <div className="font-bold text-(--nb-color-fg) truncate">{student?.fullName || '-'}</div>
                             <div className="text-xs text-(--nb-color-muted) font-mono uppercase tracking-widest truncate">{student?.studentId || ''}</div>
                         </div>
                     </div>
@@ -901,7 +923,7 @@ export default function StudentFinancePaymentModal({
                                 <div className="bg-(--nb-color-bg-card) p-3 rounded-xl border border-(--nb-color-border) shadow-(--nb-shadow-sm) shrink-0 flex flex-col gap-2">
                                     <div className="flex items-center justify-between gap-4">
                                         <div className="text-[9px] font-black text-(--nb-color-muted) uppercase tracking-widest">
-                                            {t('finance.studentFinance.paymentModal.hormaris.selectMonths', { defaultValue: 'Select Hormaris Months' })}
+											{t('finance.studentFinance.paymentModal.hormaris.selectMonths', { defaultValue: 'Select Advance Months' })}
                                         </div>
                                         <Button
                                             onClick={handlePaySelectedHormaris}
@@ -1001,11 +1023,11 @@ export default function StudentFinancePaymentModal({
                                                 return (
                                                     <div className="flex items-center gap-2">
                                                         <span className="bg-(--nb-color-bg) text-(--nb-color-fg) px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide">
-                                                            {inv?.billingMonth || 'â€”'}
+                                                            {inv?.billingMonth || '-'}
                                                         </span>
                                                         {isHormaris ? (
                                                             <span className="bg-(--nb-color-brand) text-white px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
-                                                                Hormaris
+                                                                {t('finance.studentFinance.receiptTab.labels.hormaris', { defaultValue: 'Advance' })}
                                                             </span>
                                                         ) : null}
                                                     </div>
@@ -1086,7 +1108,7 @@ export default function StudentFinancePaymentModal({
                                                                     variant="neutral"
                                                                     disabled={!canPrint || isPrinting}
                                                                     title={isPrinting
-                                                                        ? t('finance.printModals.actions.generating', { defaultValue: 'Generatingâ€¦' })
+                                                                        ? t('finance.printModals.actions.generating', { defaultValue: 'Generating…' })
                                                                         : (!canPrint
                                                                         ? t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' })
                                                                         : t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' }))}
@@ -1102,12 +1124,12 @@ export default function StudentFinancePaymentModal({
                                                     <div className="flex flex-col items-end leading-tight">
                                                         <span className={`font-mono font-bold ${balance <= 0 ? 'text-emerald-700' : 'text-red-700'}`}>${Number(balance || 0).toFixed(2)}</span>
                                                         {isHormaris && balance > 0 ? (
-                                                            <span className="text-[10px] font-black uppercase tracking-widest text-red-700">Hormaris</span>
+                                                            <span className="text-[10px] font-black uppercase tracking-widest text-red-700">{t('finance.studentFinance.receiptTab.labels.hormaris', { defaultValue: 'Advance' })}</span>
                                                         ) : null}
                                                     </div>
                                                 );
                                             default:
-                                                return 'â€”';
+                                                return '-';
                                         }
                                     }}
                                 />
@@ -1150,7 +1172,7 @@ export default function StudentFinancePaymentModal({
                                             case 'month':
                                                 return (
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold uppercase">{h?.month || 'â€”'}</span>
+                                                                <span className="font-bold uppercase">{h?.month || '-'}</span>
                                                         <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-black uppercase tracking-widest border border-emerald-100">
                                                             {t('finance.studentFinance.paymentModal.history.status.cleared', { defaultValue: 'Cleared' })}
                                                         </span>
@@ -1184,7 +1206,7 @@ export default function StudentFinancePaymentModal({
                                                                 icon: null,
                                                                 disabled: Number(h?.paid || 0) <= 0 || Boolean(printingId),
                                                                 title: Boolean(printingId)
-                                                                    ? t('finance.printModals.actions.generating', { defaultValue: 'Generatingâ€¦' })
+                                                                    ? t('finance.printModals.actions.generating', { defaultValue: 'Generating…' })
                                                                     : (Number(h?.paid || 0) <= 0
                                                                         ? t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' })
                                                                         : t('finance.studentFinance.paymentModal.actions.print', { defaultValue: 'Print' })),
@@ -1201,7 +1223,7 @@ export default function StudentFinancePaymentModal({
                                                     />
                                                 );
                                             default:
-                                                return 'â€”';
+                                                                return '-';
                                         }
                                     }}
                                 />

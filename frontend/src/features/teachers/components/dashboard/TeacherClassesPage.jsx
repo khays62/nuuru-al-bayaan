@@ -49,7 +49,7 @@ const buildSectionLabel = (gs, { sectionPrefix = 'Sec' } = {}) => {
 	const shiftName = titleCaseWords(gs?.shift?.shiftName);
 	return [gradeName || null, sectionNum ? `${sectionPrefix} ${sectionNum}` : null, shiftName || null]
 		.filter(Boolean)
-		.join(' â€¢ ');
+		.join(' - ');
 };
 
 export default function TeacherClassesPage() {

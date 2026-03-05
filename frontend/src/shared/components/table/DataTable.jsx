@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import TableShell from './TableShell.jsx';
 import SortableTh from './SortableTh.jsx';
 import StickyTableControls from './StickyTableControls.jsx';
+import { fixMojibake } from '../../../utils/fixMojibake';
 
 const TH_BASE = 'px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)';
 const TD_BASE = 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)';
@@ -107,7 +108,7 @@ export default function DataTable({
                   return (
                     <SortableTh
                       key={String(c.key)}
-                      label={c.label}
+                      label={typeof c.label === 'string' ? fixMojibake(c.label) : c.label}
                       field={c.field}
                       sortBy={sortBy}
                       sortDir={sortDir}
@@ -128,7 +129,7 @@ export default function DataTable({
                     scope="col"
                     className={thClass}
                   >
-                    {c.label}
+                    {typeof c.label === 'string' ? fixMojibake(c.label) : c.label}
                   </th>
                 );
               })}
@@ -153,9 +154,11 @@ export default function DataTable({
                   {visibleCols.map((c) => {
                     const noPrint = c.noPrint ? 'no-print' : '';
                     const tdClass = (c.tdClassName || TD_BASE);
-                    const content = typeof c.render === 'function'
+                    let content = typeof c.render === 'function'
                       ? c.render(row, idx)
                       : (typeof renderCell === 'function' ? renderCell(row, c, idx) : (row?.[c.key] ?? ''));
+
+                    if (typeof content === 'string') content = fixMojibake(content);
 
                     return (
                       <td key={String(c.key)} className={`${tdClass} ${noPrint}`.trim()}>

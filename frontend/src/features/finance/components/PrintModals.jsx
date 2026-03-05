@@ -247,7 +247,7 @@ const renderViewInfoStyleMultiVoucher = ({ headerSrc, labels, dateNow, academicY
                     </tr>
                     <tr>
                         <td>${l.description || 'Description'}</td>
-                        <td>${hormarisDescription || `Hormaris payment (${monthsCount} month${monthsCount === 1 ? '' : 's'})`}</td>
+                        <td>${hormarisDescription || `Advance payment (${monthsCount} month${monthsCount === 1 ? '' : 's'})`}</td>
                     </tr>
                 </tbody>
             </table>
@@ -293,7 +293,7 @@ export function openMonthlyInvoicesPreview({ month, invoices, students, i18n }) 
         fee: tr('finance.printModals.voucher.labels.fee', { defaultValue: 'Fee' }),
         discount: tr('finance.printModals.voucher.labels.discount', { defaultValue: 'Discount' }),
         note: tr('finance.printModals.voucher.note', { defaultValue: '* Note: This receipt represents the level-agreed amount.' }),
-        hormarisSuffix: tr('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Hormaris)' }),
+        hormarisSuffix: tr('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Advance)' }),
         monthlyFeeFallback: tr('finance.printModals.voucher.defaults.monthlyFee', { defaultValue: 'Monthly fee' }),
     };
 
@@ -425,7 +425,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         fee: tr('finance.printModals.voucher.labels.fee', { defaultValue: 'Fee' }),
         discount: tr('finance.printModals.voucher.labels.discount', { defaultValue: 'Discount' }),
         note: tr('finance.printModals.voucher.note', { defaultValue: '* Note: This receipt represents the level-agreed amount.' }),
-        hormarisSuffix: tr('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Hormaris)' }),
+        hormarisSuffix: tr('finance.printModals.voucher.hormarisSuffix', { defaultValue: ' (Advance)' }),
         monthlyFeeFallback: tr('finance.printModals.voucher.defaults.monthlyFee', { defaultValue: 'Monthly fee' }),
     };
 
@@ -452,8 +452,8 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         const dateNow = new Date(first?.createdAt || Date.now()).toLocaleString(lang || undefined);
         const recNo = `RV-${String(groupId).slice(-6).toUpperCase()}`;
 
-        const studentName = first?.student?.fullName || 'â€”';
-        const studentId = first?.student?.studentId || 'â€”';
+        const studentName = first?.student?.fullName || '—';
+        const studentId = first?.student?.studentId || '—';
         const firstInv = first?.invoice;
 
         const gradeName = firstInv?.class?.grade?.gradeName || firstInv?.class?.grade?.name || firstInv?.class?.gradeName || '';
@@ -464,7 +464,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
             first?.student?.currentClass ||
             first?.student?.classLabel ||
-            'â€”'
+            '—'
         );
         const shiftLabel = getShiftLabelForInvoice(firstInv, first?.shiftLabel ?? first?.shift);
 
@@ -490,16 +490,16 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             const isHormaris = typeof inv?.isHormaris === 'boolean'
                 ? inv.isHormaris
                 : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-            const monthLabel = `${inv?.billingMonth || 'â€”'}${isHormaris ? labels.hormarisSuffix : ''}`;
+            const monthLabel = `${inv?.billingMonth || '—'}${isHormaris ? labels.hormarisSuffix : ''}`;
             const desc = inv?.title || inv?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
             return `
                 <tr>
                     <td style="text-align:left">${desc}</td>
                     <td style="text-align:left">${monthLabel}</td>
-                    <td style="text-align:right">${isFree ? 'â€”' : `$${Number(paidInGroup || 0).toFixed(2)}`}</td>
+                    <td style="text-align:right">${isFree ? '—' : `$${Number(paidInGroup || 0).toFixed(2)}`}</td>
                     <td style="text-align:right">$${Number(balance || 0).toFixed(2)}</td>
-                    <td style="text-align:right">${isFree ? 'â€”' : `$${Number(grossFee || 0).toFixed(2)}`}</td>
+                    <td style="text-align:right">${isFree ? '—' : `$${Number(grossFee || 0).toFixed(2)}`}</td>
                 </tr>
             `;
         }).join('');
@@ -515,7 +515,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         if (!hasHormaris && invoices.length === 1) {
             const inv = invoices[0];
             const paidInGroup = Number(txByInvoice.get(String(inv._id)) || 0);
-            const billingMonth = inv?.billingMonth || 'â€”';
+            const billingMonth = inv?.billingMonth || '—';
             const billingMonthLabel = `${billingMonth}${isInvoiceHormaris(inv) ? labels.hormarisSuffix : ''}`;
             const description = inv?.title || inv?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
             const paidHtml = `<span class="money">${labels.paid} $${Number(paidInGroup || 0).toFixed(2)}</span>`;
@@ -529,7 +529,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
                 headerSrc: logoUrl,
                 labels,
                 dateNow,
-                academicYear: inv?.academicYear?.yearName || 'â€”',
+                academicYear: inv?.academicYear?.yearName || '—',
                 recNo,
                 classLabel,
                 studentId,
@@ -545,7 +545,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         }
 
         const hormarisDescription = tr('finance.printModals.voucher.hormarisPayment', {
-            defaultValue: `Hormaris payment (${invoices.length} month${invoices.length === 1 ? '' : 's'})`,
+            defaultValue: `Advance payment (${invoices.length} month${invoices.length === 1 ? '' : 's'})`,
             count: invoices.length,
         });
 
@@ -553,7 +553,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             headerSrc: logoUrl,
             labels,
             dateNow,
-            academicYear: firstInv?.academicYear?.yearName || 'â€”',
+            academicYear: firstInv?.academicYear?.yearName || '—',
             recNo,
             classLabel,
             studentId,
@@ -569,8 +569,8 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         const dateNow = new Date(t?.createdAt || Date.now()).toLocaleString(lang || undefined);
         const recNo = `RV-${String(t?._id || '').slice(-6).toUpperCase()}`;
 
-        const studentName = t.student?.fullName || 'â€”';
-        const studentId = t.student?.studentId || 'â€”';
+        const studentName = t.student?.fullName || '—';
+        const studentId = t.student?.studentId || '—';
 
         const gradeName = t.invoice?.class?.grade?.gradeName || t.invoice?.class?.grade?.name || t.invoice?.class?.gradeName || '';
         const section = t.invoice?.class?.section || t.invoice?.class?.sectionName || '';
@@ -580,7 +580,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
             t.student?.currentClass ||
             t.student?.classLabel ||
-            'â€”'
+            '—'
         );
 
         const shiftLabel = getShiftLabelForInvoice(t?.invoice, t?.shiftLabel ?? t?.shift);
@@ -591,7 +591,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
         const isHormaris = typeof t.invoice?.isHormaris === 'boolean'
             ? t.invoice.isHormaris
             : (!!billingMonthNorm && !!createdMonth && billingMonthNorm > createdMonth);
-        const monthLabel = `${t.invoice?.billingMonth || 'â€”'}${isHormaris ? labels.hormarisSuffix : ''}`;
+        const monthLabel = `${t.invoice?.billingMonth || '—'}${isHormaris ? labels.hormarisSuffix : ''}`;
         const desc = t.invoice?.title || t.invoice?.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
         if (!isHormaris) {
@@ -605,7 +605,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
                 headerSrc: logoUrl,
                 labels,
                 dateNow,
-                academicYear: t.invoice?.academicYear?.yearName || 'â€”',
+                academicYear: t.invoice?.academicYear?.yearName || '—',
                 recNo,
                 classLabel,
                 studentId,
@@ -624,14 +624,14 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             <tr>
                 <td style="text-align:left">${desc}</td>
                 <td style="text-align:left">${monthLabel}</td>
-                <td style="text-align:right">${isFree ? 'â€”' : `$${Number(t.amount || 0).toFixed(2)}`}</td>
+                <td style="text-align:right">${isFree ? '—' : `$${Number(t.amount || 0).toFixed(2)}`}</td>
                 <td style="text-align:right">$${Number(balance || 0).toFixed(2)}</td>
-                <td style="text-align:right">${isFree ? 'â€”' : `$${Number(grossFee || 0).toFixed(2)}`}</td>
+                <td style="text-align:right">${isFree ? '—' : `$${Number(grossFee || 0).toFixed(2)}`}</td>
             </tr>
         `;
 
         const hormarisDescription = tr('finance.printModals.voucher.hormarisPayment', {
-            defaultValue: `Hormaris payment (${1} month)`,
+            defaultValue: `Advance payment (${1} month)`,
             count: 1,
         });
 

@@ -195,7 +195,7 @@ export default function AttendanceTab() {
                         ? `${it.startTime}-${it.endTime}`
                         : String(it?.periodCode || '');
                       const title = subjectName || t('students.attendanceTab.lessonFallback');
-                      const subtitle = [timeLabel, teacherName].filter(Boolean).join(' â€¢ ');
+                      const subtitle = [timeLabel, teacherName].filter(Boolean).join(' • ');
                       const st = String(it?.status || '');
                       const remarks = String(it?.remarks || '').trim();
                       const showRemarks = remarks && !shouldHideRemarks(st);

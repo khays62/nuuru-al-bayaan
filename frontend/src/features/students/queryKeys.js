@@ -152,4 +152,31 @@ export const studentKeys = {
     'timetableSlotsByGS',
     qkStr(gradeSectionId || ''),
   ],
+
+  // Student Finance (read-only viewer)
+  financeMonthHistoryBase: (studentId) => [
+    'students',
+    'finance',
+    'monthHistory',
+    qkStr(studentId || ''),
+  ],
+  financeMonthHistory: (studentId, { academicYearId } = {}) => [
+    'students',
+    'finance',
+    'monthHistory',
+    qkStr(studentId || ''),
+    qkStr(academicYearId || ''),
+  ],
+
+  // Digital Library (global resources)
+  libraryListBase: () => [
+    'students',
+    'library',
+  ],
+  libraryList: ({ q, limit } = {}) => [
+    'students',
+    'library',
+    qkStr(q || ''),
+    qkStr(limit ?? ''),
+  ],
 };

@@ -8,6 +8,7 @@ import i18n, {
 } from './i18n';
 
 import { I18nContext } from './I18nContext';
+import { fixMojibake } from '../utils/fixMojibake';
 
 export function I18nProvider({ children }) {
   // Ensure i18n is initialized exactly once.
@@ -39,7 +40,7 @@ export function I18nProvider({ children }) {
       lang,
       isRTL,
       setLang,
-      t: (key, options) => i18n.t(key, options),
+      t: (key, options) => fixMojibake(i18n.t(key, options)),
     };
   }, [lang, setLang]);
 

@@ -32,9 +32,9 @@ export const TransferTimeline = ({ logs = [] }) => {
           <li key={l._id} className="ml-2">
             <div className="absolute -left-1.5 w-3 h-3 rounded-full border bg-(--nb-color-bg-card) border-(--nb-color-border)" />
             <p className="font-medium text-(--nb-color-text)">
-              {isReturn ? t('students.transferTimeline.returned', { defaultValue: 'Returned' }) : t('students.transferTimeline.transferred', { defaultValue: 'Transferred' })}: <span className="text-(--nb-color-text)">{fromLabel} â†’ {toLabel}</span>
+              {isReturn ? t('students.transferTimeline.returned', { defaultValue: 'Returned' }) : t('students.transferTimeline.transferred', { defaultValue: 'Transferred' })}: <span className="text-(--nb-color-text)">{fromLabel} → {toLabel}</span>
             </p>
-            <p className="text-(--nb-color-muted)">{ds}{l.reason ? ` â€¢ ${l.reason}` : ''}</p>
+            <p className="text-(--nb-color-muted)">{ds}{l.reason ? ` • ${l.reason}` : ''}</p>
           </li>
         );
       })}

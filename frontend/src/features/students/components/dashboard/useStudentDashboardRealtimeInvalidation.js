@@ -75,6 +75,7 @@ export function useStudentDashboardRealtimeInvalidation({
     [
       EVENTS.STUDENTS_CHANGED,
       EVENTS.TRANSFERS_CHANGED,
+      EVENTS.STUDENT_FINANCE_CHANGED,
       EVENTS.TRANSCRIPT_CHANGED,
       EVENTS.EXAMS_CHANGED,
       EVENTS.RESULTS_CHANGED,
@@ -98,6 +99,12 @@ export function useStudentDashboardRealtimeInvalidation({
         invalidateStudentTimetable();
         invalidateStudentTranscript();
         invalidateStudentProfile();
+        return;
+      }
+
+      if (name === EVENTS.STUDENT_FINANCE_CHANGED) {
+        if (!sid) return;
+        invalidate({ queryKey: studentKeys.financeMonthHistoryBase(sid), refetchType: 'active' });
         return;
       }
 

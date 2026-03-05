@@ -469,7 +469,7 @@ export default function StudentPage() {
             filename: t('students.export.filename'),
             sheetName: t('students.export.sheetName'),
             title: '',
-            subtitle: subtitleParts.join(' â€¢ '),
+            subtitle: subtitleParts.join(' • '),
             headerImageSrc: headerImg,
             headers,
             rows,

@@ -41,6 +41,10 @@ export const PERMISSION_CONTRACT = Object.freeze({
   attendance: Object.freeze(['view', 'edit', 'print', 'download', 'full']),
   attendanceReports: Object.freeze(['view', 'print', 'download', 'full']),
   announcements: Object.freeze(['add', 'edit', 'delete', 'full']),
+
+  // Digital Library resources (PDFs/links)
+  library: Object.freeze(['view', 'add', 'edit', 'delete', 'download', 'full']),
+
   // Bell notifications / security module
   // - view: show bell + list alerts
   // - resetPassword: reset student/teacher password from bell

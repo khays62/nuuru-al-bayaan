@@ -161,7 +161,7 @@ const ReceiptTab = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success(t('finance.studentFinance.receiptTab.toasts.exporting', { defaultValue: 'Exporting to Excelâ€¦' }));
+        toast.success(t('finance.studentFinance.receiptTab.toasts.exporting', { defaultValue: 'Exporting to Excel…' }));
     };
 
     useEffect(() => {
@@ -214,10 +214,10 @@ const ReceiptTab = () => {
 
             return {
                 _id: s._id,
-                studentId: s.studentId || 'â€”',
-                fullName: s.fullName || 'â€”',
-                contact: s.phone || s.parentPhone || 'â€”',
-                className: s.className || 'â€”',
+                studentId: s.studentId || '-',
+                fullName: s.fullName || '-',
+                contact: s.phone || s.parentPhone || '-',
+                className: s.className || '-',
                 balance,
                 balanceColor,
                 hasHormaris: Number(s.hormarisOutstandingAmount || 0) > 0,
@@ -360,7 +360,7 @@ const ReceiptTab = () => {
                             <Input
                                 type="text"
                                 className="h-11 pl-10 pr-4 font-medium"
-                                placeholder={t('finance.studentFinance.receiptTab.placeholders.search', { defaultValue: 'Search ID, Name or Phoneâ€¦' })}
+                                placeholder={t('finance.studentFinance.receiptTab.placeholders.search', { defaultValue: 'Search ID, Name or Phone…' })}
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                             />
@@ -398,7 +398,7 @@ const ReceiptTab = () => {
                         searchable
                         maxVisible={6}
                         placeholder={t('common.filters.section', { defaultValue: 'Section' })}
-                        searchPlaceholder={t('common.search', { defaultValue: 'Searchâ€¦' })}
+                        searchPlaceholder={t('common.search', { defaultValue: 'Search…' })}
                         className="h-11 min-w-50 font-bold text-sm"
                     />
 
@@ -414,7 +414,7 @@ const ReceiptTab = () => {
                             { value: 'paid', label: t('finance.studentFinance.receiptTab.filters.thisMonth.paid', { defaultValue: 'Paid This Month' }) },
                             { value: 'unpaid', label: t('finance.studentFinance.receiptTab.filters.thisMonth.unpaid', { defaultValue: 'Unpaid This Month' }) },
                             { value: 'uncharged', label: t('finance.studentFinance.receiptTab.filters.thisMonth.uncharged', { defaultValue: 'Not Charged This Month' }) },
-                            { value: 'hormaris', label: t('finance.studentFinance.receiptTab.filters.thisMonth.hormaris', { defaultValue: 'Hormaris' }) },
+                            { value: 'hormaris', label: t('finance.studentFinance.receiptTab.filters.thisMonth.hormaris', { defaultValue: 'Advance' }) },
                         ]}
                         clearable={false}
                         className="h-11 min-w-55 font-bold text-sm"
@@ -449,7 +449,7 @@ const ReceiptTab = () => {
                     isLoading={loading}
                     error={null}
                     items={sortedItems}
-                    loadingMessage={t('finance.studentFinance.receiptTab.loading.syncingLedger', { defaultValue: 'Syncing Ledgerâ€¦' })}
+                    loadingMessage={t('finance.studentFinance.receiptTab.loading.syncingLedger', { defaultValue: 'Syncing Ledger…' })}
                     loadingVariant="table"
                     loadingRows={8}
                     loadingColumns={6}
@@ -482,15 +482,15 @@ const ReceiptTab = () => {
                     renderCell={(row, col) => {
                         switch (col.key) {
                             case 'studentId':
-                                return <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || 'â€”'}</span>;
+                                return <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || '-'}</span>;
                             case 'fullName':
-                                return <span className="font-bold text-(--nb-color-fg)">{row?.fullName || 'â€”'}</span>;
+                                return <span className="font-bold text-(--nb-color-fg)">{row?.fullName || '-'}</span>;
                             case 'contact':
-                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || 'â€”'}</span>;
+                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || '-'}</span>;
                             case 'className':
                                 return (
                                     <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
-                                        {row?.className || 'â€”'}
+                                        {row?.className || '-'}
                                     </span>
                                 );
                             case 'balance':
@@ -501,7 +501,7 @@ const ReceiptTab = () => {
                                         </span>
                                         {row?.hasHormaris ? (
                                             <span className="text-[9px] font-black uppercase tracking-widest text-red-600">
-                                                {t('finance.studentFinance.receiptTab.labels.hormaris', { defaultValue: 'Hormaris' })}
+                                                {t('finance.studentFinance.receiptTab.labels.hormaris', { defaultValue: 'Advance' })}
                                             </span>
                                         ) : null}
                                     </div>

@@ -3,6 +3,7 @@ import { ChevronDown, Search } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
 import { useI18n } from '../../../i18n/useI18n';
+import { fixMojibake } from '../../../utils/fixMojibake';
 
 export default function SearchableSelect({
   value,
@@ -26,11 +27,11 @@ export default function SearchableSelect({
   const [query, setQuery] = useState('');
   const rootRef = useRef(null);
 
-  const resolvedPlaceholder = placeholder ?? t('common.select.placeholder', { defaultValue: 'Selectâ€¦' });
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' });
-  const resolvedClearLabel = clearLabel ?? t('common.actions.clear', { defaultValue: 'Clear' });
-  const resolvedNoOptionsFound = t('common.select.noOptionsFound', { defaultValue: 'No options found.' });
-  const resolvedTypeToSearchMore = t('common.select.typeToSearchMore', { defaultValue: 'Type to search moreâ€¦' });
+  const resolvedPlaceholder = fixMojibake(placeholder ?? t('common.select.placeholder', { defaultValue: 'Selectâ€¦' }));
+  const resolvedSearchPlaceholder = fixMojibake(searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' }));
+  const resolvedClearLabel = fixMojibake(clearLabel ?? t('common.actions.clear', { defaultValue: 'Clear' }));
+  const resolvedNoOptionsFound = fixMojibake(t('common.select.noOptionsFound', { defaultValue: 'No options found.' }));
+  const resolvedTypeToSearchMore = fixMojibake(t('common.select.typeToSearchMore', { defaultValue: 'Type to search moreâ€¦' }));
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -44,7 +45,7 @@ export default function SearchableSelect({
 
   const safeOptions = useMemo(() => (Array.isArray(options) ? options : []).map((o) => ({
     value: String(o?.value ?? ''),
-    label: String(o?.label ?? ''),
+    label: fixMojibake(String(o?.label ?? '')),
   })), [options]);
 
   const selectedLabel = useMemo(() => {

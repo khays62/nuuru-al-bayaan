@@ -21,6 +21,7 @@ export const promotionsAny = permsAny('promotions', actionsFor('promotions'));
 export const cohortsAny = permsAny('cohorts', actionsFor('cohorts'));
 export const transfersAny = permsAny('transfers', actionsFor('transfers'));
 export const transcriptAny = permsAny('transcript', actionsFor('transcript'));
+export const libraryAny = permsAny('library', actionsFor('library'));
 
 // Finance
 export const financeDashboardAny = permsAny('financeDashboard', actionsFor('financeDashboard'));
