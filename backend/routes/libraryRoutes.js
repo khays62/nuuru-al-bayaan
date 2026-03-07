@@ -2,7 +2,7 @@ import express from 'express';
 
 import { protect } from '../middleware/authMiddleware.js';
 import { checkPermission } from '../middleware/checkPermission.js';
-import { uploadLibraryResource, LIBRARY_FILE_MAX_BYTES } from '../middleware/uploadLibraryResource.js';
+import { uploadLibraryResource, LIBRARY_FILE_MAX_BYTES, validateLibraryUploadSignature } from '../middleware/uploadLibraryResource.js';
 import { createLibraryResource, deleteLibraryResource, listLibraryResources } from '../controllers/libraryController.js';
 
 const router = express.Router();
@@ -30,11 +30,15 @@ router.post(
         return res.status(413).json({ success: false, message: `File too large. Max ${Math.round(LIBRARY_FILE_MAX_BYTES / (1024 * 1024))}MB.` });
       }
       if (String(err?.code || '') === 'INVALID_FILE_TYPE') {
-        return res.status(400).json({ success: false, message: 'Invalid file type. Only PDF/DOC/DOCX is allowed.' });
+        return res.status(400).json({ success: false, message: 'Invalid file type. Only PDF/DOC/DOCX/PPT/PPTX is allowed.' });
+      }
+      if (String(err?.code || '') === 'INVALID_FILE_SIGNATURE') {
+        return res.status(400).json({ success: false, message: 'Invalid file content. Only PDF/DOC/DOCX/PPT/PPTX is allowed.' });
       }
       return res.status(400).json({ success: false, message: err?.message || 'Upload failed.' });
     });
   },
+  validateLibraryUploadSignature,
   createLibraryResource
 );
 

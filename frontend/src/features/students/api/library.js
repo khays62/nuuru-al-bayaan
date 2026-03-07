@@ -3,9 +3,11 @@ import { fetchJson } from '../../../shared/api/http';
 export async function listLibraryResources(params = {}, opts = {}) {
   const q = String(params?.q || '').trim();
   const limit = params?.limit != null ? String(params.limit) : '';
+  const page = params?.page != null ? String(params.page) : '';
   const qs = new URLSearchParams();
   if (q) qs.set('q', q);
   if (limit) qs.set('limit', limit);
+  if (page) qs.set('page', page);
   const path = qs.toString() ? `/library?${qs.toString()}` : '/library';
   return await fetchJson(path, { method: 'GET', signal: opts?.signal });
 }

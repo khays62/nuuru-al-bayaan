@@ -20,6 +20,7 @@ import {
   emitAttendanceChanged,
   emitTranscriptChanged,
   emitAnnouncementsChanged,
+  emitLibraryChanged,
 } from '../../utils/events';
 
 function createDebouncer({ delayMs }) {
@@ -55,6 +56,32 @@ export function createRealtimeDispatcher({ queryClient, debounceMs = 250 } = {})
   const invalidateSecurityAuthLocks = () => {
     try {
       queryClient?.invalidateQueries?.({ queryKey: ['security', 'authLocks'] });
+    } catch {
+      // ignore
+    }
+  };
+
+  const invalidateLibraryLists = (payload) => {
+    // NOTE: Use predicate matching to avoid any subtle key-shape/exact-match issues
+    // across React Query versions and to ensure all variants (page/limit/q) refresh.
+    try {
+      // Admin/Teacher/Staff library management queries
+      queryClient?.invalidateQueries?.({
+        predicate: (q) => Array.isArray(q?.queryKey) && q.queryKey[0] === 'library',
+      });
+    } catch {
+      // ignore
+    }
+    try {
+      // Student dashboard library queries
+      queryClient?.invalidateQueries?.({
+        predicate: (q) => Array.isArray(q?.queryKey) && q.queryKey[0] === 'students' && q.queryKey[1] === 'library',
+      });
+    } catch {
+      // ignore
+    }
+    try {
+      emitLibraryChanged({ source: 'realtime', ...(payload || {}) });
     } catch {
       // ignore
     }
@@ -156,6 +183,10 @@ export function createRealtimeDispatcher({ queryClient, debounceMs = 250 } = {})
     }
     if (type === 'announcements:changed') {
       debouncer.debounce('announcements:changed', () => emitAnnouncementsChanged({ source: 'realtime', ...payload }));
+      return;
+    }
+    if (type === 'library:changed') {
+      debouncer.debounce('library:changed', () => invalidateLibraryLists(payload));
       return;
     }
     if (type === 'security:authLocksChanged') {

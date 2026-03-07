@@ -19,6 +19,10 @@ describe('AI tools allowlist', () => {
     expect(allowed).toContain('finance_payroll_month_summary');
     expect(allowed).toContain('finance_payroll_staff_search');
     expect(allowed).toContain('finance_payroll_staff_ledger');
+
+    // Library
+    expect(allowed).toContain('library_resources_list');
+    expect(allowed).toContain('library_resource_get_text');
   });
 
   test('staff only gets finance tools when permitted (no payroll)', () => {
@@ -30,6 +34,10 @@ describe('AI tools allowlist', () => {
     expect(allowedNoFinance).not.toContain('finance_accounts_balances');
     expect(allowedNoFinance).not.toContain('finance_foundation_donations_summary');
     expect(allowedNoFinance).not.toContain('finance_payroll_month_summary');
+
+    // Library is available for all roles
+    expect(allowedNoFinance).toContain('library_resources_list');
+    expect(allowedNoFinance).toContain('library_resource_get_text');
 
     const staffWithFinance = {
       _id: '507f1f77bcf86cd799439013',
@@ -45,6 +53,8 @@ describe('AI tools allowlist', () => {
     expect(allowedWithFinance).toContain('finance_fee_transactions_summary');
     expect(allowedWithFinance).toContain('finance_accounts_balances');
     expect(allowedWithFinance).toContain('finance_foundation_donations_summary');
+    expect(allowedWithFinance).toContain('library_resources_list');
+    expect(allowedWithFinance).toContain('library_resource_get_text');
 
     // Payroll remains admin-only
     expect(allowedWithFinance).not.toContain('finance_payroll_month_summary');
@@ -62,6 +72,8 @@ describe('AI tools allowlist', () => {
     expect(allowedWithPayroll).toContain('finance_payroll_month_summary');
     expect(allowedWithPayroll).toContain('finance_payroll_staff_search');
     expect(allowedWithPayroll).toContain('finance_payroll_staff_ledger');
+    expect(allowedWithPayroll).toContain('library_resources_list');
+    expect(allowedWithPayroll).toContain('library_resource_get_text');
   });
 
   test('teacher/student do not get finance/payroll tools', () => {
@@ -81,5 +93,12 @@ describe('AI tools allowlist', () => {
     // Student should have self fee invoices tool
     expect(studentAllowed).toContain('student_fee_invoices_self_summary');
     expect(teacherAllowed).not.toContain('student_fee_invoices_self_summary');
+
+    // Library
+    expect(studentAllowed).toContain('library_resources_list');
+    expect(teacherAllowed).toContain('library_resources_list');
+
+    expect(studentAllowed).toContain('library_resource_get_text');
+    expect(teacherAllowed).toContain('library_resource_get_text');
   });
 });

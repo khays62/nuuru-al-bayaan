@@ -4,6 +4,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import LibraryResource from '../models/LibraryResource.js';
+import Subject from '../models/Subject.js';
+import Enrollment from '../models/Enrollment.js';
+import TeacherAssignment from '../models/TeacherAssignment.js';
+import { publishRealtime } from '../utils/realtimeBus.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,20 +27,103 @@ function isHttpUrl(v) {
   return /^https?:\/\//i.test(s);
 }
 
+async function getStudentActiveGradeId(studentRef) {
+  try {
+    const sid = normalizeId(studentRef);
+    if (!sid) return null;
+    const row = await Enrollment.findOne({ student: sid, status: 'active' })
+      .select('grade')
+      .sort({ createdAt: -1 })
+      .lean();
+    const gid = normalizeId(row?.grade);
+    return gid;
+  } catch {
+    return null;
+  }
+}
+
+async function getTeacherAssignedGradeIds(teacherRef) {
+  try {
+    const tid = normalizeId(teacherRef);
+    if (!tid) return [];
+    const rows = await TeacherAssignment.find({ teacher: tid })
+      .select('gradeSection')
+      .populate({ path: 'gradeSection', select: 'grade' })
+      .lean();
+
+    const set = new Set();
+    for (const r of rows || []) {
+      const gid = normalizeId(r?.gradeSection?.grade);
+      if (gid) set.add(gid);
+    }
+    return Array.from(set);
+  } catch {
+    return [];
+  }
+}
+
+function normalizeAudience(v) {
+  const a = String(v || '').trim().toLowerCase();
+  if (!a) return 'public';
+  if (a === 'public' || a === 'level') return a;
+  return null;
+}
+
 export async function listLibraryResources(req, res) {
   try {
     const q = String(req.query?.q || '').trim();
-    const limitRaw = Number(req.query?.limit || 200);
-    const limit = Number.isFinite(limitRaw) ? Math.min(500, Math.max(1, Math.floor(limitRaw))) : 200;
+    const pageRaw = Number(req.query?.page || 1);
+    const page = Number.isFinite(pageRaw) ? Math.max(1, Math.floor(pageRaw)) : 1;
 
-    const filter = q ? { $text: { $search: q } } : {};
+    const limitRaw = Number(req.query?.limit || 10);
+    const limit = Number.isFinite(limitRaw) ? Math.min(200, Math.max(1, Math.floor(limitRaw))) : 10;
 
-    const rows = await LibraryResource.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
+    const skip = (page - 1) * limit;
 
-    return res.status(200).json({ success: true, data: rows });
+    const role = String(req.user?.role || '').toLowerCase();
+    const publicExpr = { $or: [{ audience: 'public' }, { audience: { $exists: false } }, { audience: null }, { audience: '' }] };
+
+    let visibility = null;
+    if (role === 'admin' || role === 'staff') {
+      visibility = null; // no restrictions
+    } else if (role === 'student') {
+      const gradeId = await getStudentActiveGradeId(req.user?.studentRef);
+      visibility = gradeId
+        ? { $or: [publicExpr, { audience: 'level', grade: gradeId }] }
+        : publicExpr;
+    } else if (role === 'teacher') {
+      const gradeIds = await getTeacherAssignedGradeIds(req.user?.teacherRef);
+      visibility = gradeIds.length > 0
+        ? { $or: [publicExpr, { audience: 'level', grade: { $in: gradeIds } }] }
+        : publicExpr;
+    } else {
+      // Unknown role: safest default
+      visibility = publicExpr;
+    }
+
+    const and = [];
+    if (q) and.push({ $text: { $search: q } });
+    if (visibility) and.push(visibility);
+    const filter = and.length > 0 ? { $and: and } : {};
+
+    const [rows, total] = await Promise.all([
+      LibraryResource.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('grade', 'gradeName')
+        .populate('subject', 'subjectName')
+        .lean(),
+      LibraryResource.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil((Number(total) || 0) / limit));
+
+    return res.status(200).json({
+      success: true,
+      data: rows,
+      meta: { page, limit, total, totalPages },
+    });
   } catch (err) {
     console.error('listLibraryResources error:', err);
     return res.status(500).json({ success: false, message: err?.message || 'Server Error' });
@@ -54,6 +141,15 @@ export async function createLibraryResource(req, res) {
     const title = String(req.body?.title || '').trim();
     const description = String(req.body?.description || '').trim();
     const category = String(req.body?.category || '').trim();
+
+    const audience = normalizeAudience(req.body?.audience);
+    if (!audience) {
+      await cleanupFile();
+      return res.status(400).json({ success: false, message: 'Invalid audience (public/level)' });
+    }
+
+    const gradeId = normalizeId(req.body?.gradeId || req.body?.grade);
+    const subjectId = normalizeId(req.body?.subjectId || req.body?.subject);
 
     if (!title) {
       await cleanupFile();
@@ -84,8 +180,43 @@ export async function createLibraryResource(req, res) {
       }
     }
 
+    if (audience === 'level') {
+      if (!gradeId) {
+        await cleanupFile();
+        return res.status(400).json({ success: false, message: 'gradeId is required for level resources' });
+      }
+      if (!subjectId) {
+        await cleanupFile();
+        return res.status(400).json({ success: false, message: 'subjectId is required for level resources' });
+      }
+
+      // Validate subject belongs to grade
+      const sub = await Subject.findById(subjectId).select('grades').lean();
+      const okGrade = Array.isArray(sub?.grades) && sub.grades.some((g) => normalizeId(g) === gradeId);
+      if (!okGrade) {
+        await cleanupFile();
+        return res.status(400).json({ success: false, message: 'Subject is not valid for the selected grade' });
+      }
+
+      // Teacher restriction: can only upload to grades they are assigned to.
+      const role = String(req.user?.role || '').toLowerCase();
+      if (role === 'teacher') {
+        const allowed = await getTeacherAssignedGradeIds(req.user?.teacherRef);
+        if (!allowed.includes(gradeId)) {
+          await cleanupFile();
+          return res.status(403).json({ success: false, message: 'Not assigned to this level' });
+        }
+      }
+    }
+
     const createdById = normalizeId(req.user?._id);
     const createdByRole = String(req.user?.role || '').toLowerCase();
+    const createdByName = String(
+      req.user?.fullName
+      || req.user?.username
+      || req.user?.email
+      || ''
+    ).trim();
 
     let fileMeta = null;
     if (kind === 'pdf' && req.file) {
@@ -107,13 +238,20 @@ export async function createLibraryResource(req, res) {
       description: description || undefined,
       category: category || undefined,
       kind,
+      audience,
+      grade: audience === 'level' ? gradeId : null,
+      subject: audience === 'level' ? subjectId : null,
       linkUrl: kind === 'link' ? linkUrl : undefined,
       file: kind === 'pdf' ? fileMeta : null,
       createdById: createdById || undefined,
       createdByRole: createdByRole || undefined,
+      createdByName: createdByName || undefined,
     });
 
     await doc.save();
+
+    // Realtime: tell all connected clients the library changed.
+    publishRealtime({ type: 'library:changed', id: String(doc._id), ts: Date.now() });
     return res.status(201).json({ success: true, data: doc });
   } catch (err) {
     console.error('createLibraryResource error:', err);
@@ -129,6 +267,24 @@ export async function deleteLibraryResource(req, res) {
     const doc = await LibraryResource.findById(id);
     if (!doc) return res.status(404).json({ success: false, message: 'Not found' });
 
+    const role = String(req.user?.role || '').toLowerCase();
+    const userId = normalizeId(req.user?._id);
+
+    // Authorization hardening:
+    // - Admin can delete anything
+    // - Staff can delete anything ONLY if they reached this handler (route checks permission)
+    // - Teacher can delete only resources they uploaded
+    if (role === 'admin' || role === 'staff') {
+      // allowed
+    } else if (role === 'teacher') {
+      const ownerId = normalizeId(doc?.createdById);
+      if (!userId || !ownerId || ownerId !== userId) {
+        return res.status(403).json({ success: false, message: 'You can only delete resources you uploaded' });
+      }
+    } else {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
     const filePath = String(doc?.file?.path || '').trim();
     await doc.deleteOne();
 
@@ -136,6 +292,9 @@ export async function deleteLibraryResource(req, res) {
       const abs = path.join(__dirname, '..', filePath);
       try { await fs.unlink(abs); } catch { /* ignore */ }
     }
+
+    // Realtime: tell all connected clients the library changed.
+    publishRealtime({ type: 'library:changed', id: String(id), ts: Date.now(), op: 'delete' });
 
     return res.status(200).json({ success: true });
   } catch (err) {

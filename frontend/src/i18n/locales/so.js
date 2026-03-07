@@ -1475,6 +1475,7 @@ export default {
         title: 'Cinwaan',
         type: 'Nooc',
         category: 'Qayb',
+        uploadedBy: 'Waxaa soo geliyay',
         added: 'La daray',
         open: 'Fur',
       },

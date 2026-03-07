@@ -35,6 +35,9 @@ router.get('/stream', protect, authorizeRoles('admin', 'staff', 'teacher', 'stud
     'transcript:changed',
     // Student finance
     'studentFinance:changed',
+
+    // Digital library (global resources)
+    'library:changed',
   ]);
 
   const canSendToStudent = (payload) => {

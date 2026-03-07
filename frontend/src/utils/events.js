@@ -24,6 +24,7 @@ export const EVENTS = {
   ATTENDANCE_CHANGED: 'attendance:changed',
   TRANSCRIPT_CHANGED: 'transcript:changed',
   ANNOUNCEMENTS_CHANGED: 'announcements:changed',
+  LIBRARY_CHANGED: 'library:changed',
 };
 
 export function emit(name, detail) {
@@ -71,3 +72,4 @@ export function emitResultsChanged(detail) { emit(EVENTS.RESULTS_CHANGED, detail
 export function emitAttendanceChanged(detail) { emit(EVENTS.ATTENDANCE_CHANGED, detail); }
 export function emitTranscriptChanged(detail) { emit(EVENTS.TRANSCRIPT_CHANGED, detail); }
 export function emitAnnouncementsChanged(detail) { emit(EVENTS.ANNOUNCEMENTS_CHANGED, detail); }
+export function emitLibraryChanged(detail) { emit(EVENTS.LIBRARY_CHANGED, detail); }

@@ -71,6 +71,9 @@ function buildSystemInstruction({ locale, role }) {
     'If the user asks you to switch language between Somali, Arabic, and English, comply.',
     scopeLine,
     'You may be given trusted DB tool results (JSON) by the server. Use them when present, but do not claim access beyond what is provided.',
+    'If trusted tool results include library resources or extracted library text, use them as primary references.',
+    '- If TRUSTED_DB_TOOL_RESULT_JSON.scope is library_resource_get_text and extracted.text is present: you may generate study material: summary, key notes, and Q&A (with answers). Keep it structured and concise.',
+    '- If TRUSTED_DB_TOOL_RESULT_JSON.scope is library_resources_list: mention 2-5 relevant titles (and level/subject if present) and then explain the topic clearly. If no relevant resources are found, say so and provide general guidance.',
     'Hard rules:',
     '- Do not invent or claim access to internal data, databases, payments, or student lists.',
     '- If the user asks for restricted/private data, explain you cannot access it and suggest using the appropriate page in the app or contacting an admin.',
@@ -173,6 +176,12 @@ function buildToolPlannerInstruction({ locale, role, allowedTools }) {
       return `- finance_payroll_staff_search (args: { q: string, limit?: number<=20 }): find staff userId for payroll lookup (admin/staff with financePayroll)`;
     if (t === 'finance_payroll_staff_ledger')
       return `- finance_payroll_staff_ledger (args: { staffUserId: string, fromMonth?: 'YYYY-MM', toMonth?: 'YYYY-MM', limit?: number<=60 }): payroll history for one staff user (admin/staff with financePayroll)`;
+
+    // Library (read-only)
+    if (t === 'library_resources_list')
+      return `- library_resources_list (args: { q?: string, audience?: 'public'|'level', gradeId?: string, subjectId?: string, kind?: 'pdf'|'link', page?: number, limit?: number<=50 }): list/search library resources visible to me (all roles; level visibility is enrollment/assignment-scoped)`;
+    if (t === 'library_resource_get_text')
+      return `- library_resource_get_text (args: { resourceId?: string, q?: string, maxChars?: number<=40000 }): get extracted text from ONE visible library resource (PDF text or link text). Use this for summary/notes/Q&A.`;
     if (t === 'teacher_assignments') return `- teacher_assignments (args: {}): my assigned grade sections (teacher)`;
     if (t === 'teacher_class_roster')
       return `- teacher_class_roster (args: { gradeSectionId: string, limit?: number<=80 }): roster for my assigned class only (teacher)`;
@@ -196,6 +205,8 @@ function buildToolPlannerInstruction({ locale, role, allowedTools }) {
     'Rules:',
     '- If the question can be answered without DB data, output {"tool": null, "args": {}}.',
     '- If the user asks for counts/totals/overview (e.g., "how many announcements/classes/subjects/levels/cohorts/staff/teachers/students"), and dashboard_summary is available, output {"tool": "dashboard_summary", "args": {}}.',
+    '- If the user asks about Digital Library resources OR asks a topic/"cilmi" question and you should base the answer on available library books/links, and library_resources_list is available: output {"tool": "library_resources_list", "args": {"q": <topic keywords>, "limit": 8 }}. You may optionally include audience/kind/page filters if the user specifies them.',
+    '- If the user asks for summary/notes/questions (Q&A) for a specific book/resource and library_resource_get_text is available: output {"tool": "library_resource_get_text", "args": {"q": <book title/keywords>, "maxChars": 20000 }}. If the user provides a specific resource id, prefer {"resourceId": "..."}.',
     '- If the request is outside the user\'s role/scope or permission, output {"tool": null, "args": {}}.',
   ].join('\n');
 }

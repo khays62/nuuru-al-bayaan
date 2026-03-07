@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Upload } from 'lucide-react';
+import { Download, ExternalLink, Plus, Upload } from 'lucide-react';
 
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
@@ -8,13 +8,22 @@ import Card from '../../../../shared/components/ui/Card.jsx';
 import Button from '../../../../shared/components/ui/Button.jsx';
 import Modal from '../../../../shared/components/ui/Modal.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
+import DropdownSelect from '../../../../shared/components/ui/DropdownSelect.jsx';
 import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
+import RowActionButtons from '../../../../shared/components/table/RowActionButtons.jsx';
 
 import { useAuth } from '../../../../auth/AuthContext';
 import { useI18n } from '../../../../i18n/useI18n';
+import { EVENTS } from '../../../../utils/events';
+import { useRealtimeInvalidation } from '../../../../shared/realtime/useRealtimeInvalidation';
 
 import { studentKeys } from '../../queryKeys';
 import { createLibraryResource, listLibraryResources } from '../../api/library';
+
+import { getGrades } from '../../../lookups/api/lookups';
+import { getSubjects } from '../../../subjects/api/subjects';
+import { getAssignments as getTeacherAssignments } from '../../../teachers/api/teachersApi';
+
 
 function formatDateShort(d) {
   try {
@@ -37,9 +46,14 @@ function kindLabel(row, t) {
       || name.endsWith('.doc')
       || name.endsWith('.docx');
 
-    return isDocs
-      ? t('students.libraryTab.kinds.docs', { defaultValue: 'Docs' })
-      : t('students.libraryTab.kinds.pdf', { defaultValue: 'PDF' });
+    const isPpt = mt === 'application/vnd.ms-powerpoint'
+      || mt === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      || name.endsWith('.ppt')
+      || name.endsWith('.pptx');
+
+    if (isDocs) return t('students.libraryTab.kinds.docs', { defaultValue: 'Docs' });
+    if (isPpt) return t('students.libraryTab.kinds.powerpoint', { defaultValue: 'PowerPoint' });
+    return t('students.libraryTab.kinds.pdf', { defaultValue: 'PDF' });
   }
   return '-';
 }
@@ -55,9 +69,13 @@ export default function LibraryTab() {
     || (role === 'staff' && (hasPermission?.('library', 'add') || hasPermission?.('library', 'full')));
 
   const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState('pdf'); // pdf | docs | link
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [kind, setKind] = useState('pdf'); // pdf | docs | ppt | link
+  const [audience, setAudience] = useState('public'); // public | level
+  const [gradeId, setGradeId] = useState('');
+  const [subjectId, setSubjectId] = useState('');
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [file, setFile] = useState(null);
@@ -65,14 +83,80 @@ export default function LibraryTab() {
   const isLink = kind === 'link';
   const pdfAccept = '.pdf,application/pdf';
   const docsAccept = '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  const fileAccept = kind === 'docs' ? docsAccept : pdfAccept;
+  const pptAccept = '.ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  const fileAccept = kind === 'docs' ? docsAccept : (kind === 'ppt' ? pptAccept : pdfAccept);
+
+  const isLevel = audience === 'level';
+
+  const gradesQuery = useQuery({
+    queryKey: ['lookups', 'grades'],
+    queryFn: async ({ signal }) => await getGrades({ signal }),
+    staleTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const teacherAssignmentsQuery = useQuery({
+    queryKey: ['teacher', 'assignments', String(auth?.user?.teacherRef || '')],
+    queryFn: async ({ signal }) => await getTeacherAssignments(String(auth?.user?.teacherRef || ''), {}, { signal }),
+    enabled: role === 'teacher' && Boolean(auth?.user?.teacherRef),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const allowedTeacherGradeIds = useMemo(() => {
+    if (role !== 'teacher') return null;
+    const rows = Array.isArray(teacherAssignmentsQuery.data?.data) ? teacherAssignmentsQuery.data.data : [];
+    const set = new Set();
+    for (const a of rows) {
+      const gid = a?.gradeSection?.grade?._id || a?.gradeSection?.grade;
+      if (gid) set.add(String(gid));
+    }
+    return Array.from(set);
+  }, [role, teacherAssignmentsQuery.data]);
+
+  const subjectsQuery = useQuery({
+    queryKey: ['subjects', 'byGrade', gradeId],
+    queryFn: async ({ signal }) => await getSubjects({ limit: 200, grade: gradeId, sortBy: 'subjectName', sortDir: 'asc' }, { signal }),
+    enabled: isLevel && Boolean(gradeId),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const gradeOptions = useMemo(() => {
+    const rows = Array.isArray(gradesQuery.data) ? gradesQuery.data : (Array.isArray(gradesQuery.data?.data) ? gradesQuery.data.data : []);
+    return rows
+      .filter((g) => {
+        if (role !== 'teacher') return true;
+        if (!allowedTeacherGradeIds) return true;
+        return allowedTeacherGradeIds.includes(String(g?._id || ''));
+      })
+      .map((g) => ({
+        value: String(g?._id || ''),
+        label: String(g?.gradeName || ''),
+      }))
+      .filter((o) => o.value && o.label);
+  }, [allowedTeacherGradeIds, gradesQuery.data, role]);
+
+  const subjectOptions = useMemo(() => {
+    const rows = Array.isArray(subjectsQuery.data?.data)
+      ? subjectsQuery.data.data
+      : (Array.isArray(subjectsQuery.data) ? subjectsQuery.data : []);
+    return rows
+      .map((s) => ({
+        value: String(s?._id || ''),
+        label: String(s?.subjectName || s?.name || ''),
+      }))
+      .filter((o) => o.value && o.label);
+  }, [subjectsQuery.data]);
 
   const listQuery = useQuery({
-    queryKey: studentKeys.libraryList({ q: '', limit: 200 }),
+    queryKey: studentKeys.libraryList({ q: '', limit, page }),
     queryFn: async ({ signal }) => {
-      return await listLibraryResources({ limit: 200 }, { signal });
+      return await listLibraryResources({ limit, page }, { signal });
     },
+    placeholderData: (prev) => prev,
     staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const rows = useMemo(() => {
@@ -80,6 +164,26 @@ export default function LibraryTab() {
     const items = Array.isArray(d?.data) ? d.data : (Array.isArray(d) ? d : []);
     return Array.isArray(items) ? items : [];
   }, [listQuery.data]);
+
+  const meta = listQuery.data?.meta;
+
+  useRealtimeInvalidation(
+    [EVENTS.LIBRARY_CHANGED],
+    () => {
+      try {
+        queryClient.invalidateQueries({ queryKey: studentKeys.libraryListBase() });
+      } catch {
+        // ignore
+      }
+    },
+    { enabled: true }
+  );
+
+  React.useEffect(() => {
+    const tp = meta?.totalPages != null ? Number(meta.totalPages) : null;
+    if (!tp) return;
+    if (page > tp) setPage(tp);
+  }, [meta?.totalPages, page]);
 
   const createMut = useMutation({
     mutationFn: async (formData) => {
@@ -92,8 +196,10 @@ export default function LibraryTab() {
       await queryClient.invalidateQueries({ queryKey: studentKeys.libraryListBase() });
       setOpen(false);
       setKind('pdf');
+      setAudience('public');
+      setGradeId('');
+      setSubjectId('');
       setTitle('');
-      setCategory('');
       setDescription('');
       setLinkUrl('');
       setFile(null);
@@ -128,13 +234,6 @@ export default function LibraryTab() {
         render: (row) => kindLabel(row, t),
       },
       {
-        key: 'category',
-        label: t('students.libraryTab.columns.category', { defaultValue: 'Category' }),
-        thClassName: th,
-        tdClassName: `${td} whitespace-nowrap`,
-        render: (row) => String(row?.category || '-'),
-      },
-      {
         key: 'createdAt',
         label: t('students.libraryTab.columns.added', { defaultValue: 'Added' }),
         thClassName: th,
@@ -142,10 +241,12 @@ export default function LibraryTab() {
         render: (row) => formatDateShort(row?.createdAt),
       },
       {
-        key: 'open',
-        label: t('students.libraryTab.columns.open', { defaultValue: 'Open' }),
-        thClassName: `${th} text-center`,
-        tdClassName: `${td} whitespace-nowrap text-center`,
+        key: 'actions',
+        label: t('common.table.actions', { defaultValue: 'Actions' }),
+        align: 'right',
+        noPrint: true,
+        thClassName: `${th} text-right`,
+        tdClassName: `${td} whitespace-nowrap text-right font-medium no-print`,
         render: (row) => {
           const k = String(row?.kind || '').toLowerCase();
           const href = k === 'pdf' ? row?.file?.url : (k === 'link' ? row?.linkUrl : '');
@@ -153,18 +254,25 @@ export default function LibraryTab() {
             ? t('students.libraryTab.actions.download', { defaultValue: 'Download' })
             : t('students.libraryTab.actions.open', { defaultValue: 'Open' });
           if (!href) return '-';
-          return (
-            <Button
-              as="a"
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              variant="outline"
-              size="sm"
-            >
-              {label}
-            </Button>
-          );
+
+          const actions = [
+            {
+              key: 'open',
+              label,
+              title: label,
+              tone: 'view',
+              icon: k === 'pdf' ? <Download size={16} /> : <ExternalLink size={16} />,
+              onClick: () => {
+                try {
+                  window.open(String(href), '_blank', 'noopener,noreferrer');
+                } catch {
+                  // ignore
+                }
+              },
+            },
+          ];
+
+          return <RowActionButtons actions={actions} />;
         },
       },
     ];
@@ -181,8 +289,16 @@ export default function LibraryTab() {
     const fd = new FormData();
     fd.append('title', titleStr);
     fd.append('kind', k === 'link' ? 'link' : 'pdf');
-    if (category && String(category).trim()) fd.append('category', String(category).trim());
+    fd.append('audience', String(audience || 'public'));
     if (description && String(description).trim()) fd.append('description', String(description).trim());
+
+    if (String(audience || '').toLowerCase() === 'level') {
+      const gid = String(gradeId || '').trim();
+      const sid = String(subjectId || '').trim();
+      if (!gid || !sid) return;
+      fd.append('gradeId', gid);
+      fd.append('subjectId', sid);
+    }
 
     if (k !== 'link') {
       if (!file) return;
@@ -201,13 +317,13 @@ export default function LibraryTab() {
       <PrintHeader />
 
       <div className="mb-4">
-        <div className="border-l-4 border-(--nb-color-brand) bg-(--nb-color-brand-50) rounded px-3 py-2 flex items-start justify-between gap-3">
+        <div className="border-l-4 border-(--nb-color-brand) bg-(--nb-color-brand-50) rounded px-3 py-2 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-(--nb-color-fg)">{t('nav.library')}</h2>
             <div className="text-xs text-(--nb-color-muted) mt-0.5">{t('students.libraryTab.subtitle', { defaultValue: 'PDFs, notes, past papers and links.' })}</div>
           </div>
           {canUpload ? (
-            <Button variant="brand" size="md" onClick={() => setOpen(true)}>
+            <Button variant="brand" size="lg" className="self-stretch" onClick={() => setOpen(true)}>
               <span className="inline-flex items-center gap-2">
                 <Plus className="w-4 h-4" />
                 {t('students.libraryTab.actions.add', { defaultValue: 'Add Resource' })}
@@ -225,14 +341,33 @@ export default function LibraryTab() {
           rows={rows}
           columns={columns}
           storageKey="students.library.table"
+          controlsProps={{
+            limit,
+            total: meta?.total,
+            onLimit: (l) => {
+              setLimit(Number(l) || 10);
+              setPage(1);
+            },
+          }}
           loadingMessage={t('common.loading')}
           loadingVariant="table"
           loadingRows={6}
-          loadingColumns={5}
+          loadingColumns={4}
           isEmpty={!listQuery.isLoading && !loadError && rows.length === 0}
           emptyTitle={t('students.libraryTab.emptyTitle', { defaultValue: 'No resources yet' })}
           emptyDescription={t('students.libraryTab.empty', { defaultValue: 'There are no library resources available right now.' })}
           tableProps={{ shellClassName: 'ring-0 shadow-none rounded-none' }}
+
+          meta={meta}
+          page={page}
+          totalPages={meta?.totalPages}
+          limit={limit}
+          total={meta?.total}
+          onPage={(p) => setPage(Number(p) || 1)}
+          onLimit={(l) => {
+            setLimit(Number(l) || 10);
+            setPage(1);
+          }}
         />
       </div>
 
@@ -247,7 +382,7 @@ export default function LibraryTab() {
             <Alert variant="danger" title={String(createMut.error?.message || t('students.libraryTab.uploadFailed', { defaultValue: 'Upload failed' }))} />
           ) : null}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-semibold text-(--nb-color-fg)">{t('students.libraryTab.form.title', { defaultValue: 'Title' })}</label>
               <input
@@ -258,14 +393,78 @@ export default function LibraryTab() {
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-(--nb-color-fg)">{t('students.libraryTab.form.category', { defaultValue: 'Category (optional)' })}</label>
-              <input
-                className="mt-1 w-full rounded-md border border-(--nb-color-border) bg-(--nb-color-bg) px-3 py-2 text-sm"
-                value={category ?? ''}
-                onChange={(e) => setCategory(e?.target?.value ?? '')}
-                placeholder={t('students.libraryTab.form.categoryPlaceholder', { defaultValue: 'Notes / Past Papers / Link' })}
-              />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-(--nb-color-fg)">{t('students.libraryTab.form.audience', { defaultValue: 'Audience' })}</label>
+            <div className="mt-2 flex items-center gap-4 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="audience"
+                  value="public"
+                  checked={audience === 'public'}
+                  onChange={() => {
+                    setAudience('public');
+                    setGradeId('');
+                    setSubjectId('');
+                  }}
+                />
+                {t('students.libraryTab.audience.public', { defaultValue: 'Public' })}
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="audience"
+                  value="level"
+                  checked={audience === 'level'}
+                  onChange={() => {
+                    setAudience('level');
+                    setSubjectId('');
+                  }}
+                />
+                {t('students.libraryTab.audience.level', { defaultValue: 'Level' })}
+              </label>
+            </div>
+          </div>
+
+          <div className={isLevel ? '' : 'hidden'}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-(--nb-color-fg)">{t('students.libraryTab.form.level', { defaultValue: 'Level' })}</label>
+                <div className="mt-1">
+                  <DropdownSelect
+                    name="gradeId"
+                    value={String(gradeId || '')}
+                    onChange={(v) => {
+                      setGradeId(String(v || ''));
+                      setSubjectId('');
+                    }}
+                    disabled={gradesQuery.isLoading || (role === 'teacher' && teacherAssignmentsQuery.isLoading)}
+                    options={gradeOptions}
+                    placeholder={t('common.select.placeholder', { defaultValue: 'Select...' })}
+                    menuPlacement="up"
+                    hideSelectedOption={false}
+                    clearable
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-(--nb-color-fg)">{t('students.libraryTab.form.subject', { defaultValue: 'Subject' })}</label>
+                <div className="mt-1">
+                  <DropdownSelect
+                    name="subjectId"
+                    value={String(subjectId || '')}
+                    onChange={(v) => setSubjectId(String(v || ''))}
+                    disabled={!String(gradeId || '').trim() || subjectsQuery.isLoading}
+                    options={subjectOptions}
+                    placeholder={t('common.select.placeholder', { defaultValue: 'Select...' })}
+                    menuPlacement="up"
+                    hideSelectedOption={false}
+                    clearable
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -299,6 +498,20 @@ export default function LibraryTab() {
                   }}
                 />
                 {t('students.libraryTab.kinds.docs', { defaultValue: 'Docs' })}
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="kind"
+                  value="ppt"
+                  checked={kind === 'ppt'}
+                  onChange={() => {
+                    setKind('ppt');
+                    setLinkUrl('');
+                    setFile(null);
+                  }}
+                />
+                {t('students.libraryTab.kinds.powerpoint', { defaultValue: 'PowerPoint' })}
               </label>
               <label className="inline-flex items-center gap-2">
                 <input
@@ -344,7 +557,7 @@ export default function LibraryTab() {
                 disabled={isLink}
               />
             </div>
-            <div className="text-xs text-(--nb-color-muted) mt-1">{t('students.libraryTab.form.pdfHint', { defaultValue: 'Supported: PDF, DOC, DOCX.' })}</div>
+            <div className="text-xs text-(--nb-color-muted) mt-1">{t('students.libraryTab.form.pdfHint', { defaultValue: 'Supported: PDF, DOC, DOCX, PPT, PPTX.' })}</div>
           </div>
 
           <div>
@@ -370,7 +583,12 @@ export default function LibraryTab() {
             <Button
               variant="brand"
               type="submit"
-              disabled={createMut.isPending || !title.trim() || (kind === 'link' ? !linkUrl.trim() : !file)}
+              disabled={
+                createMut.isPending
+                || !title.trim()
+                || (String(audience || '').toLowerCase() === 'level' && (!String(gradeId || '').trim() || !String(subjectId || '').trim()))
+                || (kind === 'link' ? !linkUrl.trim() : !file)
+              }
             >
               {createMut.isPending ? t('common.saving', { defaultValue: 'Saving...' }) : t('common.actions.save', { defaultValue: 'Save' })}
             </Button>

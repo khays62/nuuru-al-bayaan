@@ -1619,6 +1619,7 @@ const en = {
         title: 'Title',
         type: 'Type',
         category: 'Category',
+        uploadedBy: 'Uploaded By',
         added: 'Added',
         open: 'Open',
       },

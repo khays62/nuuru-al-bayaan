@@ -517,7 +517,7 @@ function moduleGroupIdFor(moduleName) {
   if (m === 'students' || m === 'teachers') return 'users';
   if (['grades', 'subjects', 'cohorts', 'promotions', 'transfers'].includes(m)) return 'academics';
   if (['exams', 'results', 'transcript'].includes(m)) return 'exams';
-  if (['attendance', 'attendanceReports', 'timetable'].includes(m)) return 'operations';
+  if (['attendance', 'attendanceReports', 'timetable', 'library'].includes(m)) return 'operations';
   return 'other';
 }
 

@@ -15,6 +15,9 @@ import { responseNormalize } from './middleware/responseNormalize.js';
 import { auditTrail } from './middleware/auditTrail.js';
 import { i18nMiddleware } from './middleware/i18n.js';
 import { protect } from './middleware/authMiddleware.js';
+import { hasPermission } from './middleware/checkPermission.js';
+import { writeAuditLog } from './services/auditService.js';
+import LibraryResource from './models/LibraryResource.js';
 // import seedDatabase from './utils/seeder.js'; // Import the seeder function
 
 // Import routes
@@ -196,6 +199,77 @@ const startServer = async () => {
   app.use('/api/security', securityRoutes);
 
   // Protected static file serving for uploads (e.g., student photos)
+  // Library downloads: add permission guard + audit log.
+  // NOTE: Must be mounted before the generic /api/uploads static handler.
+  app.use(
+    '/api/uploads/library',
+    protect,
+    async (req, res, next) => {
+      try {
+        const role = String(req.user?.role || '').toLowerCase();
+
+        // Admin/Teacher/Student can download library resources.
+        if (role === 'admin' || role === 'teacher' || role === 'student') return next();
+
+        // Staff must have library.download (or full). Fall back to view for backward compatibility.
+        const ok = hasPermission(req.user, 'library', 'download')
+          || hasPermission(req.user, 'library', 'full')
+          || hasPermission(req.user, 'library', 'view');
+        if (!ok) {
+          return res.status(403).json({
+            success: false,
+            message: req.t('permissions.noPermissionActionModule', { action: 'download', module: 'library' }, 'You do not have permission to download library'),
+          });
+        }
+        return next();
+      } catch {
+        return res.status(403).json({ success: false, message: req.t('common.accessDenied', null, 'Access denied') });
+      }
+    },
+    async (req, res, next) => {
+      // Audit only GET/HEAD requests for file access.
+      const method = String(req.method || '').toUpperCase();
+      if (method !== 'GET' && method !== 'HEAD') return next();
+
+      try {
+        const filename = path.posix.basename(String(req.path || ''));
+        if (!filename || filename === '/' || filename === '.') return next();
+
+        const rel = path.posix.join('uploads', 'library', filename);
+        const doc = await LibraryResource.findOne({ 'file.path': rel }).select('_id title kind').lean();
+
+        // If this file isn't linked to a library resource, deny.
+        if (!doc) {
+          return res.status(404).json({
+            success: false,
+            message: req.t('common.notFound', null, 'Not found'),
+          });
+        }
+
+        const title = String(doc?.title || '').trim();
+        const resourceId = String(doc?._id || '').trim();
+        const actorRole = String(req.user?.role || '').toLowerCase();
+
+        await writeAuditLog({
+          userId: req.user?._id,
+          action: 'library_download',
+          description: `role=${actorRole} resourceId=${resourceId}${title ? ` title=${title}` : ''}`,
+          req,
+        });
+      } catch {
+        // Non-blocking
+      }
+
+      return next();
+    },
+    express.static(path.join(__dirname, 'uploads', 'library'), {
+      fallthrough: false,
+      maxAge: isDev ? 0 : '7d',
+      immutable: false,
+    })
+  );
+
+  // Generic uploads: keep protected static serving (includes student photos etc.)
   app.use('/api/uploads', protect, express.static(path.join(__dirname, 'uploads'), {
     fallthrough: false,
     maxAge: isDev ? 0 : '7d',

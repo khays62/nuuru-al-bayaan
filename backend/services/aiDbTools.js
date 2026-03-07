@@ -1,4 +1,8 @@
 import mongoose from 'mongoose';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 import { z } from 'zod';
 
@@ -34,6 +38,23 @@ import Payroll from '../models/Payroll.js';
 import Donation from '../models/Donation.js';
 import Donor from '../models/Donor.js';
 import FinanceCategory from '../models/FinanceCategory.js';
+import LibraryResource from '../models/LibraryResource.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
+
+async function loadPdfParse() {
+  try {
+    // Prefer require for CommonJS builds.
+    // eslint-disable-next-line global-require
+    return require('pdf-parse');
+  } catch {
+    // Fallback for ESM-only builds.
+    const mod = await import('pdf-parse');
+    return mod?.default || mod;
+  }
+}
 
 class AiToolError extends Error {
   constructor(message, status = 403) {
@@ -49,6 +70,14 @@ const isStaffOrAdmin = (user) => {
   const r = String(user?.role || '').toLowerCase();
   return r === 'admin' || r === 'staff';
 };
+
+function staffCanReadLibrary(user) {
+  if (isRole(user, 'admin')) return true;
+  if (!isRole(user, 'staff')) return true;
+  return hasPermission(user, 'library', 'view')
+    || hasPermission(user, 'library', 'download')
+    || hasPermission(user, 'library', 'full');
+}
 
 const MAX_RANGE_DAYS = Object.freeze({
   admin: 365,
@@ -303,6 +332,586 @@ async function getTeacherAllowedGradeSectionIds(user) {
   if (!teacherId) return [];
   const ids = await TeacherAssignment.find({ teacher: teacherId }).distinct('gradeSection');
   return (ids || []).map((x) => String(x)).filter((id) => toId(id));
+}
+
+async function getStudentActiveGradeId(user) {
+  const studentId = toId(user?.studentRef?._id || user?.studentRef);
+  if (!studentId) return null;
+  const enr = await Enrollment.findOne({ student: studentId, status: 'active' })
+    .sort({ createdAt: -1 })
+    .select('grade gradeSection')
+    .lean();
+
+  const gradeId = toId(enr?.grade);
+  if (gradeId) return gradeId;
+
+  const gradeSectionId = toId(enr?.gradeSection);
+  if (!gradeSectionId) return null;
+  const gs = await GradeSection.findById(gradeSectionId).select('grade').lean();
+  return toId(gs?.grade);
+}
+
+async function getTeacherAssignedGradeIds(user) {
+  const teacherId = toId(user?.teacherRef);
+  if (!teacherId) return [];
+
+  const rows = await TeacherAssignment.find({ teacher: teacherId })
+    .select('gradeSection')
+    .populate({ path: 'gradeSection', select: 'grade' })
+    .lean();
+
+  const set = new Set();
+  for (const r of rows || []) {
+    const gid = toId(r?.gradeSection?.grade);
+    if (gid) set.add(gid);
+  }
+  return Array.from(set);
+}
+
+function buildLibraryVisibilityExprForUser(user) {
+  const role = String(user?.role || '').toLowerCase();
+  const publicExpr = { $or: [{ audience: 'public' }, { audience: { $exists: false } }, { audience: null }, { audience: '' }] };
+
+  if (role === 'admin' || role === 'staff') return null;
+
+  // Note: for student/teacher we need async lookups for gradeIds, so this function only handles roles
+  // where we can return immediately.
+  return publicExpr;
+}
+
+async function buildLibraryVisibilityExprForUserAsync(user) {
+  const role = String(user?.role || '').toLowerCase();
+  const publicExpr = { $or: [{ audience: 'public' }, { audience: { $exists: false } }, { audience: null }, { audience: '' }] };
+
+  if (role === 'admin' || role === 'staff') return null;
+  if (role === 'student') {
+    const gradeId = await getStudentActiveGradeId(user);
+    return gradeId
+      ? { $or: [publicExpr, { audience: 'level', grade: gradeId }] }
+      : publicExpr;
+  }
+  if (role === 'teacher') {
+    const gradeIds = await getTeacherAssignedGradeIds(user);
+    return gradeIds.length > 0
+      ? { $or: [publicExpr, { audience: 'level', grade: { $in: gradeIds } }] }
+      : publicExpr;
+  }
+  return publicExpr;
+}
+
+function isPrivateHostname(hostname) {
+  const h = String(hostname || '').trim().toLowerCase();
+  if (!h) return true;
+  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return true;
+  if (h.endsWith('.local')) return true;
+
+  // Basic IPv4 private ranges (string checks; avoids DNS resolution / network access).
+  if (/^10\./.test(h)) return true;
+  if (/^192\.168\./.test(h)) return true;
+  if (/^169\.254\./.test(h)) return true;
+  const m = h.match(/^172\.(\d{1,3})\./);
+  if (m) {
+    const n = Number(m[1]);
+    if (Number.isFinite(n) && n >= 16 && n <= 31) return true;
+  }
+
+  return false;
+}
+
+async function fetchTextWithLimit(url, maxBytes = 1024 * 1024) {
+  const u = new URL(url);
+  if (u.username || u.password) throw new AiToolError('Link URL not allowed', 400);
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new AiToolError('Link URL must be http(s)', 400);
+  if (isPrivateHostname(u.hostname)) throw new AiToolError('Link URL host not allowed', 400);
+
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 12_000);
+  try {
+    const res = await fetch(u.toString(), {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'user-agent': 'NuuruAI/1.0 (library summarizer)',
+        'accept': 'text/html,text/plain,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+
+    if (!res.ok) throw new AiToolError(`Failed to fetch link (HTTP ${res.status})`, 400);
+
+    const chunks = [];
+    let total = 0;
+    for await (const chunk of res.body || []) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      total += buf.length;
+      if (total > maxBytes) {
+        chunks.push(buf.slice(0, Math.max(0, maxBytes - (total - buf.length))));
+        break;
+      }
+      chunks.push(buf);
+    }
+
+    const raw = Buffer.concat(chunks).toString('utf8');
+    const truncated = total > maxBytes;
+    return { raw, truncated };
+  } catch (err) {
+    if (String(err?.name || '') === 'AbortError') throw new AiToolError('Link fetch timeout', 408);
+    if (isAiToolError(err)) throw err;
+    throw new AiToolError('Failed to fetch link', 400);
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+function stripHtmlToText(html) {
+  const s = String(html || '');
+  // Remove script/style blocks first.
+  const noScripts = s
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ');
+
+  // Strip tags.
+  const text = noScripts
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text;
+}
+
+function truncateText(text, maxChars = 20000) {
+  const max = Math.max(500, Math.min(40000, Number(maxChars || 20000)));
+  const s = String(text || '');
+  if (s.length <= max) return { text: s, truncated: false, maxChars: max };
+  return { text: s.slice(0, max), truncated: true, maxChars: max };
+}
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildLibraryQueryCandidates(input) {
+  const raw = String(input || '').trim();
+  if (!raw) return [];
+
+  const cleaned = raw
+    .replace(/[“”«»]/g, '"')
+    .replace(/[’]/g, "'")
+    .replace(/[()\[\]{}]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const out = new Set();
+  out.add(cleaned);
+
+  // If user included something like: "Title – filename.pdf" or "Title - filename.pdf"
+  const splitDash = cleaned.split(/\s[\-–—]\s/).map((s) => s.trim()).filter(Boolean);
+  for (const part of splitDash) out.add(part);
+
+  // Extract filename-like token if present.
+  const fileLike = cleaned.match(/([^\\/]+\.(pdf|docx?|pptx?))\b/i);
+  if (fileLike?.[1]) out.add(String(fileLike[1]).trim());
+
+  // If it looks like a path, take basename.
+  const lastSeg = cleaned.split(/[/\\]/).filter(Boolean).slice(-1)[0];
+  if (lastSeg) out.add(lastSeg);
+
+  // Remove extension to help match titles.
+  for (const v of Array.from(out)) {
+    const noExt = v.replace(/\.(pdf|docx?|pptx?)$/i, '').trim();
+    if (noExt && noExt !== v) out.add(noExt);
+  }
+
+  // Replace underscores with spaces for better $text search.
+  for (const v of Array.from(out)) {
+    const spaced = v.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+    if (spaced && spaced !== v) out.add(spaced);
+  }
+
+  // Drop very short noise.
+  return Array.from(out)
+    .map((s) => String(s).trim())
+    .filter((s) => s.length >= 2)
+    .slice(0, 12);
+}
+
+const argsLibraryResourceGetText = z
+  .object({
+    resourceId: z.string().trim().optional(),
+    q: z.string().trim().max(160).optional(),
+    maxChars: z.number().int().min(500).max(40000).optional(),
+  })
+  .strip()
+  .refine((v) => Boolean(String(v?.resourceId || '').trim()) || Boolean(String(v?.q || '').trim()), {
+    message: 'resourceId or q is required',
+  });
+
+async function toolLibraryResourceGetText({ user, args }) {
+  requireAuthUser(user);
+  if (!staffCanReadLibrary(user)) throw new AiToolError('Missing permission: library.view', 403);
+
+  const visibility = await buildLibraryVisibilityExprForUserAsync(user);
+  const id = toId(args?.resourceId);
+  const q = String(args?.q || '').trim();
+  const candidates = buildLibraryQueryCandidates(q);
+
+  let doc = null;
+  if (id) {
+    const and = [{ _id: id }];
+    if (visibility) and.push(visibility);
+    const filter = and.length > 1 ? { $and: and } : and[0];
+    doc = await LibraryResource.findOne(filter)
+      .populate('grade', 'gradeName')
+      .populate('subject', 'subjectName')
+      .lean();
+  } else {
+    const and = [];
+    if (q) and.push({ $text: { $search: q } });
+    if (visibility) and.push(visibility);
+    const filter = and.length ? { $and: and } : {};
+    // Prefer text index search (title/description/category).
+    doc = await LibraryResource.findOne(filter, { score: { $meta: 'textScore' } })
+      .sort({ score: { $meta: 'textScore' }, createdAt: -1 })
+      .populate('grade', 'gradeName')
+      .populate('subject', 'subjectName')
+      .lean();
+
+    // Fallback: match by title OR uploaded filename (file.originalName).
+    if (!doc && candidates.length) {
+      const ors = [];
+      for (const c of candidates) {
+        const safe = escapeRegex(c);
+        ors.push({ title: { $regex: safe, $options: 'i' } });
+        ors.push({ 'file.originalName': { $regex: safe, $options: 'i' } });
+      }
+      const and2 = [{ $or: ors }];
+      if (visibility) and2.push(visibility);
+      doc = await LibraryResource.findOne({ $and: and2 })
+        .sort({ createdAt: -1 })
+        .populate('grade', 'gradeName')
+        .populate('subject', 'subjectName')
+        .lean();
+    }
+  }
+
+  if (!doc) {
+    return {
+      scope: 'library_resource_get_text',
+      found: false,
+      query: { resourceId: id || undefined, q: q || undefined },
+      message: 'No matching library resource found (or not visible to you).',
+    };
+  }
+
+  const kind = String(doc.kind || '').toLowerCase();
+  const maxChars = Number(args?.maxChars || 20000);
+
+  if (kind === 'link') {
+    const linkUrl = String(doc.linkUrl || '').trim();
+    if (!linkUrl) throw new AiToolError('Resource linkUrl missing', 400);
+
+    const { raw, truncated: rawTruncated } = await fetchTextWithLimit(linkUrl, 1024 * 1024);
+    const text = stripHtmlToText(raw);
+    const { text: outText, truncated } = truncateText(text, maxChars);
+
+    return {
+      scope: 'library_resource_get_text',
+      found: true,
+      resource: {
+        id: String(doc._id),
+        title: doc.title || '',
+        description: doc.description || '',
+        category: doc.category || '',
+        kind: 'link',
+        audience: doc.audience || 'public',
+        grade: doc.grade ? { id: String(doc.grade._id), name: doc.grade.gradeName || '' } : null,
+        subject: doc.subject ? { id: String(doc.subject._id), name: doc.subject.subjectName || '' } : null,
+        createdAt: doc.createdAt || null,
+        createdByName: doc.createdByName || '',
+        linkUrl,
+      },
+      extracted: {
+        type: 'web_text',
+        rawBytesTruncated: rawTruncated,
+        textChars: outText.length,
+        truncated,
+        maxChars: Math.max(500, Math.min(40000, maxChars)),
+        text: outText,
+      },
+    };
+  }
+
+  if (kind === 'pdf') {
+    const mime = String(doc?.file?.mimeType || '').toLowerCase();
+    const orig = String(doc?.file?.originalName || '').toLowerCase();
+    const rel = String(doc?.file?.path || '').trim();
+
+    if (!rel || !rel.startsWith('uploads/library/')) throw new AiToolError('Resource file path invalid', 400);
+
+    // Only parse actual PDFs for now.
+    const looksPdf = mime === 'application/pdf' || orig.endsWith('.pdf') || rel.toLowerCase().endsWith('.pdf');
+    if (!looksPdf) {
+      return {
+        scope: 'library_resource_get_text',
+        found: true,
+        resource: {
+          id: String(doc._id),
+          title: doc.title || '',
+          description: doc.description || '',
+          category: doc.category || '',
+          kind: 'pdf',
+          audience: doc.audience || 'public',
+          grade: doc.grade ? { id: String(doc.grade._id), name: doc.grade.gradeName || '' } : null,
+          subject: doc.subject ? { id: String(doc.subject._id), name: doc.subject.subjectName || '' } : null,
+          createdAt: doc.createdAt || null,
+          createdByName: doc.createdByName || '',
+          file: {
+            url: doc?.file?.url || '',
+            mimeType: doc?.file?.mimeType || '',
+            size: Number(doc?.file?.size || 0),
+            originalName: doc?.file?.originalName || '',
+          },
+        },
+        extracted: {
+          type: 'unsupported',
+          message: 'This uploaded file is not a PDF (DOC/DOCX/PPT/PPTX parsing is not enabled yet).',
+        },
+      };
+    }
+
+    const abs = path.resolve(__dirname, '..', ...rel.split('/'));
+    let parsed = null;
+    try {
+      const buf = await fs.readFile(abs);
+      const pdfParse = await loadPdfParse();
+      parsed = await pdfParse(buf);
+    } catch (err) {
+      return {
+        scope: 'library_resource_get_text',
+        found: true,
+        resource: {
+          id: String(doc._id),
+          title: doc.title || '',
+          description: doc.description || '',
+          category: doc.category || '',
+          kind: 'pdf',
+          audience: doc.audience || 'public',
+          grade: doc.grade ? { id: String(doc.grade._id), name: doc.grade.gradeName || '' } : null,
+          subject: doc.subject ? { id: String(doc.subject._id), name: doc.subject.subjectName || '' } : null,
+          createdAt: doc.createdAt || null,
+          createdByName: doc.createdByName || '',
+          file: {
+            url: doc?.file?.url || '',
+            mimeType: doc?.file?.mimeType || '',
+            size: Number(doc?.file?.size || 0),
+            originalName: doc?.file?.originalName || '',
+          },
+        },
+        extracted: {
+          type: 'pdf_text',
+          pages: 0,
+          textChars: 0,
+          truncated: false,
+          maxChars: Math.max(500, Math.min(40000, maxChars)),
+          text: '',
+          message: `Failed to extract PDF text (${String(err?.message || 'parse error')}).`,
+        },
+      };
+    }
+
+    const rawText = String(parsed?.text || '').replace(/\s+/g, ' ').trim();
+    if (!rawText || rawText.length < 40) {
+      return {
+        scope: 'library_resource_get_text',
+        found: true,
+        resource: {
+          id: String(doc._id),
+          title: doc.title || '',
+          description: doc.description || '',
+          category: doc.category || '',
+          kind: 'pdf',
+          audience: doc.audience || 'public',
+          grade: doc.grade ? { id: String(doc.grade._id), name: doc.grade.gradeName || '' } : null,
+          subject: doc.subject ? { id: String(doc.subject._id), name: doc.subject.subjectName || '' } : null,
+          createdAt: doc.createdAt || null,
+          createdByName: doc.createdByName || '',
+          file: {
+            url: doc?.file?.url || '',
+            mimeType: doc?.file?.mimeType || '',
+            size: Number(doc?.file?.size || 0),
+            originalName: doc?.file?.originalName || '',
+          },
+        },
+        extracted: {
+          type: 'pdf_text',
+          pages: Number(parsed?.numpages || 0),
+          textChars: 0,
+          truncated: false,
+          maxChars: Math.max(500, Math.min(40000, maxChars)),
+          text: '',
+          message: 'No readable text could be extracted from this PDF. It may be a scanned/image-only document. Upload a text-based PDF or provide a link/text excerpt.',
+        },
+      };
+    }
+    const { text: outText, truncated } = truncateText(rawText, maxChars);
+
+    return {
+      scope: 'library_resource_get_text',
+      found: true,
+      resource: {
+        id: String(doc._id),
+        title: doc.title || '',
+        description: doc.description || '',
+        category: doc.category || '',
+        kind: 'pdf',
+        audience: doc.audience || 'public',
+        grade: doc.grade ? { id: String(doc.grade._id), name: doc.grade.gradeName || '' } : null,
+        subject: doc.subject ? { id: String(doc.subject._id), name: doc.subject.subjectName || '' } : null,
+        createdAt: doc.createdAt || null,
+        createdByName: doc.createdByName || '',
+        file: {
+          url: doc?.file?.url || '',
+          mimeType: doc?.file?.mimeType || '',
+          size: Number(doc?.file?.size || 0),
+          originalName: doc?.file?.originalName || '',
+        },
+      },
+      extracted: {
+        type: 'pdf_text',
+        pages: Number(parsed?.numpages || 0),
+        textChars: outText.length,
+        truncated,
+        maxChars: Math.max(500, Math.min(40000, maxChars)),
+        text: outText,
+      },
+    };
+  }
+
+  throw new AiToolError('Unsupported library resource kind', 400);
+}
+
+const argsLibraryResourcesList = z
+  .object({
+    q: z.string().trim().max(120).optional(),
+    audience: z.enum(['public', 'level']).optional(),
+    gradeId: z.string().trim().optional(),
+    subjectId: z.string().trim().optional(),
+    kind: z.enum(['pdf', 'link']).optional(),
+    page: z.number().int().min(1).max(1000).optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+  })
+  .strip();
+
+async function toolLibraryResourcesList({ user, args }) {
+  requireAuthUser(user);
+
+  const q = String(args?.q || '').trim();
+  const limit = clampLimit(args?.limit, 50, 15);
+  const pageRaw = Number(args?.page || 1);
+  const page = Number.isFinite(pageRaw) ? Math.max(1, Math.floor(pageRaw)) : 1;
+  const skip = (page - 1) * limit;
+
+  const role = String(user?.role || '').toLowerCase();
+
+  // Backward-compat: treat missing/empty audience as public.
+  const publicExpr = { $or: [{ audience: 'public' }, { audience: { $exists: false } }, { audience: null }, { audience: '' }] };
+
+  let visibility = null;
+  if (role === 'admin' || role === 'staff') {
+    visibility = null;
+  } else if (role === 'student') {
+    const gradeId = await getStudentActiveGradeId(user);
+    visibility = gradeId
+      ? { $or: [publicExpr, { audience: 'level', grade: gradeId }] }
+      : publicExpr;
+  } else if (role === 'teacher') {
+    const gradeIds = await getTeacherAssignedGradeIds(user);
+    visibility = gradeIds.length > 0
+      ? { $or: [publicExpr, { audience: 'level', grade: { $in: gradeIds } }] }
+      : publicExpr;
+  } else {
+    visibility = publicExpr;
+  }
+
+  const and = [];
+  if (q) and.push({ $text: { $search: q } });
+  if (visibility) and.push(visibility);
+
+  // Optional narrowing filters (always safe because visibility is still applied).
+  const audience = args?.audience ? String(args.audience).toLowerCase() : '';
+  if (audience === 'public') and.push(publicExpr);
+  if (audience === 'level') and.push({ audience: 'level' });
+
+  const gradeId = toId(args?.gradeId);
+  if (gradeId) and.push({ grade: gradeId });
+
+  const subjectId = toId(args?.subjectId);
+  if (subjectId) and.push({ subject: subjectId });
+
+  const kind = args?.kind ? String(args.kind).toLowerCase() : '';
+  if (kind === 'pdf' || kind === 'link') and.push({ kind });
+
+  const filter = and.length ? { $and: and } : {};
+
+  const [rows, total] = await Promise.all([
+    LibraryResource.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('grade', 'gradeName')
+      .populate('subject', 'subjectName')
+      .lean(),
+    LibraryResource.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil((Number(total) || 0) / limit));
+
+  return {
+    scope: 'library_resources_list',
+    filter: {
+      q: q || undefined,
+      audience: audience || undefined,
+      gradeId: gradeId || undefined,
+      subjectId: subjectId || undefined,
+      kind: kind || undefined,
+      page,
+      limit,
+    },
+    meta: {
+      page,
+      limit,
+      total: Number(total) || 0,
+      totalPages,
+      returned: Array.isArray(rows) ? rows.length : 0,
+    },
+    items: (rows || []).map((r) => ({
+      id: String(r._id),
+      title: r.title || '',
+      description: r.description || '',
+      category: r.category || '',
+      kind: r.kind || '',
+      audience: r.audience || 'public',
+      grade: r.grade ? { id: String(r.grade._id), name: r.grade.gradeName || '' } : null,
+      subject: r.subject ? { id: String(r.subject._id), name: r.subject.subjectName || '' } : null,
+      createdAt: r.createdAt || null,
+      createdByName: r.createdByName || '',
+      linkUrl: r.kind === 'link' ? (r.linkUrl || '') : '',
+      file: r.kind === 'pdf' && r.file
+        ? {
+          url: r.file.url || '',
+          mimeType: r.file.mimeType || '',
+          size: Number(r.file.size || 0),
+          originalName: r.file.originalName || '',
+        }
+        : null,
+    })),
+    note: role === 'admin' || role === 'staff'
+      ? 'Full visibility for admin/staff'
+      : 'Visibility limited by role (public + assigned/enrolled level resources)',
+  };
 }
 
 async function findLatestEnrollmentForStudent(studentId) {
@@ -2871,6 +3480,17 @@ const TOOL_REGISTRY = Object.freeze({
     schema: argsStudentFeeInvoicesSelf,
     run: toolStudentFeeInvoicesSelfSummary,
   },
+
+  // Library (read-only)
+  library_resources_list: {
+    schema: argsLibraryResourcesList,
+    run: toolLibraryResourcesList,
+  },
+
+  library_resource_get_text: {
+    schema: argsLibraryResourceGetText,
+    run: toolLibraryResourceGetText,
+  },
 });
 
 export function getAllowedAiToolNamesForUser(user) {
@@ -2915,10 +3535,14 @@ export function getAllowedAiToolNamesForUser(user) {
       'finance_payroll_month_summary',
       'finance_payroll_staff_search',
       'finance_payroll_staff_ledger',
+
+      // Library
+      'library_resources_list',
+      'library_resource_get_text',
     ];
   }
   if (role === 'staff') {
-    const out = ['dashboard_summary', 'academic_years_list', 'my_permissions'];
+    const out = ['dashboard_summary', 'academic_years_list', 'my_permissions', 'library_resources_list', 'library_resource_get_text'];
     if (staffHasAny(user, 'students', ['view', 'full'])) out.push('students_list');
     if (staffHasAnyOfModules(user, ['students', 'timetable', 'attendance'], ['view', 'full'])) out.push('grade_sections_list');
     if (staffHasAnyOfModules(user, ['subjects', 'timetable', 'results', 'exams', 'transcript'], ['view', 'full', 'print', 'download'])) out.push('subjects_list');
@@ -2989,6 +3613,8 @@ export function getAllowedAiToolNamesForUser(user) {
       'teacher_timetable_self',
       'results_class_summary',
       'announcements_recent',
+      'library_resources_list',
+      'library_resource_get_text',
     ];
   }
   if (role === 'student') {
@@ -3001,6 +3627,8 @@ export function getAllowedAiToolNamesForUser(user) {
       'transcript_self_index',
       'transcript_self_full',
       'announcements_recent',
+      'library_resources_list',
+      'library_resource_get_text',
     ];
   }
   return [];

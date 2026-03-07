@@ -1618,6 +1618,7 @@ export default {
         title: 'العنوان',
         type: 'النوع',
         category: 'الفئة',
+        uploadedBy: 'تم الرفع بواسطة',
         added: 'أضيف',
         open: 'فتح',
       },

@@ -6,9 +6,10 @@ export const libraryKeys = {
   base: library.base,
 
   listBase: () => library.key('list'),
-  list: ({ q, limit } = {}) => library.key(
+  list: ({ q, limit, page } = {}) => library.key(
     'list',
     qkStr(q || ''),
     qkStr(limit ?? ''),
+    qkStr(page ?? ''),
   ),
 };

@@ -173,10 +173,11 @@ export const studentKeys = {
     'students',
     'library',
   ],
-  libraryList: ({ q, limit } = {}) => [
+  libraryList: ({ q, limit, page } = {}) => [
     'students',
     'library',
     qkStr(q || ''),
     qkStr(limit ?? ''),
+    qkStr(page ?? ''),
   ],
 };
