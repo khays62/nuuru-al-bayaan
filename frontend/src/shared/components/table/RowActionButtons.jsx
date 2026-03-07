@@ -1,9 +1,9 @@
 import React from 'react';
 
 const toneClassMap = {
-	view: 'text-(--nb-color-accent) hover:text-(--nb-color-brand) hover:bg-(--nb-color-accent-50) focus:ring-(--nb-color-focus)',
-	edit: 'text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 focus:ring-emerald-300',
-	delete: 'text-red-700 hover:text-red-900 hover:bg-red-50 focus:ring-red-300',
+	view: 'text-(--nb-color-accent) hover:text-(--nb-color-brand-ui) hover:bg-(--nb-color-accent-50) focus:ring-(--nb-color-focus)',
+	edit: 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 focus:ring-(--nb-color-focus)',
+	delete: 'text-red-600 hover:text-red-700 hover:bg-red-50 focus:ring-(--nb-color-focus)',
 	neutral: 'text-(--nb-color-muted) hover:text-(--nb-color-fg) hover:bg-(--nb-color-brand-50) focus:ring-(--nb-color-border)',
 };
 

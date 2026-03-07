@@ -392,12 +392,12 @@ function LineChart({ points = [], height = 140, onHover, onLeave }) {
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full">
       <defs>
         <linearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--nb-color-brand)" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="var(--nb-color-brand)" stopOpacity="0" />
+          <stop offset="0%" stopColor="var(--nb-color-brand-ui)" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="var(--nb-color-brand-ui)" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={area} fill="url(#lineFill)" />
-      <path d={d} fill="none" stroke="var(--nb-color-brand)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={d} fill="none" stroke="var(--nb-color-brand-ui)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
       {points.map((p, i) => (
         <circle
           key={i}
@@ -405,7 +405,7 @@ function LineChart({ points = [], height = 140, onHover, onLeave }) {
           cy={yFor(p.value)}
           r="5"
           fill="var(--nb-color-bg-card)"
-          stroke="var(--nb-color-brand)"
+          stroke="var(--nb-color-brand-ui)"
           strokeWidth="2"
           onMouseEnter={typeof onHover === 'function' ? (() => onHover(p, i)) : undefined}
           onMouseLeave={typeof onLeave === 'function' ? onLeave : undefined}
@@ -427,7 +427,7 @@ function Card({ to, title, description, Icon, tone }) {
       className={`${base} ${active}`}
     >
       <div className="flex items-start gap-4">
-        <div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand) flex items-center justify-center">
+        <div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) flex items-center justify-center">
           {Icon ? <Icon size={20} /> : null}
         </div>
         <div className="min-w-0">

@@ -63,7 +63,7 @@ export default function PaginationControls({
 						setUiPage(next);
 						onPage(next);
 					}}
-					className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-(--nb-color-brand-50) disabled:opacity-50 disabled:cursor-not-allowed border-r border-(--nb-color-border)"
+					className="px-3 py-2 text-sm text-(--nb-color-brand-ui) hover:bg-(--nb-color-brand-50) disabled:opacity-50 disabled:cursor-not-allowed border-r border-(--nb-color-border)"
 					aria-label={t('common.previous', { defaultValue: 'Previous' })}
 					title={t('common.previous', { defaultValue: 'Previous' })}
 				>
@@ -75,7 +75,7 @@ export default function PaginationControls({
 						return (
 							<span
 								key={`ellipsis-${idx}`}
-								className="px-3 py-2 text-sm text-(--nb-color-brand) select-none border-r border-(--nb-color-border) flex items-center"
+								className="px-3 py-2 text-sm text-(--nb-color-brand-ui) select-none border-r border-(--nb-color-border) flex items-center"
 							>
 								…
 							</span>
@@ -95,7 +95,7 @@ export default function PaginationControls({
 								'min-w-9 px-3 py-2 text-sm border-r border-(--nb-color-border) ' +
 								(active
 									? 'bg-(--nb-color-brand) text-white'
-									: 'bg-(--nb-color-bg-card) text-(--nb-color-brand) hover:bg-(--nb-color-brand-50)')
+									: 'bg-(--nb-color-bg-card) text-(--nb-color-brand-ui) hover:bg-(--nb-color-brand-50)')
 							}
 							aria-current={active ? 'page' : undefined}
 						>
@@ -112,7 +112,7 @@ export default function PaginationControls({
 						setUiPage(next);
 						onPage(next);
 					}}
-					className="px-3 py-2 text-sm text-(--nb-color-brand) hover:bg-(--nb-color-brand-50) disabled:opacity-50 disabled:cursor-not-allowed"
+					className="px-3 py-2 text-sm text-(--nb-color-brand-ui) hover:bg-(--nb-color-brand-50) disabled:opacity-50 disabled:cursor-not-allowed"
 					aria-label={t('common.next', { defaultValue: 'Next' })}
 					title={t('common.next', { defaultValue: 'Next' })}
 				>

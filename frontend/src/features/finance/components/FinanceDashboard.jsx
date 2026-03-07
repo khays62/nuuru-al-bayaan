@@ -136,7 +136,7 @@ const StatWidget = ({ title, value, subtext, icon: Icon, trend }) => (
     <Card className="rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden border-b-4 border-b-(--nb-color-accent)" noPadding>
         <div className="p-5">
             <div className="flex items-center justify-between mb-4">
-                <div className="p-2.5 rounded-lg bg-(--nb-color-accent-50) text-(--nb-color-brand) border border-(--nb-color-accent-100)">
+                <div className="p-2.5 rounded-lg bg-(--nb-color-accent-50) text-(--nb-color-brand-ui) border border-(--nb-color-accent-100)">
                     {Icon ? React.createElement(Icon, { size: 20 }) : null}
                 </div>
                 {typeof trend === 'number' ? (
@@ -144,8 +144,8 @@ const StatWidget = ({ title, value, subtext, icon: Icon, trend }) => (
                         className={
                             `flex items-center text-xs font-semibold px-2 py-0.5 rounded-full border ` +
                             (trend > 0
-                                ? 'bg-(--nb-color-accent-50) text-(--nb-color-brand) border-(--nb-color-accent-100)'
-                                : 'bg-(--nb-color-brand-50) text-(--nb-color-brand) border-(--nb-color-brand-100)')
+                                ? 'bg-(--nb-color-accent-50) text-(--nb-color-brand-ui) border-(--nb-color-accent-100)'
+                                : 'bg-(--nb-color-brand-50) text-(--nb-color-brand-ui) border-(--nb-color-brand-100)')
                         }
                     >
                         {trend > 0 ? <ArrowUpRight size={12} className="mr-1" /> : <ArrowDownRight size={12} className="mr-1" />}
@@ -391,7 +391,7 @@ export default function FinanceDashboard() {
                                     return row?.createdAt ? new Date(row.createdAt).toLocaleDateString() : 'â€”';
                                 case 'status':
                                     return (
-                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-(--nb-color-accent-50) text-(--nb-color-brand) border border-(--nb-color-accent-100)">
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-(--nb-color-accent-50) text-(--nb-color-brand-ui) border border-(--nb-color-accent-100)">
                                             {t('finance.dashboard.recent.status.completed', { defaultValue: 'Completed' })}
                                         </span>
                                     );

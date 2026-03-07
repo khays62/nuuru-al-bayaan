@@ -96,10 +96,9 @@ export default function AnnouncementsPage() {
     return true;
   };
 
-   
+  const totalCount = Array.isArray(announcements) ? announcements.length : 0;
 
-
-  // ðŸ“ Create
+  // Create
 const handlePost = async () => {
   if (posting) return;
   if (!newTitle.trim() || !newBody.trim()) {
@@ -126,7 +125,7 @@ const handlePost = async () => {
   }
 };
 
-// âœï¸ Edit
+// Edit
 const handleEdit = async (id) => {
   if (updatingId) return;
   try {
@@ -147,7 +146,7 @@ const handleEdit = async (id) => {
   }
 };
 
-// âŒ Delete
+// Delete
 const handleDelete = async (id) => {
   if (deletingId) return;
   if (!window.confirm(t('announcements.page.confirmDelete', { defaultValue: 'Are you sure you want to delete this announcement?' })))
@@ -169,74 +168,117 @@ const handleDelete = async (id) => {
 
 
   return (
-    
-    
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-2">
-        <Megaphone className="text-(--nb-color-brand)" size={28} />
-        <h1 className="text-3xl font-bold text-gray-800">{t('announcements.page.title', { defaultValue: 'Announcements' })}</h1>
-      </div>
+    <div className="space-y-5 p-4 sm:p-6">
+      <Card className="overflow-hidden rounded-2xl">
+        <div className="px-5 py-5 sm:px-6 bg-linear-to-r from-(--nb-color-brand) to-(--nb-color-accent) text-white">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="shrink-0 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 border border-white/20">
+                <Megaphone size={20} />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold truncate">
+                  {t('announcements.page.title', { defaultValue: 'Announcements' })}
+                </h1>
+                <p className="mt-1 text-sm text-white/85">
+                  {t('announcements.page.subtitle', {
+                    defaultValue: 'Post updates for staff, teachers, and students.'
+                  })}
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white/15 border border-white/20 px-3 py-1.5 text-xs font-semibold">
+              <span className="tabular-nums">{totalCount}</span>
+              <span>
+                {t('announcements.page.countLabel', { defaultValue: 'total' })}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {canPost && (
-        <Card className="rounded-xl p-5 border-gray-100 shadow-md">
-          <Input
-            type="text"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder={t('announcements.page.form.titlePlaceholder', { defaultValue: 'Announcement titleâ€¦' })}
-            className="mb-3"
-          />
-          <Textarea
-            value={newBody}
-            onChange={(e) => setNewBody(e.target.value)}
-            placeholder={t('announcements.page.form.bodyPlaceholder', { defaultValue: 'Write your announcement detailsâ€¦' })}
-            className="mb-3 resize-none"
-            rows={4}
-          />
-          <Button
-            onClick={handlePost}
-            variant="brand"
-            disabled={posting}
-            icon={posting ? <LoadingState variant="inline" className="border-t-white" /> : <Send size={18} />}
-          >
-            {posting ? t('announcements.page.status.posting', { defaultValue: 'Postingâ€¦' }) : t('announcements.page.actions.post', { defaultValue: 'Post' })}
-          </Button>
+        <Card className="overflow-hidden rounded-2xl">
+          <div className="px-5 py-4 sm:px-6 bg-(--nb-color-brand) text-white border-b border-(--nb-color-brand)">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-base font-semibold">
+                  {t('announcements.page.composer.title', { defaultValue: 'Create announcement' })}
+                </div>
+                <div className="text-sm text-white/80 mt-1">
+                  {t('announcements.page.composer.subtitle', { defaultValue: 'Write a clear title and short message.' })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 sm:p-6">
+            <div className="space-y-3">
+              <Input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder={t('announcements.page.form.titlePlaceholder', { defaultValue: 'Announcement title...' })}
+              />
+              <Textarea
+                value={newBody}
+                onChange={(e) => setNewBody(e.target.value)}
+                placeholder={t('announcements.page.form.bodyPlaceholder', { defaultValue: 'Write your announcement details...' })}
+                className="resize-none"
+                rows={4}
+              />
+              <div className="flex items-center justify-end">
+                <Button
+                  onClick={handlePost}
+                  variant="brand"
+                  disabled={posting}
+                  icon={posting ? <LoadingState variant="inline" className="border-t-white" /> : <Send size={18} />}
+                >
+                  {posting
+                    ? t('announcements.page.status.posting', { defaultValue: 'Posting...' })
+                    : t('announcements.page.actions.post', { defaultValue: 'Post' })}
+                </Button>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
 
       <div className="space-y-4">
         {isLoading ? (
-          <p className="text-gray-500 italic">{t('announcements.page.loading', { defaultValue: 'Loading announcementsâ€¦' })}</p>
+          <p className="text-(--nb-color-muted) italic">{t('announcements.page.loading', { defaultValue: 'Loading announcements...' })}</p>
         ) : isError || announcements.length === 0 ? (
-          <p className="text-gray-500 italic">{t('announcements.page.empty', { defaultValue: 'No announcements yet.' })}</p>
+          <p className="text-(--nb-color-muted) italic">{t('announcements.page.empty', { defaultValue: 'No announcements yet.' })}</p>
         ) : (
           announcements.map((a) => (
             <Card
               key={a._id}
-              className="border-gray-100 p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+              className="p-5 sm:p-6 rounded-2xl border-s-4 border-s-(--nb-color-accent)"
             >
               {editingId === a._id ? (
-                <div>
+                <div className="space-y-3">
                   <Input
                     type="text"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     placeholder={t('announcements.page.form.editTitlePlaceholder', { defaultValue: 'Edit title' })}
-                    className="mb-2"
                   />
                   <Textarea
                     value={editBody}
                     onChange={(e) => setEditBody(e.target.value)}
                     rows={3}
                   />
-                  <div className="flex gap-3 mt-3">
+                  <div className="flex flex-wrap items-center justify-end gap-3">
                     <Button
                       onClick={() => handleEdit(a._id)}
                       variant="brand"
                       disabled={updatingId === a._id}
                       icon={updatingId === a._id ? <LoadingState variant="inline" className="border-t-white" /> : null}
                     >
-                      {updatingId === a._id ? t('announcements.page.status.updating', { defaultValue: 'Updatingâ€¦' }) : t('common.actions.update', { defaultValue: 'Update' })}
+                      {updatingId === a._id
+                        ? t('announcements.page.status.updating', { defaultValue: 'Updating...' })
+                        : t('common.actions.update', { defaultValue: 'Update' })}
                     </Button>
                     <Button
                       onClick={() => setEditingId(null)}
@@ -249,30 +291,12 @@ const handleDelete = async (id) => {
                 </div>
               ) : (
                 <>
-                  <h1 className="text-xl font-semibold text-gray-900">{a.title}</h1>
-                  <p className="text-gray-700 mt-9">{a.body}</p>
-
-                  <div className="flex justify-between items-start gap-4 mt-10">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm text-gray-500">
-                        {t('announcements.page.meta.postedBy', {
-                          author: a.author,
-                          role: a.role,
-                          date: new Date(a.date).toLocaleString(),
-                          defaultValue: 'Posted by {{author}} ({{role}}) on {{date}}',
-                        })}
+                      <h2 className="text-lg font-semibold text-(--nb-color-text) break-words">{a.title}</h2>
+                      <p className="text-sm text-(--nb-color-fg) mt-2 leading-relaxed whitespace-pre-wrap break-words">
+                        {a.body}
                       </p>
-
-                      {a.updatedBy ? (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {t('announcements.page.meta.updatedBy', {
-                            updatedBy: a.updatedBy,
-                            roleSuffix: a.updatedByRole ? ` (${a.updatedByRole})` : '',
-                            dateSuffix: a.updatedAt ? ` ${t('announcements.page.meta.onPrefix', { defaultValue: 'on' })} ${new Date(a.updatedAt).toLocaleString()}` : '',
-                            defaultValue: 'Updated by {{updatedBy}}{{roleSuffix}}{{dateSuffix}}',
-                          })}
-                        </p>
-                      ) : null}
                     </div>
 
                     {(() => {
@@ -305,7 +329,10 @@ const handleDelete = async (id) => {
                               ? {
                                   key: 'delete',
                                   label: t('common.actions.delete', { defaultValue: 'Delete' }),
-                                  title: deletingId === a._id ? t('announcements.page.status.deleting', { defaultValue: 'Deletingâ€¦' }) : t('common.actions.delete', { defaultValue: 'Delete' }),
+                                  title:
+                                    deletingId === a._id
+                                      ? t('announcements.page.status.deleting', { defaultValue: 'Deleting...' })
+                                      : t('common.actions.delete', { defaultValue: 'Delete' }),
                                   tone: 'delete',
                                   icon: deletingId === a._id ? <LoadingState variant="inline" /> : <Trash2 size={16} />,
                                   disabled: deletingId === a._id || updatingId === a._id,
@@ -316,6 +343,28 @@ const handleDelete = async (id) => {
                         />
                       );
                     })()}
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-(--nb-color-border)">
+                    <p className="text-xs text-(--nb-color-muted)">
+                      {t('announcements.page.meta.postedBy', {
+                        author: a.author,
+                        role: a.role,
+                        date: new Date(a.date).toLocaleString(),
+                        defaultValue: 'Posted by {{author}} ({{role}}) on {{date}}',
+                      })}
+                    </p>
+
+                    {a.updatedBy ? (
+                      <p className="text-xs text-(--nb-color-muted) mt-1">
+                        {t('announcements.page.meta.updatedBy', {
+                          updatedBy: a.updatedBy,
+                          roleSuffix: a.updatedByRole ? ` (${a.updatedByRole})` : '',
+                          dateSuffix: a.updatedAt ? ` ${t('announcements.page.meta.onPrefix', { defaultValue: 'on' })} ${new Date(a.updatedAt).toLocaleString()}` : '',
+                          defaultValue: 'Updated by {{updatedBy}}{{roleSuffix}}{{dateSuffix}}',
+                        })}
+                      </p>
+                    ) : null}
                   </div>
                 </>
               )}

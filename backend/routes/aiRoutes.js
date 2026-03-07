@@ -74,6 +74,7 @@ function buildSystemInstruction({ locale, role }) {
     'If trusted tool results include library resources or extracted library text, use them as primary references.',
     '- If TRUSTED_DB_TOOL_RESULT_JSON.scope is library_resource_get_text and extracted.text is present: you may generate study material: summary, key notes, and Q&A (with answers). Keep it structured and concise.',
     '- If TRUSTED_DB_TOOL_RESULT_JSON.scope is library_resources_list: mention 2-5 relevant titles (and level/subject if present) and then explain the topic clearly. If no relevant resources are found, say so and provide general guidance.',
+    '- If TRUSTED_DB_TOOL_RESULT_JSON.scope is library_resource_get_text but extracted.text is empty AND extracted.message exists: explain the real reason (e.g., scanned PDF / parse error) and suggest re-uploading a text-based PDF or using a link. Do NOT ask the user to paste the book text.',
     'Hard rules:',
     '- Do not invent or claim access to internal data, databases, payments, or student lists.',
     '- If the user asks for restricted/private data, explain you cannot access it and suggest using the appropriate page in the app or contacting an admin.',
@@ -223,6 +224,14 @@ function extractJsonObject(text) {
   } catch {
     return null;
   }
+}
+
+function wantsLibraryStudyMaterial(message) {
+  const s = String(message || '').toLowerCase();
+  if (!s) return false;
+  return /\b(summary|summarize|notes?|study\s*guide|revision|q\s*&\s*a|q\/a|questions?|quiz)\b/i.test(s)
+    || /\b(su'?aalo|jawaabo|soo\s*koob|dulmar|cashar|imtixaan|imtihaan|tijaabo)\b/i.test(s)
+    || /\b(ملخص|تلخيص|ملاحظات|اسئلة|أسئلة|اجوبة|إجوبة)\b/i.test(s);
 }
 
 async function getOrCreateThread({ principalModel, principalId, locale }) {
@@ -479,6 +488,58 @@ router.post('/chat/message', protect, validate({ body: messageBody }), async (re
         const safeMsg = isAiToolError(err) ? String(err.message || 'Tool error') : 'Tool error';
         toolResult = { error: safeMsg };
       }
+    }
+
+    // 2b) Library helper: if user asked for study materials, try to ensure we have extracted text.
+    // This reduces failures when the user provides a filename or mixed "title – filename".
+    try {
+      const allowed = new Set(allowedTools);
+      const wantsStudy = wantsLibraryStudyMaterial(userMessage);
+      const canList = allowed.has('library_resources_list');
+      const canGetText = allowed.has('library_resource_get_text');
+
+      if (wantsStudy && canGetText) {
+        // Case 0: planner chose no tool, but user clearly wants summary/notes/Q&A -> search then extract.
+        if (!toolName && canList) {
+          const q = userMessage.slice(0, 180);
+          const list = await executeAiTool({ toolName: 'library_resources_list', args: { q, limit: 5, page: 1 }, user: req.user });
+          const first = Array.isArray(list?.items) && list.items.length ? list.items[0] : null;
+          if (first?.id) {
+            toolName = 'library_resource_get_text';
+            toolArgs = { resourceId: String(first.id), maxChars: 20000 };
+            toolResult = await executeAiTool({ toolName, args: toolArgs, user: req.user });
+          } else {
+            toolName = 'library_resource_get_text';
+            toolArgs = { q, maxChars: 20000 };
+            toolResult = await executeAiTool({ toolName, args: toolArgs, user: req.user });
+          }
+        }
+
+        // Case A: model listed resources but user wants summary/Q&A -> pick the top result and extract text.
+        if (toolName === 'library_resources_list' && toolResult && Array.isArray(toolResult.items) && toolResult.items.length > 0) {
+          const first = toolResult.items[0];
+          if (first?.id) {
+            toolName = 'library_resource_get_text';
+            toolArgs = { resourceId: String(first.id), maxChars: 20000 };
+            toolResult = await executeAiTool({ toolName, args: toolArgs, user: req.user });
+          }
+        }
+
+        // Case B: model tried to get text but didn't find a match -> search then extract.
+        if (toolName === 'library_resource_get_text' && toolResult && toolResult.found === false && canList) {
+          const q = String(toolArgs?.q || userMessage).slice(0, 180);
+          const list = await executeAiTool({ toolName: 'library_resources_list', args: { q, limit: 5, page: 1 }, user: req.user });
+          const first = Array.isArray(list?.items) && list.items.length ? list.items[0] : null;
+          if (first?.id) {
+            toolArgs = { resourceId: String(first.id), maxChars: 20000 };
+            toolResult = await executeAiTool({ toolName: 'library_resource_get_text', args: toolArgs, user: req.user });
+          } else {
+            // Keep original not-found result.
+          }
+        }
+      }
+    } catch {
+      // Non-blocking: fall back to whatever the original tool produced.
     }
 
     // 3) Final answer (with optional trusted tool result)

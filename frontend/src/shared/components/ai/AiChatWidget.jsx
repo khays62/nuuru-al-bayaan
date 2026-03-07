@@ -115,7 +115,7 @@ export default function AiChatWidget() {
           }
           title={title}
         >
-          <MessageSquare size={18} className="text-(--nb-color-brand)" />
+          <MessageSquare size={18} className="text-(--nb-color-brand-ui)" />
           <span className="text-sm font-semibold">{title}</span>
         </button>
       ) : null}

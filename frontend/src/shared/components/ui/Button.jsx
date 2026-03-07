@@ -2,8 +2,8 @@ import React from 'react';
 import { cn } from '../../utils/cn';
 
 const variants = {
-  primary: 'border-(--nb-color-brand) bg-(--nb-color-bg-card) text-(--nb-color-brand) hover:bg-(--nb-color-brand-50)',
-  outline: 'border-(--nb-color-brand) bg-(--nb-color-bg-card) text-(--nb-color-brand) hover:bg-(--nb-color-brand-50)',
+  primary: 'border-(--nb-color-brand-ui) bg-(--nb-color-bg-card) text-(--nb-color-brand-ui) hover:bg-(--nb-color-brand-50)',
+  outline: 'border-(--nb-color-brand-ui) bg-(--nb-color-bg-card) text-(--nb-color-brand-ui) hover:bg-(--nb-color-brand-50)',
   brand: 'border-(--nb-color-brand) bg-(--nb-color-brand) text-white hover:opacity-95',
   neutral: 'border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) hover:bg-(--nb-color-bg)',
   danger: 'border-red-600 bg-red-600 text-white hover:bg-red-700',

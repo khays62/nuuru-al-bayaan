@@ -16,7 +16,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     `flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${
       isActive
         ? 'bg-(--nb-color-accent) text-white shadow-sm ring-1 ring-(--nb-color-accent-200)'
-        : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand)'
+        : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand-ui)'
     }`;
 
   const { auth, hasPermission } = useAuth();
@@ -259,8 +259,8 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
               className={
                 `w-full flex items-center p-3 my-1 rounded-lg transition-colors duration-200 ${
                   isOpen
-                    ? 'bg-(--nb-color-accent-50) text-(--nb-color-brand) ring-1 ring-(--nb-color-accent-100)'
-                    : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand)'
+                    ? 'bg-(--nb-color-accent-50) text-(--nb-color-brand-ui) ring-1 ring-(--nb-color-accent-100)'
+                    : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand-ui)'
                 } ` + (collapsed ? 'justify-center' : '')
               }
               title={collapsed ? item.label : ''}
@@ -285,7 +285,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
                         `flex items-center p-2 my-1 rounded-md transition-colors duration-200 ${
                           isActive
                             ? 'bg-(--nb-color-accent) text-white shadow-sm ring-1 ring-(--nb-color-accent-200)'
-                            : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand)'
+                            : 'text-(--nb-color-muted) hover:bg-(--nb-color-accent-50) hover:text-(--nb-color-brand-ui)'
                         }`
                       }
                       onClick={isMobile ? onMobileNavClick : undefined}
@@ -348,7 +348,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         <Link to={homePath} className="flex items-center justify-center h-16 border-b border-(--nb-color-border) px-4 bg-(--nb-color-bg-card) hover:bg-(--nb-color-accent-50) transition-colors">
           <img src={logo} alt="Nuuru Al-Bayaan Logo" className={`h-10 transition-all shrink-0 ${isCollapsed ? 'w-10' : 'w-auto'}`} />
           {!isCollapsed ? (
-            <span className="ms-3 font-semibold text-lg whitespace-nowrap overflow-hidden text-(--nb-color-brand)">Nuuru Al-Bayaan</span>
+            <span className="ms-3 font-semibold text-lg whitespace-nowrap overflow-hidden text-(--nb-color-brand-ui)">Nuuru Al-Bayaan</span>
           ) : null}
         </Link>
 
@@ -368,7 +368,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
       }>
         <Link to={homePath} onClick={onMobileNavClick} className="flex items-center justify-center h-16 border-b border-(--nb-color-border) px-4 shrink-0 bg-(--nb-color-bg-card)">
           <img src={logo} alt="Nuuru Al-Bayaan Logo" className="h-10" />
-          <span className="ms-3 font-semibold text-lg text-(--nb-color-brand)">Nuuru Al-Bayaan</span>
+          <span className="ms-3 font-semibold text-lg text-(--nb-color-brand-ui)">Nuuru Al-Bayaan</span>
         </Link>
 
         <div className="flex-1 overflow-y-auto px-3 py-3">

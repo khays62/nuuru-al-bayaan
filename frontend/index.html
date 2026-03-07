@@ -6,6 +6,20 @@
   <link rel="icon" type="image/png" href="/src/assets/Logo.jpeg" />
 
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        try {
+          var key = 'nb-theme';
+          var saved = String(localStorage.getItem(key) || '').toLowerCase();
+          var theme = saved === 'dark' || saved === 'light'
+            ? saved
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {
+          // ignore
+        }
+      })();
+    </script>
     <title>Nuur Al-Bayaan</title>
   </head>
   <body>

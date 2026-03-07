@@ -9,15 +9,18 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './queryClient';
 import { router } from './routes/router';
 import { I18nProvider } from './i18n/I18nProvider';
+import { ThemeProvider } from './shared/theme/ThemeContext';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>
-    <I18nProvider>
-      <AuthProvider>
-        <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
-        <RouterProvider router={router} />
-      </AuthProvider>
-    </I18nProvider>
+    <ThemeProvider>
+      <I18nProvider>
+        <AuthProvider>
+          <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </I18nProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

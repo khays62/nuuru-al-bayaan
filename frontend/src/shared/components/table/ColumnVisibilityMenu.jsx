@@ -35,11 +35,11 @@ export default function ColumnVisibilityMenu({
         title={t('common.chooseColumns', { defaultValue: 'Choose columns' })}
         icon={<Columns size={16} />}
         className={
-          (`bg-(--nb-color-bg-card)! text-(--nb-color-brand)! border-(--nb-color-brand)! hover:bg-(--nb-color-accent-50)! ` + buttonClassName).trim()
+          (`border-(--nb-color-border)! bg-(--nb-color-bg-card)! text-(--nb-color-fg)! hover:bg-(--nb-color-brand-50)! ` + buttonClassName).trim()
         }
       >
         <span>{t('common.columns', { defaultValue: 'Columns' })}</span>
-        <ChevronDown size={16} className="text-(--nb-color-accent)" />
+        <ChevronDown size={16} className="text-(--nb-color-muted)" />
       </ActionButton>
 
       {open ? (

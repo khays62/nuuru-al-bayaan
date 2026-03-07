@@ -27,7 +27,7 @@ const QuickCard = ({ title, description, to, Icon, tone = 'indigo' }) => {
 			className={`${base} ${active}`}
 		>
 			<div className="flex items-start gap-4">
-				<div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand) flex items-center justify-center">
+				<div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) flex items-center justify-center">
 					{Icon ? <Icon size={20} /> : null}
 				</div>
 				<div className="min-w-0">

@@ -3,9 +3,9 @@ import { cn } from '../../utils/cn';
 
 const variants = {
   info: 'border-(--nb-color-accent-200) bg-(--nb-color-accent-50) text-(--nb-color-brand)',
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-  warning: 'border-amber-200 bg-amber-50 text-amber-950',
-  danger: 'border-orange-200 bg-orange-50 text-orange-950',
+  success: 'border-emerald-200 bg-emerald-50 text-(--nb-color-fg)',
+  warning: 'border-amber-200 bg-amber-50 text-(--nb-color-fg)',
+  danger: 'border-orange-200 bg-orange-50 text-(--nb-color-fg)',
   neutral: 'border-(--nb-color-border) bg-(--nb-color-bg) text-(--nb-color-fg)',
 };
 

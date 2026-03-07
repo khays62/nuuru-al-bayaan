@@ -328,7 +328,7 @@ export default function AiChatPanel() {
           </button>
 
           <div className="min-w-0">
-            <div className="text-sm font-semibold truncate text-(--nb-color-brand)">{title}</div>
+            <div className="text-sm font-semibold truncate text-(--nb-color-brand-ui)">{title}</div>
             <div className="text-xs text-(--nb-color-muted)">
               {t('aiChat.subtitle', { defaultValue: 'Chat is saved for your account' })}
             </div>
@@ -391,7 +391,7 @@ export default function AiChatPanel() {
                           onClick={() => selectThread(tid)}
                           className={
                             'flex-1 min-w-0 px-1.5 py-1.5 text-left flex items-start justify-between gap-2 rounded-(--nb-radius-sm) ' +
-                            (isActive ? 'text-(--nb-color-brand)' : 'text-(--nb-color-fg) hover:bg-(--nb-color-accent-50)')
+                            (isActive ? 'text-(--nb-color-brand-ui)' : 'text-(--nb-color-fg) hover:bg-(--nb-color-accent-50)')
                           }
                           title={String(th?.title || '')}
                           disabled={threadUiLocked}

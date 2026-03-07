@@ -35,25 +35,25 @@ const tones = {
     // Map legacy tone names onto our brand/accent palette.
     blue: {
         card: 'from-(--nb-color-bg-card) to-(--nb-color-brand-50) border-(--nb-color-border)',
-        accent: 'text-(--nb-color-brand) bg-(--nb-color-brand-100) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand-ui) bg-(--nb-color-brand-100) border-(--nb-color-border)',
         sparkStroke: 'var(--nb-color-brand)',
         sparkFill: 'var(--nb-color-brand-a12)',
     },
     emerald: {
         card: 'from-(--nb-color-bg-card) to-(--nb-color-accent-50) border-(--nb-color-border)',
-        accent: 'text-(--nb-color-brand) bg-(--nb-color-accent-100) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand-ui) bg-(--nb-color-accent-100) border-(--nb-color-border)',
         sparkStroke: 'var(--nb-color-accent)',
         sparkFill: 'var(--nb-color-accent-a12)',
     },
     amber: {
         card: 'from-(--nb-color-bg-card) to-(--nb-color-accent-50) border-(--nb-color-border)',
-        accent: 'text-(--nb-color-brand) bg-(--nb-color-accent-100) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand-ui) bg-(--nb-color-accent-100) border-(--nb-color-border)',
         sparkStroke: 'var(--nb-color-accent)',
         sparkFill: 'var(--nb-color-accent-a12)',
     },
     violet: {
         card: 'from-(--nb-color-bg-card) to-(--nb-color-brand-50) border-(--nb-color-border)',
-        accent: 'text-(--nb-color-brand) bg-(--nb-color-brand-100) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand-ui) bg-(--nb-color-brand-100) border-(--nb-color-border)',
         sparkStroke: 'var(--nb-color-brand)',
         sparkFill: 'var(--nb-color-brand-a12)',
     },
@@ -66,19 +66,19 @@ const tones = {
     // Aliases for legacy tone names used across the dashboard.
     indigo: {
         card: 'from-(--nb-color-bg-card) to-(--nb-color-brand-50) border-(--nb-color-border)',
-        accent: 'text-(--nb-color-brand) bg-(--nb-color-brand-100) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand-ui) bg-(--nb-color-brand-100) border-(--nb-color-border)',
         sparkStroke: 'var(--nb-color-brand)',
         sparkFill: 'var(--nb-color-brand-a12)',
     },
     sky: {
         card: 'from-(--nb-color-bg-card) to-(--nb-color-accent-50) border-(--nb-color-border)',
-        accent: 'text-(--nb-color-brand) bg-(--nb-color-accent-100) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand-ui) bg-(--nb-color-accent-100) border-(--nb-color-border)',
         sparkStroke: 'var(--nb-color-accent)',
         sparkFill: 'var(--nb-color-accent-a12)',
     },
     rose: {
         card: 'from-(--nb-color-bg-card) to-(--nb-color-accent-50) border-(--nb-color-border)',
-        accent: 'text-(--nb-color-brand) bg-(--nb-color-accent-100) border-(--nb-color-border)',
+        accent: 'text-(--nb-color-brand-ui) bg-(--nb-color-accent-100) border-(--nb-color-border)',
         sparkStroke: 'var(--nb-color-accent)',
         sparkFill: 'var(--nb-color-accent-a12)',
     },
@@ -113,7 +113,7 @@ const QuickCard = ({ title, description, to, Icon, tone = 'indigo', disabled = f
 
     const inner = (
         <div className="flex items-start gap-4">
-            <div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand) flex items-center justify-center">
+            <div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) flex items-center justify-center">
                 {Icon ? <Icon size={20} /> : null}
             </div>
             <div className="min-w-0">
@@ -244,7 +244,7 @@ const ModuleCard = ({ title, subtitle, to, Icon, count, tone = 'blue', disabled 
                     <div className="mt-2 text-3xl font-extrabold tracking-tight text-(--nb-color-text) tabular-nums">{fmtCount(count)}</div>
                     {subtitle ? <div className="mt-1 text-xs text-(--nb-color-muted) truncate">{subtitle}</div> : null}
                 </div>
-                <div className="shrink-0 w-11 h-11 rounded-xl bg-(--nb-color-accent-50) border border-(--nb-color-accent-100) flex items-center justify-center text-(--nb-color-brand)">
+                <div className="shrink-0 w-11 h-11 rounded-xl bg-(--nb-color-accent-50) border border-(--nb-color-accent-100) flex items-center justify-center text-(--nb-color-brand-ui)">
                     {Icon ? <Icon size={22} /> : null}
                 </div>
             </div>
@@ -428,8 +428,8 @@ const SectionTitle = ({ title, subtitle, right }) => {
     return (
         <div className="flex items-end justify-between gap-3">
             <div>
-                <div className="text-lg font-semibold text-gray-900">{title}</div>
-                {subtitle ? <div className="text-sm text-gray-600 mt-0.5">{subtitle}</div> : null}
+                <div className="text-lg font-semibold text-(--nb-color-text)">{title}</div>
+                {subtitle ? <div className="text-sm text-(--nb-color-muted) mt-0.5">{subtitle}</div> : null}
             </div>
             {right ? <div className="shrink-0">{right}</div> : null}
         </div>
@@ -495,9 +495,9 @@ const StatCard = ({ title, value, subtitle, Icon, tone = 'blue', sparkValues = [
         <div className={`relative overflow-hidden rounded-2xl border bg-linear-to-br ${t.card} p-4 shadow-sm animate-nb-fade-in`}>
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <div className="text-xs font-semibold text-gray-600">{title}</div>
-                    <div className="mt-2 text-2xl font-bold text-gray-900 tabular-nums">{value}</div>
-                    {subtitle ? <div className="mt-1 text-xs text-gray-600">{subtitle}</div> : null}
+                    <div className="text-xs font-semibold text-(--nb-color-muted)">{title}</div>
+                    <div className="mt-2 text-2xl font-bold text-(--nb-color-text) tabular-nums">{value}</div>
+                    {subtitle ? <div className="mt-1 text-xs text-(--nb-color-muted)">{subtitle}</div> : null}
                 </div>
                 <div className={`shrink-0 w-11 h-11 rounded-xl border flex items-center justify-center ${t.accent}`}>
                     {Icon ? <Icon size={20} /> : null}

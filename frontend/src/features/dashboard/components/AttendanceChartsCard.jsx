@@ -84,9 +84,9 @@ const SkeletonRow = () => (
 const TinyBadge = ({ tone = 'gray', children }) => {
     const tones = {
         gray: 'bg-(--nb-color-bg) text-(--nb-color-text) border-(--nb-color-border)',
-        emerald: 'bg-(--nb-color-accent-100) text-(--nb-color-brand) border-(--nb-color-border)',
-        indigo: 'bg-(--nb-color-brand-100) text-(--nb-color-brand) border-(--nb-color-border)',
-        amber: 'bg-(--nb-color-accent-100) text-(--nb-color-brand) border-(--nb-color-border)',
+        emerald: 'bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) border-(--nb-color-border)',
+        indigo: 'bg-(--nb-color-brand-100) text-(--nb-color-brand-ui) border-(--nb-color-border)',
+        amber: 'bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) border-(--nb-color-border)',
     };
     return (
         <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${tones[tone] || tones.gray}`}>
@@ -589,56 +589,56 @@ export default function AttendanceChartsCard() {
                                 ]}
                             />
                         </div>
-                        <div className="text-xs text-gray-700">
+                        <div className="text-xs text-(--nb-color-muted)">
                             <span className="font-medium">{t('dashboard.cards.attendance.kpis.presentPct')}</span>: {Number(performanceAgg.presentPct || 0).toFixed(1)}% â€¢{' '}
                             <span className="font-medium">{t('dashboard.cards.attendance.kpis.days')}</span>: {trend.length}
                         </div>
                     </div>
 
                     {(sourceAgg.dayPct != null || sourceAgg.lessonPct != null) ? (
-                        <div className="mt-2 text-[11px] text-gray-600 flex flex-wrap gap-x-3 gap-y-1">
+                        <div className="mt-2 text-[11px] text-(--nb-color-muted) flex flex-wrap gap-x-3 gap-y-1">
                             {sourceAgg.dayPct != null ? (
                                 <span><span className="font-semibold">{t('dashboard.cards.attendance.labels.allDay')}</span>: {sourceAgg.dayPct.toFixed(1)}%</span>
                             ) : null}
                             {sourceAgg.lessonPct != null ? (
                                 <span><span className="font-semibold">{t('dashboard.cards.attendance.labels.perPeriod')}</span>: {sourceAgg.lessonPct.toFixed(1)}%</span>
                             ) : null}
-                            <span className="text-gray-500">{t('dashboard.cards.attendance.notes.oneRowPerDate')}</span>
+                            <span className="text-(--nb-color-muted)">{t('dashboard.cards.attendance.notes.oneRowPerDate')}</span>
                         </div>
                     ) : null}
 
                     {rangeTab === 'custom' ? (
                         <div className="mt-3 flex flex-wrap items-end gap-3">
                             <div className="flex items-center gap-2">
-                                <label className="text-xs font-medium text-gray-600">{t('common.from')}</label>
+                                <label className="text-xs font-medium text-(--nb-color-muted)">{t('common.from')}</label>
                                 <input
                                     type="date"
-                                    className="border rounded px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                                    className="border border-(--nb-color-border) rounded px-2 py-2 text-sm bg-(--nb-color-bg-card) text-(--nb-color-text) focus:outline-none focus:ring-2 focus:ring-(--nb-color-focus)"
                                     value={from}
                                     onChange={(e) => setFrom(e.target.value)}
                                 />
                             </div>
                             <div className="flex items-center gap-2">
-                                <label className="text-xs font-medium text-gray-600">{t('common.to')}</label>
+                                <label className="text-xs font-medium text-(--nb-color-muted)">{t('common.to')}</label>
                                 <input
                                     type="date"
-                                    className="border rounded px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+                                    className="border border-(--nb-color-border) rounded px-2 py-2 text-sm bg-(--nb-color-bg-card) text-(--nb-color-text) focus:outline-none focus:ring-2 focus:ring-(--nb-color-focus)"
                                     value={to}
                                     onChange={(e) => setTo(e.target.value)}
                                 />
                             </div>
-                            <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.notes.pickAnyRange')}</div>
+                            <div className="text-xs text-(--nb-color-muted)">{t('dashboard.cards.attendance.notes.pickAnyRange')}</div>
                         </div>
                     ) : (
-                        <div className="mt-2 text-xs text-gray-600">{t('dashboard.cards.attendance.notes.showsRecords')}</div>
+                        <div className="mt-2 text-xs text-(--nb-color-muted)">{t('dashboard.cards.attendance.notes.showsRecords')}</div>
                     )}
                 </div>
 
                 <div ref={exportCaptureRef} className="flex flex-col gap-4">
                     {exporting ? (
-                        <div className="rounded-xl border border-gray-200 bg-white p-3">
-                            <div className="text-sm font-semibold text-gray-900">{t('dashboard.cards.attendance.export.title')}</div>
-                            <div className="mt-1 text-xs text-gray-600">{exportFilterSummary}</div>
+                        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-3">
+                            <div className="text-sm font-semibold text-(--nb-color-text)">{t('dashboard.cards.attendance.export.title')}</div>
+                            <div className="mt-1 text-xs text-(--nb-color-muted)">{exportFilterSummary}</div>
                         </div>
                     ) : null}
 
@@ -652,33 +652,33 @@ export default function AttendanceChartsCard() {
                         ))}
                     </div>
                 ) : trend.length === 0 ? (
-                    <div className="text-sm text-gray-600">{t('teachers.dashboard.attendance.noData')}</div>
+                    <div className="text-sm text-(--nb-color-muted)">{t('teachers.dashboard.attendance.noData')}</div>
                 ) : view === 'performance' ? (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.performance.title')}</div>
-                            <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.performance.subtitle')}</div>
+                            <div className="text-sm font-medium text-(--nb-color-text)">{t('teachers.dashboard.attendance.performance.title')}</div>
+                            <div className="text-xs text-(--nb-color-muted)">{t('dashboard.cards.attendance.performance.subtitle')}</div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-accent-50) p-3">
-                                <div className="text-xs font-semibold text-(--nb-color-brand)">{t('attendance.status.present')}</div>
-                                <div className="text-xl font-bold text-(--nb-color-brand) tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
-                                <div className="text-[11px] text-(--nb-color-brand)/70">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
+                                <div className="text-xs font-semibold text-(--nb-color-brand-ui)">{t('attendance.status.present')}</div>
+                                <div className="text-xl font-bold text-(--nb-color-brand-ui) tabular-nums">{Number(performanceAgg.presentPct || 0).toFixed(1)}%</div>
+                                <div className="text-[11px] text-(--nb-color-brand-ui)/70">{Number(performanceAgg.totals.present || 0)} / {Number(performanceAgg.total || 0)}</div>
                             </div>
-                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                                <div className="text-xs font-semibold text-gray-900">{t('teachers.dashboard.attendance.performance.markedDays')}</div>
-                                <div className="text-xl font-bold text-gray-900 tabular-nums">{trend.length}</div>
-                                <div className="text-[11px] text-gray-600">{t('teachers.dashboard.attendance.performance.markedDaysNote')}</div>
+                            <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-3">
+                                <div className="text-xs font-semibold text-(--nb-color-text)">{t('teachers.dashboard.attendance.performance.markedDays')}</div>
+                                <div className="text-xl font-bold text-(--nb-color-text) tabular-nums">{trend.length}</div>
+                                <div className="text-[11px] text-(--nb-color-muted)">{t('teachers.dashboard.attendance.performance.markedDaysNote')}</div>
                             </div>
-                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                                <div className="text-xs font-semibold text-gray-900">{t('dashboard.cards.attendance.performance.totalRecordsTitle')}</div>
-                                <div className="text-xl font-bold text-gray-900 tabular-nums">{Number(performanceAgg.total || 0)}</div>
-                                <div className="text-[11px] text-gray-600">{t('dashboard.cards.attendance.performance.totalRecordsNote')}</div>
+                            <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-3">
+                                <div className="text-xs font-semibold text-(--nb-color-text)">{t('dashboard.cards.attendance.performance.totalRecordsTitle')}</div>
+                                <div className="text-xl font-bold text-(--nb-color-text) tabular-nums">{Number(performanceAgg.total || 0)}</div>
+                                <div className="text-[11px] text-(--nb-color-muted)">{t('dashboard.cards.attendance.performance.totalRecordsNote')}</div>
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
                             <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                                 <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.performance.statusPercentages')}</div>
                                 <div className="text-xs text-white/80">{t('teachers.dashboard.attendance.performance.totalRecords', { count: Number(performanceAgg.total || 0) })}</div>
@@ -696,8 +696,8 @@ export default function AttendanceChartsCard() {
                 ) : view === 'periods' ? (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.byPeriod.title')}</div>
-                            <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.byPeriod.subtitle')}</div>
+                            <div className="text-sm font-medium text-(--nb-color-text)">{t('teachers.dashboard.attendance.byPeriod.title')}</div>
+                            <div className="text-xs text-(--nb-color-muted)">{t('dashboard.cards.attendance.byPeriod.subtitle')}</div>
                         </div>
 
                         <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
@@ -718,11 +718,11 @@ export default function AttendanceChartsCard() {
                                 .filter((r) => r.periodCode);
 
                             if (rows.length === 0) {
-                                return <div className="text-sm text-gray-600">{t('dashboard.cards.attendance.byPeriod.noLessonData')}</div>;
+                                return <div className="text-sm text-(--nb-color-muted)">{t('dashboard.cards.attendance.byPeriod.noLessonData')}</div>;
                             }
 
                             return (
-                                <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                                <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
                                     <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                                         <div className="text-sm font-semibold">{t('dashboard.cards.attendance.byPeriod.periodsTitle')}</div>
                                         <div className="text-xs text-white/80">{t('dashboard.cards.attendance.byPeriod.excludesAllDay')}</div>
@@ -739,13 +739,13 @@ export default function AttendanceChartsCard() {
                 ) : (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <div className="text-sm font-medium text-gray-800">{t('teachers.dashboard.attendance.statusTrend.title')}</div>
-                            <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.statusTrend.subtitle')}</div>
+                            <div className="text-sm font-medium text-(--nb-color-text)">{t('teachers.dashboard.attendance.statusTrend.title')}</div>
+                            <div className="text-xs text-(--nb-color-muted)">{t('dashboard.cards.attendance.statusTrend.subtitle')}</div>
                         </div>
 
                         <MiniLegend items={STATUSES.map((s) => ({ label: s.label, dot: s.dot }))} />
 
-                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                        <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) overflow-hidden">
                             <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                                 <div className="text-sm font-semibold">{t('teachers.dashboard.attendance.statusTrend.dailyTrend')}</div>
                                 <div className="text-xs text-white/80">{t('dashboard.cards.attendance.statusTrend.hoverNote')}</div>
@@ -775,9 +775,9 @@ export default function AttendanceChartsCard() {
                     </div>
                 )}
 
-                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-                        <div className="text-xs text-gray-500">{t('dashboard.cards.attendance.footer.source')}</div>
-                        <div className="text-xs text-gray-600">{t('dashboard.cards.attendance.footer.kpisLine')}</div>
+                    <div className="pt-2 border-t border-(--nb-color-border) flex items-center justify-between gap-3 flex-wrap">
+                        <div className="text-xs text-(--nb-color-muted)">{t('dashboard.cards.attendance.footer.source')}</div>
+                        <div className="text-xs text-(--nb-color-muted)">{t('dashboard.cards.attendance.footer.kpisLine')}</div>
                     </div>
                 </div>
             </div>

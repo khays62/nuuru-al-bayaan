@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../../auth/AuthContext';
 import Button from '../ui/Button';
-import { Menu, X, LogOut, ChevronLeft, ChevronRight, Search, User, Bell, ShieldAlert, Languages, Sparkles } from 'lucide-react';
+import { Menu, X, LogOut, ChevronLeft, ChevronRight, Search, User, Bell, ShieldAlert, Languages, Sparkles, Sun, Moon } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -21,11 +21,13 @@ import { useAnnouncementsStream } from '../../../features/announcements/hooks/us
 import { useRealtimeStream } from '../../realtime/useRealtimeStream';
 import { useI18n } from '../../../i18n/useI18n';
 import { useAiChat } from '../ai/AiChatContext.jsx';
+import { useTheme } from '../../theme/ThemeContext.jsx';
 
 // This is the updated Navbar component with a new design.
 const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
     const { auth, logout, hasPermission } = useAuth();
     const { lang, setLang, isRTL, t } = useI18n();
+    const theme = useTheme();
     const ai = useAiChat();
     const user = auth?.user;
     const queryClient = useQueryClient();
@@ -302,7 +304,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         onClick={() => { setLang('en'); setOpenLang(false); }}
                         className={
                             'w-full px-3 py-2 text-sm hover:bg-(--nb-color-brand-50) flex items-center justify-between ' +
-                            (lang === 'en' ? 'text-(--nb-color-brand) font-medium' : 'text-(--nb-color-fg)')
+                                    (lang === 'en' ? 'text-(--nb-color-brand-ui) font-medium' : 'text-(--nb-color-fg)')
                         }
                     >
                         <span>{t('common.english', { defaultValue: 'English' })}</span>
@@ -313,7 +315,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         onClick={() => { setLang('so'); setOpenLang(false); }}
                         className={
                             'w-full px-3 py-2 text-sm hover:bg-(--nb-color-brand-50) flex items-center justify-between ' +
-                            (lang === 'so' ? 'text-(--nb-color-brand) font-medium' : 'text-(--nb-color-fg)')
+                                    (lang === 'so' ? 'text-(--nb-color-brand-ui) font-medium' : 'text-(--nb-color-fg)')
                         }
                     >
                         <span>{t('common.somali', { defaultValue: 'Somali' })}</span>
@@ -324,7 +326,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         onClick={() => { setLang('ar'); setOpenLang(false); }}
                         className={
                             'w-full px-3 py-2 text-sm hover:bg-(--nb-color-brand-50) flex items-center justify-between ' +
-                            (lang === 'ar' ? 'text-(--nb-color-brand) font-medium' : 'text-(--nb-color-fg)')
+                                    (lang === 'ar' ? 'text-(--nb-color-brand-ui) font-medium' : 'text-(--nb-color-fg)')
                         }
                     >
                         <span>{t('common.arabic', { defaultValue: 'Arabic' })}</span>
@@ -335,6 +337,24 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         </div>
     );
 
+    const themeEl = (
+        <button
+            type="button"
+            onClick={() => theme?.toggleTheme?.()}
+            className="p-2 rounded-md border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50) text-(--nb-color-fg)"
+            title={theme?.theme === 'dark'
+                ? t('common.theme.light', { defaultValue: 'Switch to Light' })
+                : t('common.theme.dark', { defaultValue: 'Switch to Dark' })
+            }
+            aria-label={theme?.theme === 'dark'
+                ? t('common.theme.light', { defaultValue: 'Switch to Light' })
+                : t('common.theme.dark', { defaultValue: 'Switch to Dark' })
+            }
+        >
+            {theme?.theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+        </button>
+    );
+
     const aiEl = (
         <button
             type="button"
@@ -343,7 +363,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             title={t('aiChat.title', { defaultValue: 'AI Assistant' })}
             aria-label={t('aiChat.title', { defaultValue: 'AI Assistant' })}
         >
-            <Sparkles size={18} className="text-(--nb-color-brand)" />
+            <Sparkles size={18} className="text-(--nb-color-brand-ui)" />
         </button>
     );
 
@@ -602,11 +622,13 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                     {userEl}
                     {bellEl}
                     {aiEl}
+                    {themeEl}
                     {languageEl}
                 </>
             ) : (
                 <>
                     {languageEl}
+                    {themeEl}
                     {aiEl}
                     {bellEl}
                     {userEl}
