@@ -4,6 +4,7 @@ import i18n, {
   initialLanguage,
   applyDocumentDirection,
   isRtlLanguage,
+  LANGUAGE_STORAGE_KEY,
   setStoredLanguage,
 } from './i18n';
 
@@ -11,10 +12,34 @@ import { I18nContext } from './I18nContext';
 import { fixMojibake } from '../utils/fixMojibake';
 
 export function I18nProvider({ children }) {
-  // Ensure i18n is initialized exactly once.
   React.useMemo(() => initI18n(), []);
 
   const [lang, setLangState] = React.useState(() => String(i18n.language || initialLanguage));
+
+  React.useEffect(() => {
+    const handleLanguageChanged = (nextLang) => {
+      const resolved = String(nextLang || i18n.language || initialLanguage);
+      setLangState(resolved);
+      applyDocumentDirection(resolved);
+    };
+
+    const handleStorage = (event) => {
+      if (event.key !== LANGUAGE_STORAGE_KEY) return;
+      const nextLang = String(event.newValue || initialLanguage);
+      if (nextLang && nextLang !== i18n.language) {
+        i18n.changeLanguage(nextLang).catch(() => {});
+      }
+    };
+
+    i18n.on('languageChanged', handleLanguageChanged);
+    window.addEventListener('storage', handleStorage);
+    handleLanguageChanged(i18n.language || initialLanguage);
+
+    return () => {
+      i18n.off('languageChanged', handleLanguageChanged);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
 
   const setLang = React.useCallback(async (next) => {
     const l = String(next || 'en');
@@ -30,7 +55,6 @@ export function I18nProvider({ children }) {
   }, []);
 
   React.useEffect(() => {
-    // Keep document direction in sync even if i18n updates elsewhere.
     applyDocumentDirection(lang);
   }, [lang]);
 

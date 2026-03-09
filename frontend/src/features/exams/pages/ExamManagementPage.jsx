@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import { RotateCcw, Check, Loader2, AlertCircle, Lock, FileDown, Upload } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
-import { getExamGrid, saveExamScore, getExamTemplateVersions } from '../api/exams';
+import { getExamGrid, saveExamScore, saveExamScoresBulk, getExamTemplateVersions } from '../api/exams';
 import { getGradeSectionById, listGradeSections } from '../../grades/api/gradeSections';
 import { getGrades, getShifts } from '../../lookups/api/lookups';
 import { getCohortTimeline } from '../../cohorts/api/cohorts';
@@ -329,7 +329,7 @@ export default function ExamManagementPage() {
         return res;
     }, [localInputs, maxScoreMap]);
 
-    const saveCell = async (studentId, examId, value, weight) => {
+    const saveCell = async (studentId, examId, value, weight, batchId = '') => {
         if (!canInput) {
             if (!noInputToastShownRef.current) {
                 noInputToastShownRef.current = true;
@@ -354,7 +354,7 @@ export default function ExamManagementPage() {
         setSavingCells(prev => new Set(prev).add(key));
         setErrorCells(prev => { const next = new Set(prev); next.delete(key); return next; });
         setGrid(g => ({ ...g, scores: updateScoreArray(g.scores, { student: studentId, exam: examId, subject: subjectId, scoreObtained: n }) }));
-        const { ok, data } = await saveExamScore({ studentId, examId, subjectId, scoreObtained: n });
+        const { ok, data } = await saveExamScore({ studentId, examId, subjectId, scoreObtained: n, batchId });
         setSavingCells(prev => { const next = new Set(prev); next.delete(key); return next; });
         if (!ok) {
             setErrorCells(prev => new Set(prev).add(key));
@@ -433,20 +433,46 @@ export default function ExamManagementPage() {
         }
         setSavingAll(true);
         try {
-            const tasks = changedKeys.map((k) => {
+            const payloadItems = changedKeys.map((k) => {
                 const parts = k.split('-');
                 const studentId = parts[0];
                 const examId = parts[1];
                 const weight = maxScoreMap[examId] ?? 100;
                 const value = localInputs[k];
-                return saveCell(studentId, examId, value, weight);
+                return {
+                    studentId,
+                    examId,
+                    scoreObtained: clamp(Number(value), 0, weight),
+                };
             });
-            await Promise.all(tasks);
+            const { ok, data } = await saveExamScoresBulk({
+                subjectId,
+                items: payloadItems,
+                actionType: changedExistingCount > 0 ? 'edit' : 'add',
+            });
+            if (!ok) {
+                const msg = data?.code ? t(data.code, data.params || {}) : (data?.message || t('exams.management.errors.saveFailed'));
+                throw new Error(msg);
+            }
+
+            setGrid((prev) => ({
+                ...prev,
+                scores: payloadItems.reduce((acc, item) => updateScoreArray(acc, {
+                    student: item.studentId,
+                    exam: item.examId,
+                    subject: subjectId,
+                    scoreObtained: item.scoreObtained,
+                }), Array.isArray(prev?.scores) ? prev.scores : []),
+            }));
+            setLocalInputs((prev) => ({ ...prev }));
+            setErrorCells(new Set());
             toast.success(
                 changedExistingCount > 0
                     ? t('exams.management.toasts.updatedScoresSuccessfully')
                     : t('exams.management.toasts.savedScoresSuccessfully')
             );
+        } catch (error) {
+            toast.error(error?.message || t('exams.management.errors.saveFailed'));
         } finally {
             setSavingAll(false);
         }

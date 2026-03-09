@@ -7,6 +7,8 @@ import Enrollment from '../models/Enrollment.js';
 import Student from '../models/Student.js';
 import Subject from '../models/Subject.js';
 import TeacherAssignment from '../models/TeacherAssignment.js';
+import { upsertAggregatedAuditLog, writeAuditLog } from '../services/auditService.js';
+import { createActivityNotification, upsertAggregatedActivityNotification } from '../services/activityNotificationService.js';
 import { publishRealtime } from '../utils/realtimeBus.js';
 
 const isId = (id) => mongoose.isValidObjectId(id);
@@ -17,6 +19,56 @@ const parseTemplateVersion = (v) => {
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.floor(n);
 };
+
+const actorLabelFromReq = (req) => {
+  const fullName = String(req.user?.fullName || '').trim();
+  const username = String(req.user?.username || '').trim();
+  const role = String(req.user?.role || '').trim().toLowerCase();
+  return fullName || username || role || 'unknown';
+};
+
+const actorRoleFromReq = (req) => String(req.user?.role || '').trim().toLowerCase();
+
+const pickFirstLabel = (...values) => values.map((value) => String(value || '').trim()).find(Boolean) || '';
+
+const buildExamAggregateKey = ({ actorUserId, action, gradeSectionId, subjectId, pageLabel = 'exam-scores' }) => {
+  return [
+    'exam-scores',
+    String(actorUserId || ''),
+    String(action || ''),
+    String(gradeSectionId || ''),
+    String(subjectId || ''),
+    String(pageLabel || ''),
+  ].join('|');
+};
+
+async function getGradeSectionLabel(gradeSectionId) {
+  if (!isId(gradeSectionId)) return '';
+  const gradeSection = await GradeSection.findById(gradeSectionId)
+    .populate('grade', 'gradeName name title')
+    .populate('shift', 'shiftName name title')
+    .lean();
+  if (!gradeSection) return '';
+  const gradeLabel = pickFirstLabel(
+    gradeSection?.grade?.gradeName,
+    gradeSection?.grade?.name,
+    gradeSection?.grade?.title
+  );
+  const shiftLabel = pickFirstLabel(
+    gradeSection?.shift?.shiftName,
+    gradeSection?.shift?.name,
+    gradeSection?.shift?.title
+  );
+  const sectionLabel = pickFirstLabel(gradeSection?.section);
+  return [gradeLabel, sectionLabel ? `Section ${sectionLabel}` : '', shiftLabel].filter(Boolean).join(' - ');
+}
+
+async function getSubjectLabel(subjectId) {
+  if (!isId(subjectId)) return '';
+  const subject = await Subject.findById(subjectId).select('subjectName subjectCode').lean();
+  if (!subject) return '';
+  return pickFirstLabel(subject.subjectName, subject.subjectCode);
+}
 
 async function getActiveTemplateVersion() {
   const active = await ExamType.findOne({ isActive: true }).sort({ templateVersion: -1 }).select('templateVersion').lean();
@@ -871,6 +923,8 @@ export const importExamScores = async (req, res) => {
 
     const ops = [];
     let upserts = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
     let deletes = 0;
     let skippedExisting = 0;
     let skippedBlank = 0;
@@ -902,6 +956,7 @@ export const importExamScores = async (req, res) => {
               upsert: true,
             }
           });
+          createdCount++;
           upserts++;
           continue;
         }
@@ -918,6 +973,8 @@ export const importExamScores = async (req, res) => {
               upsert: true,
             }
           });
+          if (hasExisting) updatedCount++;
+          else createdCount++;
           upserts++;
           continue;
         }
@@ -939,6 +996,8 @@ export const importExamScores = async (req, res) => {
             upsert: true,
           }
         });
+        if (hasExisting) updatedCount++;
+        else createdCount++;
         upserts++;
       }
     }
@@ -966,6 +1025,80 @@ export const importExamScores = async (req, res) => {
     if (ops.length) {
       await ExamScore.bulkWrite(ops, { ordered: false });
     }
+
+    req.skipAuditTrail = true;
+
+    const actorName = actorLabelFromReq(req);
+    const actorRole = actorRoleFromReq(req);
+    const [classLabel, subjectLabel] = await Promise.all([
+      getGradeSectionLabel(gradeSectionId),
+      getSubjectLabel(subjectId),
+    ]);
+
+    if (createdCount > 0) {
+      const description = `Exam scores add: ${createdCount} rows | subject=${subjectLabel || subjectId} | class=${classLabel || gradeSectionId} | mode=${effectiveMode}`;
+      await upsertAggregatedAuditLog({
+        userId: req.user?._id,
+        action: 'add',
+        description,
+        req,
+        aggregateKey: buildExamAggregateKey({ actorUserId: req.user?._id, action: 'add', gradeSectionId, subjectId }),
+        metadata: {
+          rowCount: createdCount,
+          studentCount: inputRows.length,
+          studentIds: Array.from(importedStudentIds),
+          classLabel,
+          subjectLabel,
+          pageLabel: 'Exam scores',
+        },
+      });
+      await upsertAggregatedActivityNotification({
+        category: 'exams',
+        action: 'add',
+        title: `${actorName}`,
+        message: `Exam score add${subjectLabel ? ` - ${subjectLabel}` : ''}${classLabel ? ` - ${classLabel}` : ''}`,
+        actorUserId: req.user?._id || null,
+        actorName,
+        actorRole,
+        classLabel,
+        subjectLabel,
+        metadata: { createdCount, rowCount: createdCount, studentCount: inputRows.length, studentIds: Array.from(importedStudentIds), mode: effectiveMode, gradeSectionId, subjectId, academicYearId, pageLabel: 'Exam scores' },
+        aggregateKey: buildExamAggregateKey({ actorUserId: req.user?._id, action: 'add', gradeSectionId, subjectId }),
+      });
+    }
+
+    if (updatedCount > 0 || deletes > 0) {
+      const description = `Exam scores edit: ${updatedCount} updated${deletes > 0 ? `, ${deletes} removed` : ''} | subject=${subjectLabel || subjectId} | class=${classLabel || gradeSectionId} | mode=${effectiveMode}`;
+      await upsertAggregatedAuditLog({
+        userId: req.user?._id,
+        action: 'edit',
+        description,
+        req,
+        aggregateKey: buildExamAggregateKey({ actorUserId: req.user?._id, action: 'edit', gradeSectionId, subjectId }),
+        metadata: {
+          rowCount: updatedCount + deletes,
+          studentCount: inputRows.length,
+          studentIds: Array.from(importedStudentIds),
+          classLabel,
+          subjectLabel,
+          pageLabel: 'Exam scores',
+        },
+      });
+      await upsertAggregatedActivityNotification({
+        category: 'exams',
+        action: 'edit',
+        title: `${actorName}`,
+        message: `Exam score edit${subjectLabel ? ` - ${subjectLabel}` : ''}${classLabel ? ` - ${classLabel}` : ''}`,
+        actorUserId: req.user?._id || null,
+        actorName,
+        actorRole,
+        classLabel,
+        subjectLabel,
+        metadata: { updatedCount, deletes, rowCount: updatedCount + deletes, studentCount: inputRows.length, studentIds: Array.from(importedStudentIds), mode: effectiveMode, gradeSectionId, subjectId, academicYearId, pageLabel: 'Exam scores' },
+        aggregateKey: buildExamAggregateKey({ actorUserId: req.user?._id, action: 'edit', gradeSectionId, subjectId }),
+      });
+    }
+
     publishRealtime({ type: 'results:changed', ts: Date.now() });
     publishRealtime({ type: 'transcript:changed', ts: Date.now() });
 
@@ -983,9 +1116,209 @@ export const importExamScores = async (req, res) => {
   }
 };
 
+export const saveScoresBulk = async (req, res) => {
+  try {
+    const { subjectId, items, actionType } = req.body || {};
+    const rows = Array.isArray(items) ? items : [];
+
+    if (!isId(subjectId) || !rows.length) {
+      return res.status(400).json({
+        message: 'subjectId and items are required',
+        code: 'exams.management.serverErrors.missingIds',
+      });
+    }
+
+    const hasInvalidItem = rows.some((item) => {
+      const studentId = String(item?.studentId || '');
+      const examId = String(item?.examId || '');
+      const scoreNum = Number(item?.scoreObtained);
+      return !isId(studentId) || !isId(examId) || !Number.isFinite(scoreNum) || scoreNum < 0;
+    });
+
+    const examIds = Array.from(new Set(rows.map((item) => String(item?.examId || '')).filter(isId)));
+    const studentIds = Array.from(new Set(rows.map((item) => String(item?.studentId || '')).filter(isId)));
+    if (hasInvalidItem || examIds.length === 0 || studentIds.length === 0) {
+      return res.status(400).json({
+        message: 'Invalid score items',
+        code: 'exams.management.serverErrors.invalidScore',
+      });
+    }
+
+    const exams = await Exam.find({ _id: { $in: examIds } }).select('_id examType gradeSection academicYear templateVersion').lean();
+    if (exams.length !== examIds.length) {
+      return res.status(404).json({
+        message: 'One or more exams were not found',
+        code: 'exams.management.serverErrors.examNotFound',
+      });
+    }
+
+    const examById = new Map(exams.map((exam) => [String(exam._id), exam]));
+
+    if (req.user?.role === 'teacher') {
+      const teacherId = req.user?.teacherRef;
+      if (!teacherId || !isId(teacherId)) {
+        return res.status(403).json({
+          message: 'Teacher account is missing teacherRef',
+          code: 'exams.management.serverErrors.teacherMissingRef',
+        });
+      }
+
+      const sectionIds = Array.from(new Set(exams.map((exam) => String(exam.gradeSection))));
+      const assignmentCount = await TeacherAssignment.countDocuments({
+        teacher: teacherId,
+        gradeSection: { $in: sectionIds },
+        subject: subjectId,
+      });
+
+      if (assignmentCount !== sectionIds.length) {
+        return res.status(403).json({
+          message: 'Not assigned to this class/subject',
+          code: 'exams.management.serverErrors.notAssigned',
+        });
+      }
+    }
+
+    const examTypeIds = Array.from(new Set(exams.map((exam) => String(exam.examType)).filter(isId)));
+    const examTypes = await ExamType.find({ _id: { $in: examTypeIds } }).select('_id maxScore').lean();
+    const maxScoreByExamTypeId = new Map(examTypes.map((examType) => [String(examType._id), Number(examType.maxScore)]));
+
+    const enrollmentQuery = {
+      student: { $in: studentIds },
+      academicYear: { $in: Array.from(new Set(exams.map((exam) => String(exam.academicYear)))) },
+      gradeSection: { $in: Array.from(new Set(exams.map((exam) => String(exam.gradeSection)))) },
+    };
+    const enrollments = await Enrollment.find(enrollmentQuery).select('student academicYear gradeSection').lean();
+    const enrollmentSet = new Set(enrollments.map((row) => `${String(row.student)}|${String(row.academicYear)}|${String(row.gradeSection)}`));
+
+    const existingScores = await ExamScore.find({
+      subject: subjectId,
+      exam: { $in: examIds },
+      student: { $in: studentIds },
+    }).select('student exam scoreObtained').lean();
+    const existingScoreMap = new Map(existingScores.map((row) => [`${String(row.student)}|${String(row.exam)}`, Number(row.scoreObtained)]));
+
+    const studentDocs = await Student.find({ _id: { $in: studentIds } }).select('_id fullName studentId').lean();
+    const studentById = new Map(studentDocs.map((row) => [String(row._id), row]));
+
+    const ops = [];
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    for (const item of rows) {
+      const studentId = String(item?.studentId || '');
+      const examId = String(item?.examId || '');
+      const exam = examById.get(examId);
+      const scoreNum = Number(item?.scoreObtained);
+      if (!exam || !Number.isFinite(scoreNum) || scoreNum < 0) {
+        return res.status(400).json({
+          message: 'Invalid score item',
+          code: 'exams.management.serverErrors.invalidScore',
+        });
+      }
+
+      const maxScore = Number(maxScoreByExamTypeId.get(String(exam.examType)));
+      const limit = Number.isFinite(maxScore) && maxScore > 0 ? maxScore : 100;
+      if (scoreNum > limit) {
+        return res.status(400).json({
+          message: `scoreObtained must be between 0 and ${limit}`,
+          code: 'exams.management.serverErrors.scoreTooHigh',
+          params: { max: limit },
+        });
+      }
+
+      const enrollmentKey = `${studentId}|${String(exam.academicYear)}|${String(exam.gradeSection)}`;
+      if (!enrollmentSet.has(enrollmentKey)) {
+        return res.status(409).json({
+          message: 'Student has no enrollment for this section/year',
+          code: 'exams.management.serverErrors.noEnrollment',
+        });
+      }
+
+      const scoreKey = `${studentId}|${examId}`;
+      if (existingScoreMap.has(scoreKey)) updatedCount += 1;
+      else createdCount += 1;
+
+      ops.push({
+        updateOne: {
+          filter: { student: studentId, exam: examId, subject: subjectId },
+          update: { $set: { scoreObtained: scoreNum } },
+          upsert: true,
+        },
+      });
+    }
+
+    if (ops.length) {
+      await ExamScore.bulkWrite(ops, { ordered: false });
+    }
+
+    req.skipAuditTrail = true;
+
+    const actorName = actorLabelFromReq(req);
+    const actorRole = actorRoleFromReq(req);
+    const firstExam = exams[0] || null;
+    const [classLabel, subjectLabel] = await Promise.all([
+      firstExam ? getGradeSectionLabel(firstExam.gradeSection) : Promise.resolve(''),
+      getSubjectLabel(subjectId),
+    ]);
+
+    const resolvedAction = String(actionType || '').trim().toLowerCase() === 'edit'
+      ? 'edit'
+      : (String(actionType || '').trim().toLowerCase() === 'add' ? 'add' : (updatedCount > 0 ? 'edit' : 'add'));
+    const affectedStudentCount = Array.from(new Set(rows.map((item) => String(item?.studentId || '')).filter(Boolean))).length;
+    const summaryDescription = `Exam scores ${resolvedAction}: ${affectedStudentCount} students | subject=${subjectLabel || subjectId} | class=${classLabel || firstExam?.gradeSection || ''} | rows=${rows.length}`;
+
+    await writeAuditLog({
+      userId: req.user?._id,
+      action: resolvedAction,
+      description: summaryDescription,
+      req,
+    });
+
+    await createActivityNotification({
+      category: 'exams',
+      action: resolvedAction,
+      title: `${actorName}`,
+      message: `Exam score ${resolvedAction}${subjectLabel ? ` - ${subjectLabel}` : ''}${classLabel ? ` - ${classLabel}` : ''}`,
+      actorUserId: req.user?._id || null,
+      actorName,
+      actorRole,
+      classLabel,
+      subjectLabel,
+      metadata: {
+        rowCount: rows.length,
+        studentCount: affectedStudentCount,
+        studentIds,
+        pageLabel: 'Exam scores',
+        createdCount,
+        updatedCount,
+      },
+    });
+
+    publishRealtime({ type: 'results:changed', ts: Date.now() });
+    publishRealtime({ type: 'transcript:changed', ts: Date.now() });
+
+    return res.json({
+      message: 'Saved',
+      summary: {
+        action: resolvedAction,
+        rowCount: rows.length,
+        studentCount: affectedStudentCount,
+        createdCount,
+        updatedCount,
+      },
+    });
+  } catch (err) {
+    console.error('saveScoresBulk error', err);
+    return res.status(500).json({
+      message: 'Server Error',
+      code: 'exams.management.serverErrors.serverError',
+    });
+  }
+};
+
 export const upsertScore = async (req, res) => {
   try {
-    const { studentId, examId, subjectId, scoreObtained } = req.body || {};
+    const { studentId, examId, subjectId, scoreObtained, batchId } = req.body || {};
     if (!isId(studentId) || !isId(examId) || !isId(subjectId)) {
       return res.status(400).json({
         message: 'studentId, examId, subjectId are required',
@@ -1071,11 +1404,73 @@ export const upsertScore = async (req, res) => {
       });
     }
 
+    const existingScore = await ExamScore.findOne({ student: studentId, exam: examId, subject: subjectId }).select('_id scoreObtained').lean();
+
     const updated = await ExamScore.findOneAndUpdate(
       { student: studentId, exam: examId, subject: subjectId },
       { $set: { scoreObtained: scoreNum } },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     ).lean();
+
+    req.skipAuditTrail = true;
+
+    const actorName = actorLabelFromReq(req);
+    const actorRole = actorRoleFromReq(req);
+    const [studentDoc, classLabel, subjectLabel] = await Promise.all([
+      Student.findById(studentId).select('fullName studentId').lean(),
+      getGradeSectionLabel(exam.gradeSection),
+      getSubjectLabel(subjectId),
+    ]);
+    const wasExisting = Boolean(existingScore?._id);
+    const action = wasExisting ? 'edit' : 'add';
+    const studentLabel = pickFirstLabel(studentDoc?.fullName, studentDoc?.studentId, studentId);
+    const oldScore = Number(existingScore?.scoreObtained);
+    const scorePart = wasExisting && Number.isFinite(oldScore)
+      ? `score ${oldScore} -> ${scoreNum}`
+      : `score ${scoreNum}`;
+
+    await upsertAggregatedAuditLog({
+      userId: req.user?._id,
+      action,
+      description: `Exam score ${action}: student=${studentLabel} | subject=${subjectLabel || subjectId} | class=${classLabel || exam.gradeSection} | ${scorePart}`,
+      req,
+      aggregateKey: String(batchId || '').trim() || buildExamAggregateKey({ actorUserId: req.user?._id, action, gradeSectionId: exam.gradeSection, subjectId }),
+      metadata: {
+        rowCount: 1,
+        studentCount: 1,
+        studentIds: [String(studentId)],
+        classLabel,
+        subjectLabel,
+        pageLabel: 'Exam scores',
+        batchId: String(batchId || '').trim(),
+      },
+    });
+
+    await upsertAggregatedActivityNotification({
+      category: 'exams',
+      action,
+      title: `${actorName}`,
+      message: `Exam score ${action}${subjectLabel ? ` - ${subjectLabel}` : ''}${classLabel ? ` - ${classLabel}` : ''}`,
+      actorUserId: req.user?._id || null,
+      actorName,
+      actorRole,
+      classLabel,
+      subjectLabel,
+      metadata: {
+        rowCount: 1,
+        studentCount: 1,
+        studentIds: [String(studentId)],
+        studentLabel,
+        studentId,
+        examId,
+        subjectId,
+        oldScore: Number.isFinite(oldScore) ? oldScore : null,
+        newScore: scoreNum,
+        pageLabel: 'Exam scores',
+        batchId: String(batchId || '').trim(),
+      },
+      aggregateKey: String(batchId || '').trim() || buildExamAggregateKey({ actorUserId: req.user?._id, action, gradeSectionId: exam.gradeSection, subjectId }),
+    });
 
     // Scores affect Results + Transcript.
     publishRealtime({ type: 'results:changed', ts: Date.now() });

@@ -45,6 +45,7 @@ import aiRoutes from './routes/aiRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
+import auditRoutes from './routes/auditRoutes.js';
 
 dotenv.config();
 
@@ -197,6 +198,7 @@ const startServer = async () => {
   });
   app.use('/api/auth', authRoutes);
   app.use('/api/security', securityRoutes);
+  app.use('/api/audit', auditRoutes);
 
   // Protected static file serving for uploads (e.g., student photos)
   // Library downloads: add permission guard + audit log.

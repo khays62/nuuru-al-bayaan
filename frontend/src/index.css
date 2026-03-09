@@ -32,6 +32,14 @@
 	--nb-color-brand-a12: color-mix(in srgb, var(--nb-color-brand) 12%, transparent);
 	--nb-color-accent-a08: color-mix(in srgb, var(--nb-color-accent) 8%, transparent);
 	--nb-color-accent-a12: color-mix(in srgb, var(--nb-color-accent) 12%, transparent);
+	--nb-chart-grid: var(--nb-color-border);
+	--nb-chart-axis: var(--nb-color-muted);
+	--nb-chart-tooltip-bg: var(--nb-color-bg-card);
+	--nb-chart-tooltip-border: var(--nb-color-border);
+	--nb-chart-series-1: var(--nb-color-accent);
+	--nb-chart-series-2: var(--nb-color-brand);
+	--nb-chart-series-3: color-mix(in srgb, var(--nb-color-accent) 68%, var(--nb-color-brand) 32%);
+	--nb-chart-series-4: color-mix(in srgb, var(--nb-color-brand) 58%, var(--nb-color-text) 42%);
 	--nb-color-text: #0f172a; /* main text (keep existing dark tone) */
 	--nb-color-fg: var(--nb-color-text);
 	--nb-color-muted: #64748b; /* muted text */
@@ -78,6 +86,14 @@
 	--nb-color-brand-a12: color-mix(in srgb, var(--nb-color-brand) 22%, transparent);
 	--nb-color-accent-a08: color-mix(in srgb, var(--nb-color-accent) 16%, transparent);
 	--nb-color-accent-a12: color-mix(in srgb, var(--nb-color-accent) 22%, transparent);
+	--nb-chart-grid: color-mix(in srgb, var(--nb-color-text) 16%, var(--nb-color-bg));
+	--nb-chart-axis: color-mix(in srgb, var(--nb-color-text) 68%, var(--nb-color-bg));
+	--nb-chart-tooltip-bg: color-mix(in srgb, var(--nb-color-bg-card) 92%, black 8%);
+	--nb-chart-tooltip-border: color-mix(in srgb, var(--nb-color-text) 18%, var(--nb-color-bg));
+	--nb-chart-series-1: color-mix(in srgb, var(--nb-color-accent) 84%, white 16%);
+	--nb-chart-series-2: color-mix(in srgb, var(--nb-color-brand-ui) 82%, white 18%);
+	--nb-chart-series-3: color-mix(in srgb, var(--nb-color-accent) 72%, var(--nb-color-brand-ui) 28%);
+	--nb-chart-series-4: color-mix(in srgb, var(--nb-color-text) 78%, var(--nb-color-accent) 22%);
 
 	/* Tailwind v4 neutral palettes (override only what we use heavily) */
 	--color-gray-50: var(--nb-color-bg);

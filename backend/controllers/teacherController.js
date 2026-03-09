@@ -16,6 +16,7 @@ import { publishRealtime } from '../utils/realtimeBus.js';
 import AuditLog from '../models/AuditLog.js';
 import { parsePagination } from '../utils/pagination.js';
 import { normalizeSomaliaPhone, isValidSomaliaPhone } from '../utils/phoneSomalia.js';
+import { writeAuditLog } from '../services/auditService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -643,6 +644,14 @@ export const deactivateTeacher = async (req, res) => {
       // non-blocking
     }
 
+    req.skipAuditTrail = true;
+    await writeAuditLog({
+      userId: req.user?._id,
+      action: 'teachers.deactivate',
+      description: `target=${String(id)} type=teacher status=inactive`,
+      req,
+    });
+
     publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
     publishRealtime({ type: 'users:changed', ts: Date.now() });
     publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
@@ -676,6 +685,14 @@ export const reactivateTeacher = async (req, res) => {
     } catch {
       // non-blocking
     }
+
+    req.skipAuditTrail = true;
+    await writeAuditLog({
+      userId: req.user?._id,
+      action: 'teachers.reactivate',
+      description: `target=${String(id)} type=teacher status=active`,
+      req,
+    });
 
     publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
     publishRealtime({ type: 'users:changed', ts: Date.now() });
@@ -712,6 +729,14 @@ export const resetTeacherPassword = async (req, res) => {
     // Invalidate sessions on reset.
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
+
+    req.skipAuditTrail = true;
+    await writeAuditLog({
+      userId: req.user?._id,
+      action: 'teachers.resetPassword',
+      description: `target=${String(user._id)} teacher=${String(teacher._id)} role=teacher source=teacher-route`,
+      req,
+    });
 
     // Resolve any open AuthLockEvent for this principal.
     await AuthLockEvent.updateMany(

@@ -10,6 +10,9 @@ import { queryClient } from './queryClient';
 import { router } from './routes/router';
 import { I18nProvider } from './i18n/I18nProvider';
 import { ThemeProvider } from './shared/theme/ThemeContext';
+import { installGlobalAuditClientTracking } from './shared/utils/auditClient.js';
+
+installGlobalAuditClientTracking();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <QueryClientProvider client={queryClient}>

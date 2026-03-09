@@ -18,6 +18,17 @@ const AuditLogSchema = new mongoose.Schema(
       default: "",
     },
 
+    aggregateKey: {
+      type: String,
+      default: "",
+      index: true,
+    },
+
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
     ip: {
       type: String,
       default: "",
@@ -35,5 +46,7 @@ const AuditLogSchema = new mongoose.Schema(
   },
   { timestamps: false }
 );
+
+AuditLogSchema.index({ user: 1, action: 1, aggregateKey: 1, timestamp: -1 });
 
 export default mongoose.model("AuditLog", AuditLogSchema);

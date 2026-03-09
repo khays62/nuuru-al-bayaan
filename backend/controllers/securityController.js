@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import AuthLockEvent from '../models/AuthLockEvent.js';
+import ActivityNotification from '../models/ActivityNotification.js';
 import Admin from '../models/Admin.js';
 import User from '../models/User.js';
 import Teacher from '../models/Teacher.js';
@@ -8,8 +9,16 @@ import Student from '../models/Student.js';
 import { getDefaultInitialPassword } from '../utils/defaultPasswords.js';
 import { parseLimit } from '../utils/pagination.js';
 import { publishRealtime } from '../utils/realtimeBus.js';
+import { writeAuditLog } from '../services/auditService.js';
 
 const objectId = (v) => (mongoose.isValidObjectId(v) ? String(v) : null);
+
+const getActorLabel = (req) => {
+  const fullName = String(req.user?.fullName || '').trim();
+  const username = String(req.user?.username || '').trim();
+  const role = String(req.user?.role || '').trim().toLowerCase();
+  return fullName || username || role || 'unknown';
+};
 
 async function autoResolveExpiredLocks() {
   const now = new Date();
@@ -17,6 +26,35 @@ async function autoResolveExpiredLocks() {
     { resolvedAt: null, resolution: { $ne: 'inactive' }, lockUntil: { $ne: null, $lte: now } },
     { $set: { resolvedAt: now, resolution: 'expired', isRead: true } }
   );
+}
+
+function mapActivityNotificationRow(row) {
+  return {
+    _id: row._id,
+    kind: 'activity',
+    title: String(row.title || ''),
+    message: String(row.message || ''),
+    metadata: row?.metadata && typeof row.metadata === 'object' ? row.metadata : {},
+    role: String(row.actorRole || ''),
+    fullName: String(row.actorName || ''),
+    category: String(row.category || ''),
+    action: String(row.action || ''),
+    classLabel: String(row.classLabel || ''),
+    subjectLabel: String(row.subjectLabel || ''),
+    isRead: Boolean(row.isRead),
+    createdAt: row.createdAt || null,
+  };
+}
+
+function sortBellRows(rows) {
+  return rows.sort((a, b) => {
+    const readDelta = Number(Boolean(a?.isRead)) - Number(Boolean(b?.isRead));
+    if (readDelta !== 0) return readDelta;
+
+    const aTs = new Date(a?.createdAt || a?.lastSeenAt || 0).getTime();
+    const bTs = new Date(b?.createdAt || b?.lastSeenAt || 0).getTime();
+    return bTs - aTs;
+  });
 }
 
 export const getAuthLockUnreadCount = async (req, res) => {
@@ -35,7 +73,8 @@ export const getAuthLockUnreadCount = async (req, res) => {
         { principalModel: 'Unknown' },
       ],
     });
-    return res.json({ success: true, count });
+    const activityCount = await ActivityNotification.countDocuments({ resolvedAt: null, isRead: false });
+    return res.json({ success: true, count: count + activityCount });
   } catch (err) {
     return res.status(500).json({ success: false, message: err?.message || 'Server error' });
   }
@@ -61,6 +100,11 @@ export const listAuthLockEvents = async (req, res) => {
       .limit(limit)
       .lean();
 
+    const activityRows = await ActivityNotification.find({ resolvedAt: null })
+      .sort({ isRead: 1, createdAt: -1 })
+      .limit(limit)
+      .lean();
+
     // Attach current account status for User principals so the UI can toggle Active/Inactive
     // and disable reset/unlock while inactive.
     const userIds = rows
@@ -80,7 +124,12 @@ export const listAuthLockEvents = async (req, res) => {
       return r;
     });
 
-    return res.json({ success: true, events: withStatus });
+    const merged = sortBellRows([
+      ...withStatus,
+      ...activityRows.map(mapActivityNotificationRow),
+    ]).slice(0, limit);
+
+    return res.json({ success: true, events: merged });
   } catch (err) {
     return res.status(500).json({ success: false, message: err?.message || 'Server error' });
   }
@@ -92,11 +141,19 @@ export const markAuthLockEventRead = async (req, res) => {
     const oid = objectId(id);
     if (!oid) return res.status(400).json({ success: false, message: 'Invalid id' });
 
-    const updated = await AuthLockEvent.findByIdAndUpdate(
+    let updated = await AuthLockEvent.findByIdAndUpdate(
       oid,
       { $set: { isRead: true } },
       { new: true }
     ).lean();
+
+    if (!updated) {
+      updated = await ActivityNotification.findByIdAndUpdate(
+        oid,
+        { $set: { isRead: true } },
+        { new: true }
+      ).lean();
+    }
 
     if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
     return res.json({ success: true });
@@ -122,6 +179,10 @@ export const markAllAuthLockEventsRead = async (req, res) => {
       },
       { $set: { isRead: true } }
     );
+    await ActivityNotification.updateMany(
+      { resolvedAt: null, isRead: false },
+      { $set: { isRead: true } }
+    );
     publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
     return res.json({ success: true });
   } catch (err) {
@@ -135,7 +196,7 @@ export const clearAuthLockEvent = async (req, res) => {
     const oid = objectId(id);
     if (!oid) return res.status(400).json({ success: false, message: 'Invalid id' });
 
-    const updated = await AuthLockEvent.findByIdAndUpdate(
+    let updated = await AuthLockEvent.findByIdAndUpdate(
       oid,
       {
         $set: {
@@ -148,7 +209,63 @@ export const clearAuthLockEvent = async (req, res) => {
       { new: true }
     ).lean();
 
+    if (!updated) {
+      updated = await ActivityNotification.findByIdAndUpdate(
+        oid,
+        {
+          $set: {
+            isRead: true,
+            resolvedAt: new Date(),
+            resolvedBy: req.user?._id || null,
+          },
+        },
+        { new: true }
+      ).lean();
+    }
+
     if (!updated) return res.status(404).json({ success: false, message: 'Not found' });
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err?.message || 'Server error' });
+  }
+};
+
+export const clearAllAuthLockEvents = async (req, res) => {
+  try {
+    await autoResolveExpiredLocks();
+    const now = new Date();
+
+    await AuthLockEvent.updateMany(
+      {
+        resolvedAt: null,
+        $or: [
+          { principalModel: { $in: ['User', 'Admin'] }, lockUntil: { $ne: null, $gt: now } },
+          { resolution: { $in: ['inactive', 'reactivated'] } },
+          { principalModel: 'Unknown' },
+        ],
+      },
+      {
+        $set: {
+          isRead: true,
+          resolvedAt: new Date(),
+          resolvedBy: req.user?._id || null,
+          resolution: 'cleared',
+        },
+      }
+    );
+
+    await ActivityNotification.updateMany(
+      { resolvedAt: null },
+      {
+        $set: {
+          isRead: true,
+          resolvedAt: new Date(),
+          resolvedBy: req.user?._id || null,
+        },
+      }
+    );
+
     publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
     return res.json({ success: true });
   } catch (err) {
@@ -193,6 +310,14 @@ export const resetPasswordAndUnlock = async (req, res) => {
     // Invalidate sessions on reset.
     principal.tokenVersion = Number(principal.tokenVersion || 0) + 1;
     await principal.save();
+
+    req.skipAuditTrail = true;
+    await writeAuditLog({
+      userId: req.user?._id,
+      action: 'security.resetPassword',
+      description: `target=${String(principal._id)} role=${roleLower} source=security-bell`,
+      req,
+    });
 
     // Realtime: refresh bell list + affected tables across browsers
     publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
@@ -305,6 +430,22 @@ export const deactivateUserAccount = async (req, res) => {
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
 
+    req.skipAuditTrail = true;
+
+    await writeAuditLog({
+      userId: req.user?._id,
+      action: 'security.deactivate',
+      description: `target=${String(user._id)} role=${targetRole} status=inactive`,
+      req,
+    });
+
+    await writeAuditLog({
+      userId: user._id,
+      action: 'account.statusChanged',
+      description: `status changed by=${getActorLabel(req)} -> inactive`,
+      req,
+    });
+
     publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
     publishRealtime({ type: 'users:changed', id: String(user._id), ts: Date.now() });
 
@@ -363,6 +504,22 @@ export const activateUserAccount = async (req, res) => {
     // Policy: Only Reset Password / Unlock can remove 24h lock or cooldown.
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
+
+    req.skipAuditTrail = true;
+
+    await writeAuditLog({
+      userId: req.user?._id,
+      action: 'security.activate',
+      description: `target=${String(user._id)} role=${targetRole} status=active`,
+      req,
+    });
+
+    await writeAuditLog({
+      userId: user._id,
+      action: 'account.statusChanged',
+      description: `status changed by=${getActorLabel(req)} -> active`,
+      req,
+    });
 
     publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
     publishRealtime({ type: 'users:changed', id: String(user._id), ts: Date.now() });

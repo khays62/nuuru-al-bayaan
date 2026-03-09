@@ -9,6 +9,7 @@ import TeacherDashboardPrefetcher from './features/teachers/components/dashboard
 import { useI18n } from './i18n/useI18n';
 import { AiChatProvider } from './shared/components/ai/AiChatContext.jsx';
 import AiChatPanel from './shared/components/ai/AiChatPanel.jsx';
+import { postClientAuditEvent } from './features/audit/api/auditApi.js';
 
 export default function App() {
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -17,6 +18,29 @@ export default function App() {
     const { isRTL, t } = useI18n();
     
     const location = useLocation();
+
+    // Client-side page view tracking (best-effort)
+    const lastViewRef = React.useRef({ path: '', at: 0 });
+    useEffect(() => {
+        const uid = auth?.user?._id || auth?.user?.id;
+        if (!uid) return;
+
+        const path = String(location?.pathname || '');
+        if (!path) return;
+
+        const now = Date.now();
+        const last = lastViewRef.current || { path: '', at: 0 };
+        if (last.path === path && (now - Number(last.at || 0)) < 10_000) return;
+        lastViewRef.current = { path, at: now };
+
+        (async () => {
+            try {
+                await postClientAuditEvent({ action: 'page.view', path });
+            } catch {
+                // ignore
+            }
+        })();
+    }, [auth?.user?._id, auth?.user?.id, location?.pathname]);
 
     const flatNavItems = (() => {
         const out = [];

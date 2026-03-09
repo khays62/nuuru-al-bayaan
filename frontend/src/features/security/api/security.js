@@ -31,6 +31,10 @@ export const clearAuthLockEvent = async (eventId) => {
   return http.fetchJson(`security/auth-locks/${eventId}/clear`, { method: 'POST', body: '{}' });
 };
 
+export const clearAllAuthLockEvents = async () => {
+  return http.fetchJson('security/auth-locks/clear-all', { method: 'POST', body: '{}' });
+};
+
 export const deactivateUserAccount = async (userId) => {
   return http.fetchJson(`security/users/${userId}/deactivate`, { method: 'POST', body: '{}' });
 };

@@ -102,14 +102,14 @@ const ExamTypeBarChart = ({ rows }) => {
 
     return (
         <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-56">
-            <rect x="0" y="0" width={w} height={h} fill="var(--nb-color-bg-card)" rx="10" />
+            <rect x="0" y="0" width={w} height={h} fill="var(--nb-chart-tooltip-bg)" rx="10" />
 
             {tickVals.map((tv, idx) => {
                 const yy = y(tv);
                 return (
                     <g key={idx}>
-                        <line x1={padL} x2={w - padR} y1={yy} y2={yy} stroke="var(--nb-color-border)" strokeWidth="1" />
-                        <text x={padL - 6} y={yy + 4} textAnchor="end" fontSize="10" fill="var(--nb-color-muted)">
+                        <line x1={padL} x2={w - padR} y1={yy} y2={yy} stroke="var(--nb-chart-grid)" strokeWidth="1" />
+                        <text x={padL - 6} y={yy + 4} textAnchor="end" fontSize="10" fill="var(--nb-chart-axis)">
                             {tv.toFixed(0)}%
                         </text>
                     </g>
@@ -123,11 +123,11 @@ const ExamTypeBarChart = ({ rows }) => {
                 const hh = Math.max(0, y0 - yy);
                 return (
                     <g key={r.id || i}>
-                        <rect x={x} y={yy} width={barW} height={hh} rx="6" fill="var(--nb-color-accent)" />
-                        <text x={x + barW / 2} y={yy - 6} textAnchor="middle" fontSize="10" fill="var(--nb-color-text)">
+                        <rect x={x} y={yy} width={barW} height={hh} rx="6" fill="var(--nb-chart-series-1)" />
+                        <text x={x + barW / 2} y={yy - 6} textAnchor="middle" fontSize="10" fill="var(--nb-color-fg)">
                             {Number.isFinite(vv) ? vv.toFixed(0) : 0}%
                         </text>
-                        <text x={x + barW / 2} y={h - 22} textAnchor="middle" fontSize="10" fill="var(--nb-color-text)">
+                        <text x={x + barW / 2} y={h - 22} textAnchor="middle" fontSize="10" fill="var(--nb-color-fg)">
                             {String(r.label || '').slice(0, 10)}
                         </text>
                     </g>

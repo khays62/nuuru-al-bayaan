@@ -4,18 +4,30 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Long-ish freshness to avoid reloading between tabs,
-      // but still allow silent refresh when components mount/focus.
-      staleTime: 1000 * 60 * 10, // 10 minutes
+      // Keep cache warm, but allow stale views to refresh automatically when users
+      // come back to the page or reconnect after network drops.
+      staleTime: 1000 * 60 * 5,
       gcTime: 1000 * 60 * 60, // 1 hour
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       refetchOnReconnect: true,
-      refetchOnMount: false,
+      refetchOnMount: true,
+      networkMode: 'online',
+      structuralSharing: true,
       retry: (failureCount, error) => {
         const status = error?.status;
-        if (status === 401 || status === 403) return false;
+        if (status === 400 || status === 401 || status === 403 || status === 404) return false;
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex) => Math.min(3000, 500 * Math.pow(2, attemptIndex)),
+    },
+    mutations: {
+      networkMode: 'online',
+      retry: (failureCount, error) => {
+        const status = error?.status;
+        if (status === 400 || status === 401 || status === 403 || status === 404) return false;
         return failureCount < 1;
       },
+      retryDelay: (attemptIndex) => Math.min(2000, 400 * Math.pow(2, attemptIndex)),
     },
   },
 });

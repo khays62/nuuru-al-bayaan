@@ -153,15 +153,27 @@ export async function getExamGrid(
   }
 }
 
-export async function saveExamScore({ studentId, examId, subjectId, scoreObtained }) {
+export async function saveExamScore({ studentId, examId, subjectId, scoreObtained, batchId }) {
   try {
     const data = await fetchJson('/exams/score', {
       method: 'PUT',
-      body: JSON.stringify({ studentId, examId, subjectId, scoreObtained }),
+      body: JSON.stringify({ studentId, examId, subjectId, scoreObtained, batchId }),
     });
     return { ok: true, status: 200, data };
   } catch (e) {
     // Avoid noisy console logs on logout/unauth.
+    return { ok: false, status: e?.status || 0, data: e?.data || { message: e?.message || 'Network error' } };
+  }
+}
+
+export async function saveExamScoresBulk({ subjectId, items, actionType }) {
+  try {
+    const data = await fetchJson('/exams/scores/bulk', {
+      method: 'PUT',
+      body: JSON.stringify({ subjectId, items, actionType }),
+    });
+    return { ok: true, status: 200, data };
+  } catch (e) {
     return { ok: false, status: e?.status || 0, data: e?.data || { message: e?.message || 'Network error' } };
   }
 }

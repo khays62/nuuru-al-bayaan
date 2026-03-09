@@ -28,6 +28,7 @@ import AttendanceReportsPage from '../features/attendance/pages/AttendanceReport
 import TeachersPage from '../features/teachers/pages/TeachersPage';
 import TimetablePage from '../features/timetable/pages/TimetablePage';
 import AnnouncementsPage from '../features/announcements/pages/Announcements';
+import TrackingAuditPage from '../features/audit/pages/TrackingAuditPage.jsx';
 
 import FinanceDashboardPage from '../features/finance/pages/FinanceDashboardPage.jsx';
 import FinanceAccountsPage from '../features/finance/pages/FinanceAccountsPage.jsx';
@@ -78,6 +79,7 @@ import {
   financePayrollAny,
   financeStudentFinanceAny,
   libraryAny,
+  securityViewOnly,
 } from './permissions';
 
 export const router = createBrowserRouter([
@@ -328,6 +330,15 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['admin', 'staff', 'teacher', 'student']}>
             <AnnouncementsPage />
+          </ProtectedRoute>
+        ),
+      },
+
+      {
+        path: 'tracking-audit',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={securityViewOnly}>
+            <TrackingAuditPage />
           </ProtectedRoute>
         ),
       },

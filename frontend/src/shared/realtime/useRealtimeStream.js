@@ -5,9 +5,10 @@ import { createRealtimeDispatcher } from './realtimeDispatcher';
 
 export function useRealtimeStream({ user } = {}) {
   const queryClient = useQueryClient();
+  const userId = String(user?._id || user?.id || '');
+  const roleLower = String(user?.role || '').toLowerCase();
 
   React.useEffect(() => {
-    const roleLower = String(user?.role || '').toLowerCase();
     const canUseRealtime = roleLower === 'admin' || roleLower === 'staff' || roleLower === 'teacher' || roleLower === 'student';
     if (!canUseRealtime) return;
 
@@ -18,6 +19,11 @@ export function useRealtimeStream({ user } = {}) {
 
     let watchdog;
     let lastSeenAt = Date.now();
+
+    const clearReconnectTimer = () => {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = undefined;
+    };
 
     const debugEnabled = (() => {
       try {
@@ -41,10 +47,11 @@ export function useRealtimeStream({ user } = {}) {
 
     const scheduleReconnect = () => {
       if (closed) return;
+      if (reconnectTimer) return;
       reconnectAttempt += 1;
       const ms = Math.min(30_000, 1_000 * Math.pow(2, Math.min(5, reconnectAttempt)));
-      clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(() => {
+        reconnectTimer = undefined;
         try { es?.close(); } catch { /* ignore */ }
         connect();
       }, ms);
@@ -63,6 +70,7 @@ export function useRealtimeStream({ user } = {}) {
       if (closed) return;
 
       clearInterval(watchdog);
+      clearReconnectTimer();
       try { es?.close(); } catch { /* ignore */ }
 
       try {
@@ -79,6 +87,7 @@ export function useRealtimeStream({ user } = {}) {
       es.onopen = () => {
         reconnectAttempt = 0;
         lastSeenAt = Date.now();
+        clearReconnectTimer();
         setProbeStatus({ state: 'open:connected', readyState: es?.readyState, lastSeenAt });
         if (debugEnabled) {
           try {
@@ -136,14 +145,31 @@ export function useRealtimeStream({ user } = {}) {
       }, 10_000);
     };
 
+    const handleOnline = () => {
+      if (closed) return;
+      connect();
+    };
+
+    const handleVisibilityChange = () => {
+      if (closed) return;
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastSeenAt > 15_000) connect();
+    };
+
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     connect();
 
     return () => {
       closed = true;
-      clearTimeout(reconnectTimer);
+      clearReconnectTimer();
       clearInterval(watchdog);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       dispatcher.dispose();
       try { es?.close(); } catch { /* ignore */ }
     };
-  }, [queryClient, user]);
+  }, [queryClient, roleLower, userId]);
 }

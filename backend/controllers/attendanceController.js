@@ -6,6 +6,8 @@ import Enrollment from '../models/Enrollment.js';
 import Timetable from '../models/Timetable.js';
 import Student from '../models/Student.js';
 import User from '../models/User.js';
+import { writeAuditLog } from '../services/auditService.js';
+import { createActivityNotification } from '../services/activityNotificationService.js';
 import { publishRealtime } from '../utils/realtimeBus.js';
 
 function parseISODateOnly(value) {
@@ -61,6 +63,38 @@ function sanitizeRemarks(value, { maxWords = 40, maxChars = 120 } = {}) {
   const cappedWords = words.length > maxWords ? words.slice(0, maxWords).join(' ') : collapsed;
   if (cappedWords.length <= maxChars) return cappedWords;
   return cappedWords.slice(0, maxChars).trim();
+}
+
+function actorLabelFromReq(req) {
+  const fullName = String(req.user?.fullName || '').trim();
+  const username = String(req.user?.username || '').trim();
+  const role = String(req.user?.role || '').trim().toLowerCase();
+  return fullName || username || role || 'unknown';
+}
+
+function pickFirstLabel(...values) {
+  return values.map((value) => String(value || '').trim()).find(Boolean) || '';
+}
+
+async function getGradeSectionLabel(gradeSectionId) {
+  if (!mongoose.isValidObjectId(gradeSectionId)) return '';
+  const gradeSection = await GradeSection.findById(gradeSectionId)
+    .populate('grade', 'gradeName name title')
+    .populate('shift', 'shiftName name title')
+    .lean();
+  if (!gradeSection) return '';
+  const gradeLabel = pickFirstLabel(
+    gradeSection?.grade?.gradeName,
+    gradeSection?.grade?.name,
+    gradeSection?.grade?.title
+  );
+  const shiftLabel = pickFirstLabel(
+    gradeSection?.shift?.shiftName,
+    gradeSection?.shift?.name,
+    gradeSection?.shift?.title
+  );
+  const sectionLabel = pickFirstLabel(gradeSection?.section);
+  return [gradeLabel, sectionLabel ? `Section ${sectionLabel}` : '', shiftLabel].filter(Boolean).join(' - ');
 }
 
 export const markAttendanceBulk = async (req, res) => {
@@ -138,6 +172,9 @@ export const markAttendanceBulk = async (req, res) => {
       (existingForAudit || []).map(r => [String(r.student), String(r.status)])
     );
 
+    let createdCount = 0;
+    let updatedCount = 0;
+
     for (const r of items) {
       const st = String(r?.status || '').trim();
       if (!ALLOWED_ATTENDANCE_STATUSES.has(st)) {
@@ -181,6 +218,8 @@ export const markAttendanceBulk = async (req, res) => {
         const oldStatus = oldStatusByStudent.has(sid) ? oldStatusByStudent.get(sid) : null;
         const newStatus = String(r.status);
         if (oldStatus === newStatus) continue;
+        if (oldStatus == null) createdCount++;
+        else updatedCount++;
         audits.push({
           gradeSection: gradeSectionId,
           date: when,
@@ -196,6 +235,56 @@ export const markAttendanceBulk = async (req, res) => {
       }
     } catch {
       // ignore audit failures
+    }
+
+    try {
+      req.skipAuditTrail = true;
+      const actorName = actorLabelFromReq(req);
+      const actorRole = String(req.user?.role || '').trim().toLowerCase();
+      const classLabel = await getGradeSectionLabel(gradeSectionId);
+      const dateLabel = dateToISODateOnlyUTC(when);
+
+      if (createdCount > 0) {
+        await writeAuditLog({
+          userId: req.user?._id,
+          action: 'add',
+          description: `Attendance add: ${createdCount} students | class=${classLabel || gradeSectionId} | date=${dateLabel} | period=${pCode}`,
+          req,
+        });
+        await createActivityNotification({
+          category: 'attendance',
+          action: 'add',
+          title: `${actorName}`,
+          message: `Attendance add${classLabel ? ` - ${classLabel}` : ''}`,
+          actorUserId: req.user?._id || null,
+          actorName,
+          actorRole,
+          classLabel,
+          metadata: { createdCount, rowCount: createdCount, studentCount: createdCount, date: dateLabel, periodCode: pCode, gradeSectionId },
+        });
+      }
+
+      if (updatedCount > 0) {
+        await writeAuditLog({
+          userId: req.user?._id,
+          action: 'edit',
+          description: `Attendance edit: ${updatedCount} students | class=${classLabel || gradeSectionId} | date=${dateLabel} | period=${pCode}`,
+          req,
+        });
+        await createActivityNotification({
+          category: 'attendance',
+          action: 'edit',
+          title: `${actorName}`,
+          message: `Attendance edit${classLabel ? ` - ${classLabel}` : ''}`,
+          actorUserId: req.user?._id || null,
+          actorName,
+          actorRole,
+          classLabel,
+          metadata: { updatedCount, rowCount: updatedCount, studentCount: updatedCount, date: dateLabel, periodCode: pCode, gradeSectionId },
+        });
+      }
+    } catch {
+      // ignore bell/audit enrichment failures
     }
 
     publishRealtime({

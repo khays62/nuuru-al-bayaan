@@ -12,11 +12,12 @@ import {
     deactivateUserAccount,
     activateUserAccount,
     clearAuthLockEvent,
+    clearAllAuthLockEvents,
     markAllAuthLocksRead,
 } from '../../../features/security/api/security';
 import { emitUsersChanged, emitTeachersChanged, emitStudentsChanged } from '../../../utils/events';
 import Card from '../ui/Card.jsx';
-import UiLoadingState from '../ui/LoadingState.jsx';
+import Skeleton from '../ui/Skeleton.jsx';
 import { useAnnouncementsStream } from '../../../features/announcements/hooks/useAnnouncementsStream';
 import { useRealtimeStream } from '../../realtime/useRealtimeStream';
 import { useI18n } from '../../../i18n/useI18n';
@@ -34,6 +35,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const [openLocks, setOpenLocks] = React.useState(false);
     const [openLang, setOpenLang] = React.useState(false);
     const [pendingByKey, setPendingByKey] = React.useState({});
+    const [hasLoadedLocksOnce, setHasLoadedLocksOnce] = React.useState(false);
     const locksRef = React.useRef(null);
     const langRef = React.useRef(null);
 
@@ -81,6 +83,34 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const displayEmail = user?.email || '';
     const meta = [displayRole, displayEmail].filter(Boolean).join(' - ');
 
+    const formatActivityKind = (value) => {
+        const key = String(value || '').trim().toLowerCase();
+        if (key === 'exams') return 'Exam score';
+        if (key === 'attendance') return 'Attendance';
+        return key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Activity';
+    };
+
+    const formatActivityAction = (value) => {
+        const key = String(value || '').trim().toLowerCase();
+        if (key === 'add') return 'ADD';
+        if (key === 'edit') return 'EDIT';
+        return key ? key.toUpperCase() : 'ACTIVITY';
+    };
+
+    const formatActivityCount = (ev) => {
+        const metadata = ev?.metadata && typeof ev.metadata === 'object' ? ev.metadata : {};
+        const rowCount = Number(metadata.rowCount || metadata.createdCount || metadata.updatedCount || 0);
+        const studentCount = Number(metadata.studentCount || 0);
+        if (studentCount > 0) return `${studentCount} student${studentCount === 1 ? '' : 's'}`;
+        if (rowCount > 0) return `${rowCount} row${rowCount === 1 ? '' : 's'}`;
+        return '';
+    };
+
+    const formatActivityPage = (ev) => {
+        const metadata = ev?.metadata && typeof ev.metadata === 'object' ? ev.metadata : {};
+        return String(metadata.pageLabel || '').trim();
+    };
+
     const lockCountQuery = useQuery({
         queryKey: ['security', 'authLocks', 'count'],
         enabled: canSeeLocks,
@@ -106,6 +136,17 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         refetchInterval: 10_000,
         refetchIntervalInBackground: false,
     });
+
+    React.useEffect(() => {
+        if (locksQuery.isSuccess || locksQuery.isError || locksQuery.dataUpdatedAt > 0) {
+            setHasLoadedLocksOnce(true);
+        }
+    }, [locksQuery.dataUpdatedAt, locksQuery.isError, locksQuery.isSuccess]);
+
+    const showInitialLocksSkeleton = openLocks
+        && !hasLoadedLocksOnce
+        && locksQuery.fetchStatus === 'fetching'
+        && !Array.isArray(locksQuery.data);
 
     // When opening the dropdown, mark all as read so the badge clears.
     React.useEffect(() => {
@@ -213,14 +254,35 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
 
     const doClear = async (eventId) => {
         const k = `clear:${eventId}`;
+        const previousList = queryClient.getQueryData(['security', 'authLocks', 'list']);
+        const previousCount = queryClient.getQueryData(['security', 'authLocks', 'count']);
         try {
-            setPending(k, true);
+            queryClient.setQueryData(['security', 'authLocks', 'list'], (prev) => {
+                const rows = Array.isArray(prev) ? prev : [];
+                return rows.filter((item) => String(item?._id || '') !== String(eventId));
+            });
+            queryClient.setQueryData(['security', 'authLocks', 'count'], (prev) => Math.max(0, Number(prev || 0) - 1));
             await clearAuthLockEvent(eventId);
-            await queryClient.invalidateQueries({ queryKey: ['security', 'authLocks'] });
         } catch (e) {
+            queryClient.setQueryData(['security', 'authLocks', 'list'], previousList);
+            queryClient.setQueryData(['security', 'authLocks', 'count'], previousCount);
             toast.error(e?.data?.message || e?.message || t('common.securityBell.errors.clearFailed', { defaultValue: 'Clear failed' }));
         } finally {
             setPending(k, false);
+        }
+    };
+
+    const doClearAll = async () => {
+        const previousList = queryClient.getQueryData(['security', 'authLocks', 'list']);
+        const previousCount = queryClient.getQueryData(['security', 'authLocks', 'count']);
+        try {
+            queryClient.setQueryData(['security', 'authLocks', 'list'], []);
+            queryClient.setQueryData(['security', 'authLocks', 'count'], 0);
+            await clearAllAuthLockEvents();
+        } catch (e) {
+            queryClient.setQueryData(['security', 'authLocks', 'list'], previousList);
+            queryClient.setQueryData(['security', 'authLocks', 'count'], previousCount);
+            toast.error(e?.data?.message || e?.message || t('common.securityBell.errors.clearFailed', { defaultValue: 'Clear failed' }));
         }
     };
 
@@ -272,7 +334,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                 <input
                     dir={isRTL ? 'rtl' : 'ltr'}
                     type="text"
-                    placeholder={t('common.search', { defaultValue: 'Searchâ€¦' })}
+                    placeholder={t('common.search', { defaultValue: 'Search...' })}
                     className={
                         "w-full py-2 border border-(--nb-color-border) bg-(--nb-color-bg-card) text-(--nb-color-fg) placeholder:text-(--nb-color-muted) rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2 " +
                         (isRTL ? 'pr-10 pl-4 text-right' : 'pl-10 pr-4')
@@ -308,7 +370,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         }
                     >
                         <span>{t('common.english', { defaultValue: 'English' })}</span>
-                        {lang === 'en' ? <span className="text-(--nb-color-accent)">âœ“</span> : null}
+                        {lang === 'en' ? <span className="text-(--nb-color-accent)">✓</span> : null}
                     </button>
                     <button
                         type="button"
@@ -319,7 +381,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         }
                     >
                         <span>{t('common.somali', { defaultValue: 'Somali' })}</span>
-                        {lang === 'so' ? <span className="text-(--nb-color-accent)">âœ“</span> : null}
+                        {lang === 'so' ? <span className="text-(--nb-color-accent)">✓</span> : null}
                     </button>
                     <button
                         type="button"
@@ -330,7 +392,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                         }
                     >
                         <span>{t('common.arabic', { defaultValue: 'Arabic' })}</span>
-                        {lang === 'ar' ? <span className="text-(--nb-color-accent)">âœ“</span> : null}
+                        {lang === 'ar' ? <span className="text-(--nb-color-accent)">✓</span> : null}
                     </button>
                 </Card>
             ) : null}
@@ -396,32 +458,107 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                                         <ShieldAlert size={16} className="text-red-600" />
                                         <span className="font-semibold text-sm">{t('common.securityBell.alertsTitle', { defaultValue: 'Security alerts' })}</span>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => setOpenLocks(false)}
-                                        className="text-(--nb-color-muted) hover:text-(--nb-color-fg)"
-                                        title={t('common.close', { defaultValue: 'Close' })}
-                                    >
-                                        <X size={16} />
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        {Array.isArray(locksQuery.data) && locksQuery.data.length > 0 ? (
+                                            <button
+                                                type="button"
+                                                onClick={doClearAll}
+                                                className="px-2 py-1 text-xs rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50)"
+                                                title={t('common.actions.clearAll', { defaultValue: 'Clear all' })}
+                                            >
+                                                {t('common.actions.clearAll', { defaultValue: 'Clear all' })}
+                                            </button>
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpenLocks(false)}
+                                            className="text-(--nb-color-muted) hover:text-(--nb-color-fg)"
+                                            title={t('common.close', { defaultValue: 'Close' })}
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="max-h-96 overflow-auto">
-                                    {locksQuery.isLoading && (
-                                        <div className="p-3">
-                                            <UiLoadingState
-                                                label={t('common.loading', { defaultValue: 'Loadingâ€¦' })}
-                                                className="border-0 bg-transparent p-0 justify-start"
-                                            />
+                                    {showInitialLocksSkeleton && (
+                                        <div className="p-3 space-y-3">
+                                            {Array.from({ length: 3 }).map((_, index) => (
+                                                <div key={index} className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-3">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="min-w-0 flex-1 space-y-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <Skeleton className="h-4 w-32 rounded-full" />
+                                                                <Skeleton className="h-5 w-16 rounded-full" />
+                                                                <Skeleton className="h-5 w-14 rounded-full" />
+                                                            </div>
+                                                            <Skeleton className="h-3 w-20" />
+                                                            <Skeleton className="h-3 w-full" />
+                                                            <Skeleton className="h-3 w-4/5" />
+                                                            <Skeleton className="h-3 w-3/5" />
+                                                        </div>
+                                                        <Skeleton className="h-7 w-14 rounded-lg" />
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
-                                    {!locksQuery.isLoading && (locksQuery.data?.length || 0) === 0 && (
+                                    {locksQuery.isLoading && !showInitialLocksSkeleton && (
+                                        <div className="p-3">
+                                            <div className="text-sm text-(--nb-color-muted)">{t('common.loading', { defaultValue: 'Loadingâ€¦' })}</div>
+                                        </div>
+                                    )}
+                                    {!showInitialLocksSkeleton && !locksQuery.isLoading && (locksQuery.data?.length || 0) === 0 && (
                                         <div className="p-3 text-sm text-(--nb-color-muted)">
-                                            {t('common.securityBell.noLockedAccounts', { defaultValue: 'No locked accounts right now.' })}
+                                            {t('common.securityBell.noLockedAccounts', { defaultValue: 'No notifications right now.' })}
                                         </div>
                                     )}
 
                                     {(locksQuery.data || []).map((ev) => {
+                                        const isActivity = String(ev.kind || '') === 'activity';
+                                        if (isActivity) {
+                                            const roleText = String(ev.role || '').toUpperCase() || t('common.securityBell.userRoleFallback', { defaultValue: 'USER' });
+                                            const createdAt = ev.createdAt ? new Date(ev.createdAt).toLocaleString() : '';
+                                            const activityKind = formatActivityKind(ev.category);
+                                            const activityAction = formatActivityAction(ev.action);
+                                            const activityCount = formatActivityCount(ev);
+                                            const activityPage = formatActivityPage(ev);
+                                            return (
+                                                <div key={ev._id} className="p-3 border-b border-(--nb-color-border) last:border-b-0 hover:bg-(--nb-color-brand-50)">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <div className="text-sm font-semibold text-(--nb-color-fg) truncate max-w-56">{ev.fullName || ev.title || t('common.securityBell.notificationsTitle', { defaultValue: 'Notification' })}</div>
+                                                                <span className="rounded-full bg-(--nb-color-brand-50) px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-(--nb-color-brand-ui)">{activityKind}</span>
+                                                                <span className="rounded-full border border-(--nb-color-border) px-2 py-0.5 text-[10px] font-semibold tracking-[0.08em] text-(--nb-color-fg)">{activityAction}</span>
+                                                            </div>
+                                                            <div className="text-[11px] text-(--nb-color-muted) mt-1">{roleText}</div>
+                                                            {ev.message && (
+                                                                <div className="text-xs text-(--nb-color-muted) mt-1 whitespace-normal">{ev.message}</div>
+                                                            )}
+                                                            <div className="text-xs text-(--nb-color-muted) mt-1">
+                                                                {[activityPage, activityCount, createdAt].filter(Boolean).join(' - ')}
+                                                            </div>
+                                                            <div className="text-xs text-(--nb-color-muted) mt-1">
+                                                                {[ev.subjectLabel || '', ev.classLabel || ''].filter(Boolean).join(' - ')}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                className="px-2 py-1 text-xs rounded border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50) disabled:opacity-60"
+                                                                onClick={() => doClear(String(ev._id))}
+                                                                title={t('common.securityBell.titles.clearNotification', { defaultValue: 'Clear notification' })}
+                                                                disabled={false}
+                                                            >
+                                                                {t('common.actions.clear', { defaultValue: 'Clear' })}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
                                         const isUnknown = String(ev.principalModel || '') === 'Unknown' || !ev.principalId;
                                         const isAdminPrincipal = String(ev.principalModel || '') === 'Admin';
                                         const role = String(ev.role || '').toLowerCase();

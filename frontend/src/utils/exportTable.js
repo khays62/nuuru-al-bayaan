@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
+import { trackAuditClientEvent } from '../shared/utils/auditClient.js';
 import { toJpeg, toPng } from 'html-to-image';
 
 const imageCache = new Map();
@@ -547,6 +548,7 @@ export function exportTableToCSV({
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  trackAuditClientEvent({ action: 'client.download', format: 'csv', label: filename });
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -816,6 +818,7 @@ export async function exportTableToExcel({
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  trackAuditClientEvent({ action: 'client.download', format: 'excel', label: filename });
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1165,6 +1168,7 @@ export async function exportTableToPDF({
     await renderOneTable({ tableTitle: '', tableSubtitle: '', tableHeaders: headers, tableRows: rows });
   }
 
+  trackAuditClientEvent({ action: 'client.download', format: 'pdf', label: filename });
   doc.save(filename);
 }
 

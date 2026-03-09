@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 import { cn } from '../../utils/cn';
@@ -28,7 +29,7 @@ const Modal = ({
     const isTitlePrimitive = typeof title === 'string' || typeof title === 'number';
     const closeBtnClass = closeButtonClassName || 'text-(--nb-color-muted) hover:text-(--nb-color-fg) p-1 rounded-(--nb-radius-sm) hover:bg-(--nb-color-brand-50) transition-colors';
 
-    return (
+    const content = (
         // Main overlay container.
         // It now uses a semi-transparent background with a backdrop blur effect.
         // `transition-opacity` and `duration-300` create a smooth fade-in effect.
@@ -89,6 +90,9 @@ const Modal = ({
             </div>
         </div>
     );
+
+    if (typeof document === 'undefined') return content;
+    return createPortal(content, document.body);
 };
 
 export default Modal;

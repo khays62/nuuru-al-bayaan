@@ -30,6 +30,8 @@ function applyThemeToDom(theme) {
   if (typeof document === 'undefined') return;
   const t = normalizeTheme(theme) || 'light';
   document.documentElement.dataset.theme = t;
+  document.documentElement.style.colorScheme = t;
+  document.body?.setAttribute?.('data-theme', t);
 }
 
 export function ThemeProvider({ children }) {
@@ -38,6 +40,23 @@ export function ThemeProvider({ children }) {
   React.useEffect(() => {
     applyThemeToDom(theme);
   }, [theme]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+
+    const onStorage = (event) => {
+      if (event.key !== STORAGE_KEY) return;
+      const nextTheme = normalizeTheme(event.newValue);
+      if (nextTheme) {
+        setState({ theme: nextTheme, source: 'user' });
+        return;
+      }
+      setState({ theme: getSystemTheme(), source: 'system' });
+    };
+
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   // If user hasn't explicitly chosen a theme, follow system changes.
   React.useEffect(() => {
@@ -71,8 +90,16 @@ export function ThemeProvider({ children }) {
   }, []);
 
   const toggleTheme = React.useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  }, [setTheme, theme]);
+    setState((current) => {
+      const nextTheme = current.theme === 'dark' ? 'light' : 'dark';
+      try {
+        window.localStorage.setItem(STORAGE_KEY, nextTheme);
+      } catch {
+        // ignore
+      }
+      return { theme: nextTheme, source: 'user' };
+    });
+  }, []);
 
   const clearThemePreference = React.useCallback(() => {
     setState({ theme: getSystemTheme(), source: 'system' });

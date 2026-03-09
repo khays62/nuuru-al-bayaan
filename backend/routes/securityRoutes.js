@@ -9,6 +9,7 @@ import {
   markAuthLockEventRead,
   markAllAuthLockEventsRead,
   clearAuthLockEvent,
+  clearAllAuthLockEvents,
   resetPasswordAndUnlock,
   unlockUserLogin,
   deactivateUserAccount,
@@ -42,6 +43,8 @@ router.post(
   checkPermission('security', 'view'),
   clearAuthLockEvent
 );
+
+router.post('/auth-locks/clear-all', checkPermission('security', 'view'), clearAllAuthLockEvents);
 
 router.post(
   '/users/:id/reset-password',

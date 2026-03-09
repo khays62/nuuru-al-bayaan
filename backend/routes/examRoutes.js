@@ -3,6 +3,7 @@ import {
 	getExamTypes,
 	ensureExams,
 	getExamGrid,
+	saveScoresBulk,
 	upsertScore,
 	importExamScores,
 	getSummary,
@@ -154,6 +155,13 @@ router.get(
 		requireTeacherAssignment({ gradeSectionKeys: ['gradeSectionId'], subjectKeys: ['subjectId'], subjectOptional: false })
 	),
 	getExamGrid
+);
+
+router.put(
+	'/scores/bulk',
+	protect,
+	allowTeacher(checkPermission("exams", "input")),
+	saveScoresBulk
 );
 
 router.put(

@@ -1,6 +1,7 @@
 import { writeAuditLog } from '../services/auditService.js';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const READ_AUDIT_ACTIONS = new Set(['download', 'print']);
 const SENSITIVE_KEYS = new Set([
   'password',
   'newPassword',
@@ -21,7 +22,7 @@ function summarizeBodyKeys(body) {
 export const auditTrail = (options = {}) => {
   const {
     skipPrefixes = ['/api/auth', '/api/users'],
-    skipRoles = ['student'],
+    skipRoles = [],
   } = options;
 
   return (req, res, next) => {
@@ -29,10 +30,16 @@ export const auditTrail = (options = {}) => {
 
     res.on('finish', () => {
       try {
+        if (req.skipAuditTrail === true) return;
+
         const url = String(req.originalUrl || '');
         if (!url.startsWith('/api/')) return;
 
-        if (!MUTATING_METHODS.has(String(req.method || '').toUpperCase())) return;
+        const method = String(req.method || '').toUpperCase();
+        const permAction = req.audit?.action ? String(req.audit.action).trim().toLowerCase() : '';
+        const shouldTrack = MUTATING_METHODS.has(method)
+          || ((method === 'GET' || method === 'HEAD') && READ_AUDIT_ACTIONS.has(permAction));
+        if (!shouldTrack) return;
 
         const roleLower = String(req.user?.role || '').toLowerCase();
         if (!req.user?._id || skipRoles.includes(roleLower)) return;
@@ -43,10 +50,10 @@ export const auditTrail = (options = {}) => {
 
         const ctx = req.audit || req.auditContext || null;
         const module = ctx?.module ? String(ctx.module) : null;
-        const permAction = ctx?.action ? String(ctx.action) : null;
+        const action = ctx?.action ? String(ctx.action) : null;
 
-        const action = module && permAction
-          ? `${module}.${permAction}`
+        const auditAction = module && action
+          ? `${module}.${action}`
           : `http.${String(req.method || '').toLowerCase()}`;
 
         const idPart = req.params?.id ? ` id=${String(req.params.id)}` : '';
@@ -56,7 +63,7 @@ export const auditTrail = (options = {}) => {
 
         writeAuditLog({
           userId: req.user._id,
-          action,
+          action: auditAction,
           description: desc,
           req,
         });

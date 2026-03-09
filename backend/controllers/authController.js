@@ -623,10 +623,12 @@ export const logout = async (req, res) => {
   const global = req?.body?.global !== false;
 
   const token = req.cookies?.auth_token;
+  let actorId = null;
   if (global && token && process.env.JWT_SECRET) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const id = decoded?.id;
+      if (id) actorId = id;
       if (id) {
         // Do not trust role in token; check Admin first, then User.
         await Promise.allSettled([
@@ -634,6 +636,28 @@ export const logout = async (req, res) => {
           User.updateOne({ _id: id }, { $inc: { tokenVersion: 1 } }),
         ]);
       }
+    } catch {
+      // ignore
+    }
+  } else if (token && process.env.JWT_SECRET) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const id = decoded?.id;
+      if (id) actorId = id;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Best-effort audit log (do not block logout).
+  if (actorId) {
+    try {
+      await writeAuditLog({
+        userId: actorId,
+        action: 'auth.logout',
+        description: `global=${global ? 'true' : 'false'}`,
+        req,
+      });
     } catch {
       // ignore
     }

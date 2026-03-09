@@ -23,6 +23,9 @@ export const transfersAny = permsAny('transfers', actionsFor('transfers'));
 export const transcriptAny = permsAny('transcript', actionsFor('transcript'));
 export const libraryAny = permsAny('library', actionsFor('library'));
 
+// Security
+export const securityViewOnly = permsAny('security', ['view', 'full']);
+
 // Finance
 export const financeDashboardAny = permsAny('financeDashboard', actionsFor('financeDashboard'));
 export const financeAccountsAny = permsAny('financeAccounts', actionsFor('financeAccounts'));

@@ -72,7 +72,6 @@ export function formatAuditDescription(row, { t } = {}) {
   if (m?.[1] && m?.[2]) {
     const method = String(m[1]).toUpperCase();
     const path = tryGetPath(m[2]);
-    const prettyAction = prettifyAuditAction(row?.action, { t });
 
     const keys = extractBodyKeys(raw);
     const fieldsLabel = typeof t === 'function'
@@ -80,9 +79,7 @@ export function formatAuditDescription(row, { t } = {}) {
       : 'fields';
     const keyPart = keys.length ? ` (${fieldsLabel}: ${summarizeKeys(keys)})` : '';
 
-    return prettyAction
-      ? `${prettyAction} — ${method} ${path}${keyPart}`
-      : `${method} ${path}${keyPart}`;
+    return `${method} ${path}${keyPart}`;
   }
 
   // Otherwise: keep as-is but avoid extremely long cells.

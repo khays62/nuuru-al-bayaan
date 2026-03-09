@@ -15,6 +15,7 @@ import { isValidSomaliaDistrictId, isValidSomaliaRegionId } from '../utils/somal
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import { writeAuditLog } from '../services/auditService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -766,6 +767,14 @@ export const resetStudentPassword = async (req, res) => {
             return res.status(409).json({ message: 'Student login account is missing. Contact admin to re-run migration.' });
         }
 
+        req.skipAuditTrail = true;
+        await writeAuditLog({
+            userId: req.user?._id,
+            action: 'students.resetPassword',
+            description: `target=${String(userAccount._id)} student=${String(student._id)} role=student source=student-route`,
+            req,
+        });
+
         publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
         publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
         publishRealtime({ type: 'users:changed', ts: Date.now() });
@@ -894,6 +903,13 @@ export const deactivateStudent = async (req, res) => {
             // Best-effort only; don’t fail student deactivation if enrollment toggle fails
             console.warn('deactivateStudent enrollment toggle warning:', enrErr);
         }
+        req.skipAuditTrail = true;
+        await writeAuditLog({
+            userId: req.user?._id,
+            action: 'students.deactivate',
+            description: `target=${String(id)} type=student status=inactive`,
+            req,
+        });
         publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
         publishRealtime({ type: 'users:changed', ts: Date.now() });
         publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
@@ -940,6 +956,13 @@ export const reactivateStudent = async (req, res) => {
         } catch (enrErr) {
             console.warn('reactivateStudent enrollment toggle warning:', enrErr);
         }
+        req.skipAuditTrail = true;
+        await writeAuditLog({
+            userId: req.user?._id,
+            action: 'students.reactivate',
+            description: `target=${String(id)} type=student status=active`,
+            req,
+        });
         publishRealtime({ type: 'students:changed', id: String(id), ts: Date.now() });
         publishRealtime({ type: 'users:changed', ts: Date.now() });
         publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
