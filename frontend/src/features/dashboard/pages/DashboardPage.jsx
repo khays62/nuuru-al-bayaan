@@ -134,9 +134,9 @@ const QuickCard = ({ title, description, to, Icon, tone = 'indigo', disabled = f
 };
 
 const fmtCount = (value) => {
-    if (value === null || value === undefined) return 'â€”';
+    if (value === null || value === undefined) return '-';
     const n = Number(value);
-    if (!Number.isFinite(n)) return 'â€”';
+    if (!Number.isFinite(n)) return '-';
     return new Intl.NumberFormat().format(n);
 };
 
@@ -786,6 +786,81 @@ export default function DashboardPage() {
 
     const isInitialLoading = Boolean(loading && data == null);
 
+    const moduleCards = [
+        canStudents ? {
+            key: 'students',
+            title: t('dashboard.page.modules.students'),
+            subtitle: studentsActive !== null && studentsActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(studentsActive) }) : ' ',
+            to: '/students',
+            Icon: Users,
+            count: studentsTotal,
+            tone: 'blue',
+        } : null,
+        canTeachers ? {
+            key: 'teachers',
+            title: t('dashboard.page.modules.teachers'),
+            subtitle: teachersActive !== null && teachersActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(teachersActive) }) : ' ',
+            to: '/teachers',
+            Icon: Users,
+            count: teachersTotal,
+            tone: 'emerald',
+        } : null,
+        isAdmin ? {
+            key: 'staff',
+            title: t('dashboard.page.modules.staff'),
+            subtitle: staffActive !== null && staffActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(staffActive) }) : ' ',
+            to: '/users',
+            Icon: UserCog,
+            count: staffTotal,
+            tone: 'violet',
+        } : null,
+        canGrades ? {
+            key: 'classes',
+            title: t('dashboard.page.modules.classes'),
+            subtitle: t('dashboard.page.modules.classesSubtitle'),
+            to: '/grades',
+            Icon: Layers3,
+            count: classesCount,
+            tone: 'amber',
+        } : null,
+        canSubjects ? {
+            key: 'subjects',
+            title: t('dashboard.page.modules.subjects'),
+            subtitle: t('dashboard.page.modules.subjectsSubtitle'),
+            to: '/subjects',
+            Icon: BookOpenCheck,
+            count: subjectsCount,
+            tone: 'sky',
+        } : null,
+        canCohorts ? {
+            key: 'cohorts',
+            title: t('dashboard.page.modules.cohorts'),
+            subtitle: t('dashboard.page.modules.cohortsSubtitle'),
+            to: '/cohorts',
+            Icon: GraduationCap,
+            count: cohortsCount,
+            tone: 'emerald',
+        } : null,
+        canTransfers ? {
+            key: 'transfers',
+            title: t('dashboard.page.modules.transfers'),
+            subtitle: t('dashboard.page.modules.inSelectedRange'),
+            to: '/transfers',
+            Icon: Repeat,
+            count: transfersInRange,
+            tone: 'amber',
+        } : null,
+        canAnnouncements ? {
+            key: 'announcements',
+            title: t('dashboard.page.modules.announcements'),
+            subtitle: t('dashboard.page.modules.inSelectedRange'),
+            to: '/announcements',
+            Icon: Megaphone,
+            count: announcementsInRange,
+            tone: 'rose',
+        } : null,
+    ].filter(Boolean);
+
     if (isInitialLoading) return <DashboardSkeleton />;
     if (isError) return <Alert type="error" message={t('dashboard.page.errors.loadFailed')} />;
 
@@ -807,81 +882,17 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
-                <ModuleCard
-                    title={t('dashboard.page.modules.students')}
-                    subtitle={studentsActive !== null && studentsActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(studentsActive) }) : ' '}
-                    to="/students"
-                    Icon={Users}
-                    count={studentsTotal}
-                    tone="blue"
-                    disabled={!canStudents}
-                />
-                <ModuleCard
-                    title={t('dashboard.page.modules.teachers')}
-                    subtitle={teachersActive !== null && teachersActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(teachersActive) }) : ' '}
-                    to="/teachers"
-                    Icon={Users}
-                    count={teachersTotal}
-                    tone="emerald"
-                    disabled={!canTeachers}
-                />
-                {isAdmin ? (
+                {moduleCards.map((card) => (
                     <ModuleCard
-                        title={t('dashboard.page.modules.staff')}
-                        subtitle={staffActive !== null && staffActive !== undefined ? t('dashboard.page.modules.activeCount', { count: fmtCount(staffActive) }) : ' '}
-                        to="/users"
-                        Icon={UserCog}
-                        count={staffTotal}
-                        tone="violet"
-                        disabled={!isAdmin}
+                        key={card.key}
+                        title={card.title}
+                        subtitle={card.subtitle}
+                        to={card.to}
+                        Icon={card.Icon}
+                        count={card.count}
+                        tone={card.tone}
                     />
-                ) : null}
-
-                <ModuleCard
-                    title={t('dashboard.page.modules.classes')}
-                    subtitle={t('dashboard.page.modules.classesSubtitle')}
-                    to="/grades"
-                    Icon={Layers3}
-                    count={classesCount}
-                    tone="amber"
-                    disabled={!canGrades}
-                />
-                <ModuleCard
-                    title={t('dashboard.page.modules.subjects')}
-                    subtitle={t('dashboard.page.modules.subjectsSubtitle')}
-                    to="/subjects"
-                    Icon={BookOpenCheck}
-                    count={subjectsCount}
-                    tone="sky"
-                    disabled={!canSubjects}
-                />
-                <ModuleCard
-                    title={t('dashboard.page.modules.cohorts')}
-                    subtitle={t('dashboard.page.modules.cohortsSubtitle')}
-                    to="/cohorts"
-                    Icon={GraduationCap}
-                    count={cohortsCount}
-                    tone="emerald"
-                    disabled={!canCohorts}
-                />
-                <ModuleCard
-                    title={t('dashboard.page.modules.transfers')}
-                    subtitle={t('dashboard.page.modules.inSelectedRange')}
-                    to="/transfers"
-                    Icon={Repeat}
-                    count={transfersInRange}
-                    tone="amber"
-                    disabled={!canTransfers}
-                />
-                <ModuleCard
-                    title={t('dashboard.page.modules.announcements')}
-                    subtitle={t('dashboard.page.modules.inSelectedRange')}
-                    to="/announcements"
-                    Icon={Megaphone}
-                    count={announcementsInRange}
-                    tone="rose"
-                    disabled={!canAnnouncements}
-                />
+                ))}
             </div>
 
             {/* Analytics (2-column layout) */}

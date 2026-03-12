@@ -13,6 +13,11 @@ import Input from '../../../../shared/components/ui/Input.jsx';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import Alert from '../../../../shared/components/ui/Alert.jsx';
 import UiLoadingState from '../../../../shared/components/ui/LoadingState.jsx';
+import {
+  getPasswordIssueMessage,
+  getPasswordValidationState,
+  resolvePasswordPolicy,
+} from '../../../../shared/utils/passwordPolicy.js';
 import { useI18n } from '../../../../i18n/useI18n';
 import { getSomaliaDistrictLabel, getSomaliaRegionLabel } from '../../../../shared/data/somaliaAdminDivisions.js';
 import { displayText } from '../../../../utils/displayText';
@@ -21,6 +26,10 @@ export default function ProfileTab() {
   const { studentId: paramStudentId } = useParams();
   const { auth, refreshUser } = useAuth();
   const { t, lang } = useI18n();
+  const passwordPolicy = React.useMemo(
+    () => resolvePasswordPolicy(auth?.privacyPolicy?.passwordPolicy),
+    [auth?.privacyPolicy?.passwordPolicy],
+  );
 
   const rawStudentRef = auth?.user?.studentRef;
   const studentRefId = rawStudentRef?._id || rawStudentRef || null;
@@ -35,10 +44,19 @@ export default function ProfileTab() {
   const [showNewPw, setShowNewPw] = React.useState(false);
   const [showConfirmPw, setShowConfirmPw] = React.useState(false);
 
-  const confirmTouched = String(confirmPassword || '').length > 0;
-  const nextTouched = String(newPassword || '').length > 0;
-  const passwordsMatch = nextTouched && confirmTouched && newPassword === confirmPassword;
-  const passwordsMismatch = confirmTouched && newPassword !== confirmPassword;
+  const normalizedNewPassword = String(newPassword || '').trim();
+  const normalizedConfirmPassword = String(confirmPassword || '').trim();
+  const passwordUi = React.useMemo(
+    () => getPasswordValidationState({
+      password: normalizedNewPassword,
+      confirmPassword: normalizedConfirmPassword,
+      policyInput: passwordPolicy,
+    }),
+    [normalizedConfirmPassword, normalizedNewPassword, passwordPolicy],
+  );
+  const firstPasswordIssueMessage = passwordUi.issues[0]
+    ? getPasswordIssueMessage(passwordUi.issues[0], t, passwordPolicy)
+    : '';
 
   const changePasswordMutation = useMutation({
     mutationFn: async ({ oldPassword, newPassword }) => {
@@ -67,8 +85,8 @@ export default function ProfileTab() {
 
   const handleChangePassword = async () => {
     const curr = String(currentPassword || '').trim();
-    const next = String(newPassword || '').trim();
-    const confirm = String(confirmPassword || '').trim();
+    const next = normalizedNewPassword;
+    const confirm = normalizedConfirmPassword;
 
     // Security: we never read the current password from the DB.
     // If the account is still on default password (mustChangePassword), allow changing without entering current.
@@ -76,8 +94,8 @@ export default function ProfileTab() {
       toast.error(t('students.profileTab.password.fieldsRequired'));
       return;
     }
-    if (next.length < 6) {
-      toast.error(t('students.profileTab.password.minLength'));
+    if (!passwordUi.ok) {
+      toast.error(firstPasswordIssueMessage || t('students.profileTab.password.invalid', { defaultValue: 'Password policy validation failed.' }));
       return;
     }
     if (next !== confirm) {
@@ -367,7 +385,7 @@ export default function ProfileTab() {
                         type={showNewPw ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className={`pr-10 ${passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : '')}`}
+                        className={`pr-10 ${passwordUi.newPasswordState === 'valid' ? 'border-green-500' : (passwordUi.newPasswordState === 'invalid' ? 'border-red-500' : '')}`}
                         autoComplete="new-password"
                         disabled={pwSaving}
                       />
@@ -383,6 +401,9 @@ export default function ProfileTab() {
                         {showNewPw ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
+                    {passwordUi.passwordTouched && firstPasswordIssueMessage ? (
+                      <div className="mt-1 text-xs text-red-600">{firstPasswordIssueMessage}</div>
+                    ) : null}
                   </div>
                   <div className="sm:col-span-1">
                     <label className="block text-sm font-medium text-(--nb-color-text) mb-1">{t('students.profileTab.password.confirm')}</label>
@@ -391,7 +412,7 @@ export default function ProfileTab() {
                         type={showConfirmPw ? 'text' : 'password'}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className={`pr-10 ${passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : '')}`}
+                        className={`pr-10 ${passwordUi.confirmPasswordState === 'valid' ? 'border-green-500' : (passwordUi.confirmPasswordState === 'invalid' ? 'border-red-500' : '')}`}
                         autoComplete="new-password"
                         disabled={pwSaving}
                       />
@@ -407,6 +428,12 @@ export default function ProfileTab() {
                         {showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
                       </button>
                     </div>
+                    {passwordUi.confirmTouched && passwordUi.passwordsMismatch ? (
+                      <div className="mt-1 text-xs text-red-600">{t('students.profileTab.password.noMatch')}</div>
+                    ) : null}
+                    {passwordUi.passwordsMatch ? (
+                      <div className="mt-1 text-xs text-green-600">{t('students.profileTab.password.match', { defaultValue: 'Passwords match.' })}</div>
+                    ) : null}
                   </div>
 
                   <div className="sm:col-span-3 flex justify-end">

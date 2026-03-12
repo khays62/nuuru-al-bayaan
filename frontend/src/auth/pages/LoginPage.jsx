@@ -13,7 +13,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [cooldownUntilMs, setCooldownUntilMs] = useState(0);
-  const [cooldownKind, setCooldownKind] = useState(''); // '' | 'COOLDOWN' | 'LOCKED_24H'
+  const [cooldownKind, setCooldownKind] = useState(''); // '' | 'COOLDOWN' | 'LOCKED' | 'BLOCKED'
   const [nowMs, setNowMs] = useState(Date.now());
   const [swapSides, setSwapSides] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() => {
@@ -49,6 +49,29 @@ export default function LoginPage() {
     const ss = s % 60;
     if (hh > 0) return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
     return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  };
+
+  const formatLockDuration = (secs) => {
+    const totalSeconds = Math.max(0, Math.ceil(Number(secs) || 0));
+    const units = [
+      { size: 30 * 24 * 60 * 60, singularKey: 'month', pluralKey: 'months', fallbackSingular: 'month', fallbackPlural: 'months' },
+      { size: 7 * 24 * 60 * 60, singularKey: 'week', pluralKey: 'weeks', fallbackSingular: 'week', fallbackPlural: 'weeks' },
+      { size: 24 * 60 * 60, singularKey: 'day', pluralKey: 'days', fallbackSingular: 'day', fallbackPlural: 'days' },
+      { size: 60 * 60, singularKey: 'hour', pluralKey: 'hours', fallbackSingular: 'hour', fallbackPlural: 'hours' },
+      { size: 60, singularKey: 'minute', pluralKey: 'minutes', fallbackSingular: 'minute', fallbackPlural: 'minutes' },
+    ];
+
+    for (const unit of units) {
+      if (totalSeconds >= unit.size) {
+        const count = Math.max(1, Math.ceil(totalSeconds / unit.size));
+        const label = count === 1
+          ? t(`auth.login.duration.${unit.singularKey}`, { defaultValue: unit.fallbackSingular })
+          : t(`auth.login.duration.${unit.pluralKey}`, { defaultValue: unit.fallbackPlural });
+        return `${count} ${label}`;
+      }
+    }
+
+    return `1 ${t('auth.login.duration.minute', { defaultValue: 'minute' })}`;
   };
 
   const stopAutofillClear = () => {
@@ -190,22 +213,39 @@ export default function LoginPage() {
         const principalType = String(result?.principalType || '');
         const remainingAttemptsRaw = result?.remainingAttempts;
         const remainingAttempts = Number.isFinite(Number(remainingAttemptsRaw)) ? Number(remainingAttemptsRaw) : null;
-        const showAttemptsLeft = remainingAttempts !== null && Number.isFinite(remainingAttempts) && remainingAttempts <= 3;
-        const lastAttemptHint = showAttemptsLeft && remainingAttempts === 1
-          ? t('auth.login.errors.lastAttemptBeforeLock', { defaultValue: ' Last attempt before lock.' })
+        const isFinalAttemptBeforeBlock = Boolean(result?.isFinalAttemptBeforeBlock);
+        const lastAttemptHint = isFinalAttemptBeforeBlock
+          ? ((principalType === 'known' || code === 'WRONG_PASSWORD')
+            ? t('auth.login.errors.lastAttemptBeforeLock', { defaultValue: ' Last attempt before lock.' })
+            : t('auth.login.errors.lastAttemptBeforeBlock', { defaultValue: ' Last attempt before block.' }))
           : '';
 
         if (status === 429 && retryAfterSeconds > 0) {
           const until = Date.now() + retryAfterSeconds * 1000;
           setCooldownUntilMs(until);
-          setCooldownKind(code === 'LOGIN_LOCKED_24H' ? 'LOCKED_24H' : 'COOLDOWN');
+          setCooldownKind(
+            code === 'UNKNOWN_USERNAME_BLOCKED'
+              ? 'BLOCKED'
+              : (code === 'LOGIN_LOCKED_24H' ? 'LOCKED' : 'COOLDOWN')
+          );
           lastCooldownToastAtRef.current = Date.now();
           if (code === 'LOGIN_LOCKED_24H') {
             if (principalType === 'unknown') {
-              toast.error(t('auth.login.errors.unknownUsernameBlocked', { defaultValue: 'Unknown username. Too many attempts; login is blocked.' }));
+              toast.error(t('auth.login.errors.unknownUsernameBlockedTryAgainIn', {
+                defaultValue: 'Unknown username. Login is blocked. Try again in {{time}}.',
+                time: formatLockDuration(retryAfterSeconds),
+              }));
             } else {
-              toast.error(t('auth.login.errors.accountLocked24hContactAdmin', { defaultValue: 'Account locked for 24 hours. Please contact an administrator.' }));
+              toast.error(t('auth.login.errors.accountLockedTryAgainIn', {
+                defaultValue: 'Username is locked. Try again in {{time}}.',
+                time: formatLockDuration(retryAfterSeconds),
+              }));
             }
+          } else if (code === 'UNKNOWN_USERNAME_BLOCKED') {
+            toast.error(t('auth.login.errors.unknownUsernameBlockedTryAgainIn', {
+              defaultValue: 'Unknown username. Login is blocked. Try again in {{time}}.',
+              time: formatLockDuration(retryAfterSeconds),
+            }));
           } else {
             toast.error(
               t('auth.login.errors.tooManyAttemptsTryAgainIn', {
@@ -218,32 +258,30 @@ export default function LoginPage() {
         }
 
         if (status === 429 && code === 'UNKNOWN_USERNAME_BLOCKED') {
-          toast.error(t('auth.login.errors.unknownUsernameBlocked', { defaultValue: 'Unknown username. Too many attempts; login is blocked.' }));
+          toast.error(t('auth.login.errors.unknownUsernameBlocked', { defaultValue: 'Unknown username. Login is blocked.' }));
           return;
         }
 
         if (code === 'USER_NOT_FOUND') {
-          if (showAttemptsLeft) {
+          if (isFinalAttemptBeforeBlock) {
             toast.error(
-              t('auth.login.errors.unknownUsernameOrStudentIdWithAttempts', {
-                defaultValue: 'Unknown username / student ID. Attempts left: {{count}}.{{hint}}',
-                count: remainingAttempts,
-                hint: remainingAttempts === 1
-                  ? t('auth.login.errors.lastAttemptBeforeBlock', { defaultValue: ' Last attempt before block.' })
-                  : '',
+              t('auth.login.errors.unknownUsernameWithAttempts', {
+                defaultValue: 'Unknown username. Attempts left: {{count}}.{{hint}}',
+                count: remainingAttempts || 1,
+                hint: lastAttemptHint,
               })
             );
           } else {
-            toast.error(t('auth.login.errors.unknownUsernameOrStudentId', { defaultValue: 'Unknown username / student ID.' }));
+            toast.error(t('auth.login.errors.unknownUsername', { defaultValue: 'Unknown username.' }));
           }
           return;
         }
         if (code === 'WRONG_PASSWORD') {
-          if (showAttemptsLeft) {
+          if (isFinalAttemptBeforeBlock) {
             toast.error(
               t('auth.login.errors.wrongPasswordWithAttempts', {
                 defaultValue: 'Wrong password. Attempts left: {{count}}.{{hint}}',
-                count: remainingAttempts,
+                count: remainingAttempts || 1,
                 hint: lastAttemptHint,
               })
             );
@@ -253,12 +291,12 @@ export default function LoginPage() {
           return;
         }
 
-        if (status === 401 && showAttemptsLeft) {
+        if (status === 401 && isFinalAttemptBeforeBlock) {
           toast.error(
             t('auth.login.errors.invalidCredentialsWithAttempts', {
               defaultValue: '{{message}} Attempts left: {{count}}.{{hint}}',
               message: result?.message || t('auth.login.errors.invalidCredentials', { defaultValue: 'Invalid credentials.' }),
-              count: remainingAttempts,
+              count: remainingAttempts || 1,
               hint: lastAttemptHint,
             })
           );
@@ -353,7 +391,7 @@ export default function LoginPage() {
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
                     <label className="block text-sm font-semibold text-(--nb-color-text) mb-1">
-                      {t('auth.login.fields.usernameOrStudentId', { defaultValue: 'Username / Student ID' })}
+                      {t('auth.login.fields.usernameOrStudentId', { defaultValue: 'Username' })}
                     </label>
                     <Input
                       ref={usernameRef}
@@ -391,8 +429,11 @@ export default function LoginPage() {
                       ? t('auth.login.actions.signingIn', { defaultValue: 'Signing inâ€¦' })
                       : (
                         cooldownRemainingSeconds > 0
-                          ? (cooldownKind === 'LOCKED_24H'
-                            ? t('auth.login.actions.lockedContactAdmin', { defaultValue: 'Locked (contact admin)' })
+                          ? ((cooldownKind === 'LOCKED' || cooldownKind === 'BLOCKED')
+                            ? t(
+                              cooldownKind === 'LOCKED' ? 'auth.login.actions.locked' : 'auth.login.actions.blocked',
+                              { defaultValue: cooldownKind === 'LOCKED' ? 'Locked' : 'Blocked' }
+                            )
                             : t('auth.login.actions.tryAgainIn', {
                               defaultValue: 'Try again in {{time}}',
                               time: formatSeconds(cooldownRemainingSeconds),

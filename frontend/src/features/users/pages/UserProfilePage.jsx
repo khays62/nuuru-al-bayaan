@@ -512,7 +512,7 @@ function getEnabledModulesFromPermissions(permissions) {
 function moduleGroupIdFor(moduleName) {
   const m = String(moduleName || '');
   if (m.startsWith('finance')) return 'finance';
-  if (m === 'security') return 'security';
+  if (m === 'security' || m === 'trackingAudit' || m === 'privacyControl') return 'security';
   if (m === 'announcements') return 'announcements';
   if (m === 'students' || m === 'teachers') return 'users';
   if (['grades', 'subjects', 'cohorts', 'promotions', 'transfers'].includes(m)) return 'academics';

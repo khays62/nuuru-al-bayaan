@@ -2,6 +2,7 @@ import express from 'express';
 
 import { protect } from '../middleware/authMiddleware.js';
 import { checkPermission } from '../middleware/checkPermission.js';
+import { requireStudentDashboardAccess } from '../middleware/studentDashboardPolicy.js';
 import { uploadLibraryResource, LIBRARY_FILE_MAX_BYTES, validateLibraryUploadSignature } from '../middleware/uploadLibraryResource.js';
 import { createLibraryResource, deleteLibraryResource, listLibraryResources } from '../controllers/libraryController.js';
 
@@ -10,7 +11,7 @@ const router = express.Router();
 router.use(protect);
 
 // Read: any authenticated user (student/staff/teacher/admin)
-router.get('/', listLibraryResources);
+router.get('/', requireStudentDashboardAccess('library'), listLibraryResources);
 
 // Write: admin + teacher always; staff requires library.add
 router.post(

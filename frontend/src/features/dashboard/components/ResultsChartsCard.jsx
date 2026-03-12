@@ -139,7 +139,7 @@ const ExamTypeBarChart = ({ rows }) => {
 
 const fmtNum = (n, digits = 1) => {
     const v = Number(n);
-    if (!Number.isFinite(v)) return 'â€”';
+    if (!Number.isFinite(v)) return '-';
     return v.toFixed(digits);
 };
 

@@ -14,6 +14,7 @@ import PageLoading from '../../../../shared/components/feedback/PageLoading.jsx'
 import ForcePasswordChangeModal from '../../../../auth/components/ForcePasswordChangeModal';
 import { useStudentDashboardRealtimeInvalidation } from './useStudentDashboardRealtimeInvalidation';
 import { useI18n } from '../../../../i18n/useI18n';
+import { isStudentDashboardTabEnabled } from '../../../privacy-control/privacyPolicyDefaults.js';
 
 function isoDateOnly(d) {
   return new Date(d).toISOString().slice(0, 10);
@@ -632,6 +633,13 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
     return '/student-dashboard';
   }, [studentIdOverride]);
 
+  const applyStudentPrivacyPolicy = isStudentSelf;
+  const showProfile = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'profile') : true;
+  const showTranscript = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'transcript') : true;
+  const showAttendance = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'attendance') : true;
+  const showTimetable = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'timetable') : true;
+  const showLibrary = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'library') : true;
+
   const profileNameQuery = useQuery({
     queryKey: studentKeys.profile(studentId),
     enabled: !!studentId && !isStudentSelf,
@@ -839,44 +847,55 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-            <Card
-              to={`${cardsBasePath}/transcript`}
-              title={t('nav.transcript')}
-              description={t('students.selfDashboard.cards.transcriptDesc')}
-              Icon={BarChart2}
-              tone="indigo"
-            />
-            <Card
-              to={`${cardsBasePath}/attendance`}
-              title={t('nav.attendance')}
-              description={t('students.selfDashboard.cards.attendanceDesc')}
-              Icon={ClipboardList}
-              tone="emerald"
-            />
-            <Card
-              to={`${cardsBasePath}/timetable`}
-              title={t('nav.timetable')}
-              description={t('students.selfDashboard.cards.timetableDesc')}
-              Icon={CalendarDays}
-              tone="sky"
-            />
-            <Card
-              to={`${cardsBasePath}/library`}
-              title={t('nav.library')}
-              description={t('students.selfDashboard.cards.libraryDesc')}
-              Icon={BookOpenCheck}
-              tone="amber"
-            />
-            <Card
-              to={`${cardsBasePath}/profile`}
-              title={t('nav.profile')}
-              description={t('students.selfDashboard.cards.profileDesc')}
-              Icon={Users}
-              tone="sky"
-            />
+            {showTranscript ? (
+              <Card
+                to={`${cardsBasePath}/transcript`}
+                title={t('nav.transcript')}
+                description={t('students.selfDashboard.cards.transcriptDesc')}
+                Icon={BarChart2}
+                tone="indigo"
+              />
+            ) : null}
+            {showAttendance ? (
+              <Card
+                to={`${cardsBasePath}/attendance`}
+                title={t('nav.attendance')}
+                description={t('students.selfDashboard.cards.attendanceDesc')}
+                Icon={ClipboardList}
+                tone="emerald"
+              />
+            ) : null}
+            {showTimetable ? (
+              <Card
+                to={`${cardsBasePath}/timetable`}
+                title={t('nav.timetable')}
+                description={t('students.selfDashboard.cards.timetableDesc')}
+                Icon={CalendarDays}
+                tone="sky"
+              />
+            ) : null}
+            {showLibrary ? (
+              <Card
+                to={`${cardsBasePath}/library`}
+                title={t('nav.library')}
+                description={t('students.selfDashboard.cards.libraryDesc')}
+                Icon={BookOpenCheck}
+                tone="amber"
+              />
+            ) : null}
+            {showProfile ? (
+              <Card
+                to={`${cardsBasePath}/profile`}
+                title={t('nav.profile')}
+                description={t('students.selfDashboard.cards.profileDesc')}
+                Icon={Users}
+                tone="sky"
+              />
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {showAttendance ? (
             <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('nav.attendance')}</div>
@@ -934,7 +953,9 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
             </div>
           </div>
         </div>
+          ) : null}
 
+        {showTimetable ? (
         <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden">
           <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('students.selfDashboard.todayScheduleTitle')}</div>
@@ -986,7 +1007,9 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
             ) : null}
           </div>
         </div>
+        ) : null}
 
+        {showTranscript ? (
         <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) shadow-sm overflow-hidden xl:col-span-2">
           <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
             <div className="font-semibold">{t('nav.transcript')}</div>
@@ -1064,6 +1087,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
             </div>
           </div>
         </div>
+        ) : null}
       </div>
         </>
       )}

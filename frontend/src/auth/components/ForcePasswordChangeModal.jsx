@@ -5,7 +5,13 @@ import { Eye, EyeOff } from 'lucide-react';
 import { fetchJson } from '../../shared/api/http';
 import Input from '../../shared/components/ui/Input';
 import Button from '../../shared/components/ui/Button';
+import {
+  getPasswordIssueMessage,
+  getPasswordValidationState,
+  resolvePasswordPolicy,
+} from '../../shared/utils/passwordPolicy.js';
 import { useI18n } from '../../i18n/useI18n';
+import { useAuth } from '../AuthContext.jsx';
 
 export default function ForcePasswordChangeModal({
   isOpen,
@@ -16,39 +22,52 @@ export default function ForcePasswordChangeModal({
   description,
 }) {
   const { t } = useI18n();
+  const { auth } = useAuth();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-
+  const passwordPolicy = useMemo(
+    () => resolvePasswordPolicy(auth?.privacyPolicy?.passwordPolicy),
+    [auth?.privacyPolicy?.passwordPolicy],
+  );
+  const normalizedNewPassword = String(newPassword || '').trim();
+  const normalizedConfirmPassword = String(confirmPassword || '').trim();
+  const passwordUi = useMemo(
+    () => getPasswordValidationState({
+      password: normalizedNewPassword,
+      confirmPassword: normalizedConfirmPassword,
+      policyInput: passwordPolicy,
+    }),
+    [normalizedConfirmPassword, normalizedNewPassword, passwordPolicy],
+  );
   const resolvedTitle =
     title ?? t('auth.forcePasswordChange.title', { defaultValue: 'Change your password' });
 
-  const confirmTouched = String(confirmPassword || '').length > 0;
-  const nextTouched = String(newPassword || '').length > 0;
-  const passwordsMatch = nextTouched && confirmTouched && newPassword === confirmPassword;
-  const passwordsMismatch = confirmTouched && newPassword !== confirmPassword;
+  const firstPasswordIssue = passwordUi.issues[0] || null;
+  const firstPasswordIssueMessage = firstPasswordIssue
+    ? getPasswordIssueMessage(firstPasswordIssue, t, passwordPolicy)
+    : '';
 
   const canSubmit = useMemo(() => {
-    const next = String(newPassword || '').trim();
-    const confirm = String(confirmPassword || '').trim();
-    if (next.length < 6) return false;
-    if (!confirm) return false;
-    if (next !== confirm) return false;
+    if (!normalizedNewPassword) return false;
+    if (!normalizedConfirmPassword) return false;
+    if (!passwordUi.ok) return false;
+    if (normalizedNewPassword !== normalizedConfirmPassword) return false;
     return true;
-  }, [newPassword, confirmPassword]);
+  }, [normalizedConfirmPassword, normalizedNewPassword, passwordUi.ok]);
 
   const submit = async () => {
-    const next = String(newPassword || '').trim();
-    const confirm = String(confirmPassword || '').trim();
+    const next = normalizedNewPassword;
+    const confirm = normalizedConfirmPassword;
 
     if (!next || !confirm) {
       toast.error(t('auth.forcePasswordChange.toasts.fillBoth', { defaultValue: 'Please fill in both fields.' }));
       return;
     }
-    if (next.length < 6) {
-      toast.error(t('auth.forcePasswordChange.toasts.minLength', { defaultValue: 'Password must be at least 6 characters.' }));
+    if (!passwordUi.ok) {
+      toast.error(firstPasswordIssueMessage || t('auth.forcePasswordChange.errors.failed', { defaultValue: 'Password policy validation failed.' }));
       return;
     }
     if (next !== confirm) {
@@ -106,7 +125,9 @@ export default function ForcePasswordChangeModal({
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className={`pr-10 ${
-                  passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : 'border-slate-300')
+                  passwordUi.newPasswordState === 'valid'
+                    ? 'border-green-500'
+                    : (passwordUi.newPasswordState === 'invalid' ? 'border-red-500' : 'border-slate-300')
                 }`}
                 placeholder={t('auth.forcePasswordChange.placeholders.newPassword', { defaultValue: 'Enter new password' })}
                 autoComplete="new-password"
@@ -121,6 +142,9 @@ export default function ForcePasswordChangeModal({
                 {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
               </div>
             </div>
+            {passwordUi.passwordTouched && firstPasswordIssueMessage ? (
+              <div className="mt-1 text-xs text-red-600">{firstPasswordIssueMessage}</div>
+            ) : null}
           </div>
 
           <div>
@@ -131,7 +155,9 @@ export default function ForcePasswordChangeModal({
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className={`pr-10 ${
-                  passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : 'border-slate-300')
+                  passwordUi.confirmPasswordState === 'valid'
+                    ? 'border-green-500'
+                    : (passwordUi.confirmPasswordState === 'invalid' ? 'border-red-500' : 'border-slate-300')
                 }`}
                 placeholder={t('auth.forcePasswordChange.placeholders.confirmPassword', { defaultValue: 'Re-enter new password' })}
                 autoComplete="new-password"
@@ -146,6 +172,12 @@ export default function ForcePasswordChangeModal({
                 {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
               </div>
             </div>
+            {passwordUi.confirmTouched && passwordUi.passwordsMismatch ? (
+              <div className="mt-1 text-xs text-red-600">{t('auth.forcePasswordChange.toasts.mismatch', { defaultValue: 'Passwords do not match.' })}</div>
+            ) : null}
+            {passwordUi.passwordsMatch ? (
+              <div className="mt-1 text-xs text-green-600">{t('auth.forcePasswordChange.match', { defaultValue: 'Passwords match.' })}</div>
+            ) : null}
           </div>
         </div>
 

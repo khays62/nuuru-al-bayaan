@@ -25,6 +25,7 @@ export const EVENTS = {
   TRANSCRIPT_CHANGED: 'transcript:changed',
   ANNOUNCEMENTS_CHANGED: 'announcements:changed',
   LIBRARY_CHANGED: 'library:changed',
+  PRIVACY_POLICY_CHANGED: 'privacyPolicy:changed',
 };
 
 export function emit(name, detail) {
@@ -73,3 +74,4 @@ export function emitAttendanceChanged(detail) { emit(EVENTS.ATTENDANCE_CHANGED, 
 export function emitTranscriptChanged(detail) { emit(EVENTS.TRANSCRIPT_CHANGED, detail); }
 export function emitAnnouncementsChanged(detail) { emit(EVENTS.ANNOUNCEMENTS_CHANGED, detail); }
 export function emitLibraryChanged(detail) { emit(EVENTS.LIBRARY_CHANGED, detail); }
+export function emitPrivacyPolicyChanged(detail) { emit(EVENTS.PRIVACY_POLICY_CHANGED, detail); }

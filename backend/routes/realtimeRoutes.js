@@ -35,6 +35,8 @@ router.get('/stream', protect, authorizeRoles('admin', 'staff', 'teacher', 'stud
     'transcript:changed',
     // Student finance
     'studentFinance:changed',
+    // Client-safe privacy policy refresh for student shell/tab visibility.
+    'security:privacyPolicyChanged',
 
     // Digital library (global resources)
     'library:changed',

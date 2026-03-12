@@ -5,6 +5,7 @@ import { getFullTranscript } from '../controllers/transcriptController.js';
 import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
 import { checkAnyPermission, checkPermission } from "../middleware/checkPermission.js";
 import { allowStudentSelfOr } from '../middleware/studentSelf.js';
+import { requireStudentDashboardAccess } from '../middleware/studentDashboardPolicy.js';
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
 import { uploadStudentPhoto as uploadStudentPhotoMw, STUDENT_PHOTO_MAX_BYTES } from '../middleware/uploadStudentPhoto.js';
@@ -117,6 +118,7 @@ router.put(
     '/change-password',
     protect,
     authorizeRoles('student'),
+    requireStudentDashboardAccess('profile'),
     changeStudentPassword
 );
 
@@ -137,6 +139,7 @@ router.get(
     '/:id',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
+    requireStudentDashboardAccess('profile'),
     allowStudentSelfOr(canReadStudents),
     getStudentProfile
 ); // GET /api/students/:id
@@ -184,6 +187,7 @@ router.get(
     '/:id/history',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
+    requireStudentDashboardAccess('enrollments'),
     allowStudentSelfOr(canReadStudents),
     getStudentHistory
 ); // GET /api/students/:id/history
@@ -192,6 +196,7 @@ router.get(
     '/:id/transfers',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
+    requireStudentDashboardAccess('transfers'),
     allowStudentSelfOr(canReadStudents),
     getStudentTransfers
 ); // GET /api/students/:id/transfers
@@ -200,6 +205,7 @@ router.get(
     '/:id/latest-transfer',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
+    requireStudentDashboardAccess('transfers'),
     allowStudentSelfOr(canReadStudents),
     getLatestTransfer
 ); // GET /api/students/:id/latest-transfer
@@ -208,6 +214,7 @@ router.get(
     '/:id/full-transcript',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
+    requireStudentDashboardAccess('transcript'),
     allowStudentSelfOr(canReadStudents),
     getFullTranscript
 ); // GET /api/students/:id/full-transcript

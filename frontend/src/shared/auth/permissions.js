@@ -25,6 +25,8 @@ export const libraryAny = permsAny('library', actionsFor('library'));
 
 // Security
 export const securityViewOnly = permsAny('security', ['view', 'full']);
+export const trackingAuditViewOnly = permsAny('trackingAudit', ['view', 'full']);
+export const privacyControlViewOnly = permsAny('privacyControl', ['view', 'full']);
 
 // Finance
 export const financeDashboardAny = permsAny('financeDashboard', actionsFor('financeDashboard'));

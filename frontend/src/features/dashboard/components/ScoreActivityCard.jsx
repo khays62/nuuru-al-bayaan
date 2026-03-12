@@ -10,7 +10,7 @@ const fmt = (n) => {
 
 const fmtOrDash = (n) => {
     const v = Number(n);
-    if (!Number.isFinite(v)) return 'â€”';
+    if (!Number.isFinite(v)) return '-';
     return fmt(v);
 };
 

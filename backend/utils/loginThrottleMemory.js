@@ -36,6 +36,7 @@ export function recordUnknownLoginAttempt({
   key,
   computeCooldownSeconds,
   computeMaxAttempts,
+  getLockoutSeconds,
   securityLockLevel = 4,
 } = {}) {
   const now = Date.now();
@@ -55,21 +56,30 @@ export function recordUnknownLoginAttempt({
     failedAttempts: 0,
     cooldownLevel: 0,
     lockUntilMs: 0,
-    permanentlyBlocked: false,
+    blockedUntilMs: 0,
     lastSeenMs: now,
   };
 
   existing.lastSeenMs = now;
 
-  // If currently locked/cooling down
-  if (existing.permanentlyBlocked) {
-    existing.lastSeenMs = now;
+  if (existing.blockedUntilMs && existing.blockedUntilMs <= now) {
+    existing.failedAttempts = 0;
+    existing.cooldownLevel = 0;
+    existing.lockUntilMs = 0;
+    existing.blockedUntilMs = 0;
+  }
+
+  // If currently blocked/cooling down
+  if (existing.blockedUntilMs && existing.blockedUntilMs > now) {
+    const retryAfterSeconds = Math.max(0, Math.ceil((existing.blockedUntilMs - now) / 1000));
     store.set(k, existing);
     return {
       blocked: true,
       code: 'UNKNOWN_USERNAME_BLOCKED',
-      retryAfterSeconds: 0,
+      retryAfterSeconds,
       remainingAttempts: 0,
+      level: Number(existing.cooldownLevel || securityLockLevel),
+      isFinalAttemptBeforeBlock: false,
     };
   }
 
@@ -81,6 +91,8 @@ export function recordUnknownLoginAttempt({
       code: 'LOGIN_COOLDOWN',
       retryAfterSeconds,
       remainingAttempts: 0,
+      level: Number(existing.cooldownLevel || 0),
+      isFinalAttemptBeforeBlock: false,
     };
   }
 
@@ -94,16 +106,18 @@ export function recordUnknownLoginAttempt({
 
     const nextLevel = level + 1;
     if (nextLevel >= securityLockLevel) {
-      // Unknown usernames: do NOT apply a 24h lock. Block immediately (best-effort, in-memory).
+      const lockoutSeconds = Math.max(60, Number(getLockoutSeconds?.() || 0));
       existing.cooldownLevel = securityLockLevel;
       existing.lockUntilMs = 0;
-      existing.permanentlyBlocked = true;
+      existing.blockedUntilMs = now + lockoutSeconds * 1000;
       store.set(k, existing);
       return {
         blocked: true,
         code: 'UNKNOWN_USERNAME_BLOCKED',
-        retryAfterSeconds: 0,
+        retryAfterSeconds: lockoutSeconds,
         remainingAttempts: 0,
+        level,
+        isFinalAttemptBeforeBlock: false,
       };
     }
 
@@ -117,14 +131,19 @@ export function recordUnknownLoginAttempt({
       code: 'LOGIN_COOLDOWN',
       retryAfterSeconds: cooldownSeconds,
       remainingAttempts: 0,
+      level,
+      isFinalAttemptBeforeBlock: false,
     };
   }
 
+  const remainingAttempts = Math.max(0, maxAttempts - existing.failedAttempts);
   store.set(k, existing);
   return {
     blocked: false,
     code: 'INVALID_CREDENTIALS',
     retryAfterSeconds: 0,
-    remainingAttempts: Math.max(0, maxAttempts - existing.failedAttempts),
+    remainingAttempts,
+    level,
+    isFinalAttemptBeforeBlock: level >= (securityLockLevel - 1) && remainingAttempts === 1,
   };
 }

@@ -9,6 +9,7 @@ import { publishRealtime } from '../utils/realtimeBus.js';
 import Counter from '../models/Counter.js';
 import path from 'path';
 import fs from 'fs/promises';
+import { getResolvedPrivacyPolicy, validatePasswordAgainstPolicy } from '../utils/privacyPolicy.js';
 
 
 const parseJsonIfString = (v) => {
@@ -40,7 +41,7 @@ const deriveStaffMetaFromPermissions = (permissions) => {
 
   const groupFor = (m) => {
     if (m.startsWith('finance')) return 'finance';
-    if (m === 'security') return 'security';
+    if (m === 'security' || m === 'trackingAudit' || m === 'privacyControl') return 'security';
     if (m === 'announcements') return 'announcements';
     if (m === 'students' || m === 'teachers') return 'users';
     if (['grades', 'subjects', 'cohorts', 'promotions', 'transfers'].includes(m)) return 'academics';
@@ -185,6 +186,19 @@ export const createUser = async (req, res) => {
     const nextResidenceRegionId = nextIsSomali ? String(residenceRegionId || '').trim() : '';
     const nextResidenceDistrictId = nextIsSomali ? String(residenceDistrictId || '').trim() : '';
     const nextResidenceNeighborhood = nextIsSomali ? String(residenceNeighborhood || '').trim() : '';
+
+    const privacyPolicy = await getResolvedPrivacyPolicy();
+    const createPasswordValidation = validatePasswordAgainstPolicy(password, privacyPolicy);
+    if (!createPasswordValidation.ok) {
+      const first = createPasswordValidation.issues[0]?.key || 'invalid';
+      if (first === 'minLength') {
+        return res.status(400).json({ message: `Password must be at least ${createPasswordValidation.policy.minLength} characters`, field: 'password' });
+      }
+      if (first === 'maxLength') {
+        return res.status(400).json({ message: `Password is too long (max ${createPasswordValidation.policy.maxLength})`, field: 'password' });
+      }
+      return res.status(400).json({ message: `Password failed policy: ${first}`, field: 'password' });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -381,6 +395,19 @@ export const updateUser = async (req, res) => {
     }
 
     if (password && password.trim() !== "") {
+      const privacyPolicy = await getResolvedPrivacyPolicy();
+      const updatePasswordValidation = validatePasswordAgainstPolicy(password, privacyPolicy);
+      if (!updatePasswordValidation.ok) {
+        const first = updatePasswordValidation.issues[0]?.key || 'invalid';
+        if (first === 'minLength') {
+          return res.status(400).json({ message: `Password must be at least ${updatePasswordValidation.policy.minLength} characters`, field: 'password' });
+        }
+        if (first === 'maxLength') {
+          return res.status(400).json({ message: `Password is too long (max ${updatePasswordValidation.policy.maxLength})`, field: 'password' });
+        }
+        return res.status(400).json({ message: `Password failed policy: ${first}`, field: 'password' });
+      }
+
       user.password = await bcrypt.hash(password, 10);
       // Admin-set password becomes the current "default"; force user to change after login.
       user.mustChangePassword = true;

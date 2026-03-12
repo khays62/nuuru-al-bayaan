@@ -2,6 +2,7 @@ import express from 'express';
 import { listSlots, createSlot, createSlotsBulk, updateSlot, swapSlots, deleteSlot } from '../controllers/timetableController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { checkAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+import { requireStudentDashboardAccess } from '../middleware/studentDashboardPolicy.js';
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ const canReadSlots = (req, res, next) => {
 // Allow access if user has timetable access OR attendance access.
 router.get(
 	'/slots',
+	requireStudentDashboardAccess('timetable'),
 	canReadSlots,
 	listSlots
 );

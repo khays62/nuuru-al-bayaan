@@ -126,6 +126,7 @@ import { backfillInvoiceBillingMonth } from '../controllers/financeControl/finan
 import { protect, authorizeRoles } from '../middleware/authMiddleware.js';
 import { checkAnyPermission, checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
 import { allowStudentSelfOr } from '../middleware/studentSelf.js';
+import { requireStudentDashboardAccess } from '../middleware/studentDashboardPolicy.js';
 
 import mongoose from 'mongoose';
 import FinanceCategory from '../models/FinanceCategory.js';
@@ -557,6 +558,7 @@ router.get(
   '/student/:studentId/month-history',
   protect,
   authorizeRoles('admin', 'staff', 'student'),
+  requireStudentDashboardAccess('finance'),
   allowStudentSelfOr(
     checkAnyPermission([
       { module: 'financeStudent', action: 'view' },

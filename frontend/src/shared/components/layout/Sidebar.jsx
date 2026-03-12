@@ -9,6 +9,7 @@ import Badge from '../ui/Badge.jsx';
 import { useAnnouncementsUnread } from '../../../features/announcements/hooks/useAnnouncementsUnread';
 import { MODULE_PERMISSIONS } from '../../auth/permissionContract.js';
 import { useI18n } from '../../../i18n/useI18n';
+import { getStudentDashboardPolicyKeyFromNavItem, isStudentDashboardTabEnabled } from '../../../features/privacy-control/privacyPolicyDefaults.js';
 
 export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu }) {
   const { isRTL, t } = useI18n();
@@ -98,7 +99,12 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     if (role === 'student') {
       const isStudentRole = Array.isArray(item.roles) && item.roles.includes('student');
       if (!isStudentRole) return false;
-      return item.studentNav === true || item.module === 'announcements';
+      if (item.module === 'announcements') return true;
+      if (item.studentNav === true) {
+        const policyKey = getStudentDashboardPolicyKeyFromNavItem(item.key);
+        return policyKey ? isStudentDashboardTabEnabled(auth?.privacyPolicy, policyKey) : true;
+      }
+      return false;
     }
 
     if (role === 'teacher') {
@@ -165,25 +171,31 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
         .map((x) => x.it);
     }
 
-    // Sidebar ordering tweak (admin/staff): move Finance down near the bottom,
-    // right above Announcements, without changing the sidebar layout structure.
+    // Sidebar ordering tweak (admin/staff): keep the bottom section ordered as
+    // Finance -> Settings -> Announcements.
     if (role === 'admin' || role === 'staff') {
       const next = [...base];
-      const financeIdx = next.findIndex((x) => String(x?.key || '') === 'finance');
-      if (financeIdx !== -1) {
-        const financeItem = next.splice(financeIdx, 1)[0];
-        const announcementsIdx = next.findIndex((x) => String(x?.key || '') === 'announcements');
-        if (announcementsIdx !== -1) {
-          next.splice(announcementsIdx, 0, financeItem);
-        } else {
-          next.push(financeItem);
-        }
-      }
-      return next;
+      const tailKeys = new Set(['finance', 'settings', 'announcements']);
+      const tailOrder = new Map([
+        ['finance', 0],
+        ['settings', 1],
+        ['announcements', 2],
+      ]);
+
+      const tailItems = next
+        .filter((item) => tailKeys.has(String(item?.key || '')))
+        .sort((a, b) => {
+          const ai = tailOrder.get(String(a?.key || '')) ?? 999;
+          const bi = tailOrder.get(String(b?.key || '')) ?? 999;
+          return ai - bi;
+        });
+
+      const headItems = next.filter((item) => !tailKeys.has(String(item?.key || '')));
+      return [...headItems, ...tailItems];
     }
 
     return base;
-  }, [role, hasPermission]);
+  }, [auth?.privacyPolicy, hasPermission, role]);
 
   const [openGroups, setOpenGroups] = useState(() => ({}));
 

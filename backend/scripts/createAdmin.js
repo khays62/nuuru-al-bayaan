@@ -51,6 +51,8 @@ async function createAdmin() {
         attendance: { full: true },
         attendanceReports: { full: true },
         security: { full: true },
+        trackingAudit: { full: true },
+        privacyControl: { full: true },
         announcements: { full: true }
       },
       status: "active"

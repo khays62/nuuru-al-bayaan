@@ -35,6 +35,10 @@ export const MODULE_PERMISSIONS = Object.freeze({
   // - resetLockout: reset staff login lockout (used in User Management)
   // - edit: legacy fallback (kept for backwards compatibility)
   security: ['view', 'resetPassword', 'unlock', 'deactivate', 'activate', 'resetLockout', 'edit', 'full'],
+  // Tracking & Audit is separate from bell notifications.
+  trackingAudit: ['view', 'full'],
+  // Privacy Control is separate from bell notifications.
+  privacyControl: ['view', 'edit', 'full'],
   timetable: ['view', 'add', 'edit', 'delete', 'print', 'download', 'full'],
   // Backward compatibility: some backend report endpoints accept attendance.print/download.
   attendance: ['view', 'edit', 'print', 'download', 'full'],

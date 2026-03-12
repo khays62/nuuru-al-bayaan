@@ -4,6 +4,7 @@ import { queryClient } from '../queryClient';
 import { abortSessionRequests, resetSessionAbortController } from '../api/sessionAbort';
 import { fetchJson } from '../shared/api/http';
 import { on as onEvent, off as offEvent, EVENTS } from '../utils/events';
+import { CLIENT_PRIVACY_POLICY_DEFAULTS, getResolvedClientPrivacyPolicy } from '../features/privacy-control/privacyPolicyDefaults.js';
 
 const AuthContext = createContext();
 
@@ -17,12 +18,9 @@ const AUTH_VERIFY_INTERVAL_MS = (() => {
   // Guardrail: avoid ultra-tight polling (e.g. 1000ms) that overloads the server.
   return Math.max(5_000, base);
 })();
-// Auto-logout after user inactivity (shared across tabs via localStorage).
-// 30 minutes
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [privacyPolicy, setPrivacyPolicy] = useState(CLIENT_PRIVACY_POLICY_DEFAULTS);
   const [loading, setLoading] = useState(true);
 
   const idleTimerRef = React.useRef(null);
@@ -72,6 +70,7 @@ export const AuthProvider = ({ children }) => {
     try {
       abortSessionRequests('logout');
       setUser(null);
+      setPrivacyPolicy(CLIENT_PRIVACY_POLICY_DEFAULTS);
       await queryClient.cancelQueries();
       queryClient.clear();
     } catch {
@@ -92,9 +91,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const fetchClientPrivacyPolicy = async () => {
+    try {
+      const data = await fetchJson('/auth/privacy-policy');
+      if (data?.success && data?.policy) {
+        setPrivacyPolicy(getResolvedClientPrivacyPolicy(data.policy));
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    setPrivacyPolicy(CLIENT_PRIVACY_POLICY_DEFAULTS);
+  };
+
   useEffect(() => {
     fetchCurrentUser();
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setPrivacyPolicy(CLIENT_PRIVACY_POLICY_DEFAULTS);
+      return;
+    }
+    fetchClientPrivacyPolicy();
+  }, [user]);
 
   // Heartbeat: detect global logout (token invalidated) even if the tab isn't making API calls.
   useEffect(() => {
@@ -214,6 +234,11 @@ export const AuthProvider = ({ children }) => {
     if (!user) return;
     clearIdleTimer();
 
+    const idleTimeoutMs = Math.max(
+      5 * 60 * 1000,
+      Number(privacyPolicy?.sessionPolicy?.idleTimeoutMinutes || 30) * 60 * 1000
+    );
+
     let last = Date.now();
     try {
       const raw = localStorage.getItem(AUTH_LAST_ACTIVITY_KEY);
@@ -223,7 +248,7 @@ export const AuthProvider = ({ children }) => {
       // ignore
     }
 
-    const remaining = Math.max(0, IDLE_TIMEOUT_MS - (Date.now() - last));
+    const remaining = Math.max(0, idleTimeoutMs - (Date.now() - last));
     idleTimerRef.current = setTimeout(() => {
       // When truly idle (no tab activity), auto-logout all tabs in this browser.
       logout({ global: false, broadcast: true, redirect: true });
@@ -253,7 +278,7 @@ export const AuthProvider = ({ children }) => {
       clearIdleTimer();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [privacyPolicy?.sessionPolicy?.idleTimeoutMinutes, user]);
 
   const refreshUser = fetchCurrentUser;
 
@@ -280,6 +305,24 @@ export const AuthProvider = ({ children }) => {
       offEvent(EVENTS.USERS_CHANGED, handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let timer = null;
+    const handler = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        fetchClientPrivacyPolicy();
+      }, 250);
+    };
+
+    onEvent(EVENTS.PRIVACY_POLICY_CHANGED, handler);
+    return () => {
+      clearTimeout(timer);
+      offEvent(EVENTS.PRIVACY_POLICY_CHANGED, handler);
+    };
   }, [user]);
 
   const hasPermission = (module, action) => {
@@ -400,7 +443,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ auth: { user }, loading, login, logout, hasPermission, refreshUser }}>
+    <AuthContext.Provider value={{ auth: { user, privacyPolicy }, loading, login, logout, hasPermission, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

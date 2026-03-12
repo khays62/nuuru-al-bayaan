@@ -21,6 +21,7 @@ import {
   emitTranscriptChanged,
   emitAnnouncementsChanged,
   emitLibraryChanged,
+  emitPrivacyPolicyChanged,
 } from '../../utils/events';
 
 function createDebouncer({ delayMs }) {
@@ -190,7 +191,11 @@ export function createRealtimeDispatcher({ queryClient, debounceMs = 250 } = {})
       return;
     }
     if (type === 'security:authLocksChanged') {
-      debouncer.debounce('security:authLocksChanged', invalidateSecurityAuthLocks);
+      invalidateSecurityAuthLocks();
+      return;
+    }
+    if (type === 'security:privacyPolicyChanged') {
+      debouncer.debounce('security:privacyPolicyChanged', () => emitPrivacyPolicyChanged({ source: 'realtime', ...payload }));
       return;
     }
   };

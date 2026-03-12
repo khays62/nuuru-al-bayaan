@@ -28,6 +28,11 @@ import { useTeachersRealtimeInvalidation } from '../../useTeachersRealtimeInvali
 import { useI18n } from '../../../../i18n/useI18n';
 import { getSomaliaDistrictLabel, getSomaliaRegionLabel } from '../../../../shared/data/somaliaAdminDivisions.js';
 import { getSlotsWithOptions } from '../../../timetable/api/timetable';
+import {
+	getPasswordIssueMessage,
+	getPasswordValidationState,
+	resolvePasswordPolicy,
+} from '../../../../shared/utils/passwordPolicy.js';
 import { displayText } from '../../../../utils/displayText';
 
 function firstChar(s) {
@@ -350,6 +355,10 @@ function TeacherChangePasswordCard() {
 	const { auth, refreshUser } = useAuth();
 	const { t } = useI18n();
 	const isForcePasswordChange = Boolean(auth?.user?.mustChangePassword);
+	const passwordPolicy = React.useMemo(
+		() => resolvePasswordPolicy(auth?.privacyPolicy?.passwordPolicy),
+		[auth?.privacyPolicy?.passwordPolicy],
+	);
 
 	const [currentPassword, setCurrentPassword] = React.useState('');
 	const [newPassword, setNewPassword] = React.useState('');
@@ -359,10 +368,19 @@ function TeacherChangePasswordCard() {
 	const [showNewPw, setShowNewPw] = React.useState(false);
 	const [showConfirmPw, setShowConfirmPw] = React.useState(false);
 
-	const confirmTouched = String(confirmPassword || '').length > 0;
-	const nextTouched = String(newPassword || '').length > 0;
-	const passwordsMatch = nextTouched && confirmTouched && newPassword === confirmPassword;
-	const passwordsMismatch = confirmTouched && newPassword !== confirmPassword;
+	const normalizedNewPassword = String(newPassword || '').trim();
+	const normalizedConfirmPassword = String(confirmPassword || '').trim();
+	const passwordUi = React.useMemo(
+		() => getPasswordValidationState({
+			password: normalizedNewPassword,
+			confirmPassword: normalizedConfirmPassword,
+			policyInput: passwordPolicy,
+		}),
+		[normalizedConfirmPassword, normalizedNewPassword, passwordPolicy],
+	);
+	const firstPasswordIssueMessage = passwordUi.issues[0]
+		? getPasswordIssueMessage(passwordUi.issues[0], t, passwordPolicy)
+		: '';
 
 	const changePasswordMutation = useMutation({
 		mutationFn: async (payload) => {
@@ -386,15 +404,15 @@ function TeacherChangePasswordCard() {
 
 	const submit = async () => {
 		const curr = String(currentPassword || '').trim();
-		const next = String(newPassword || '').trim();
-		const confirm = String(confirmPassword || '').trim();
+		const next = normalizedNewPassword;
+		const confirm = normalizedConfirmPassword;
 
 		if (!next || !confirm || (!isForcePasswordChange && !curr)) {
 			toast.error(t('students.profileTab.password.fieldsRequired', { defaultValue: 'Please fill in all required fields.' }));
 			return;
 		}
-		if (next.length < 6) {
-			toast.error(t('students.profileTab.password.minLength', { defaultValue: 'Password must be at least 6 characters.' }));
+		if (!passwordUi.ok) {
+			toast.error(firstPasswordIssueMessage || t('students.profileTab.password.invalid', { defaultValue: 'Password policy validation failed.' }));
 			return;
 		}
 		if (next !== confirm) {
@@ -462,7 +480,7 @@ function TeacherChangePasswordCard() {
 							type={showNewPw ? 'text' : 'password'}
 							value={newPassword}
 							onChange={(e) => setNewPassword(e.target.value)}
-							className={`pr-10 ${passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : '')}`}
+							className={`pr-10 ${passwordUi.newPasswordState === 'valid' ? 'border-green-500' : (passwordUi.newPasswordState === 'invalid' ? 'border-red-500' : '')}`}
 							autoComplete="new-password"
 							disabled={saving}
 						/>
@@ -478,6 +496,9 @@ function TeacherChangePasswordCard() {
 							{showNewPw ? <EyeOff size={18} /> : <Eye size={18} />}
 						</button>
 					</div>
+					{passwordUi.passwordTouched && firstPasswordIssueMessage ? (
+						<div className="mt-1 text-xs text-red-600">{firstPasswordIssueMessage}</div>
+					) : null}
 				</div>
 
 				<div className="sm:col-span-1">
@@ -487,7 +508,7 @@ function TeacherChangePasswordCard() {
 							type={showConfirmPw ? 'text' : 'password'}
 							value={confirmPassword}
 							onChange={(e) => setConfirmPassword(e.target.value)}
-							className={`pr-10 ${passwordsMatch ? 'border-green-500' : (passwordsMismatch ? 'border-red-500' : '')}`}
+							className={`pr-10 ${passwordUi.confirmPasswordState === 'valid' ? 'border-green-500' : (passwordUi.confirmPasswordState === 'invalid' ? 'border-red-500' : '')}`}
 							autoComplete="new-password"
 							disabled={saving}
 						/>
@@ -503,6 +524,12 @@ function TeacherChangePasswordCard() {
 							{showConfirmPw ? <EyeOff size={18} /> : <Eye size={18} />}
 						</button>
 					</div>
+					{passwordUi.confirmTouched && passwordUi.passwordsMismatch ? (
+						<div className="mt-1 text-xs text-red-600">{t('students.profileTab.password.noMatch', { defaultValue: 'Passwords do not match.' })}</div>
+					) : null}
+					{passwordUi.passwordsMatch ? (
+						<div className="mt-1 text-xs text-green-600">{t('students.profileTab.password.match', { defaultValue: 'Passwords match.' })}</div>
+					) : null}
 				</div>
 
 				<div className="sm:col-span-3 flex justify-end">

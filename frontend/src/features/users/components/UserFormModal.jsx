@@ -10,7 +10,13 @@ import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 import SomaliaAddressFields from '../../../shared/components/address/SomaliaAddressFields.jsx';
 
 import { isValidSomaliaPhone } from '../../../shared/utils/phoneSomalia.js';
+import {
+  getPasswordIssueMessage,
+  getPasswordValidationState,
+  resolvePasswordPolicy,
+} from '../../../shared/utils/passwordPolicy.js';
 import { checkUsernameAvailability } from '../api/usersApi.js';
+import { useAuth } from '../../../auth/AuthContext.jsx';
 
 import { useI18n } from '../../../i18n/useI18n';
 
@@ -54,7 +60,7 @@ const MODULE_GROUPS = Object.freeze([
   {
     id: 'security',
     defaultLabel: 'Security',
-    order: ['security'],
+    order: ['security', 'trackingAudit', 'privacyControl'],
   },
   {
     id: 'other',
@@ -122,7 +128,7 @@ function moduleGroupIdFor(moduleId) {
   const m = String(moduleId || '');
   if (!m) return '';
   if (m.startsWith('finance')) return 'finance';
-  if (m === 'security') return 'security';
+  if (m === 'security' || m === 'trackingAudit' || m === 'privacyControl') return 'security';
   const grp = MODULE_GROUPS.find((g) => Array.isArray(g.order) && g.order.includes(m));
   return grp?.id || 'other';
 }
@@ -132,6 +138,8 @@ function formatModuleLabel(mod) {
   if (!s) return '';
 
   if (s === 'security') return 'Bell Notification';
+  if (s === 'trackingAudit') return 'Tracking Audit';
+  if (s === 'privacyControl') return 'Privacy Control';
 
   // Split camelCase + underscores into human labels.
   const spaced = s
@@ -163,7 +171,7 @@ function deriveStaffMetaFromPermissions(permissions) {
 
   const groupFor = (m) => {
     if (m.startsWith('finance')) return 'finance';
-    if (m === 'security') return 'security';
+    if (m === 'security' || m === 'trackingAudit' || m === 'privacyControl') return 'security';
     if (m === 'announcements') return 'announcements';
     if (m === 'students' || m === 'teachers') return 'users';
     if (['grades', 'subjects', 'cohorts', 'promotions', 'transfers'].includes(m)) return 'academics';
@@ -197,6 +205,7 @@ export default function UserFormModal({
   onCancel,
 }) {
   const { t } = useI18n();
+  const { auth } = useAuth();
 
   const [touched, setTouched] = useState({});
   const BLUR_VALIDATION_TOAST_ID = 'user-form-modal:blur-validation';
@@ -209,6 +218,21 @@ export default function UserFormModal({
   const [selectedStudentFinanceTab, setSelectedStudentFinanceTab] = useState('receipt');
   const [selectedAccountsTab, setSelectedAccountsTab] = useState('institution');
   const [selectedExpensesTab, setSelectedExpensesTab] = useState('ledger');
+  const passwordPolicy = useMemo(
+    () => resolvePasswordPolicy(auth?.privacyPolicy?.passwordPolicy),
+    [auth?.privacyPolicy?.passwordPolicy],
+  );
+  const passwordUi = useMemo(
+    () => getPasswordValidationState({
+      password: String(form?.password || ''),
+      confirmPassword: String(form?.confirmPassword || ''),
+      policyInput: passwordPolicy,
+    }),
+    [form?.confirmPassword, form?.password, passwordPolicy],
+  );
+  const firstPasswordIssueMessage = passwordUi.issues[0]
+    ? getPasswordIssueMessage(passwordUi.issues[0], t, passwordPolicy)
+    : '';
 
   const [localPhotoUrl, setLocalPhotoUrl] = useState('');
 
@@ -420,15 +444,11 @@ export default function UserFormModal({
   };
 
   const passwordFieldState = () => {
-    const v = String(form?.password ?? '');
-    if (!v) return 'empty';
-    return v.length >= 6 ? 'valid' : 'invalid';
+    return passwordUi.newPasswordState;
   };
 
   const confirmPasswordFieldState = () => {
-    const v = String(form?.confirmPassword ?? '');
-    if (!v) return 'empty';
-    return v === String(form?.password ?? '') ? 'valid' : 'invalid';
+    return passwordUi.confirmPasswordState;
   };
 
   useEffect(() => {
@@ -563,6 +583,7 @@ export default function UserFormModal({
           if (g.id === 'exams') return t('nav.exams', { defaultValue: g.defaultLabel });
           if (g.id === 'operations') return t('nav.operations', { defaultValue: g.defaultLabel });
           if (g.id === 'announcements') return t('nav.announcements', { defaultValue: g.defaultLabel });
+          if (g.id === 'security') return t('users.staff.units.security', { defaultValue: g.defaultLabel });
           return g.defaultLabel;
         })();
         return { value: g.id, label };
@@ -833,8 +854,8 @@ export default function UserFormModal({
                       const v = String(form.password || '');
                       if (!v) return;
                       markTouched('password');
-                      if (v.length < 6) {
-                        toast.error(t('users.form.validations.passwordTooShort', { defaultValue: 'Password must be at least 6 characters' }), { id: BLUR_VALIDATION_TOAST_ID });
+                      if (firstPasswordIssueMessage) {
+                        toast.error(firstPasswordIssueMessage, { id: BLUR_VALIDATION_TOAST_ID });
                       }
                     }}
                     placeholder={editingUser ? t('users.form.newPasswordOptional') : ''}
@@ -847,6 +868,9 @@ export default function UserFormModal({
                     autoComplete={editingUser ? 'new-password' : 'new-password'}
                     required={!editingUser}
                   />
+                  {passwordUi.passwordTouched && firstPasswordIssueMessage ? (
+                    <p className="text-red-500 text-sm mt-1">{firstPasswordIssueMessage}</p>
+                  ) : null}
                 </div>
 
                 <div className="min-w-0">
@@ -860,6 +884,9 @@ export default function UserFormModal({
                       const v = String(form.confirmPassword || '');
                       if (!v) return;
                       markTouched('confirmPassword');
+                      if (passwordUi.passwordsMismatch) {
+                        toast.error(t('users.form.passwordsNoMatch'), { id: BLUR_VALIDATION_TOAST_ID });
+                      }
                     }}
                     className={`mt-1 py-1.5 ${stateToClass(confirmPasswordFieldState())}`}
                     disabled={isFormLoading || isSaving}
@@ -870,8 +897,11 @@ export default function UserFormModal({
                     autoComplete={editingUser ? 'new-password' : 'new-password'}
                     required={!editingUser}
                   />
-                  {form.confirmPassword && form.password !== form.confirmPassword && (
+                  {passwordUi.confirmTouched && passwordUi.passwordsMismatch && (
                     <p className="text-red-500 text-sm mt-1">{t('users.form.passwordsNoMatch')}</p>
+                  )}
+                  {passwordUi.passwordsMatch && (
+                    <p className="text-green-600 text-sm mt-1">{t('users.form.passwordsMatch', { defaultValue: 'Passwords match.' })}</p>
                   )}
                 </div>
 
@@ -1416,7 +1446,7 @@ export default function UserFormModal({
           <Button
             type="submit"
             variant="brand"
-            disabled={isFormLoading || isSaving || (form.confirmPassword && form.password !== form.confirmPassword)}
+            disabled={isFormLoading || isSaving || Boolean((form.password && !passwordUi.ok) || (form.confirmPassword && passwordUi.passwordsMismatch))}
           >
             {isSaving
               ? (editingUser ? t('users.form.updating') : t('users.form.saving'))

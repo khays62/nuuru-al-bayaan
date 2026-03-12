@@ -10,6 +10,7 @@ import {
 } from '../controllers/attendanceController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { checkAnyPermission, checkModuleAnyPermission, checkPermission } from '../middleware/checkPermission.js';
+import { requireStudentDashboardAccess } from '../middleware/studentDashboardPolicy.js';
 import { teacherOr, requireTeacherAssignment } from '../middleware/teacherScope.js';
 
 const router = express.Router();
@@ -91,6 +92,7 @@ router.get(
 
 router.get(
 	'/reports/student-range',
+	requireStudentDashboardAccess('attendance'),
 	canViewStudentRangeReport,
 	getAttendanceReportStudentRange
 );
@@ -112,7 +114,7 @@ router.get(
 );
 
 // Student self view (read-only): show only attendance that was taken/saved
-router.get('/student/self', (req, res, next) => {
+router.get('/student/self', requireStudentDashboardAccess('attendance'), (req, res, next) => {
 	if (req.user?.role === 'student') return next();
 	return res.status(403).json({ message: 'Access denied' });
 }, getStudentSelfAttendance);

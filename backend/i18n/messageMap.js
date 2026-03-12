@@ -18,9 +18,9 @@ const arStatic = {
 
   // Auth / login
   'Invalid credentials': 'بيانات اعتماد غير صحيحة',
-  'Unknown username / student ID': 'اسم المستخدم / رقم الطالب غير معروف',
-  'Username / Student ID and password required': 'اسم المستخدم / رقم الطالب وكلمة المرور مطلوبة',
-  'Username / Student ID is too long': 'اسم المستخدم / رقم الطالب طويل جدًا',
+  'Unknown username / student ID': 'اسم المستخدم غير معروف',
+  'Username and password required': 'اسم المستخدم وكلمة المرور مطلوبان',
+  'Username is too long': 'اسم المستخدم طويل جدًا',
   'Password is too long': 'كلمة المرور طويلة جدًا',
   'username or studentId is required': 'اسم المستخدم أو رقم الطالب مطلوب',
   'Password required': 'كلمة المرور مطلوبة',
@@ -29,6 +29,7 @@ const arStatic = {
   'Too many requests. Try again later.': 'طلبات كثيرة جدًا. حاول لاحقًا.',
   'Unknown username. Too many attempts; login is blocked.': 'اسم مستخدم غير معروف. محاولات كثيرة جدًا؛ تم حظر تسجيل الدخول.',
   'Too many attempts. Account is locked for 24 hours. Contact an administrator.': 'محاولات كثيرة جدًا. تم قفل الحساب لمدة 24 ساعة. تواصل مع المسؤول.',
+  'Too many attempts. Username is locked.': 'محاولات كثيرة جدًا. اسم المستخدم مقفول.',
   'Wrong password': 'كلمة المرور غير صحيحة',
   'Login successful': 'تم تسجيل الدخول بنجاح',
   'Login lockout reset successfully': 'تمت إعادة ضبط قفل تسجيل الدخول بنجاح',
@@ -266,9 +267,9 @@ const soStatic = {
 
   // Auth / login
   'Invalid credentials': 'Xog gelin khaldan',
-  'Unknown username / student ID': 'Username / Student ID lama yaqaan',
-  'Username / Student ID and password required': 'Username / Student ID iyo password waa khasab',
-  'Username / Student ID is too long': 'Username / Student ID aad buu u dheer yahay',
+  'Unknown username / student ID': 'Username lama yaqaan',
+  'Username and password required': 'Username iyo password waa khasab',
+  'Username is too long': 'Username aad buu u dheer yahay',
   'Password is too long': 'Password aad buu u dheer yahay',
   'username or studentId is required': 'username ama studentId waa khasab',
   'Password required': 'Password waa khasab',
@@ -277,6 +278,7 @@ const soStatic = {
   'Too many requests. Try again later.': 'Codsiyo badan. Mar kale isku day goor dambe.',
   'Unknown username. Too many attempts; login is blocked.': 'Username aan la aqoon. Isku dayo badan awgood login waa la xannibay.',
   'Too many attempts. Account is locked for 24 hours. Contact an administrator.': 'Isku dayo badan. Account-ka waa la xiray 24 saac. La xiriir admin.',
+  'Too many attempts. Username is locked.': 'Isku dayo badan. Username-ka waa la qufulay.',
   'Wrong password': 'Password khaldan',
   'Login successful': 'Login si guul leh',
   'Login lockout reset successfully': 'Login lockout si guul leh ayaa loo reset gareeyay',

@@ -16,6 +16,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { writeAuditLog } from '../services/auditService.js';
+import { getResolvedPrivacyPolicy, validatePasswordAgainstPolicy } from '../utils/privacyPolicy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -693,8 +694,17 @@ export const changeStudentPassword = async (req, res) => {
             return res.status(400).json({ message: 'newPassword is required' });
         }
 
-        if (next.length < 6) {
-            return res.status(400).json({ message: 'New password must be at least 6 characters' });
+        const privacyPolicy = await getResolvedPrivacyPolicy();
+        const validation = validatePasswordAgainstPolicy(next, privacyPolicy);
+        if (!validation.ok) {
+            const first = validation.issues[0]?.key || 'invalid';
+            if (first === 'minLength') {
+                return res.status(400).json({ message: `New password must be at least ${validation.policy.minLength} characters` });
+            }
+            if (first === 'maxLength') {
+                return res.status(400).json({ message: `New password is too long (max ${validation.policy.maxLength})` });
+            }
+            return res.status(400).json({ message: `New password failed policy: ${first}` });
         }
 
         const [student, userAccount] = await Promise.all([

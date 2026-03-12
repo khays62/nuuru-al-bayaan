@@ -1,11 +1,8 @@
 import React, { Suspense, useMemo, useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useParams, Navigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '../../../auth/AuthContext';
 import { useI18n } from '../../../i18n/useI18n';
-import { getStudentProfile } from '../api/studentsApi';
-import { studentKeys } from '../queryKeys';
 import Card from '../../../shared/components/ui/Card.jsx';
 import { useStudentDashboardRealtimeInvalidation } from '../components/dashboard/useStudentDashboardRealtimeInvalidation';
 
@@ -148,18 +145,6 @@ function StudentDashboardInner({ studentId }) {
     if (!Array.isArray(actions) || actions.length === 0) return false;
     return actions.some((a) => hasPermission(module, a));
   };
-
-  const profileQuery = useQuery({
-    queryKey: studentKeys.profile(studentId),
-    queryFn: async () => {
-      const data = await getStudentProfile(studentId);
-      if (!data) throw new Error('Failed to load profile');
-      return data;
-    },
-    staleTime: 60_000,
-  });
-
-  const studentName = profileQuery.data?.student?.fullName || profileQuery.data?.student?.name || t('students.common.studentFallback');
 
   useStudentDashboardRealtimeInvalidation({ studentId, isStudentSelf: false, enabled: true });
 

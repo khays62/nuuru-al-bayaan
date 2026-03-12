@@ -12,32 +12,16 @@ import { recordUnknownLoginAttempt } from "../utils/loginThrottleMemory.js";
 import AuthLockEvent from "../models/AuthLockEvent.js";
 import AuditLog from "../models/AuditLog.js";
 import { publishRealtime } from '../utils/realtimeBus.js';
+import {
+  computeCooldownSeconds,
+  computeMaxAttempts,
+  getLockoutSeconds,
+  getResolvedPrivacyPolicy,
+  isFinalAttemptBeforeBlock,
+  SECURITY_LOCK_LEVEL,
+  validatePasswordAgainstPolicy,
+} from '../utils/privacyPolicy.js';
 
-
-// Progressive throttling config (requested schedule)
-//  - 10 wrong attempts -> 15s cooldown
-//  - then 5 wrong attempts -> 30s cooldown
-//  - then 3 wrong attempts -> 60s cooldown
-//  - then 3 wrong attempts -> 24h lock (contact admin)
-// Important: 24h lock MUST NOT allow login even with correct password.
-const SECURITY_LOCK_LEVEL = 4;
-const LOCK_24H_SECONDS = 24 * 60 * 60;
-
-const computeCooldownSeconds = (level = 0) => {
-  const n = Number.isFinite(level) ? Math.max(0, Math.floor(level)) : 0;
-  if (n <= 0) return 15;
-  if (n === 1) return 30;
-  if (n === 2) return 60;
-  // level 3 threshold triggers the 24h lock (handled separately)
-  return 60;
-};
-
-const computeMaxAttempts = (level = 0) => {
-  const n = Number.isFinite(level) ? Math.max(0, Math.floor(level)) : 0;
-  if (n <= 0) return 10;
-  if (n === 1) return 5;
-  return 3;
-};
 
 const secondsUntil = (dateOrMs) => {
   const t = dateOrMs instanceof Date ? dateOrMs.getTime() : Number(dateOrMs);
@@ -58,6 +42,14 @@ const isDetailedAuthErrors = () => {
   return String(process.env.NODE_ENV || '').trim() !== 'production';
 };
 
+const publishAuthLocksChanged = () => {
+  try {
+    publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+  } catch {
+    // ignore realtime failures
+  }
+};
+
 export const getCsrfToken = (req, res) => {
   const existing = req.cookies?.[CSRF_COOKIE_NAME];
   const token = existing && String(existing).trim() ? String(existing) : generateCsrfToken();
@@ -71,6 +63,8 @@ export const getCsrfToken = (req, res) => {
 
 export const login = async (req, res) => {
   try {
+    const privacyPolicy = await getResolvedPrivacyPolicy();
+    const loginProtection = privacyPolicy.loginProtection;
     const { username, studentId, password } = req.body;
     const loginId = username || studentId;
 
@@ -82,15 +76,15 @@ export const login = async (req, res) => {
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: "Username / Student ID and password required",
+        message: 'Username and password required',
       });
     }
 
     // Basic input hardening to avoid extreme payloads (bcrypt compare is CPU-expensive).
-    if (loginIdStr.length > 128) {
-      return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'Username / Student ID is too long' });
+    if (loginIdStr.length > Number(loginProtection.maxIdentifierLength || 128)) {
+      return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'Username is too long' });
     }
-    if (passwordStr.length > 256) {
+    if (passwordStr.length > Number(loginProtection.maxPasswordLength || 256)) {
       return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', message: 'Password is too long' });
     }
 
@@ -129,8 +123,9 @@ export const login = async (req, res) => {
       // Apply throttling even for unknown usernames (prevents brute-force and matches UX expectations).
       const throttled = recordUnknownLoginAttempt({
         key: unknownKey,
-        computeCooldownSeconds,
-        computeMaxAttempts,
+        computeCooldownSeconds: (level) => computeCooldownSeconds(level, loginProtection),
+        computeMaxAttempts: (level) => computeMaxAttempts(level, loginProtection),
+        getLockoutSeconds: () => getLockoutSeconds(loginProtection),
         securityLockLevel: SECURITY_LOCK_LEVEL,
       });
 
@@ -154,7 +149,7 @@ export const login = async (req, res) => {
                 {
                   $set: {
                     lastSeenAt: new Date(),
-                    lockUntil: null,
+                    lockUntil: lockUntil,
                     isRead: false,
                   },
                   $inc: { occurrences: 1 },
@@ -167,7 +162,7 @@ export const login = async (req, res) => {
                 username: normalizedUsername,
                 fullName: '',
                 role: 'unknown',
-                lockUntil: null,
+                lockUntil,
                 ip: String(clientIp || ''),
                 userAgent: String(req.headers['user-agent'] || '').slice(0, 200),
                 occurrences: 1,
@@ -175,6 +170,7 @@ export const login = async (req, res) => {
                 resolvedAt: null,
               });
             }
+            publishAuthLocksChanged();
           } catch {
             // ignore notification failures
           }
@@ -185,10 +181,11 @@ export const login = async (req, res) => {
           code: throttled.code,
           principalType: 'unknown',
           message: throttled.code === 'UNKNOWN_USERNAME_BLOCKED'
-            ? 'Unknown username. Too many attempts; login is blocked.'
+            ? 'Unknown username. Login is blocked.'
             : 'Too many login attempts. Try again later.',
           remainingAttempts: 0,
           retryAfterSeconds,
+          isFinalAttemptBeforeBlock: false,
         });
       }
 
@@ -197,10 +194,11 @@ export const login = async (req, res) => {
       return res.status(401).json({
         success: false,
         code: detailed ? 'USER_NOT_FOUND' : 'INVALID_CREDENTIALS',
-        message: detailed ? 'Unknown username / student ID' : 'Invalid credentials',
+        message: detailed ? 'Unknown username' : 'Invalid credentials',
         principalType: 'unknown',
         remainingAttempts: throttled.remainingAttempts,
         retryAfterSeconds: 0,
+        isFinalAttemptBeforeBlock: Boolean(throttled.isFinalAttemptBeforeBlock),
       });
     }
 
@@ -218,12 +216,15 @@ export const login = async (req, res) => {
     // If account is in the 24h lock state, never allow login (even with correct password).
     if (cooldownActive && level >= SECURITY_LOCK_LEVEL) {
       const retryAfterSeconds = secondsUntil(user.lockUntil);
+      const lockoutSeconds = getLockoutSeconds(loginProtection);
       return res.status(429).json({
         success: false,
         code: 'LOGIN_LOCKED_24H',
-        message: 'Too many attempts. Account is locked for 24 hours. Contact an administrator.',
+        message: 'Too many attempts. Username is locked.',
         remainingAttempts: 0,
-        retryAfterSeconds: retryAfterSeconds || LOCK_24H_SECONDS,
+        retryAfterSeconds: retryAfterSeconds || lockoutSeconds,
+        principalType: 'known',
+        isFinalAttemptBeforeBlock: false,
       });
     }
 
@@ -237,21 +238,24 @@ export const login = async (req, res) => {
         message: 'Too many login attempts. Try again later.',
         remainingAttempts: 0,
         retryAfterSeconds,
+        principalType: 'known',
+        isFinalAttemptBeforeBlock: false,
       });
     }
 
     if (!isMatch) {
       user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-      const maxAttempts = computeMaxAttempts(level);
+      const maxAttempts = computeMaxAttempts(level, loginProtection);
 
       // Hit threshold => apply progressive cooldown and reset the attempt counter.
       if (user.failedLoginAttempts >= maxAttempts) {
-        const cooldownSeconds = computeCooldownSeconds(level);
+        const cooldownSeconds = computeCooldownSeconds(level, loginProtection);
         const nextLevel = level + 1;
+        const lockoutSeconds = getLockoutSeconds(loginProtection);
 
         // After the 60s stage (level 3), the next lock becomes a 24h security lock.
         if (nextLevel >= SECURITY_LOCK_LEVEL) {
-          user.lockUntil = new Date(Date.now() + LOCK_24H_SECONDS * 1000);
+          user.lockUntil = new Date(Date.now() + lockoutSeconds * 1000);
           user.loginCooldownLevel = SECURITY_LOCK_LEVEL;
           user.failedLoginAttempts = 0;
           await user.save();
@@ -287,17 +291,19 @@ export const login = async (req, res) => {
                 resolvedAt: null,
               });
             }
+            publishAuthLocksChanged();
           } catch {
             // ignore notification failures
           }
 
           return res.status(429).json({
-                fullName: String(user.fullName || ''),
             success: false,
             code: 'LOGIN_LOCKED_24H',
-            message: 'Too many attempts. Account is locked for 24 hours. Contact an administrator.',
+            message: 'Too many attempts. Username is locked.',
             remainingAttempts: 0,
-            retryAfterSeconds: LOCK_24H_SECONDS,
+            retryAfterSeconds: lockoutSeconds,
+            principalType: 'known',
+            isFinalAttemptBeforeBlock: false,
           });
         }
 
@@ -312,10 +318,13 @@ export const login = async (req, res) => {
           message: 'Too many login attempts. Try again later.',
           remainingAttempts: 0,
           retryAfterSeconds: cooldownSeconds,
+          principalType: 'known',
+          isFinalAttemptBeforeBlock: false,
         });
       }
 
       const remainingAttempts = Math.max(0, maxAttempts - user.failedLoginAttempts);
+      const finalAttemptBeforeBlock = isFinalAttemptBeforeBlock(level, remainingAttempts);
       await user.save();
       // Avoid leaking whether the username exists.
       const detailed = isDetailedAuthErrors();
@@ -325,6 +334,8 @@ export const login = async (req, res) => {
         message: detailed ? 'Wrong password' : 'Invalid credentials',
         remainingAttempts,
         retryAfterSeconds: 0,
+        principalType: 'known',
+        isFinalAttemptBeforeBlock: finalAttemptBeforeBlock,
       });
     }
 
@@ -464,7 +475,7 @@ export const resetLoginLockout = async (req, res) => {
     }
 
     try {
-      publishRealtime({ type: 'security:authLocksChanged', ts: Date.now() });
+      publishAuthLocksChanged();
     } catch {
       // ignore
     }
@@ -679,11 +690,17 @@ export const changePassword = async (req, res) => {
 
     const { currentPassword, newPassword } = req.body || {};
     const nextPwd = String(newPassword || '').trim();
-    if (!nextPwd || nextPwd.length < 6) {
-      return res.status(400).json({ message: 'newPassword must be at least 6 characters' });
-    }
-    if (nextPwd.length > 256) {
-      return res.status(400).json({ message: 'newPassword is too long' });
+    const privacyPolicy = await getResolvedPrivacyPolicy();
+    const validation = validatePasswordAgainstPolicy(nextPwd, privacyPolicy);
+    if (!validation.ok) {
+      const first = validation.issues[0]?.key || 'invalid';
+      if (first === 'minLength') {
+        return res.status(400).json({ message: `newPassword must be at least ${validation.policy.minLength} characters` });
+      }
+      if (first === 'maxLength') {
+        return res.status(400).json({ message: `newPassword is too long (max ${validation.policy.maxLength})` });
+      }
+      return res.status(400).json({ message: `newPassword failed policy: ${first}` });
     }
 
     const Model = role === 'admin' ? Admin : User;

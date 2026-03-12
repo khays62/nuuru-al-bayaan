@@ -33,11 +33,11 @@ const rangeQuerySchema = z
 
 // System-wide audit access:
 // - Admin: always allowed
-// - Staff: must have security.view
+// - Staff: must have trackingAudit.view
 router.get(
   '/summary',
   protect,
-  checkAnyPermission([{ module: 'security', action: 'view' }]),
+  checkAnyPermission([{ module: 'trackingAudit', action: 'view' }]),
   validate({ query: rangeQuerySchema.optional() }),
   getSystemAuditSummary
 );
@@ -45,7 +45,7 @@ router.get(
 router.get(
   '/top',
   protect,
-  checkAnyPermission([{ module: 'security', action: 'view' }]),
+  checkAnyPermission([{ module: 'trackingAudit', action: 'view' }]),
   validate({ query: rangeQuerySchema.optional() }),
   getSystemAuditTop
 );
@@ -53,7 +53,7 @@ router.get(
 router.get(
   '/analytics',
   protect,
-  checkAnyPermission([{ module: 'security', action: 'view' }]),
+  checkAnyPermission([{ module: 'trackingAudit', action: 'view' }]),
   validate({ query: rangeQuerySchema.optional() }),
   getSystemAuditAnalytics
 );
@@ -61,7 +61,7 @@ router.get(
 router.get(
   '/analytics/details',
   protect,
-  checkAnyPermission([{ module: 'security', action: 'view' }]),
+  checkAnyPermission([{ module: 'trackingAudit', action: 'view' }]),
   validate({ query: rangeQuerySchema.optional() }),
   getSystemAuditAnalyticsDetails
 );
@@ -69,7 +69,7 @@ router.get(
 router.get(
   '/analytics/operation-summary',
   protect,
-  checkAnyPermission([{ module: 'security', action: 'view' }]),
+  checkAnyPermission([{ module: 'trackingAudit', action: 'view' }]),
   validate({ query: rangeQuerySchema.optional() }),
   getSystemAuditOperationSummary
 );
@@ -77,7 +77,7 @@ router.get(
 router.get(
   '/timeline',
   protect,
-  checkAnyPermission([{ module: 'security', action: 'view' }]),
+  checkAnyPermission([{ module: 'trackingAudit', action: 'view' }]),
   validate({ query: rangeQuerySchema.optional() }),
   getSystemAuditTimeline
 );
@@ -85,16 +85,16 @@ router.get(
 router.get(
   '/events',
   protect,
-  checkAnyPermission([{ module: 'security', action: 'view' }]),
+  checkAnyPermission([{ module: 'trackingAudit', action: 'view' }]),
   validate({ query: rangeQuerySchema.optional() }),
   getSystemAuditEvents
 );
 
-// Realtime SSE stream (admin/staff with security.view).
+// Realtime SSE stream (admin/staff with trackingAudit.view).
 router.get(
   '/stream',
   protect,
-  checkAnyPermission([{ module: 'security', action: 'view' }]),
+  checkAnyPermission([{ module: 'trackingAudit', action: 'view' }]),
   (req, res) => {
     res.status(200);
     res.setHeader('Content-Type', 'text/event-stream');

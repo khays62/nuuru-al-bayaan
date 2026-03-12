@@ -23,8 +23,6 @@ import {
   export const navItems = [
     // Dashboard
   { key: 'dashboard', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/dashboard", label: "Dashboard", labelKey: 'nav.dashboard', roles: ["admin", "staff"], icon: LayoutDashboard },
-  { key: 'profile', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/profile", label: "Profile", labelKey: 'nav.profile', roles: ["admin", "staff"], icon: Users },
-	{ key: 'tracking-audit', group: 'Dashboard', groupKey: 'nav.dashboard', path: '/tracking-audit', label: 'Tracking & Audit', labelKey: 'nav.trackingAudit', roles: ['admin', 'staff'], module: 'security', permission: { module: 'security', action: 'view' }, icon: Activity },
 	{ key: 'teacher-dashboard', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-dashboard", label: "Dashboard", labelKey: 'nav.dashboard', roles: ["teacher"], icon: LayoutDashboard },
     { key: 'teacher-classes', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-classes", label: "My Classes", labelKey: 'nav.myClasses', roles: ["teacher"], icon: Layers3 },
     { key: 'teacher-profile', group: 'Dashboard', groupKey: 'nav.dashboard', path: "/teacher-profile", label: "Profile", labelKey: 'nav.profile', roles: ["teacher"], icon: Users },
@@ -134,6 +132,23 @@ import {
         { key: 'attendance-reports', path: "/attendance-reports", label: "Attendance Reports", labelKey: 'nav.attendanceReports', roles: ["admin", "staff", "teacher"], module: "attendanceReports" },
         { key: 'timetable', path: "/timetable", label: "Timetable", labelKey: 'nav.timetable', roles: ["admin", "staff", "teacher"], module: "timetable" },
         { key: 'library', path: "/library", label: "Library", labelKey: 'nav.library', roles: ["admin", "staff", "teacher"], module: "library", icon: BookOpenCheck },
+      ],
+    },
+
+    // Settings (dropdown)
+    {
+      key: 'settings',
+      group: 'Settings',
+      label: 'Settings',
+      groupKey: 'nav.settings',
+      labelKey: 'nav.settings',
+      icon: Settings,
+      roles: ['admin', 'staff'],
+      collapsible: true,
+      children: [
+        { key: 'profile', path: '/profile', label: 'Profile', labelKey: 'nav.profile', roles: ['admin', 'staff'] },
+        { key: 'privacy-control', path: '/privacy-control', label: 'Privacy Control', labelKey: 'nav.privacyControl', roles: ['admin', 'staff'], module: 'privacyControl', permission: { module: 'privacyControl', action: 'view' } },
+        { key: 'tracking-audit', path: '/tracking-audit', label: 'Tracking & Audit', labelKey: 'nav.trackingAudit', roles: ['admin', 'staff'], module: 'trackingAudit', permission: { module: 'trackingAudit', action: 'view' } },
       ],
     },
   

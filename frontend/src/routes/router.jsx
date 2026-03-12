@@ -29,6 +29,7 @@ import TeachersPage from '../features/teachers/pages/TeachersPage';
 import TimetablePage from '../features/timetable/pages/TimetablePage';
 import AnnouncementsPage from '../features/announcements/pages/Announcements';
 import TrackingAuditPage from '../features/audit/pages/TrackingAuditPage.jsx';
+import PrivacyControlPage from '../features/privacy-control/pages/PrivacyControlPage.jsx';
 
 import FinanceDashboardPage from '../features/finance/pages/FinanceDashboardPage.jsx';
 import FinanceAccountsPage from '../features/finance/pages/FinanceAccountsPage.jsx';
@@ -55,6 +56,7 @@ import FinanceTab from '../features/students/components/dashboard/FinanceTab.jsx
 import StudentSelfDashboardShell, {
   StudentSelfHomeCards,
 } from '../features/students/components/dashboard/StudentSelfDashboardShell';
+import StudentDashboardPolicyRoute from '../features/privacy-control/components/StudentDashboardPolicyRoute.jsx';
 
 import {
   attendanceAny,
@@ -71,15 +73,14 @@ import {
   timetableAny,
   transcriptAny,
   transfersAny,
-  financeAccountsAny,
   financeAccountsPageAny,
   financeDashboardAny,
-  financeExpensesAny,
   financeExpensesPageAny,
   financePayrollAny,
   financeStudentFinanceAny,
   libraryAny,
-  securityViewOnly,
+  privacyControlViewOnly,
+  trackingAuditViewOnly,
 } from './permissions';
 
 export const router = createBrowserRouter([
@@ -109,6 +110,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['admin', 'staff']}>
             <UserProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'privacy-control',
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={privacyControlViewOnly}>
+            <PrivacyControlPage />
           </ProtectedRoute>
         ),
       },
@@ -337,7 +346,7 @@ export const router = createBrowserRouter([
       {
         path: 'tracking-audit',
         element: (
-          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={securityViewOnly}>
+          <ProtectedRoute allowedRoles={['admin', 'staff']} allowedPermissions={trackingAuditViewOnly}>
             <TrackingAuditPage />
           </ProtectedRoute>
         ),
@@ -406,14 +415,14 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <StudentSelfHomeCards /> },
           { path: 'home', element: <StudentSelfHomeCards /> },
-          { path: 'transcript', element: <TranscriptTab /> },
-          { path: 'attendance', element: <AttendanceTab /> },
-          { path: 'timetable', element: <TimetableTab /> },
-          { path: 'finance', element: <FinanceTab /> },
-          { path: 'library', element: <LibraryTab /> },
-          { path: 'profile', element: <ProfileTab /> },
-          { path: 'enrollments', element: <EnrollmentsTab /> },
-          { path: 'transfers', element: <TransfersTab /> },
+          { path: 'transcript', element: <StudentDashboardPolicyRoute policyKey="transcript"><TranscriptTab /></StudentDashboardPolicyRoute> },
+          { path: 'attendance', element: <StudentDashboardPolicyRoute policyKey="attendance"><AttendanceTab /></StudentDashboardPolicyRoute> },
+          { path: 'timetable', element: <StudentDashboardPolicyRoute policyKey="timetable"><TimetableTab /></StudentDashboardPolicyRoute> },
+          { path: 'finance', element: <StudentDashboardPolicyRoute policyKey="finance"><FinanceTab /></StudentDashboardPolicyRoute> },
+          { path: 'library', element: <StudentDashboardPolicyRoute policyKey="library"><LibraryTab /></StudentDashboardPolicyRoute> },
+          { path: 'profile', element: <StudentDashboardPolicyRoute policyKey="profile"><ProfileTab /></StudentDashboardPolicyRoute> },
+          { path: 'enrollments', element: <StudentDashboardPolicyRoute policyKey="enrollments"><EnrollmentsTab /></StudentDashboardPolicyRoute> },
+          { path: 'transfers', element: <StudentDashboardPolicyRoute policyKey="transfers"><TransfersTab /></StudentDashboardPolicyRoute> },
         ],
       },
       // In-app wildcard: redirect to top-level 404 so layout (Sidebar/Navbar) is not rendered

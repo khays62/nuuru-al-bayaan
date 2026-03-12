@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 // import { useAuth } from "../contexts/AuthContext";
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +33,12 @@ import UserTable from "../components/UserTable.jsx";
 import UserFormModal from "../components/UserFormModal.jsx";
 import { userKeys } from '../queryKeys';
 import { useUsersRealtimeInvalidation } from '../useUsersRealtimeInvalidation';
+import { useAuth } from '../../../auth/AuthContext.jsx';
+import {
+  getPasswordIssueMessage,
+  resolvePasswordPolicy,
+  validatePasswordAgainstPolicy,
+} from '../../../shared/utils/passwordPolicy.js';
 
 import { useI18n } from '../../../i18n/useI18n';
 
@@ -73,6 +79,7 @@ const normalizeSomaliaNationalDigits = (value) => {
 
 /* ---------------- Component ---------------- */
 export default function UserManagementPage() {
+  const { auth } = useAuth();
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 350);
@@ -90,6 +97,10 @@ export default function UserManagementPage() {
   const [limit, setLimit] = useState(10);
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const passwordPolicy = useMemo(
+    () => resolvePasswordPolicy(auth?.privacyPolicy?.passwordPolicy),
+    [auth?.privacyPolicy?.passwordPolicy],
+  );
 
   const [statusOverrides, setStatusOverrides] = useState({});
   const [pendingById, setPendingById] = useState({});
@@ -481,11 +492,12 @@ export default function UserManagementPage() {
       toast.error(t('users.form.validations.passwordRequiredNew'));
       return;
     }
-    if (!editingUser && String(form.password || '').trim().length < 6) {
-      toast.error(t('users.form.validations.passwordMin'));
-      return;
-    }
     if (form.password || form.confirmPassword) {
+      const passwordValidation = validatePasswordAgainstPolicy(String(form.password || ''), passwordPolicy);
+      if (!passwordValidation.ok) {
+        toast.error(getPasswordIssueMessage(passwordValidation.issues[0], t, passwordPolicy));
+        return;
+      }
       if (form.password !== form.confirmPassword) {
         toast.error(t('users.form.passwordsNoMatch'));
         return;

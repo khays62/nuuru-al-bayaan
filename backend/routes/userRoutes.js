@@ -38,7 +38,7 @@ const userBodySchema = z.object({
   // Zod v4: record() expects (keySchema, valueSchema). One-arg form causes `_zod` crashes.
   // Multipart form-data can only send strings; allow JSON string and parse in controller.
   permissions: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-  password: z.string().min(6).max(256).optional(),
+  password: z.string().min(1).max(512).optional(),
 }).strip();
 
 function maybeUploadUserPhoto(req, res, next) {
@@ -59,7 +59,7 @@ function maybeUploadUserPhoto(req, res, next) {
 router.post(
   "/",
   maybeUploadUserPhoto,
-  validate({ body: userBodySchema.extend({ password: z.string().min(6).max(256) }) }),
+  validate({ body: userBodySchema.extend({ password: z.string().min(1).max(512) }) }),
   createUser
 );
 

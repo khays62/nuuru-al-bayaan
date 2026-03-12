@@ -15,11 +15,15 @@ import {
   deactivateUserAccount,
   activateUserAccount,
 } from '../controllers/securityController.js';
+import { getPrivacyPolicy, updatePrivacyPolicy } from '../controllers/privacySettingsController.js';
 
 const router = express.Router();
 
 router.use(protect);
 router.use(authorizeRoles('admin', 'staff'));
+
+router.get('/privacy-policy', checkPermission('privacyControl', 'view'), getPrivacyPolicy);
+router.put('/privacy-policy', checkPermission('privacyControl', 'edit'), updatePrivacyPolicy);
 
 router.get('/auth-locks/unread-count', checkPermission('security', 'view'), getAuthLockUnreadCount);
 router.get(

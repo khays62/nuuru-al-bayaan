@@ -53,6 +53,10 @@ export const PERMISSION_CONTRACT = Object.freeze({
   // - resetLockout: reset staff login lockout (used in User Management)
   // - edit: legacy fallback (kept for backwards compatibility)
   security: Object.freeze(['view', 'resetPassword', 'unlock', 'deactivate', 'activate', 'resetLockout', 'edit', 'full']),
+  // Tracking & Audit is separate from bell notifications.
+  trackingAudit: Object.freeze(['view', 'full']),
+  // Privacy Control is a separate permission surface from bell notifications.
+  privacyControl: Object.freeze(['view', 'edit', 'full']),
 
   // Finance (granular tab-based permissions)
   financeDashboard: Object.freeze(['view', 'full']),
