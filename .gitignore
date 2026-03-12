@@ -70,11 +70,23 @@ frontend/_vite_build_*.txt
 *_build_out.txt
 *_test_out.txt
 
+# Root diagnostic captures (do not commit)
+build_*.txt
+test_*.txt
+*_latest.txt
+build_diag_latest.txt
+build_ui_fix_latest.txt
+
 # Local capture artifacts (.out) (do not commit)
 frontend/*.out
 
 # Backend local test capture outputs (do not commit)
 backend/test_*.txt
+
+# Backend local test/build capture outputs (do not commit)
+backend/*_test_*.txt
+backend/backend_test_*.txt
+backend/_vite_build_*.txt
 
 # Root-level backend test capture outputs (do not commit)
 backend_test_*.txt
