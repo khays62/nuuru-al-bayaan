@@ -425,19 +425,19 @@ export default function UserFormModal({
     toast.error(`${label}: ${error}`, { id: BLUR_VALIDATION_TOAST_ID });
   };
 
-  const nameFieldState = (required = false) => {
+  const nameFieldState = () => {
     const v = String(form?.fullName ?? '').trim();
     if (!v) return 'empty';
     return validateFourNames(v) ? 'valid' : 'invalid';
   };
 
-  const emailFieldState = (required = false) => {
+  const emailFieldState = () => {
     const v = String(form?.email ?? '').trim();
     if (!v) return 'empty';
     return isValidEmail(v) ? 'valid' : 'invalid';
   };
 
-  const phoneFieldState = (field, required = false) => {
+  const phoneFieldState = (field) => {
     const v = String(form?.[field] ?? '').trim();
     if (!v) return 'empty';
     return isValidSomaliaPhone(v) ? 'valid' : 'invalid';

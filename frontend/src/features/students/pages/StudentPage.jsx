@@ -9,8 +9,6 @@ import {
     listStudents,
     createStudent,
     updateStudent as updateStudentApi,
-    deactivateStudentApi,
-    reactivateStudentApi,
     getStudentProfile as fetchStudentProfile,
     uploadStudentPhoto,
 } from '../api/studentsApi';

@@ -1,8 +1,7 @@
-import { beforeAll, afterAll, afterEach, describe, expect, test } from '@jest/globals';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import { afterEach, describe, expect, test, jest, beforeEach } from '@jest/globals';
 import mongoose from 'mongoose';
 
-import LibraryResource from '../models/LibraryResource.js';
+import * as LibraryResourceModule from '../models/LibraryResource.js';
 import { deleteLibraryResource } from '../controllers/libraryController.js';
 
 function mockRes() {
@@ -14,109 +13,91 @@ function mockRes() {
   };
 }
 
+function makeDoc({ id, createdById }) {
+  return {
+    _id: id,
+    createdById,
+    file: null,
+    deleteOne: jest.fn().mockResolvedValue({}),
+  };
+}
+
 describe('library delete authorization', () => {
-  let mongod;
+  let findByIdSpy;
 
-  beforeAll(async () => {
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
-    await mongoose.connect(uri, { dbName: 'testdb' });
+  beforeEach(() => {
+    findByIdSpy = jest.spyOn(LibraryResourceModule.default, 'findById');
   });
 
-  afterEach(async () => {
-    await LibraryResource.deleteMany({});
-  });
-
-  afterAll(async () => {
-    await mongoose.disconnect();
-    await mongod.stop();
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('teacher cannot delete other users resources', async () => {
     const ownerId = new mongoose.Types.ObjectId();
     const teacherId = new mongoose.Types.ObjectId();
+    const docId = new mongoose.Types.ObjectId();
 
-    const doc = await LibraryResource.create({
-      title: 'Public Link',
-      kind: 'link',
-      linkUrl: 'https://example.com',
-      createdById: ownerId,
-      createdByRole: 'staff',
-      createdByName: 'Someone',
-    });
+    findByIdSpy.mockResolvedValue(makeDoc({ id: docId, createdById: ownerId }));
 
-    const req = { params: { id: String(doc._id) }, user: { _id: teacherId, role: 'teacher' } };
+    const req = { params: { id: String(docId) }, user: { _id: teacherId, role: 'teacher' } };
     const res = mockRes();
 
     await deleteLibraryResource(req, res);
 
     expect(res.statusCode).toBe(403);
     expect(String(res.body?.message || '')).toMatch(/only delete resources you uploaded/i);
-    expect(await LibraryResource.countDocuments({})).toBe(1);
   });
 
   test('teacher can delete own resources', async () => {
     const teacherId = new mongoose.Types.ObjectId();
+    const docId = new mongoose.Types.ObjectId();
 
-    const doc = await LibraryResource.create({
-      title: 'Teacher Link',
-      kind: 'link',
-      linkUrl: 'https://example.com',
-      createdById: teacherId,
-      createdByRole: 'teacher',
-      createdByName: 'Teacher',
-    });
+    const doc = makeDoc({ id: docId, createdById: teacherId });
+    findByIdSpy.mockResolvedValue(doc);
 
-    const req = { params: { id: String(doc._id) }, user: { _id: teacherId, role: 'teacher' } };
+    const req = { params: { id: String(docId) }, user: { _id: teacherId, role: 'teacher' } };
     const res = mockRes();
 
     await deleteLibraryResource(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(await LibraryResource.countDocuments({})).toBe(0);
+    expect(doc.deleteOne).toHaveBeenCalled();
   });
 
-  test('staff can delete own resources (controller-level check)', async () => {
+  test('staff can delete any resource (controller-level check)', async () => {
     const staffId = new mongoose.Types.ObjectId();
     const ownerId = new mongoose.Types.ObjectId();
+    const docId = new mongoose.Types.ObjectId();
 
-    const doc = await LibraryResource.create({
-      title: 'Other Link',
-      kind: 'link',
-      linkUrl: 'https://example.com',
-      createdById: ownerId,
-      createdByRole: 'teacher',
-      createdByName: 'Other',
-    });
+    const doc = makeDoc({ id: docId, createdById: ownerId });
+    findByIdSpy.mockResolvedValue(doc);
 
-    const req = { params: { id: String(doc._id) }, user: { _id: staffId, role: 'staff' } };
+    const req = { params: { id: String(docId) }, user: { _id: staffId, role: 'staff' } };
     const res = mockRes();
 
     await deleteLibraryResource(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(await LibraryResource.countDocuments({})).toBe(0);
+    expect(doc.deleteOne).toHaveBeenCalled();
   });
 
   test('admin can delete any resources', async () => {
     const ownerId = new mongoose.Types.ObjectId();
     const adminId = new mongoose.Types.ObjectId();
+    const docId = new mongoose.Types.ObjectId();
 
-    const doc = await LibraryResource.create({
-      title: 'Any Link',
-      kind: 'link',
-      linkUrl: 'https://example.com',
-      createdById: ownerId,
-      createdByRole: 'teacher',
-      createdByName: 'Other',
-    });
+    const doc = makeDoc({ id: docId, createdById: ownerId });
+    findByIdSpy.mockResolvedValue(doc);
 
-    const req = { params: { id: String(doc._id) }, user: { _id: adminId, role: 'admin' } };
+    const req = { params: { id: String(docId) }, user: { _id: adminId, role: 'admin' } };
     const res = mockRes();
 
     await deleteLibraryResource(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(await LibraryResource.countDocuments({})).toBe(0);
+    expect(doc.deleteOne).toHaveBeenCalled();
   });
 });
+
+

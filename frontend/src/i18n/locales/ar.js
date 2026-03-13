@@ -4152,6 +4152,47 @@ export default {
       printTab: {
         toasts: {
           noPrintPermission: 'ليست لديك صلاحية للطباعة',
+          fetchFailed: 'فشل جلب طلاب هذا الصف',
+          selectAtLeastOne: 'اختر طالبًا واحدًا على الأقل',
+        },
+        title: 'مركز تقارير المالية',
+        subtitle: 'معالجة الفواتير والتدقيق بالجملة',
+        labels: {
+          selectClass: 'اختر المرحلة / الصف',
+          classCensus: 'إحصاء الصف:',
+          studentsCountSuffix: 'طلاب',
+        },
+        placeholders: {
+          targetClassLevel: 'المستوى المستهدف',
+        },
+        actions: {
+          fetchRegister: 'جلب القائمة',
+          monthlyInvoices: 'فواتير شهرية',
+          dailyAuditLedger: 'سجل تدقيق يومي',
+          enrollmentPasscards: 'بطاقات التسجيل',
+        },
+        defaults: {
+          passcardsExamType: 'تسجيل',
+        },
+        loading: {
+          streamingRegistry: 'جاري تحميل السجل…',
+        },
+        columns: {
+          selection: 'تحديد',
+          studentId: 'رقم الطالب',
+          fullName: 'الاسم الكامل',
+          balanceStatus: 'حالة الرصيد',
+        },
+        empty: {
+          title: 'اختر صفًا لبدء التقارير.',
+        },
+        sections: {
+          reportTools: 'أدوات إنشاء التقارير',
+          printQueueAdvice: 'نصيحة قائمة الطباعة',
+        },
+        hints: {
+          bulkPrinting:
+            'قد تستغرق طباعة عدة فواتير حتى 30 ثانية لعرض علامات مائية عالية الدقة.',
         },
       },
       tabs: {
@@ -4458,52 +4499,6 @@ export default {
         empty: {
           title: 'لا توجد سجلات',
           description: 'لا توجد سجلات لهذه الاختيارات.',
-        },
-      },
-
-      printTab: {
-        toasts: {
-          fetchFailed: 'فشل جلب طلاب هذا الصف',
-          selectAtLeastOne: 'اختر طالبًا واحدًا على الأقل',
-        },
-        title: 'مركز تقارير المالية',
-        subtitle: 'معالجة الفواتير والتدقيق بالجملة',
-        labels: {
-          selectClass: 'اختر المرحلة / الصف',
-          classCensus: 'إحصاء الصف:',
-          studentsCountSuffix: 'طلاب',
-        },
-        placeholders: {
-          targetClassLevel: 'المستوى المستهدف',
-        },
-        actions: {
-          fetchRegister: 'جلب القائمة',
-          monthlyInvoices: 'فواتير شهرية',
-          dailyAuditLedger: 'سجل تدقيق يومي',
-          enrollmentPasscards: 'بطاقات التسجيل',
-        },
-        defaults: {
-          passcardsExamType: 'تسجيل',
-        },
-        loading: {
-          streamingRegistry: 'جاري تحميل السجل…',
-        },
-        columns: {
-          selection: 'تحديد',
-          studentId: 'رقم الطالب',
-          fullName: 'الاسم الكامل',
-          balanceStatus: 'حالة الرصيد',
-        },
-        empty: {
-          title: 'اختر صفًا لبدء التقارير.',
-        },
-        sections: {
-          reportTools: 'أدوات إنشاء التقارير',
-          printQueueAdvice: 'نصيحة قائمة الطباعة',
-        },
-        hints: {
-          bulkPrinting:
-            'قد تستغرق طباعة عدة فواتير حتى 30 ثانية لعرض علامات مائية عالية الدقة.',
         },
       },
 

@@ -16,7 +16,6 @@ const EMPTY_ARR = [];
 
 export default function TeacherForm({ initialValue, onCancel, onSave }) {
   const { t } = useI18n();
-  const [touched, setTouched] = useState({});
 
   const BLUR_VALIDATION_TOAST_ID = 'teacher-form:blur-validation';
 
@@ -222,7 +221,6 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
       setPhotoInputKey((k) => k + 1);
 
       // Reset touched state when switching edit targets
-      setTouched({});
     }
   }, [initialValue]);
 
@@ -262,7 +260,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     return isValidSomaliaPhone(value) ? '' : t('teachers.form.validations.phoneInvalidHint');
   };
 
-  const nameFieldState = (field, required = false) => {
+  const nameFieldState = (field) => {
     const v = String(form[field] ?? '');
     const hasValue = Boolean(v.trim());
     if (!hasValue) {
@@ -271,7 +269,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     return validateFourNames(v) ? 'valid' : 'invalid';
   };
 
-  const emailFieldState = (field, required = false) => {
+  const emailFieldState = (field) => {
     const v = String(form[field] ?? '');
     const hasValue = Boolean(v.trim());
     if (!hasValue) {
@@ -280,7 +278,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     return isValidEmail(v) ? 'valid' : 'invalid';
   };
 
-  const phoneFieldState = (field, required = false) => {
+  const phoneFieldState = (field) => {
     const v = String(form[field] ?? '').trim();
     if (!v) {
       return 'neutral';
@@ -295,7 +293,6 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
   };
 
   const onBlurValidate = (field, getErrorMessage, { label = '' } = {}) => {
-    setTouched((p) => ({ ...p, [field]: true }));
     const v = String(form[field] ?? '').trim();
     if (!v) {
       toast.dismiss(BLUR_VALIDATION_TOAST_ID);
@@ -342,12 +339,6 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
       setSaving(true);
 
       // Mark required fields as touched so borders show immediately on failed submit
-      setTouched((p) => ({
-        ...p,
-        fullName: true,
-        email: true,
-        phone: true,
-      }));
 
       if (!validateFourNames(form.fullName)) {
         toast.error(t('teachers.form.validations.fullNameFourNames'));

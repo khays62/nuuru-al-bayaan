@@ -34,7 +34,7 @@ export default function ResponsiblePaymentTab() {
     useEffect(() => {
         if (!invoicesQuery.isError) return;
         toast.error('Failed to fetch student balances');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [invoicesQuery.isError]);
 
     const students = React.useMemo(() => {

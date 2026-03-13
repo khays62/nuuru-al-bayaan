@@ -20,7 +20,6 @@ import { useAuth } from '../../../auth/AuthContext';
 export default function PayrollEmployeeInfoModal({
     onClose,
     onRefresh,
-    academicYears,
     defaultAcademicYearId,
     initialStaffId,
 }) {
@@ -380,7 +379,7 @@ export default function PayrollEmployeeInfoModal({
             const paid = Number(r?.paid || 0);
             return status.kind === 'under' && Number(status.remaining || 0) > 0 && paid > 0;
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [editingRowId, computedRows]);
 
     if (!canView) return null;

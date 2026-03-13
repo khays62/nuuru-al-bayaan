@@ -113,8 +113,6 @@ export default function FeeTypeTab() {
     }
 
     try {
-      // Backend expects system codes for fee types. Map behavior -> code for creation
-      const inferredCode = mode === 'waive' ? 'free' : 'personal';
       if (editingId === 'new') {
         await createMutation.mutateAsync({
           name: String(formData.name).trim(),
@@ -143,33 +141,6 @@ export default function FeeTypeTab() {
     }
   };
 
-  const handleDeactivate = async (id) => {
-    if (!canDelete) {
-      toast.error(t('finance.feeTypes.toasts.noDeletePermission', { defaultValue: 'You do not have permission to delete fee types' }));
-      return;
-    }
-    if (!window.confirm(t('finance.feeTypes.confirms.deactivate', { defaultValue: 'Deactivate this fee type?' }))) return;
-    try {
-      await deleteMutation.mutateAsync(id);
-      toast.success(t('finance.feeTypes.toasts.deactivated', { defaultValue: 'Fee type deactivated' }));
-    } catch (e) {
-      toast.error(e.response?.data?.message || t('finance.feeTypes.toasts.operationFailed', { defaultValue: 'Operation failed' }));
-    }
-  };
-
-  const handleActivate = async (id) => {
-    if (!canEdit) {
-      toast.error(t('finance.feeTypes.toasts.noEditPermission', { defaultValue: 'You do not have permission to edit fee types' }));
-      return;
-    }
-    try {
-      await updateMutation.mutateAsync({ id, payload: { status: 'active' } });
-      toast.success(t('finance.feeTypes.toasts.activated', { defaultValue: 'Fee type activated' }));
-    } catch (e) {
-      toast.error(e.response?.data?.message || t('finance.feeTypes.toasts.operationFailed', { defaultValue: 'Operation failed' }));
-    }
-  };
-
   const handleDelete = async (id) => {
     if (!canDelete) {
       toast.error(t('finance.feeTypes.toasts.noDeletePermission', { defaultValue: 'You do not have permission to delete fee types' }));
@@ -177,13 +148,13 @@ export default function FeeTypeTab() {
     }
     try {
       // Pre-check whether the fee type can be deleted. If referenced, backend returns 400 with code FEE_TYPE_IN_USE
-      const check = await (await import('../api/finance')).default.getCanDeleteFeeType(id);
+      await (await import('../api/finance')).default.getCanDeleteFeeType(id);
       // If backend says ok, confirm and delete
       if (!window.confirm(t('finance.feeTypes.confirms.permanentDelete', { defaultValue: 'Permanently delete this fee type? This action cannot be undone.' }))) return;
       await deleteMutation.mutateAsync(id);
       toast.success(t('finance.feeTypes.toasts.deleted', { defaultValue: 'Fee type deleted' }));
       if (typeof feeTypesQuery.refetch === 'function') {
-        try { await feeTypesQuery.refetch(); } catch (_) { /* ignore */ }
+        try { await feeTypesQuery.refetch(); } catch { /* ignore */ }
       }
     } catch (e) {
       const msg = (e?.response?.data?.message) || e?.message || '';

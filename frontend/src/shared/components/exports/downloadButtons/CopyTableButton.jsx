@@ -25,7 +25,7 @@ export default function CopyTableButton({ getPayload, disabled = false, classNam
         delimiter: '\t',
       });
     } catch (e) {
-      // eslint-disable-next-line no-console
+       
       console.error('Copy failed:', e);
       toast.error(e?.message || t('common.errors.copyFailed', { defaultValue: 'Copy failed' }));
     } finally {

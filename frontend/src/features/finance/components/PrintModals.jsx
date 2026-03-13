@@ -61,10 +61,10 @@ const parseAcademicYearYears = (yearRange) => {
     if (!s) return [new Date().getFullYear().toString()];
 
     // Common patterns: "2025-2026", "2025/2026", "2025-26"
-    const full = s.match(/(\d{4})\s*[-\/]\s*(\d{4})/);
+    const full = s.match(/(\d{4})\s*[-/]\s*(\d{4})/);
     if (full) return [full[1], full[2]];
 
-    const short = s.match(/(\d{4})\s*[-\/]\s*(\d{2})/);
+    const short = s.match(/(\d{4})\s*[-/]\s*(\d{2})/);
     if (short) {
         const y1 = Number(short[1]);
         const y2 = Math.floor(y1 / 100) * 100 + Number(short[2]);

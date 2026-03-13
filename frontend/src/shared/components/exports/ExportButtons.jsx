@@ -32,7 +32,7 @@ export default function ExportButtons({
       const next = ext ? { ...payload, filename: withExtension(payload.filename, ext) } : payload;
       await fn(next);
     } catch (e) {
-      // eslint-disable-next-line no-console
+       
       console.error('Export failed:', e);
     } finally {
       setBusy(false);

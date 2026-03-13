@@ -304,7 +304,7 @@ export const AuthProvider = ({ children }) => {
       clearTimeout(timer);
       offEvent(EVENTS.USERS_CHANGED, handler);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [user]);
 
   useEffect(() => {

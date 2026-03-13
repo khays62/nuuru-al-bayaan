@@ -111,11 +111,6 @@ export default function AttendanceReportsPage() {
     return Number.isNaN(dt.getTime()) ? null : dt;
   };
 
-  const fmtISODateOnlyUTC = (dt) => {
-    if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return '';
-    return dt.toISOString().slice(0, 10);
-  };
-
   const normalizeRange = (fromStr, toStr) => {
     const fromDt = parseISODateOnlyUTC(fromStr);
     const toDt = parseISODateOnlyUTC(toStr);

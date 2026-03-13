@@ -58,7 +58,7 @@ export function useRealtimeStream({ user } = {}) {
       setProbeStatus({ state: 'reconnecting', reconnectAttempt, nextRetryInMs: ms });
       if (debugEnabled) {
         try {
-          // eslint-disable-next-line no-console
+           
           console.log('[realtime] reconnect scheduled', { reconnectAttempt, ms });
         } catch {
           // ignore
@@ -91,7 +91,7 @@ export function useRealtimeStream({ user } = {}) {
         setProbeStatus({ state: 'open:connected', readyState: es?.readyState, lastSeenAt });
         if (debugEnabled) {
           try {
-            // eslint-disable-next-line no-console
+             
             console.log('[realtime] connected');
           } catch {
             // ignore
@@ -134,7 +134,7 @@ export function useRealtimeStream({ user } = {}) {
         if (age > 60_000) {
           if (debugEnabled) {
             try {
-              // eslint-disable-next-line no-console
+               
               console.warn('[realtime] stale stream; reconnecting', { age });
             } catch {
               // ignore

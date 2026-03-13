@@ -19,7 +19,6 @@ import Modal from '../../../shared/components/ui/Modal.jsx';
 import Tabs from '../../attendance/components/Tabs.jsx';
 import { useI18n } from '../../../i18n/useI18n';
 import { apiUrl } from '../../../shared/api/http.js';
-import { formatAuditDescription, prettifyAuditAction } from '../../../shared/utils/auditFormat.js';
 
 import { getAuditAnalytics, getAuditAnalyticsDetails, getAuditEvents, getAuditSummary, getAuditTimeline, getAuditTop } from '../api/auditApi.js';
 import { auditKeys } from '../api/queryKeys.js';
@@ -639,7 +638,6 @@ export default function TrackingAuditPage() {
     const row = toRealtimeRow(log);
     const operationKey = inferRealtimeOperation(log.action, log.description);
     const summaryAction = normalizeAuditValue(log.action);
-    const actorName = row.actor.fullName || row.actor.username || t('common.unknown', { defaultValue: 'Unknown' });
 
     queryClient.setQueryData(auditKeys.summary(filterParams), (prev) => {
       if (!prev?.data?.totals) return prev;

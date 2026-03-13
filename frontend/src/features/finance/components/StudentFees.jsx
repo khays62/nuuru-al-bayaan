@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Receipt, Edit, Settings, GraduationCap, Search, Printer, PlusCircle, Trash2, FileText, Wallet, RotateCcw } from 'lucide-react';
-import financeService from '../api/finance';
 import toast from 'react-hot-toast';
 import { useFinanceStudentsSummaryQuery, usePreviousBalanceSummaryQuery } from '../hooks/studentFinanceHooks';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
@@ -94,7 +93,7 @@ const ReceiptTab = () => {
         // Only show skeleton on first load. Background refetches (isFetching)
         // should keep the current rows visible to avoid tab-switch flicker.
         setLoading(Boolean(summaryQuery.isLoading || (prevQueryUX.enabled && prevQuery.isLoading)));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [summaryQuery.isLoading, prevQuery.isLoading, prevQueryUX.enabled]);
 
     useEffect(() => {

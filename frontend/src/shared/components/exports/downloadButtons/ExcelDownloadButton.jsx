@@ -38,7 +38,7 @@ export default function ExcelDownloadButton({ getPayload, disabled = false, clas
     } catch (e) {
       // Most common cause of â€œno downloadâ€: runtime exception while building XLSX.
       // Surface the error so we can fix it quickly.
-      // eslint-disable-next-line no-console
+       
       console.error('Excel export failed:', e);
       toast.error(e?.message || t('common.export.excelFailed', { defaultValue: 'Excel export failed' }));
     } finally {

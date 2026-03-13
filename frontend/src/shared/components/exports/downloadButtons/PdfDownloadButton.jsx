@@ -22,7 +22,7 @@ export default function PdfDownloadButton({
       if (!payload) return;
       await exportTableToPDF({ ...payload, orientation });
     } catch (e) {
-      // eslint-disable-next-line no-console
+       
       console.error('PDF export failed:', e);
       toast.error(e?.message || t('common.export.pdfFailed', { defaultValue: 'PDF export failed' }));
     } finally {

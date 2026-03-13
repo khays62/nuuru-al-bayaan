@@ -16,7 +16,6 @@ export default function PayrollUpdateModal({
     onClose,
     onSuccess,
     defaultMonth,
-    academicYears,
     defaultAcademicYearId,
     initialEmployeeId,
     initialMonth,

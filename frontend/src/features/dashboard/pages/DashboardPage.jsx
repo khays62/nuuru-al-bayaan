@@ -104,7 +104,7 @@ const isoMinusDaysUTC = (isoDateOnly, days) => {
     return out.toISOString().slice(0, 10);
 };
 
-const QuickCard = ({ title, description, to, Icon, tone = 'indigo', disabled = false }) => {
+const QuickCard = ({ title, description, to, Icon, disabled = false }) => {
     const base =
         'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
         'bg-(--nb-color-bg-card) p-5 shadow-md transition';

@@ -245,7 +245,7 @@ export default function ResultPage() {
     // Subjects are React Query-backed; keep existing behavior of clearing subjectId when section changes.
     useEffect(() => {
         setSubjectId('');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [gradeSectionId]);
 
     // Auto-fetch summary with debounce

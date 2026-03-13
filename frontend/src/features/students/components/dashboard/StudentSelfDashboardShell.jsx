@@ -416,7 +416,7 @@ function LineChart({ points = [], height = 140, onHover, onLeave }) {
   );
 }
 
-function Card({ to, title, description, Icon, tone }) {
+function Card({ to, title, description, Icon }) {
   const base =
     'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
     'bg-(--nb-color-bg-card) p-5 shadow-md transition';

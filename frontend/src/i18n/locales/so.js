@@ -709,7 +709,6 @@ export default {
     },
     modal: {
       addTitle: 'Ku dar Cohort',
-        editTitle: 'Wax ka beddel kharashka',
       editTitle: 'Tafatir Cohort',
     },
     status: {
@@ -3975,6 +3974,47 @@ export default {
       printTab: {
         toasts: {
           noPrintPermission: 'Ma lihid oggolaansho aad ku daabacdo',
+          fetchFailed: 'Soo qaadista ardayda fasalkan waa fashilantay',
+          selectAtLeastOne: 'Dooro ugu yaraan hal arday',
+        },
+        title: 'Xarunta Warbixinta Maaliyadda',
+        subtitle: 'Daabacaadda Invoice & Audit badan',
+        labels: {
+          selectClass: 'Dooro Heerka / Fasalka',
+          classCensus: 'Tirada Fasalka:',
+          studentsCountSuffix: 'Arday',
+        },
+        placeholders: {
+          targetClassLevel: 'Heerka fasalka',
+        },
+        actions: {
+          fetchRegister: 'Soo qaad Liiska',
+          monthlyInvoices: 'Invoice Bille',
+          dailyAuditLedger: 'Audit Maalinle',
+          enrollmentPasscards: 'Kaadhadhka Diiwaangelinta',
+        },
+        defaults: {
+          passcardsExamType: 'Diiwaangelin',
+        },
+        loading: {
+          streamingRegistry: 'Soo dejinaya liiska…',
+        },
+        columns: {
+          selection: 'Xulasho',
+          studentId: 'ID Arday',
+          fullName: 'Magaca oo dhan',
+          balanceStatus: 'Xaaladda Haraaga',
+        },
+        empty: {
+          title: 'Dooro fasal si aad u bilowdo warbixinta.',
+        },
+        sections: {
+          reportTools: 'Qalabka Warbixinta',
+          printQueueAdvice: 'Talo Daabacaad',
+        },
+        hints: {
+          bulkPrinting:
+            'Daabacaadda invoice-yo badan waxay qaadan kartaa ilaa 30 ilbiriqsi si ay u soo saarto watermark tayo-sare leh.',
         },
       },
       tabs: {
@@ -4284,52 +4324,6 @@ export default {
         empty: {
           title: 'Diiwaan ma jiro',
           description: 'Wax diiwaan ah looma helin xulashadan.',
-        },
-      },
-
-      printTab: {
-        toasts: {
-          fetchFailed: 'Soo qaadista ardayda fasalkan waa fashilantay',
-          selectAtLeastOne: 'Dooro ugu yaraan hal arday',
-        },
-        title: 'Xarunta Warbixinta Maaliyadda',
-        subtitle: 'Daabacaadda Invoice & Audit badan',
-        labels: {
-          selectClass: 'Dooro Heerka / Fasalka',
-          classCensus: 'Tirada Fasalka:',
-          studentsCountSuffix: 'Arday',
-        },
-        placeholders: {
-          targetClassLevel: 'Heerka fasalka',
-        },
-        actions: {
-          fetchRegister: 'Soo qaad Liiska',
-          monthlyInvoices: 'Invoice Bille',
-          dailyAuditLedger: 'Audit Maalinle',
-          enrollmentPasscards: 'Kaadhadhka Diiwaangelinta',
-        },
-        defaults: {
-          passcardsExamType: 'Diiwaangelin',
-        },
-        loading: {
-          streamingRegistry: 'Soo dejinaya liiska…',
-        },
-        columns: {
-          selection: 'Xulasho',
-          studentId: 'ID Arday',
-          fullName: 'Magaca oo dhan',
-          balanceStatus: 'Xaaladda Haraaga',
-        },
-        empty: {
-          title: 'Dooro fasal si aad u bilowdo warbixinta.',
-        },
-        sections: {
-          reportTools: 'Qalabka Warbixinta',
-          printQueueAdvice: 'Talo Daabacaad',
-        },
-        hints: {
-          bulkPrinting:
-            'Daabacaadda invoice-yo badan waxay qaadan kartaa ilaa 30 ilbiriqsi si ay u soo saarto watermark tayo-sare leh.',
         },
       },
 

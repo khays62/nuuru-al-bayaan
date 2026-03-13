@@ -34,7 +34,7 @@ export default function GraduationReceiptTab() {
     useEffect(() => {
         if (!invoicesQuery.isError) return;
         toast.error('Failed to fetch graduation records');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [invoicesQuery.isError]);
 
     const students = React.useMemo(() => {

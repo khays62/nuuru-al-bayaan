@@ -145,7 +145,7 @@ export default function PayrollManagement() {
                 raw: p,
             };
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [payrolls]);
 
     const onSort = (field) => {

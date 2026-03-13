@@ -76,7 +76,6 @@ const getSomaliaNationalDigits = (value) => {
 
 export default function StudentForm({ student, onClose, onSubmit, submitting = false }) {
     const { t } = useI18n();
-    const [touched, setTouched] = useState({});
     const [photoFile, setPhotoFile] = useState(null);
     const [photoInputKey, setPhotoInputKey] = useState(0);
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState('');
@@ -293,7 +292,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         return isValidSomaliaPhone(value) ? '' : t('students.form.validations.phoneInvalidHint');
     };
 
-    const nameFieldState = (field, required = false) => {
+    const nameFieldState = (field) => {
         const v = String(formData[field] ?? '');
         const hasValue = Boolean(v.trim());
         if (!hasValue) {
@@ -302,7 +301,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         return validateFourNames(v) ? 'valid' : 'invalid';
     };
 
-    const phoneFieldState = (field, required = false) => {
+    const phoneFieldState = (field) => {
         const v = String(formData[field] ?? '').trim();
         if (!v) {
             return 'neutral';
@@ -317,7 +316,6 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
     };
 
     const onBlurValidate = (field, getErrorMessage, { label = '' } = {}) => {
-        setTouched((p) => ({ ...p, [field]: true }));
         const v = String(formData[field] ?? '').trim();
         if (!v) {
             // Avoid noisy validation toasts when users tab through empty required fields.
@@ -333,15 +331,6 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
 
     const handleSubmit = (e) => {
         e.preventDefault();
-
-        // Mark these as touched so borders show immediately on failed submit
-        setTouched((p) => ({
-            ...p,
-            fullName: true,
-            motherName: true,
-            guardianName: true,
-            guardianPhone1: true,
-        }));
 
         if (!String(formData.fullName || '').trim()) return toast.error(t('students.form.validations.fullNameRequired'));
         if (!validateFourNames(formData.fullName)) return toast.error(t('students.form.validations.fullNameFourNames'));
