@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
@@ -29,7 +29,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
   const role = String(auth?.user?.role || '').toLowerCase();
   const homePath = role === 'student' ? '/student-dashboard' : (role === 'teacher' ? '/teacher-dashboard' : '/dashboard');
 
-  const canAccessModule = (module) => {
+  const canAccessModule = useCallback((module) => {
     if (role === 'admin') return true;
     if (!module) return false;
 
@@ -72,18 +72,18 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     }
 
     return actions.some((action) => hasPermission(module, action));
-  };
+  }, [hasPermission, role]);
 
-  const canAccessPermission = (perm) => {
+  const canAccessPermission = useCallback((perm) => {
     if (!perm) return true;
     if (role === 'admin') return true;
     const mod = perm?.module;
     const action = perm?.action;
     if (!mod || !action) return true;
     return hasPermission(mod, action);
-  };
+  }, [hasPermission, role]);
 
-  const isItemVisibleForRole = (item) => {
+  const isItemVisibleForRole = useCallback((item) => {
     if (!item) return false;
 
     if (role === 'admin') {
@@ -115,7 +115,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     }
 
     return false;
-  };
+  }, [auth?.privacyPolicy, canAccessModule, canAccessPermission, role]);
 
   const visibleNavItems = useMemo(() => {
     const filterWithChildren = (item) => {
@@ -195,7 +195,7 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
     }
 
     return base;
-  }, [auth?.privacyPolicy, hasPermission, role]);
+  }, [role, isItemVisibleForRole]);
 
   const [openGroups, setOpenGroups] = useState(() => ({}));
 

@@ -144,7 +144,7 @@ export default function AttendanceStatusPills({
             (disabled ? ' opacity-60 cursor-not-allowed' : '')
           }
         >
-          <span className="text-xs font-semibold">â‹®</span>
+          <span className="text-xs font-semibold">⋯</span>
           {isExtraSelected && (
             <span
               className="ml-1 text-xs font-medium whitespace-nowrap max-w-32 truncate"

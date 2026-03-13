@@ -161,7 +161,6 @@ export async function printHtmlDocument(html, {
   }
 
   try {
-    // eslint-disable-next-line no-unused-expressions
     await doc.fonts?.ready;
   } catch {
     // ignore
@@ -362,7 +361,6 @@ const buildTableImagePages = async ({ headers = [], rows = [], theme, rtl = fals
   for (let i = 0; i < safeRows.length; i += maxRowsPerImage) {
     const chunk = safeRows.slice(i, i + maxRowsPerImage);
     // Keep the header on every page chunk.
-    // eslint-disable-next-line no-await-in-loop
     const u = await buildTableImageDataUrl({ headers: safeHeaders, rows: chunk, theme, rtl });
     urls.push(u);
   }
@@ -420,7 +418,7 @@ const buildTextBlockImage = async ({ lines = [], theme, rtl = false, fontSize = 
   }
 };
 
-const addTallImageToPdf = async ({ doc, dataUrl, format = 'PNG', imgWpx: _imgWpxIn = 0, imgHpx: _imgHpxIn = 0, x, y, maxW, maxHFirst, marginTop = 40 }) => {
+const addTallImageToPdf = async ({ doc, dataUrl, format = 'PNG', x, y, maxW, maxHFirst, marginTop = 40 }) => {
   // Always load the image element because slicing via canvas requires a drawable source.
   const img = new Image();
   const ok = await new Promise((resolve) => {
@@ -1027,7 +1025,6 @@ export async function exportTableToPDF({
         const maxHFirst = pageH - (y0 + 40);
         const page = imgPages[i] || {};
 
-        // eslint-disable-next-line no-await-in-loop
         const res = await addTallImageToPdf({
           doc,
           dataUrl: page.dataUrl,
@@ -1075,7 +1072,6 @@ export async function exportTableToPDF({
           const y0 = i === 0 ? (cursorY + 6) : 40;
           const maxHFirst = pageH - (y0 + 40);
           const page = imgPages[i] || {};
-          // eslint-disable-next-line no-await-in-loop
           const res = await addTallImageToPdf({
             doc,
             dataUrl: page.dataUrl,
@@ -1098,7 +1094,6 @@ export async function exportTableToPDF({
         }
         return;
       } catch (e2) {
-        // eslint-disable-next-line no-console
         console.warn('Arabic PDF image rendering failed twice; falling back to autoTable:', e2);
       }
 
@@ -1143,7 +1138,6 @@ export async function exportTableToPDF({
       });
 
       cursorY = (doc.lastAutoTable?.finalY || cursorY) + 22;
-      // eslint-disable-next-line no-console
       console.warn('Arabic PDF image rendering failed; fell back to autoTable:', e);
     }
   };

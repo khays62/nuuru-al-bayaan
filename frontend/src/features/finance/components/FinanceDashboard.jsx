@@ -382,13 +382,13 @@ export default function FinanceDashboard() {
                         renderCell={(row, col) => {
                             switch (col.key) {
                                 case 'student':
-                                    return `${row?.student?.firstName || ''} ${row?.student?.lastName || ''}`.trim() || 'â€”';
+                                    return `${row?.student?.firstName || ''} ${row?.student?.lastName || ''}`.trim() || '-';
                                 case 'amount':
                                     return formatCurrency(row?.amount || 0);
                                 case 'method':
-                                    return row?.method || 'â€”';
+                                    return row?.method || '-';
                                 case 'date':
-                                    return row?.createdAt ? new Date(row.createdAt).toLocaleDateString() : 'â€”';
+                                    return row?.createdAt ? new Date(row.createdAt).toLocaleDateString() : '-';
                                 case 'status':
                                     return (
                                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-(--nb-color-accent-50) text-(--nb-color-brand-ui) border border-(--nb-color-accent-100)">
@@ -396,7 +396,7 @@ export default function FinanceDashboard() {
                                         </span>
                                     );
                                 default:
-                                    return 'â€”';
+                                    return '-';
                             }
                         }}
                     />

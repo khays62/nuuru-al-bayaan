@@ -49,7 +49,6 @@ export default function StudentResponsibilityModal({ student, row, onClose, onSu
     useEffect(() => {
         if (!invoicesQuery.isError && !accountsQuery.isError && !categoriesQuery.isError) return;
         toast.error('Failed to sync responsibility records');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [invoicesQuery.isError, accountsQuery.isError, categoriesQuery.isError]);
 
     const invoices = React.useMemo(() => {

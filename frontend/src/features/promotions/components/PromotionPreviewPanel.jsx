@@ -52,7 +52,7 @@ export default function PromotionPreviewPanel({
 
                 switch (col.key) {
                   case 'student':
-                    return `${it.studentId} â€” ${it.fullName}`;
+                    return `${it.studentId} - ${it.fullName}`;
                   case 'from':
                     return formatFrom(from) || '-';
                   case 'to':

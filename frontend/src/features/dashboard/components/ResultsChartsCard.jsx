@@ -21,6 +21,8 @@ import { getExamSummaryAbort, getExamTypes } from '../../exams/api/exams';
 import { getSessionSignal } from '../../../api/sessionAbort';
 import { useI18n } from '../../../i18n/useI18n';
 
+const EMPTY_SUMMARY = { results: [], classAverage: 0, subjects: [] };
+
 const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
     return (
         <button
@@ -282,7 +284,7 @@ export default function ResultsChartsCard() {
         },
     });
 
-    const examTypes = examTypesQuery.data || [];
+    const examTypes = useMemo(() => (examTypesQuery.data || []), [examTypesQuery.data]);
 
     useEffect(() => {
         if (mode !== 'examType') return;
@@ -324,7 +326,7 @@ export default function ResultsChartsCard() {
         },
     });
 
-    const summary = summaryQuery.data || { results: [], classAverage: 0, subjects: [] };
+    const summary = useMemo(() => (summaryQuery.data || EMPTY_SUMMARY), [summaryQuery.data]);
     const loading = summaryQuery.isLoading;
     const error = summaryQuery.isError ? (summaryQuery.error?.message || 'Failed to load summary') : '';
 
@@ -473,7 +475,7 @@ export default function ResultsChartsCard() {
         }`);
         if (effectiveMode === 'subject' && subjectId) parts.push(`${t('dashboard.cards.results.labels.subject')}: ${subjectLabel || t('common.selected')}`);
         if (effectiveMode === 'examType' && examTypeId) parts.push(`${t('teachers.dashboard.results.examType')}: ${examTypeLabel || t('common.selected')}`);
-        return parts.join(' â€¢ ');
+        return parts.join(' - ');
     }, [t, academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel, effectiveMode, subjectId, examTypeId, subjectLabel, examTypeLabel]);
 
     const downloadPng = async () => {
@@ -730,8 +732,8 @@ export default function ResultsChartsCard() {
                             ) : null}
                         </div>
                         <div className="text-xs text-(--nb-color-text)">
-                            <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg')}</span>: {fmtNum(classAvg, 2)} â€¢{' '}
-                            <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct')}</span> (â‰¥{passThreshold}): {fmtNum(passPct, 1)}%
+                            <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg')}</span>: {fmtNum(classAvg, 2)} -{' '}
+                            <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct')}</span> (≥{passThreshold}): {fmtNum(passPct, 1)}%
                         </div>
                     </div>
                 </div>
@@ -765,7 +767,7 @@ export default function ResultsChartsCard() {
                             <div className="px-4 py-2 bg-(--nb-color-brand) text-white flex items-center justify-between gap-3 flex-wrap">
                                 <div className="text-sm font-semibold">{t('teachers.dashboard.results.performance.title')}</div>
                                 <div className="text-xs text-white/80">
-                                    {String(perfMode === 'subject' ? t('teachers.dashboard.results.performance.subjectMode') : t('teachers.dashboard.results.performance.overallMode'))} â€¢ {t('teachers.dashboard.results.performance.template')} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : 'â€”'}
+                                    {String(perfMode === 'subject' ? t('teachers.dashboard.results.performance.subjectMode') : t('teachers.dashboard.results.performance.overallMode'))} - {t('teachers.dashboard.results.performance.template')} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : '-'}
                                 </div>
                             </div>
                             <div className="p-4 space-y-3">

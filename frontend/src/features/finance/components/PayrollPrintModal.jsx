@@ -170,7 +170,7 @@ export default function PayrollPrintModal({
             monthLabel ? t('finance.payroll.export.month', { defaultValue: 'Month: {{month}}', month: monthLabel }) : null,
             academicYearName ? t('finance.payroll.export.academicYear', { defaultValue: 'Academic Year: {{year}}', year: academicYearName }) : null,
             form.status ? t('finance.payroll.export.status', { defaultValue: 'Status: {{status}}', status: form.status }) : null,
-        ].filter(Boolean).join(' â€¢ ');
+        ].filter(Boolean).join(' - ');
 
         return {
             filename: `payroll-${form.month || 'all'}`,
@@ -378,7 +378,7 @@ export default function PayrollPrintModal({
                             [
                                 monthLabel ? t('finance.payroll.export.month', { defaultValue: 'Month: {{month}}', month: monthLabel }) : null,
                                 academicYearName ? t('finance.payroll.export.academicYear', { defaultValue: 'Academic Year: {{year}}', year: academicYearName }) : null,
-                            ].filter(Boolean).join(' â€¢ ')
+                            ].filter(Boolean).join(' - ')
                         }
                         className="sm:col-span-2"
                     >

@@ -55,7 +55,8 @@ export default function FinanceTab() {
     staleTime: 30_000,
   });
 
-  const rows = Array.isArray(historyQuery.data?.rows) ? historyQuery.data.rows : [];
+  const rawRows = historyQuery.data?.rows;
+  const rows = useMemo(() => (Array.isArray(rawRows) ? rawRows : []), [rawRows]);
 
   const totals = useMemo(() => {
     let billed = 0;

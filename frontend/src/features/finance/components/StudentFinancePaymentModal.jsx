@@ -534,7 +534,7 @@ export default function StudentFinancePaymentModal({
                 description: `Advance payment for ${months.join(', ')}`,
             });
 
-            const [invRefetch, histRefetch] = await Promise.all([invoicesQuery.refetch(), historyQuery.refetch()]);
+            const [invRefetch] = await Promise.all([invoicesQuery.refetch(), historyQuery.refetch()]);
             const updatedInvoices = Array.isArray(invRefetch.data)
                 ? invRefetch.data
                 : (Array.isArray(invRefetch.data?.data) ? invRefetch.data.data : (invRefetch.data?.data || []));
@@ -1205,7 +1205,7 @@ export default function StudentFinancePaymentModal({
                                                                 showLabel: true,
                                                                 icon: null,
                                                                 disabled: Number(h?.paid || 0) <= 0 || Boolean(printingId),
-                                                                title: Boolean(printingId)
+                                                                title: printingId
                                                                     ? t('finance.printModals.actions.generating', { defaultValue: 'Generating…' })
                                                                     : (Number(h?.paid || 0) <= 0
                                                                         ? t('finance.studentFinance.paymentModal.errors.cannotPrintNoPayment', { defaultValue: 'Cannot print: no payment recorded' })

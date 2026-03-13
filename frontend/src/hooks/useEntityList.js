@@ -72,16 +72,18 @@ export function useEntityList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extraFilters]);
 
-  const effectiveParams = {
-    page,
-    limit,
-    search: (immediateSearch != null ? immediateSearch : debouncedSearch) || undefined,
-    sortBy,
-    sortDir,
-    ...Object.fromEntries(
-      Object.entries(filters).filter(([, v]) => v !== '' && v !== undefined && v !== null)
-    )
-  };
+  const effectiveParams = useMemo(() => {
+    return {
+      page,
+      limit,
+      search: (immediateSearch != null ? immediateSearch : debouncedSearch) || undefined,
+      sortBy,
+      sortDir,
+      ...Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v !== '' && v !== undefined && v !== null)
+      ),
+    };
+  }, [page, limit, immediateSearch, debouncedSearch, sortBy, sortDir, filters]);
 
   // After a resetAndReload() that sets immediateSearch, clear it once debounce catches up.
   useEffect(() => {
@@ -218,7 +220,7 @@ export function useEntityList({
         Promise.resolve().then(() => load(Boolean(queuedForce), { silent: Boolean(queuedSilent) }));
       }
     }
-  }, [paramsSignature, persistKey, page]);
+  }, [effectiveParams, paramsSignature, persistKey, page, rqQueryKey]);
   // Fiiro gaar ah: fetchFn lama gelin dependency sababtoo ah waxaan isticmaalnaa ref.
 
   // --- Load Effect ---

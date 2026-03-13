@@ -70,7 +70,10 @@ export default function PayrollManagement() {
         refetchOnWindowFocus: false,
     });
 
-    const academicYears = Array.isArray(academicYearsQuery.data) ? academicYearsQuery.data : [];
+    const academicYears = useMemo(
+        () => (Array.isArray(academicYearsQuery.data) ? academicYearsQuery.data : []),
+        [academicYearsQuery.data]
+    );
 
     useEffect(() => {
         if (!academicYear && academicYears?.length) {
@@ -85,7 +88,10 @@ export default function PayrollManagement() {
         { enabled: Boolean(month) && Boolean(academicYear) }
     );
 
-    const payrolls = Array.isArray(payrollQuery.data) ? payrollQuery.data : [];
+    const payrolls = useMemo(
+        () => (Array.isArray(payrollQuery.data) ? payrollQuery.data : []),
+        [payrollQuery.data]
+    );
     const isLoading = Boolean(payrollQuery.isLoading && payrollQuery.data == null);
 
     useEffect(() => {
@@ -145,7 +151,6 @@ export default function PayrollManagement() {
                 raw: p,
             };
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [payrolls]);
 
     const onSort = (field) => {

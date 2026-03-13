@@ -63,7 +63,7 @@ function buildErrorDisplay({ err, index }) {
   if (header) parts.push(String(header).trim());
   if (value !== undefined && value !== '' && value !== null) parts.push(`Value: ${String(value)}`);
   if (studentLabel) parts.push(`Student: ${studentLabel}`);
-  const context = parts.length ? ` â€” ${parts.join(' | ')}` : '';
+  const context = parts.length ? ` - ${parts.join(' | ')}` : '';
   return `${rawMsg}${context}`;
 }
 

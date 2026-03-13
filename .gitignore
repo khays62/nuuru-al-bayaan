@@ -54,6 +54,9 @@ tmp_*.json
 # Ignore frontend lint output text dumps
 frontend/lint*.txt
 
+# Ignore temporary root lint captures
+_tmp_frontend_lint*.txt
+
 # Local debug artifacts (do not commit)
 backend/cookies.txt
 backend/login_response.txt

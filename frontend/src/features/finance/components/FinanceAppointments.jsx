@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck, ClipboardList, Clock, CheckCircle, XCircle, RefreshCw, Printer, CreditCard, Search, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import financeService from '../api/finance';
@@ -293,7 +293,7 @@ export default function FinanceAppointments() {
         }
     }, [years, form.academicYear]);
 
-    const handleStudentSearch = async () => {
+    const handleStudentSearch = useCallback(async () => {
         try {
             const classId = studentClassFilter || form.classId || undefined;
             if (!classId) {
@@ -358,7 +358,7 @@ export default function FinanceAppointments() {
         } catch {
             setStudentResults([]);
         }
-    };
+    }, [studentClassFilter, studentSearch, form.academicYear, form.classId]);
 
     const handleSelectStudent = (student) => {
         setSelectedStudent(student);
@@ -469,7 +469,7 @@ export default function FinanceAppointments() {
             }
         }, 300);
         return () => clearTimeout(timer);
-    }, [studentSearch, studentClassFilter, form.academicYear, activeTab]);
+    }, [studentSearch, studentClassFilter, form.academicYear, activeTab, handleStudentSearch]);
 
     const openPayment = (appt) => {
         if (!canEditAppointment) {

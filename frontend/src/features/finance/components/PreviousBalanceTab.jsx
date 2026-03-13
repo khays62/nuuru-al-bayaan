@@ -67,7 +67,10 @@ export default function PreviousBalanceTab() {
     };
 
     const feeCategoriesQuery = useFinanceCategoriesQuery({ type: 'fee', includePreviousBalance: true }, { staleTime: 30_000 });
-    const feeCategories = Array.isArray(feeCategoriesQuery.data) ? feeCategoriesQuery.data : [];
+    const feeCategories = useMemo(
+        () => (Array.isArray(feeCategoriesQuery.data) ? feeCategoriesQuery.data : []),
+        [feeCategoriesQuery.data]
+    );
 
     const previousBalanceCategoryId = useMemo(() => {
         const list = Array.isArray(feeCategories) ? feeCategories : [];
@@ -110,8 +113,7 @@ export default function PreviousBalanceTab() {
     useEffect(() => {
         if (!summaryQuery.isError && !prevCurrentQuery.isError && !prevAnyQuery.isError) return;
         toast.error(t('finance.studentFinance.previousBalanceTab.toasts.fetchFailed', { defaultValue: 'Failed to fetch student balance data' }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [summaryQuery.isError, prevCurrentQuery.isError, prevAnyQuery.isError]);
+    }, [summaryQuery.isError, prevCurrentQuery.isError, prevAnyQuery.isError, t]);
 
     const students = useMemo(() => {
         const baseRows = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
@@ -263,10 +265,10 @@ export default function PreviousBalanceTab() {
         const list = Array.isArray(students) ? students : [];
         return list.map((s) => ({
             _id: s._id,
-            studentId: s.studentId || 'â€”',
-            fullName: s.fullName || 'â€”',
-            contact: s.phone || 'â€”',
-            className: s.className || 'â€”',
+            studentId: s.studentId || '-',
+            fullName: s.fullName || '-',
+            contact: s.phone || '-',
+            className: s.className || '-',
             prevBalance: Number(s.prevBalance || 0),
             raw: s,
         }));
@@ -451,20 +453,20 @@ export default function PreviousBalanceTab() {
                         const raw = row?.raw;
                         switch (col.key) {
                             case 'studentId':
-                                return <span className="p-0 font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || 'â€”'}</span>;
+                                return <span className="p-0 font-mono text-xs font-bold text-(--nb-color-muted)">{row?.studentId || '-'}</span>;
                             case 'fullName':
                                 return (
                                     <div className="flex flex-col items-start">
-                                        <span className="font-bold text-(--nb-color-fg)">{row?.fullName || 'â€”'}</span>
+                                        <span className="font-bold text-(--nb-color-fg)">{row?.fullName || '-'}</span>
                                         <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-widest">{t('finance.studentFinance.previousBalanceTab.table.bfAccount', { defaultValue: 'B/F ACCOUNT' })}</span>
                                     </div>
                                 );
                             case 'contact':
-                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || 'â€”'}</span>;
+                                return <span className="text-(--nb-color-muted) text-sm font-medium">{row?.contact || '-'}</span>;
                             case 'className':
                                 return (
                                     <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
-                                        {row?.className || 'â€”'}
+                                        {row?.className || '-'}
                                     </span>
                                 );
                             case 'prevBalance':

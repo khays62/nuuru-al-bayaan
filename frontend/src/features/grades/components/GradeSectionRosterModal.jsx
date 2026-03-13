@@ -153,7 +153,7 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
       gradeName ? `${t('common.filters.grade', { defaultValue: 'Grade' })}: ${gradeName}` : null,
       sectionNum ? `${t('common.filters.section', { defaultValue: 'Section' })}: ${sectionNum}` : null,
       shiftName ? `${t('common.filters.shift', { defaultValue: 'Shift' })}: ${shiftName}` : null,
-    ].filter(Boolean).join(' â€¢ ');
+    ].filter(Boolean).join(' - ');
 
     return {
       filename: 'students-roster',
@@ -171,8 +171,8 @@ export default function GradeSectionRosterModal({ isOpen, onClose, gradeSection 
     const shiftName = gradeSection?.shift?.shiftName || gradeSection?.shift?.name || '';
     const sectionNum = gradeSection?.section || '';
     const secPrefix = t('common.sectionPrefix', { defaultValue: 'Sec' });
-    const tail = [shiftName ? `${t('common.filters.shift', { defaultValue: 'Shift' })} ${shiftName}` : null].filter(Boolean).join(' â€¢ ');
-    return tail ? `${gradeName} â€¢ ${secPrefix} ${sectionNum} â€¢ ${tail}` : `${gradeName} â€¢ ${secPrefix} ${sectionNum}`;
+    const tail = [shiftName ? `${t('common.filters.shift', { defaultValue: 'Shift' })} ${shiftName}` : null].filter(Boolean).join(' - ');
+    return tail ? `${gradeName} - ${secPrefix} ${sectionNum} - ${tail}` : `${gradeName} - ${secPrefix} ${sectionNum}`;
   }, [gradeSection, t]);
 
   return (

@@ -346,7 +346,7 @@ export default function LibraryManagementPage() {
       },
     ];
     return cols;
-  }, [t, canDeleteAny, canDeleteOwn, currentUserId, deleteMut.isPending, deleteConfirmMessage, showAudit]);
+  }, [t, canDeleteAny, canDeleteOwn, currentUserId, deleteMut, deleteConfirmMessage, showAudit]);
 
   const submit = async (e) => {
     e.preventDefault();

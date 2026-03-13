@@ -709,7 +709,6 @@ export default {
     },
     modal: {
       addTitle: 'Ku dar Cohort',
-        editTitle: 'Wax ka beddel kharashka',
       editTitle: 'Tafatir Cohort',
     },
     status: {
@@ -3972,11 +3971,6 @@ export default {
     },
 
     studentFinance: {
-      printTab: {
-        toasts: {
-          noPrintPermission: 'Ma lihid oggolaansho aad ku daabacdo',
-        },
-      },
       tabs: {
         receipt: 'Rasiid',
         previousBalance: 'Haraagii Hore',
@@ -4289,6 +4283,7 @@ export default {
 
       printTab: {
         toasts: {
+          noPrintPermission: 'Ma lihid oggolaansho aad ku daabacdo',
           fetchFailed: 'Soo qaadista ardayda fasalkan waa fashilantay',
           selectAtLeastOne: 'Dooro ugu yaraan hal arday',
         },

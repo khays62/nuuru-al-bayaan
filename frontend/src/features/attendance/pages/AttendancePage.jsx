@@ -320,18 +320,28 @@ export default function AttendancePage() {
   }, [jsDayUTC]);
 
   // 12-hour time formatter for UI labels
-  const fmt12 = (t) => {
-    const m = String(t || '').match(/^(\d{1,2}):(\d{2})$/);
-    if (!m) return String(t || '');
+  const fmt12 = useCallback((timeStr) => {
+    const m = String(timeStr || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return String(timeStr || '');
     let hh = Number(m[1]);
     const mm = m[2];
     const ampm = hh >= 12 ? 'PM' : 'AM';
     hh = hh % 12;
     if (hh === 0) hh = 12;
     return `${hh}:${mm} ${ampm}`;
-  };
+  }, []);
 
-  const allowToast = (key, windowMs = 8000) => {
+  const shortPersonName = useCallback((fullName) => {
+    const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= 1) return String(fullName || '').trim();
+    const first = parts[0];
+    const initials = parts.slice(1)
+      .map((p) => (p ? `${String(p).charAt(0).toUpperCase()}.` : ''))
+      .join('');
+    return `${first} ${initials}`.trim();
+  }, []);
+
+  const allowToast = useCallback((key, windowMs = 8000) => {
     const now = Date.now();
     const gate = toastGateRef.current;
     const prevAt = gate.get(key);
@@ -349,7 +359,7 @@ export default function AttendancePage() {
       }
     }
     return true;
-  };
+  }, []);
 
   useEffect(() => {
     if (mode === 'daily') {
@@ -357,7 +367,7 @@ export default function AttendancePage() {
     } else {
       if (periodCode === 'DAY') setPeriodCode('');
     }
-  }, [mode]);
+  }, [mode, periodCode]);
 
   // Clear downstream selects when upstream filters change (keep tabs).
   useEffect(() => {
@@ -464,8 +474,9 @@ export default function AttendancePage() {
       const code = `${s.startTime}-${s.endTime}`;
       const subjName = s.subject?.subjectName || t('attendance.marking.periodOptions.noSubject');
       const teacherName = s.teacher?.fullName || '';
-      const baseLabel = `${fmt12(s.startTime)}-${fmt12(s.endTime)} â€¢ ${subjName}`;
-      const label = isTeacher ? baseLabel : (teacherName ? `${baseLabel} â€¢ ${teacherName}` : baseLabel);
+      const baseLabel = `${fmt12(s.startTime)}-${fmt12(s.endTime)} - ${subjName}`;
+      const displayTeacher = teacherName ? shortPersonName(teacherName) : '';
+      const label = isTeacher ? baseLabel : (displayTeacher ? `${baseLabel} - ${displayTeacher}` : baseLabel);
       options.push({ value: code, label });
       meta[code] = {
         startTime: s.startTime,
@@ -476,12 +487,14 @@ export default function AttendancePage() {
         teacherName: s.teacher?.fullName || '',
       };
     }
+    // Teachers don't have a separate "Day:" label on the page, so keep day prefix for them.
+    // Admin/staff already see a day label above, so avoid repeating it (helps on small screens).
     const optionsWithDay = options.map(o => ({
       ...o,
-      label: dayLabel ? `${dayLabel} â€¢ ${o.label}` : o.label,
+      label: (isTeacher && dayLabel) ? `${dayLabel} - ${o.label}` : o.label,
     }));
 
-    const teacherId = String(auth?.user?.teacherRef || '');
+    const teacherId = String(teacherRef || '');
     let filtered = optionsWithDay;
     if (isTeacher) {
       filtered = filtered.filter(o => String(meta[o.value]?.teacherId || '') === teacherId);
@@ -515,7 +528,7 @@ export default function AttendancePage() {
         .filter(code => !existingValues.has(code))
         .map(code => ({
           value: code,
-          label: `${selectedDayLabel ? `${selectedDayLabel} â€¢ ` : ''}${t('attendance.marking.periodOptions.savedPeriodLabel')} â€¢ ${code}`,
+          label: `${t('attendance.marking.periodOptions.savedPeriodLabel')} - ${code}`,
         }));
       if (injected.length) {
         filtered = [...filtered, ...injected];
@@ -558,7 +571,28 @@ export default function AttendancePage() {
         setPeriodCode('');
       }
     }
-  }, [querySectionId, allSlots, dayOfWeek, mode, jsDayUTC, queryDate, subjectId, attMeta, isTeacher, detectingMode, selectionHasRecords, t]);
+  }, [
+    querySectionId,
+    allSlots,
+    dayOfWeek,
+    mode,
+    jsDayUTC,
+    queryDate,
+    subjectId,
+    attMeta,
+    isTeacher,
+    detectingMode,
+    selectionHasRecords,
+    slotsForSectionId,
+    slotsLoading,
+    selectedDayLabel,
+    sectionId,
+    teacherRef,
+    allowToast,
+    fmt12,
+    shortPersonName,
+    t,
+  ]);
 
   const canAct = useMemo(() => {
     if (!sectionId) return false;
@@ -741,7 +775,7 @@ export default function AttendancePage() {
       }
     };
     load();
-  }, [querySectionId, queryMode, queryPeriodCode, queryDate, queryRosterScope, scheduleStatus, realtimeTick]);
+  }, [querySectionId, queryMode, queryPeriodCode, queryDate, queryRosterScope, scheduleStatus, realtimeTick, isTeacher, allowToast, t]);
 
   const handleAdminGradeChange = (v) => {
     // Clear downstream selections in the same tick to avoid transient grade+old-shift requests/toasts.
@@ -945,7 +979,7 @@ export default function AttendancePage() {
     if (!keyMatches) return;
 
     if (allowToast(k)) toast.error(t('attendance.marking.errors.dailySavedReadOnlyTeacher'));
-  }, [isTeacher, teacherBlockedByExistingDaily, querySectionId, queryDate, queryRosterScope, sectionId, attMeta, attMetaKey]);
+  }, [isTeacher, teacherBlockedByExistingDaily, querySectionId, queryDate, queryRosterScope, sectionId, attMeta, attMetaKey, allowToast, t]);
 
   const isTableLoading = Boolean(loadingAttendance || detectingMode);
   const effectiveCanEditForTable = Boolean(canEdit && !isTableLoading && !saving);

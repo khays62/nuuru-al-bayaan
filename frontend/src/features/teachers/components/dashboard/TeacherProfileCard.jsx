@@ -642,7 +642,7 @@ export function TeacherProfilePage() {
 			employeeId: effectiveTeacher?.employeeId ?? base.employeeId,
 			teacherId: effectiveTeacher?.teacherId ?? base.teacherId,
 		};
-	}, [effectiveUser, effectiveTeacher?.email, effectiveTeacher?.phone, fullName, teacherPhotoUrl]);
+	}, [effectiveUser, effectiveTeacher?.email, effectiveTeacher?.phone, effectiveTeacher?.employeeId, effectiveTeacher?.teacherId, fullName, teacherPhotoUrl]);
 
 	const profileSummary = useMemo(() => {
 		const assignments = Array.isArray(assignmentsQuery.data) ? assignmentsQuery.data : null;

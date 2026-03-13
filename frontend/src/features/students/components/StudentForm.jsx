@@ -76,7 +76,7 @@ const getSomaliaNationalDigits = (value) => {
 
 export default function StudentForm({ student, onClose, onSubmit, submitting = false }) {
     const { t } = useI18n();
-    const [touched, setTouched] = useState({});
+    const [, setTouched] = useState({});
     const [photoFile, setPhotoFile] = useState(null);
     const [photoInputKey, setPhotoInputKey] = useState(0);
     const [photoPreviewUrl, setPhotoPreviewUrl] = useState('');
@@ -254,7 +254,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                 toast.info(t('students.form.info.noSections'), { id: 'no-sections' });
             }
         }
-    }, [gradeId, shiftId, sectionsQuery.isFetched, sectionsQuery.isFetching, sectionsKey, sections]);
+    }, [gradeId, shiftId, sectionsQuery.isFetched, sectionsQuery.isFetching, sectionsKey, sections, t]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -293,7 +293,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         return isValidSomaliaPhone(value) ? '' : t('students.form.validations.phoneInvalidHint');
     };
 
-    const nameFieldState = (field, required = false) => {
+    const nameFieldState = (field) => {
         const v = String(formData[field] ?? '');
         const hasValue = Boolean(v.trim());
         if (!hasValue) {
@@ -302,7 +302,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         return validateFourNames(v) ? 'valid' : 'invalid';
     };
 
-    const phoneFieldState = (field, required = false) => {
+    const phoneFieldState = (field) => {
         const v = String(formData[field] ?? '').trim();
         if (!v) {
             return 'neutral';

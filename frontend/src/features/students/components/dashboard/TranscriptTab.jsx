@@ -46,7 +46,7 @@ export default function TranscriptTab() {
     },
   });
 
-  const enrollments = enrollmentsQuery.data || [];
+  const enrollments = useMemo(() => (enrollmentsQuery.data || []), [enrollmentsQuery.data]);
   const enrLoading = enrollmentsQuery.isLoading;
   const enrError = enrollmentsQuery.isError ? t('students.transcriptTab.enrollmentsLoadFailed') : null;
 

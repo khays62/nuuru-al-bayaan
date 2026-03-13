@@ -15,7 +15,7 @@ export default function ShiftSetupForm({ initial, onCancel, onSubmit, isSubmitti
   useEffect(() => {
     setShiftName(init.shiftName || '');
     setErrors({});
-  }, [init._id]);
+  }, [init._id, init.shiftName]);
 
   const validate = () => {
     const next = {};

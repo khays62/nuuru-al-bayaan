@@ -95,7 +95,7 @@ export default function TeacherClassesPage() {
 		{ enabled: true }
 	);
 
-	const teacherAssignments = assignmentsQuery.data || [];
+	const teacherAssignments = useMemo(() => (assignmentsQuery.data || []), [assignmentsQuery.data]);
 
 	const sections = useMemo(() => {
 		const unique = [];
@@ -139,7 +139,7 @@ export default function TeacherClassesPage() {
 			};
 		}
 		return out;
-	}, [sections, countQueries]);
+	}, [sections, countQueries, t]);
 
 	const rosterQuery = useQuery({
 		queryKey: teacherKeys.studentsList({
@@ -312,11 +312,11 @@ export default function TeacherClassesPage() {
 							renderCell={(st, col) => {
 								switch (col.key) {
 									case 'studentId':
-										return st?.studentId || 'â€”';
+										return st?.studentId || '-';
 									case 'fullName':
-										return st?.fullName || 'â€”';
+										return st?.fullName || '-';
 									case 'gender':
-										return st?.gender || 'â€”';
+										return st?.gender || '-';
 									default:
 										return '';
 								}

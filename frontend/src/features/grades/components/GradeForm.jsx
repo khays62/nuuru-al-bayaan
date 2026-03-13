@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { getGrades } from '../../lookups/api/lookups';
 import { createGradeSection, updateGradeSection } from '../api/gradeSections';
@@ -52,7 +52,7 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   }, []);
 
   // Helper: refresh subjects for current grade (force fresh)
-  const refreshSubjects = async () => {
+  const refreshSubjects = useCallback(async () => {
     if (!grade) { setGradeSubjects([]); return; }
     setLoadingSubs(true);
     try {
@@ -63,14 +63,14 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
       setGradeSubjects(list);
     } catch (e) { console.error(e); }
     finally { setLoadingSubs(false); }
-  };
+  }, [grade]);
 
   // Load subjects only when user changes the grade (skip initial open)
   useEffect(() => {
     if (skipFirstGradeEffectRef.current) { skipFirstGradeEffectRef.current = false; return; }
     if (!grade) { setGradeSubjects([]); return; }
     void refreshSubjects();
-  }, [grade]);
+  }, [grade, refreshSubjects]);
 
   // Removed auto live-sync via global events to avoid implicit network requests.
 

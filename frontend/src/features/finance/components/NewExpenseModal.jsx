@@ -163,7 +163,7 @@ export default function NewExpenseModal({
             .filter((a) => a && a?._id)
             .map((a) => ({
                 value: String(a._id),
-                label: `${a.name} (${a.type})${a.accountNumber ? ` â€¢ ${a.accountNumber}` : ''}`,
+                label: `${a.name} (${a.type})${a.accountNumber ? ` - ${a.accountNumber}` : ''}`,
             }));
     }, [accountsQuery.data]);
 
@@ -274,7 +274,7 @@ export default function NewExpenseModal({
                                     {t('finance.expenses.budgetInfo.budget', { defaultValue: 'Budget' })}
                                 </div>
                                 <div className="text-sm font-black text-(--nb-color-fg)">
-                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: 'â€”' })}
+                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '-' })}
                                 </div>
                             </div>
                             <div className="rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-2">
@@ -290,7 +290,7 @@ export default function NewExpenseModal({
                                     {t('finance.expenses.budgetInfo.remaining', { defaultValue: 'Remaining' })}
                                 </div>
                                 <div className={'text-sm font-black ' + (budgetInfo.over ? 'text-red-600' : 'text-(--nb-color-fg)')}>
-                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.remaining || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: 'â€”' })}
+                                    {budgetInfo.hasBudget ? `$${Number(budgetInfo.remaining || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '-' })}
                                 </div>
                             </div>
                         </div>

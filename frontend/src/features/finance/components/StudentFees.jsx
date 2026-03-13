@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Receipt, Edit, Settings, GraduationCap, Search, Printer, PlusCircle, Trash2, FileText, Wallet, RotateCcw } from 'lucide-react';
-import financeService from '../api/finance';
 import toast from 'react-hot-toast';
 import { useFinanceStudentsSummaryQuery, usePreviousBalanceSummaryQuery } from '../hooks/studentFinanceHooks';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
@@ -94,7 +93,6 @@ const ReceiptTab = () => {
         // Only show skeleton on first load. Background refetches (isFetching)
         // should keep the current rows visible to avoid tab-switch flicker.
         setLoading(Boolean(summaryQuery.isLoading || (prevQueryUX.enabled && prevQuery.isLoading)));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [summaryQuery.isLoading, prevQuery.isLoading, prevQueryUX.enabled]);
 
     useEffect(() => {
@@ -108,8 +106,7 @@ const ReceiptTab = () => {
         if (prevQueryUX.enabled && prevQuery.isError) {
             toast.error(t('finance.studentFinance.receiptTab.toasts.previousBalanceLoadFailed', { defaultValue: 'Failed to fetch student balance data' }));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [summaryQuery.isError, prevQuery.isError, prevQueryUX.enabled]);
+    }, [summaryQuery.isError, prevQuery.isError, prevQueryUX.enabled, t]);
 
     const students = useMemo(() => {
         const baseRows = Array.isArray(summaryQuery.data) ? summaryQuery.data : [];
@@ -610,14 +607,15 @@ export default function StudentFees() {
 
     const [activeTab, setActiveTab] = useState(initialTab);
 
-    const tabs = [
-        canSeeReceiptTab ? { id: 'receipt', label: t('finance.studentFinance.tabs.receipt', { defaultValue: 'Receipt' }), icon: Receipt } : null,
-        canSeePreviousBalanceTab ? { id: 'previousBalance', label: t('finance.studentFinance.tabs.previousBalance', { defaultValue: 'Previous Balance' }), icon: Wallet } : null,
-        canSeeAmountTypeTab ? { id: 'amountType', label: t('finance.studentFinance.tabs.amountType', { defaultValue: 'Amount Type' }), icon: Settings } : null,
-        canSeeFeeTypeTab ? { id: 'feeType', label: t('finance.studentFinance.tabs.feeType', { defaultValue: 'Fee Type' }), icon: Settings } : null,
-    ];
-
-    const visibleTabs = useMemo(() => tabs.filter(Boolean), [tabs]);
+    const visibleTabs = useMemo(() => {
+        const tabs = [
+            canSeeReceiptTab ? { id: 'receipt', label: t('finance.studentFinance.tabs.receipt', { defaultValue: 'Receipt' }), icon: Receipt } : null,
+            canSeePreviousBalanceTab ? { id: 'previousBalance', label: t('finance.studentFinance.tabs.previousBalance', { defaultValue: 'Previous Balance' }), icon: Wallet } : null,
+            canSeeAmountTypeTab ? { id: 'amountType', label: t('finance.studentFinance.tabs.amountType', { defaultValue: 'Amount Type' }), icon: Settings } : null,
+            canSeeFeeTypeTab ? { id: 'feeType', label: t('finance.studentFinance.tabs.feeType', { defaultValue: 'Fee Type' }), icon: Settings } : null,
+        ];
+        return tabs.filter(Boolean);
+    }, [canSeeReceiptTab, canSeePreviousBalanceTab, canSeeAmountTypeTab, canSeeFeeTypeTab, t]);
 
     useEffect(() => {
         if (visibleTabs.some((tab) => tab.id === activeTab)) return;

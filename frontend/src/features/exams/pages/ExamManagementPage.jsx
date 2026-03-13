@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import { RotateCcw, Check, Loader2, AlertCircle, Lock, FileDown, Upload } from 'lucide-react';
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
-import { getExamGrid, saveExamScore, saveExamScoresBulk, getExamTemplateVersions } from '../api/exams';
+import { getExamGrid, saveExamScoresBulk, getExamTemplateVersions } from '../api/exams';
 import { getGradeSectionById, listGradeSections } from '../../grades/api/gradeSections';
 import { getGrades, getShifts } from '../../lookups/api/lookups';
 import { getCohortTimeline } from '../../cohorts/api/cohorts';
@@ -70,9 +70,9 @@ export default function ExamManagementPage() {
         placeholderData: (prev) => prev,
     });
 
-    const teacherSections = teacherSectionsQuery.data || [];
+    const teacherSections = useMemo(() => teacherSectionsQuery.data ?? [], [teacherSectionsQuery.data]);
     const teacherSectionsLoading = teacherSectionsQuery.isLoading;
-    const teacherAssignments = teacherAssignmentsQuery.data || [];
+    const teacherAssignments = useMemo(() => teacherAssignmentsQuery.data ?? [], [teacherAssignmentsQuery.data]);
     const teacherAssignmentsLoading = teacherAssignmentsQuery.isLoading;
 
     const [templateVersions, setTemplateVersions] = useState([]);
@@ -92,7 +92,7 @@ export default function ExamManagementPage() {
     const [savingCells, setSavingCells] = useState(new Set());
     const [savingAll, setSavingAll] = useState(false);
     const [errorCells, setErrorCells] = useState(new Set());
-    const [recentlySaved, setRecentlySaved] = useState(new Set());
+    const [recentlySaved, _setRecentlySaved] = useState(new Set());
     const savingStartTimesRef = useRef(new Map());
     const lockedToastShownRef = useRef(new Set());
     const lockedCountToastId = 'exam-grid-locked-count';
@@ -154,7 +154,7 @@ export default function ExamManagementPage() {
         if (!isTeacher) return;
         if (gradeId) setGradeId('');
         if (shiftId) setShiftId('');
-    }, [isTeacher]);
+    }, [isTeacher, gradeId, shiftId]);
 
     // teacherSections + teacherAssignments are now React Query-backed.
 
@@ -218,7 +218,7 @@ export default function ExamManagementPage() {
             }
         })();
         return () => { ignore = true; };
-    }, [gradeId, shiftId]);
+    }, [gradeId, shiftId, isTeacher]);
 
     useEffect(() => {
         if (applyingTimelineRef.current) return;
@@ -258,7 +258,7 @@ export default function ExamManagementPage() {
         if (!gradeSectionId) return;
         if (!gradeSectionQuery.isError) return;
         toast.error(gradeSectionQuery.error?.message || t('exams.management.errors.loadSectionSubjectsFailed'));
-    }, [gradeSectionId, gradeSectionQuery.isError, gradeSectionQuery.error]);
+    }, [gradeSectionId, gradeSectionQuery.isError, gradeSectionQuery.error, t]);
 
     const teacherAllowedSubjectIds = useMemo(() => {
         if (!isTeacher) return null;
@@ -328,54 +328,6 @@ export default function ExamManagementPage() {
         }
         return res;
     }, [localInputs, maxScoreMap]);
-
-    const saveCell = async (studentId, examId, value, weight, batchId = '') => {
-        if (!canInput) {
-            if (!noInputToastShownRef.current) {
-                noInputToastShownRef.current = true;
-                toast.error(t('exams.management.errors.noPermissionInputScores'));
-            }
-            return;
-        }
-        if (isStudentLocked(studentId)) {
-            const k = String(studentId);
-            if (!lockedToastShownRef.current.has(k)) {
-                lockedToastShownRef.current.add(k);
-                const vs = formatLockedVersions(studentId);
-                const versionLabel = vs || t('exams.management.errors.anotherTemplate');
-                toast.error(t('exams.management.errors.lockedStudent', { version: versionLabel }));
-            }
-            return;
-        }
-        const key = getCellKey(studentId, examId);
-        const n = clamp(Number(value), 0, weight);
-        if (n === undefined) return;
-        savingStartTimesRef.current.set(key, Date.now());
-        setSavingCells(prev => new Set(prev).add(key));
-        setErrorCells(prev => { const next = new Set(prev); next.delete(key); return next; });
-        setGrid(g => ({ ...g, scores: updateScoreArray(g.scores, { student: studentId, exam: examId, subject: subjectId, scoreObtained: n }) }));
-        const { ok, data } = await saveExamScore({ studentId, examId, subjectId, scoreObtained: n, batchId });
-        setSavingCells(prev => { const next = new Set(prev); next.delete(key); return next; });
-        if (!ok) {
-            setErrorCells(prev => new Set(prev).add(key));
-            const msg = data?.code ? t(data.code, data.params || {}) : (data?.message || t('exams.management.errors.saveFailed'));
-            toast.error(msg);
-        } else {
-            setLocalInputs(prev => ({ ...prev, [key]: String(n) }));
-            setRecentlySaved(prev => {
-                const next = new Set(prev);
-                next.add(key);
-                return next;
-            });
-            setTimeout(() => {
-                setRecentlySaved(prev => {
-                    const next = new Set(prev);
-                    next.delete(key);
-                    return next;
-                });
-            }, 1200);
-        }
-    };
 
     const handleChange = (studentId, examId, value) => {
         if (!canInput) {
@@ -518,7 +470,7 @@ export default function ExamManagementPage() {
     const safeFilePart = (s) => String(s || '')
         .trim()
         .replace(/\s+/g, '_')
-        .replace(/[^\p{L}\p{N}_\-]+/gu, '')
+        .replace(/[^\p{L}\p{N}_-]+/gu, '')
         .slice(0, 50);
 
     const downloadExcelTemplate = async () => {
@@ -625,7 +577,6 @@ export default function ExamManagementPage() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         } catch (e) {
-            // eslint-disable-next-line no-console
             console.error('Template download failed', e);
             toast.error(e?.message || t('common.error', { defaultValue: 'Error' }));
         } finally {
@@ -672,7 +623,7 @@ export default function ExamManagementPage() {
         setLocalInputs({});
         setSavingCells(new Set());
         setErrorCells(new Set());
-    }, [examGridEnabled, examGridQuery.data, examGridQuery.isError, examGridQuery.error, templateVersion]);
+    }, [examGridEnabled, examGridQuery.data, examGridQuery.isError, examGridQuery.error, templateVersion, t]);
 
     const handleReset = () => {
         setAcademicYearId('');

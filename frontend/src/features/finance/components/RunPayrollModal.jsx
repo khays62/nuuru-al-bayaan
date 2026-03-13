@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import financeService from '../api/finance';
 import { X, ChevronRight, Check, Search, ArrowLeft, Users, Calendar, Calculator, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -19,20 +19,20 @@ export default function RunPayrollModal({ onClose, onSuccess }) {
         staffId: ''
     });
 
-    useEffect(() => {
-        if (formData.scope === 'single') {
-            fetchStaff();
-        }
-    }, [formData.scope]);
-
-    const fetchStaff = async () => {
+    const fetchStaff = useCallback(async () => {
         try {
             const res = await axios.get('/users', { params: { status: 'active', includeTeachers: true } });
             setStaffList((res.data || []).filter(u => u.status !== 'inactive'));
         } catch {
             toast.error(t('finance.payroll.runModal.toasts.staffLoadFailed', { defaultValue: 'Failed to load staff list' }));
         }
-    };
+    }, [t]);
+
+    useEffect(() => {
+        if (formData.scope === 'single') {
+            fetchStaff();
+        }
+    }, [formData.scope, fetchStaff]);
 
     const handleRun = async () => {
         setLoading(true);

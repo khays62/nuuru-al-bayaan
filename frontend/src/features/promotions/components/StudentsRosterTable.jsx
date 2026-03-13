@@ -15,7 +15,7 @@ export default function StudentsRosterTable({
   formatCurrent,
 }) {
   const { t } = useI18n();
-  const safeStudents = Array.isArray(students) ? students : [];
+  const safeStudents = useMemo(() => (Array.isArray(students) ? students : []), [students]);
 
   const allSelected = useMemo(
     () => safeStudents.length > 0 && selectedIds?.size === safeStudents.length,
@@ -112,7 +112,7 @@ export default function StudentsRosterTable({
               case 'student':
                 return (
                   <span className="whitespace-nowrap">
-                    {s.studentId} â€” {s.fullName}
+                    {s.studentId} - {s.fullName}
                   </span>
                 );
               case 'current':

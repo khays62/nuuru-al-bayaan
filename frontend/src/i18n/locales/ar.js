@@ -4149,11 +4149,6 @@ export default {
     },
 
     studentFinance: {
-      printTab: {
-        toasts: {
-          noPrintPermission: 'ليست لديك صلاحية للطباعة',
-        },
-      },
       tabs: {
         receipt: 'إيصال',
         previousBalance: 'الرصيد السابق',
@@ -4463,6 +4458,7 @@ export default {
 
       printTab: {
         toasts: {
+          noPrintPermission: 'ليست لديك صلاحية للطباعة',
           fetchFailed: 'فشل جلب طلاب هذا الصف',
           selectAtLeastOne: 'اختر طالبًا واحدًا على الأقل',
         },

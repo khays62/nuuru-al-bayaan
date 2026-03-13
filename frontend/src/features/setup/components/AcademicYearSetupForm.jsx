@@ -15,7 +15,7 @@ export default function AcademicYearSetupForm({ initial, onCancel, onSubmit, isS
   useEffect(() => {
     setYearName(init.yearName || '');
     setErrors({});
-  }, [init._id]);
+  }, [init._id, init.yearName]);
 
   const validate = () => {
     const next = {};

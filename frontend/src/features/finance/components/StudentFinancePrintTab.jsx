@@ -151,7 +151,7 @@ export default function StudentFinancePrintTab() {
                 `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
                 student?.currentClass ||
                 student?.classLabel ||
-                'â€”'
+                '-'
             );
 
             const shift =
@@ -187,9 +187,9 @@ export default function StudentFinancePrintTab() {
                     </div>
                 );
             case 'studentId':
-                return row?.student?.studentId || 'â€”';
+                return row?.student?.studentId || '-';
             case 'fullName':
-                return row?.student?.fullName || 'â€”';
+                return row?.student?.fullName || '-';
             case 'balance':
                 return (
                     <span className={balance > 0 ? 'text-red-500' : 'text-green-600'}>

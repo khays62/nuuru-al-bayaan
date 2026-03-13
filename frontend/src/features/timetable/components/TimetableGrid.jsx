@@ -153,7 +153,7 @@ export default function TimetableGrid({
                     ) : (
                       <>
                         <div className="text-sm font-medium">{cellSlot.subject?.subjectName || '-'}</div>
-                        <div className="text-xs text-(--nb-color-muted)">{cellSlot.teacher?.fullName || 'â€”'}{cellSlot.room ? ` â€¢ ${t('common.room')} ${cellSlot.room}` : ''}</div>
+                        <div className="text-xs text-(--nb-color-muted)">{cellSlot.teacher?.fullName || '-'}{cellSlot.room ? ` - ${t('common.room')} ${cellSlot.room}` : ''}</div>
                       </>
                     )}
                   </div>

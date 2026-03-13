@@ -97,7 +97,7 @@ export default function TimetableTab() {
     },
   });
 
-  const slots = slotsQuery.data || [];
+  const slots = useMemo(() => (slotsQuery.data || []), [slotsQuery.data]);
   const classLoading = historyQuery.isLoading;
   const loading = slotsQuery.isLoading;
   const error = (historyQuery.isError || slotsQuery.isError) ? t('students.timetableTab.loadFailed') : '';

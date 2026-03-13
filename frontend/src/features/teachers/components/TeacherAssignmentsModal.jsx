@@ -235,7 +235,7 @@ export default function TeacherAssignmentsModal({ isOpen, onClose, teacher }) {
               onChange={onSectionChange}
               options={(sections || []).map((s) => ({
                 value: s._id,
-                label: `${s.grade?.gradeName || ''} â€¢ ${s.shift?.shiftName || ''} â€¢ ${t('students.export.sectionPrefix')} ${s.section}`,
+                label: `${s.grade?.gradeName || ''} - ${s.shift?.shiftName || ''} - ${t('students.export.sectionPrefix')} ${s.section}`,
               }))}
               placeholder={t('teachers.assignments.selectSection')}
               disabled={!gradeId || !shiftId}

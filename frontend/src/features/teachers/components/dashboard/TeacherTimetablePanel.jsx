@@ -5,6 +5,16 @@ import { useAuth } from '../../../../auth/AuthContext';
 import Card from '../../../../shared/components/ui/Card.jsx';
 import { useI18n } from '../../../../i18n/useI18n';
 
+const DAY_KEYS = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+function getTimetableDayIndexFromLocalDate(d = new Date()) {
+  // TimetableGrid uses: 0=Saturday,1=Sunday,2=Monday,3=Tuesday,4=Wednesday,5=Thursday,6=Friday
+  const js = d.getDay(); // 0=Sunday..6=Saturday
+  if (js === 6) return 0; // Saturday
+  if (js === 0) return 1; // Sunday
+  return js + 1; // Monday..Friday
+}
+
 export default function TeacherTimetablePanel({
   sections,
   sectionId,
@@ -26,16 +36,6 @@ export default function TeacherTimetablePanel({
   const teacherRef = auth?.user?.teacherRef || null;
 
   const TEACHER_SECTION_SESSION_KEY = 'teacher:timetable:selectedSectionId:v1';
-
-  const dayKeys = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-
-  function getTimetableDayIndexFromLocalDate(d = new Date()) {
-    // TimetableGrid uses: 0=Saturday,1=Sunday,2=Monday,3=Tuesday,4=Wednesday,5=Thursday,6=Friday
-    const js = d.getDay(); // 0=Sunday..6=Saturday
-    if (js === 6) return 0; // Saturday
-    if (js === 0) return 1; // Sunday
-    return js + 1; // Monday..Friday
-  }
 
   const todayInfo = useMemo(() => {
     const now = new Date();
@@ -66,12 +66,12 @@ export default function TeacherTimetablePanel({
       return String(a?._id || '').localeCompare(String(b?._id || ''));
     });
 
-    const dayKey = dayKeys[todayIdx];
-    const dayDefault = dayKey ? (dayKey.charAt(0).toUpperCase() + dayKey.slice(1)) : 'â€”';
+    const dayKey = DAY_KEYS[todayIdx];
+    const dayDefault = dayKey ? (dayKey.charAt(0).toUpperCase() + dayKey.slice(1)) : '-';
 
     return {
       todayIdx,
-      dayName: dayKey ? t(`common.days.long.${dayKey}`, { defaultValue: dayDefault }) : 'â€”',
+      dayName: dayKey ? t(`common.days.long.${dayKey}`, { defaultValue: dayDefault }) : '-',
       dateISO,
       slots: list,
     };
@@ -114,7 +114,7 @@ export default function TeacherTimetablePanel({
           const subject = String(s?.subject?.subjectName || '-').trim() || '-';
           const klass = slotSectionLabel(s) || t('teachers.dashboard.timetable.classFallback', { defaultValue: 'Class' });
           const room = s?.room ? `${t('common.room', { defaultValue: 'Room' })} ${s.room}` : '';
-          const meta = [time, room].filter(Boolean).join(' â€¢ ');
+          const meta = [time, room].filter(Boolean).join(' - ');
           const key = String(s?._id || `${s?.dayOfWeek}_${s?.startTime}_${s?.endTime}_${klass}_${subject}`);
           return (
             <div key={key} className="border border-(--nb-color-border) rounded-lg p-3 bg-(--nb-color-accent-50) shadow-sm">
@@ -160,7 +160,7 @@ export default function TeacherTimetablePanel({
         <div className="px-4 py-2 bg-(--nb-color-brand) text-white">
           <div className="font-semibold">{t('teachers.dashboard.timetable.todayTitle', { defaultValue: "Today's Schedule" })}</div>
           <div className="text-xs text-white/80 mt-0.5">
-            {todayInfo.dayName}{todayInfo.dateISO ? ` â€¢ ${todayInfo.dateISO}` : ''}
+            {todayInfo.dayName}{todayInfo.dateISO ? ` - ${todayInfo.dateISO}` : ''}
           </div>
         </div>
         <div className="p-5">

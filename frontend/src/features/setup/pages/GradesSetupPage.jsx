@@ -205,7 +205,7 @@ export default function GradesSetupPage() {
       sheetName: t('setup.grades.sheetName', { defaultValue: 'Grades' }),
       title: '',
       subtitle: t('common.export.subtitle', {
-        defaultValue: 'Total: {{count}} â€¢ Generated: {{date}}',
+        defaultValue: 'Total: {{count}} - Generated: {{date}}',
         count: sorted.length,
         date: new Date().toLocaleString(),
       }),

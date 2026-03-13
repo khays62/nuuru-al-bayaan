@@ -72,8 +72,8 @@ const GradeTable = ({
         limits: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 'all'],
       }}
       renderCell={(cls, col) => {
-        const gradeName = cls.grade?.gradeName || cls.grade?.name || cls.grade || 'â€”';
-        const shiftName = cls.shift?.shiftName || cls.shift?.name || 'â€”';
+        const gradeName = cls.grade?.gradeName || cls.grade?.name || cls.grade || '-';
+        const shiftName = cls.shift?.shiftName || cls.shift?.name || '-';
 
         switch (col.key) {
           case 'section':
@@ -85,7 +85,7 @@ const GradeTable = ({
           case 'subjects':
             return (cls.subjects || []).length;
           case 'capacity':
-            return cls.capacity ?? 'â€”';
+            return cls.capacity ?? '-';
           case 'actions':
             return (
               <RowActionButtons

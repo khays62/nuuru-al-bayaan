@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo, useState, useRef, useEffect } from 'react';
+import React, { Suspense, useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { NavLink, Outlet, useParams, Navigate } from 'react-router-dom';
 
 import { useAuth } from '../../../auth/AuthContext';
@@ -141,10 +141,10 @@ function StudentDashboardInner({ studentId }) {
   const { hasPermission } = useAuth();
   const { t } = useI18n();
 
-  const canAny = (module, actions) => {
+  const canAny = useCallback((module, actions) => {
     if (!Array.isArray(actions) || actions.length === 0) return false;
     return actions.some((a) => hasPermission(module, a));
-  };
+  }, [hasPermission]);
 
   useStudentDashboardRealtimeInvalidation({ studentId, isStudentSelf: false, enabled: true });
 
@@ -186,7 +186,7 @@ function StudentDashboardInner({ studentId }) {
     // Digital Library: read is allowed for any authenticated user; writes are permission/role-gated.
     out.push({ to: `${base}/library`, label: t('nav.library') });
     return out;
-  }, [base, hasPermission, t]);
+  }, [base, canAny, t]);
 
   return (
     <div className="space-y-4">

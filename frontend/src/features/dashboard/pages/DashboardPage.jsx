@@ -104,7 +104,7 @@ const isoMinusDaysUTC = (isoDateOnly, days) => {
     return out.toISOString().slice(0, 10);
 };
 
-const QuickCard = ({ title, description, to, Icon, tone = 'indigo', disabled = false }) => {
+const QuickCard = ({ title, description, to, Icon, disabled = false }) => {
     const base =
         'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
         'bg-(--nb-color-bg-card) p-5 shadow-md transition';
@@ -306,7 +306,7 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
     const hoverX = typeof hoverIdx === 'number' ? toX(hoverIdx) : null;
     const hoverY = typeof hoverIdx === 'number' ? toY(hover?.y) : null;
 
-    const tipText = hover ? `${String(hover.x)} â€¢ ${fmtCount(hover.y)}` : '';
+    const tipText = hover ? `${String(hover.x)} - ${fmtCount(hover.y)}` : '';
     const tipW = Math.max(120, Math.min(220, tipText.length * 7.2));
     const tipH = 28;
     const tipX = hoverX !== null ? Math.min(hoverX + 12, w - padR - tipW) : 0;
@@ -677,14 +677,22 @@ export default function DashboardPage() {
     const transfersInRange = data?.cards?.transfersInRange;
     const announcementsInRange = data?.cards?.announcementsCreatedInRange;
 
-    const announcementsByRole = Array.isArray(data?.charts?.announcementsByRole) ? data.charts.announcementsByRole : [];
-    const announcementsByRoleAllTime = Array.isArray(data?.charts?.announcementsByRoleAllTime)
-        ? data.charts.announcementsByRoleAllTime
-        : [];
+    const announcementsByRole = useMemo(() => {
+        const src = data?.charts?.announcementsByRole;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.announcementsByRole]);
+
+    const announcementsByRoleAllTime = useMemo(() => {
+        const src = data?.charts?.announcementsByRoleAllTime;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.announcementsByRoleAllTime]);
     const announcementsTotalAllTime = data?.cards?.announcementsTotalAllTime;
     const announcementsMixBuckets = data?.charts?.announcementsMixBuckets;
 
-    const scoreActivityByDayRaw = Array.isArray(data?.charts?.scoreActivityByDay) ? data.charts.scoreActivityByDay : [];
+    const scoreActivityByDayRaw = useMemo(() => {
+        const src = data?.charts?.scoreActivityByDay;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.scoreActivityByDay]);
     const scoreTotals = data?.performance?.scores;
     const scoreActivityBuckets = data?.charts?.scoreActivityBuckets;
 
@@ -706,13 +714,25 @@ export default function DashboardPage() {
 
     const [newStudentsRange, setNewStudentsRange] = useState('year'); // year | month | week | day
 
-    const newStudentsByAcademicYear = Array.isArray(data?.charts?.newStudentsByAcademicYear)
-        ? data.charts.newStudentsByAcademicYear
-        : [];
+    const newStudentsByAcademicYear = useMemo(() => {
+        const src = data?.charts?.newStudentsByAcademicYear;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.newStudentsByAcademicYear]);
 
-    const newStudentsByDay = Array.isArray(data?.charts?.newStudentsByDay) ? data.charts.newStudentsByDay : [];
-    const newStudentsByWeek = Array.isArray(data?.charts?.newStudentsByWeek) ? data.charts.newStudentsByWeek : [];
-    const newStudentsByMonth = Array.isArray(data?.charts?.newStudentsByMonth) ? data.charts.newStudentsByMonth : [];
+    const newStudentsByDay = useMemo(() => {
+        const src = data?.charts?.newStudentsByDay;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.newStudentsByDay]);
+
+    const newStudentsByWeek = useMemo(() => {
+        const src = data?.charts?.newStudentsByWeek;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.newStudentsByWeek]);
+
+    const newStudentsByMonth = useMemo(() => {
+        const src = data?.charts?.newStudentsByMonth;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.newStudentsByMonth]);
 
 
     const newStudentsSeries = useMemo(() => {

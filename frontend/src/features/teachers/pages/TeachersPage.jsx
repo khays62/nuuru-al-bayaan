@@ -124,7 +124,7 @@ export default function TeachersPage() {
 		},
 	});
 
-	const items = teachersQuery.data || [];
+	const items = useMemo(() => (teachersQuery.data ?? []), [teachersQuery.data]);
 	const viewItems = React.useMemo(() => {
 		if (!Array.isArray(items)) return [];
 		return items.map((t) => {
@@ -375,7 +375,7 @@ export default function TeachersPage() {
 			filename: t('teachers.export.filename'),
 			sheetName: t('teachers.export.sheetName'),
 			title: '',
-			subtitle: subtitleParts.join(' â€¢ '),
+			subtitle: subtitleParts.join(' - '),
 			headerImageSrc: headerImg,
 			headers,
 			rows,

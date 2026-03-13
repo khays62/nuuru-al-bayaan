@@ -222,7 +222,7 @@ export default function ExpenseManagement() {
         },
     });
 
-    const expenses = expensesQuery.data || [];
+    const expenses = useMemo(() => (expensesQuery.data || []), [expensesQuery.data]);
     const categories = categoriesQuery.data || [];
 
     const totalExpenses = useMemo(
@@ -325,7 +325,7 @@ export default function ExpenseManagement() {
         };
     }, [expandedSection, sortedItems, staffNameById]);
 
-    const renderDescription = (desc) => {
+    const renderDescription = useCallback((desc) => {
         const text = String(desc || '');
         if (!text) return '';
         return text.replace(/staff\s*ID\s*:\s*([a-f0-9]{24})/gi, (match, id) => {
@@ -333,7 +333,7 @@ export default function ExpenseManagement() {
             if (!name) return match;
             return `staff: ${name}`;
         });
-    };
+    }, [staffNameById]);
 
     const handleDelete = async (id) => {
         if (!window.confirm(t('finance.expenses.confirms.delete', { defaultValue: 'Are you sure? This cannot be undone.' }))) return;
@@ -402,7 +402,7 @@ export default function ExpenseManagement() {
             filename: `expenses-${selectedMonth || 'all'}`,
             sheetName: 'Expenses',
             title: t('finance.expenses.export.title', { defaultValue: 'Expenses' }),
-            subtitle: subtitleParts.join(' â€¢ '),
+            subtitle: subtitleParts.join(' - '),
             headerImageSrc: headerImg,
             headers,
             rows,
@@ -621,17 +621,17 @@ export default function ExpenseManagement() {
                             renderCell={(row, col) => {
                                 switch (col.key) {
                                     case 'date':
-                                        return row?.date ? new Date(row.date).toLocaleDateString() : 'â€”';
+                                        return row?.date ? new Date(row.date).toLocaleDateString() : '-';
                                     case 'category':
-                                        return String(row?.category || 'â€”');
+                                        return String(row?.category || '-');
                                     case 'title':
-                                        return String(row?.title || 'â€”');
+                                        return String(row?.title || '-');
                                     case 'description':
                                         return row?.description ? renderDescription(row.description) : '';
                                     case 'amount':
                                         return `$${Number(row?.amount || 0).toLocaleString()}`;
                                     case 'auditor':
-                                        return row?.approvedBy?.fullName || row?.approvedBy?.name || 'â€”';
+                                        return row?.approvedBy?.fullName || row?.approvedBy?.name || '-';
                                     case 'actions':
                                         return (
                                             <RowActionButtons
@@ -743,7 +743,7 @@ export default function ExpenseManagement() {
                                             >
                                                 <div className="flex justify-between items-start gap-3 mb-5">
                                                     <div className="min-w-0">
-                                                                <p className="text-lg font-black text-(--nb-color-fg) truncate">{catName || 'â€”'}</p>
+                                                                <p className="text-lg font-black text-(--nb-color-fg) truncate">{catName || '-'}</p>
                                                         <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1 truncate">
                                                             {selectedMonth
                                                                 ? t('finance.expenses.categories.monthTag', { defaultValue: 'Month: {{month}}', month: selectedMonth })
@@ -791,7 +791,7 @@ export default function ExpenseManagement() {
                                                             <div className="bg-(--nb-color-bg) rounded-2xl p-4 border border-(--nb-color-border) shadow-(--nb-shadow-sm)">
                                                                 <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">{t('finance.expenses.categories.budget', { defaultValue: 'Budget' })}</p>
                                                                 <p className="mt-1 text-2xl font-black text-(--nb-color-fg) tracking-tighter">
-                                                            {hasBudget ? `$${Number(budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: 'â€”' })}
+                                                            {hasBudget ? `$${Number(budget || 0).toLocaleString()}` : t('finance.expenses.categories.noBudget', { defaultValue: '-' })}
                                                         </p>
                                                         {hasBudget ? (
                                                                     <p className={"text-[10px] font-bold uppercase tracking-widest mt-1 " + (over ? 'text-red-600' : 'text-(--nb-color-muted)')}>

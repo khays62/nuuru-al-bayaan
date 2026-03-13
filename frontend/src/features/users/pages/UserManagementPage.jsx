@@ -459,7 +459,7 @@ export default function UserManagementPage() {
 
     if (isFormLoading || isSaving) return;
     hydrateFormFromUser(remote);
-  }, [showModal, editingUserId, editingUserQuery.data, isDirty, isFormLoading, isSaving, hydrateFormFromUser]);
+  }, [showModal, editingUserId, editingUserQuery.data, isDirty, isFormLoading, isSaving, hydrateFormFromUser, t]);
 
  
   const handleSubmit = async (e) => {
@@ -783,7 +783,7 @@ export default function UserManagementPage() {
       filename: t('users.export.filename'),
       sheetName: t('users.export.sheetName'),
       title: '',
-      subtitle: subtitleParts.join(' â€¢ '),
+      subtitle: subtitleParts.join(' - '),
       headerImageSrc: headerImg,
       headers,
       rows,

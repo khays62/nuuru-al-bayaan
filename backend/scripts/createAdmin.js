@@ -22,7 +22,10 @@ async function createAdmin() {
     console.log("✅ Connected to MongoDB");
 
     const username = process.env.ADMIN_USERNAME || "admin";
-    const password = process.env.ADMIN_PASSWORD || "admin123";
+    const password = process.env.ADMIN_PASSWORD;
+    if (!password) {
+      throw new Error("ADMIN_PASSWORD is missing in .env (refusing to use an insecure default)");
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Remove old admin if exists
@@ -61,7 +64,7 @@ async function createAdmin() {
     await adminUser.save();
     console.log("🎉 Admin user created successfully!");
     console.log("Username:", username);
-    console.log("Password:", password);
+    console.log("Password: (set via ADMIN_PASSWORD)");
 
     await mongoose.disconnect();
     console.log("✅ Disconnected from MongoDB");

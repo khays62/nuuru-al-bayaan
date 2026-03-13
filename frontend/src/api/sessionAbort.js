@@ -26,9 +26,7 @@ export function anySignal(a, b) {
   if (a && b) {
     // Prefer native AbortSignal.any where available.
     try {
-      // eslint-disable-next-line no-undef
       if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.any === 'function') {
-        // eslint-disable-next-line no-undef
         return AbortSignal.any([a, b]);
       }
     } catch {

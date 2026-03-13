@@ -189,7 +189,7 @@ export default function CohortsPage() {
       filename: 'cohorts',
       title: t('modules.cohorts', { defaultValue: 'Cohorts' }),
       subtitle: t('common.export.subtitle', {
-        defaultValue: 'Total: {{count}} â€¢ Generated: {{date}}',
+        defaultValue: 'Total: {{count}} - Generated: {{date}}',
         count: sortedItemsForView.length,
         date: new Date().toLocaleString(),
       }),

@@ -59,7 +59,7 @@ export default function AnnouncementsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [user?._id, user?.username]);
+  }, [queryClient, userKey]);
 
   // Live refresh: keep announcements synced across browsers/tabs.
   useAnnouncementsRealtimeInvalidation({ userKey });

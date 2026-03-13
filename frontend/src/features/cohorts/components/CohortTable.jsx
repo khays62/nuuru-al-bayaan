@@ -37,7 +37,7 @@ export default function CohortTable({
       isLoading={isLoading}
       error={error}
       items={items}
-      loadingMessage={t('common.loading', { defaultValue: 'Loadingâ€¦' })}
+      loadingMessage={t('common.loading', { defaultValue: 'Loading...' })}
       loadingVariant="table"
       loadingRows={6}
       loadingColumns={5}
@@ -50,7 +50,7 @@ export default function CohortTable({
         <div className="flex justify-between items-center mb-2 text-sm text-gray-600 no-print">
           <div>
             {t('common.pagination.pageSummary', {
-              defaultValue: 'Page {{page}} of {{pages}} â€” {{total}} total',
+              defaultValue: 'Page {{page}} of {{pages}} - {{total}} total',
               page: meta.page,
               pages: meta.totalPages || meta.pages || 1,
               total: meta.total,

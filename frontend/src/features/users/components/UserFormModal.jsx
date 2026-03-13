@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 import Modal from '../../../shared/components/ui/Modal.jsx';
@@ -265,7 +265,7 @@ export default function UserFormModal({
 
     // If editing and username unchanged, treat as valid without checking.
     const prev = String(editingUser?.username || '').trim();
-    if (editingUser && prev && prev === value) {
+    if (editingUser?._id && prev && prev === value) {
       setUsernameCheck({ status: 'valid', message: '' });
       return;
     }
@@ -425,19 +425,19 @@ export default function UserFormModal({
     toast.error(`${label}: ${error}`, { id: BLUR_VALIDATION_TOAST_ID });
   };
 
-  const nameFieldState = (required = false) => {
+  const nameFieldState = () => {
     const v = String(form?.fullName ?? '').trim();
     if (!v) return 'empty';
     return validateFourNames(v) ? 'valid' : 'invalid';
   };
 
-  const emailFieldState = (required = false) => {
+  const emailFieldState = () => {
     const v = String(form?.email ?? '').trim();
     if (!v) return 'empty';
     return isValidEmail(v) ? 'valid' : 'invalid';
   };
 
-  const phoneFieldState = (field, required = false) => {
+  const phoneFieldState = (field) => {
     const v = String(form?.[field] ?? '').trim();
     if (!v) return 'empty';
     return isValidSomaliaPhone(v) ? 'valid' : 'invalid';
@@ -500,12 +500,12 @@ export default function UserFormModal({
       : 'border-(--nb-color-border) bg-(--nb-color-bg-card) hover:border-(--nb-color-accent) hover:bg-(--nb-color-brand-50)')
   );
 
-  const moduleLabel = (mod) => {
+  const moduleLabel = useCallback((mod) => {
     const key = `modules.${String(mod || '')}`;
     const translated = t(key);
     if (translated && translated !== key) return translated;
     return formatModuleLabel(mod);
-  };
+  }, [t]);
 
   const permissionLabel = (module, perm) => {
     // Bell notifications use account-status wording in the UI.
@@ -545,7 +545,7 @@ export default function UserFormModal({
 
     const found = tabs.find((x) => moduleHasAnyEnabledPermission(form?.permissions?.[x.module]));
     if (found?.id) setSelectedStudentFinanceTab(found.id);
-  }, [isOpen, form?.role, form?.selectedModule, MODULE_PERMISSIONS]);
+  }, [isOpen, form?.role, form?.selectedModule, form?.permissions, MODULE_PERMISSIONS]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -557,7 +557,7 @@ export default function UserFormModal({
 
     const found = tabs.find((x) => moduleHasAnyEnabledPermission(form?.permissions?.[x.module]));
     if (found?.id) setSelectedAccountsTab(found.id);
-  }, [isOpen, form?.role, form?.selectedModule, MODULE_PERMISSIONS]);
+  }, [isOpen, form?.role, form?.selectedModule, form?.permissions, MODULE_PERMISSIONS]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -569,7 +569,7 @@ export default function UserFormModal({
 
     const found = tabs.find((x) => moduleHasAnyEnabledPermission(form?.permissions?.[x.module]));
     if (found?.id) setSelectedExpensesTab(found.id);
-  }, [isOpen, form?.role, form?.selectedModule]);
+  }, [isOpen, form?.role, form?.selectedModule, form?.permissions, MODULE_PERMISSIONS]);
 
   const moduleGroupOptions = useMemo(() => {
     const present = new Set(Array.isArray(MODULES) ? MODULES.map((m) => moduleGroupIdFor(m)) : []);
@@ -620,7 +620,7 @@ export default function UserFormModal({
       });
 
     return mods.map((mod) => ({ value: mod, label: moduleLabel(mod) }));
-  }, [MODULES, selectedGroup, t]);
+  }, [MODULES, selectedGroup, moduleLabel]);
 
   const renderFinanceExtraSections = (primaryModule) => {
     const primary = String(primaryModule || '');

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { Eye, Printer, RotateCcw } from 'lucide-react';
@@ -30,6 +30,30 @@ import { teacherKeys } from '../../teachers/queryKeys.js';
 import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 import { useI18n } from '../../../i18n/useI18n';
 
+const parseISODateOnlyUTC = (s) => {
+  const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isInteger(y) || !Number.isInteger(mo) || !Number.isInteger(d)) return null;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return Number.isNaN(dt.getTime()) ? null : dt;
+};
+
+const normalizeRange = (fromStr, toStr) => {
+  const fromDt = parseISODateOnlyUTC(fromStr);
+  const toDt = parseISODateOnlyUTC(toStr);
+  if (!fromDt || !toDt) return { from: fromStr, to: toStr, normalized: false };
+
+  // If user picked a reversed range, normalize it to a single-day range.
+  if (toDt < fromDt) {
+    const iso = fromDt.toISOString().slice(0, 10);
+    return { from: iso, to: iso, normalized: true };
+  }
+  return { from: fromStr, to: toStr, normalized: false };
+};
+
 export default function AttendanceReportsPage() {
   const { t, isRTL } = useI18n();
   const { auth, hasPermission } = useAuth();
@@ -53,7 +77,7 @@ export default function AttendanceReportsPage() {
 
   const todayUTC = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
-  const dayNameUTC = (isoDateOnly) => {
+  const dayNameUTC = useCallback((isoDateOnly) => {
     const m = String(isoDateOnly || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!m) return '';
     const y = Number(m[1]);
@@ -71,12 +95,12 @@ export default function AttendanceReportsPage() {
       t('common.days.long.saturday'),
     ];
     return names[dt.getUTCDay()] || '';
-  };
+  }, [t]);
 
-  const formatDateWithDay = (isoDateOnly) => {
+  const formatDateWithDay = useCallback((isoDateOnly) => {
     const dn = dayNameUTC(isoDateOnly);
-    return dn ? `${dn} â€¢ ${isoDateOnly}` : String(isoDateOnly || '');
-  };
+    return dn ? `${dn} - ${isoDateOnly}` : String(isoDateOnly || '');
+  }, [dayNameUTC]);
 
   const statusLabel = (status) => {
     const s = String(status || '').toLowerCase();
@@ -93,42 +117,12 @@ export default function AttendanceReportsPage() {
   };
 
 
-  const formatActor = (actor) => {
-    if (!actor) return 'â€”';
-    const name = String(actor?.name || '').trim() || 'â€”';
+  const formatActor = useCallback((actor) => {
+    if (!actor) return '-';
+    const name = String(actor?.name || '').trim() || '-';
     const role = String(actor?.role || '').trim();
     return role ? `${name} (${role})` : name;
-  };
-
-  const parseISODateOnlyUTC = (s) => {
-    const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return null;
-    const y = Number(m[1]);
-    const mo = Number(m[2]);
-    const d = Number(m[3]);
-    if (!Number.isInteger(y) || !Number.isInteger(mo) || !Number.isInteger(d)) return null;
-    const dt = new Date(Date.UTC(y, mo - 1, d));
-    return Number.isNaN(dt.getTime()) ? null : dt;
-  };
-
-  const fmtISODateOnlyUTC = (dt) => {
-    if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return '';
-    return dt.toISOString().slice(0, 10);
-  };
-
-  const normalizeRange = (fromStr, toStr) => {
-    const fromDt = parseISODateOnlyUTC(fromStr);
-    const toDt = parseISODateOnlyUTC(toStr);
-    if (!fromDt || !toDt) return { from: fromStr, to: toStr, normalized: false };
-
-    // If user picked a reversed range, normalize it to a single-day range.
-    if (toDt < fromDt) {
-      return { from: fromStr, to: fromStr, normalized: true };
-    }
-
-    return { from: fromStr, to: toStr, normalized: false };
-  };
-
+  }, []);
 
   const runWithConcurrency = async (taskFactories, limit = 8) => {
     const tasks = Array.isArray(taskFactories) ? taskFactories : [];
@@ -464,8 +458,8 @@ export default function AttendanceReportsPage() {
           const subjectName = String(s?.subject?.subjectName || '').trim();
           const teacherName = String(s?.teacher?.fullName || '').trim();
           next[`${dow}__${periodCode}`] = {
-            subjectName: subjectName || 'â€”',
-            teacherName: teacherName || 'â€”',
+            subjectName: subjectName || '-',
+            teacherName: teacherName || '-',
           };
         }
 
@@ -550,16 +544,16 @@ export default function AttendanceReportsPage() {
         formatDateWithDay(r.date),
         ...summaryMatrix.periodCodes.map((code) => {
           const c = r.byPeriod?.[code];
-          if (!c) return 'â€”';
-          const m = c?.markedBy ? formatActor(c.markedBy) : 'â€”';
-          const u = c?.updatedBy ? formatActor(c.updatedBy) : 'â€”';
+          if (!c) return '-';
+          const m = c?.markedBy ? formatActor(c.markedBy) : '-';
+          const u = c?.updatedBy ? formatActor(c.updatedBy) : '-';
           let subjLine = '';
           let teacherLine = '';
           if (!isTeacher && code !== 'DAY') {
             const dow = getTimetableDayIndexFromISODate(r.date);
             const info = (dow == null) ? null : (sectionSlotInfoByKey?.[`${dow}__${String(code)}`] || null);
-            subjLine = `\n${t('attendance.reports.labels.subject')}: ${info?.subjectName || 'â€”'}`;
-            teacherLine = `\n${t('attendance.reports.labels.teacher')}: ${info?.teacherName || 'â€”'}`;
+            subjLine = `\n${t('attendance.reports.labels.subject')}: ${info?.subjectName || '-'}`;
+            teacherLine = `\n${t('attendance.reports.labels.teacher')}: ${info?.teacherName || '-'}`;
           }
           const countsLine = t('attendance.reports.summaryCell.counts', { present: c.present, absent: c.absent, late: c.late, excused: c.excused });
           return `${countsLine}\n${t('attendance.reports.labels.markedBy')}: ${m}\n${t('attendance.reports.labels.updatedBy')}: ${u}${subjLine}${teacherLine}`;
@@ -614,7 +608,7 @@ export default function AttendanceReportsPage() {
     const headers = [
       t('attendance.reports.columns.studentId'),
       t('attendance.reports.columns.fullName'),
-      ...flatCols.map((c) => `${formatDateWithDay(c.date)} â€¢ ${c.period === 'DAY' ? t('attendance.marking.modes.allDay') : c.period}`),
+      ...flatCols.map((c) => `${formatDateWithDay(c.date)} - ${c.period === 'DAY' ? t('attendance.marking.modes.allDay') : c.period}`),
     ];
 
     const rows = (Array.isArray(detailsGrid?.rows) ? detailsGrid.rows : []).map((r) => {
@@ -686,7 +680,7 @@ export default function AttendanceReportsPage() {
     setStudentModalOpen(false);
   };
 
-  async function runSummary() {
+  const runSummary = useCallback(async () => {
     if (!sectionId || !from || !to || (isTeacher && !subjectId)) {
       toast.error(isTeacher ? t('attendance.reports.errors.selectFilters.teacher') : t('attendance.reports.errors.selectFilters.admin'));
       return;
@@ -727,7 +721,7 @@ export default function AttendanceReportsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [sectionId, from, to, isTeacher, subjectId, subjectPeriodCodes, rosterScope, t]);
 
 
   // Clear downstream selects when upstream filters change (mirrors AttendancePage)
@@ -767,7 +761,7 @@ export default function AttendanceReportsPage() {
     clearOutputs();
   }, [isTeacher, subjectId]);
 
-  async function runDetailsRange() {
+  const runDetailsRange = useCallback(async () => {
     if (!sectionId || !from || !to) return;
     if (isTeacher && !subjectId) return;
     if (isTeacher && (!subjectPeriodCodes || subjectPeriodCodes.length === 0)) return;
@@ -898,9 +892,9 @@ export default function AttendanceReportsPage() {
     } finally {
       setDetailsLoading(false);
     }
-  }
+  }, [sectionId, from, to, isTeacher, subjectId, subjectPeriodCodes, rosterScope, t]);
 
-  // Auto-run on filter changes (debounced) â€” no Run button.
+  // Auto-run on filter changes (debounced) - no Run button.
   useEffect(() => {
     if (!canRun) return;
 
@@ -922,6 +916,9 @@ export default function AttendanceReportsPage() {
   }, [
     reportType,
     canRun,
+    isSummary,
+    runDetailsRange,
+    runSummary,
     sectionId,
     from,
     to,
@@ -966,7 +963,7 @@ export default function AttendanceReportsPage() {
       }));
 
     return { periodCodes, rows };
-  }, [report, isTeacher, formatActor]);
+  }, [report, isTeacher]);
 
   const summaryColumns = useMemo(() => {
     const cols = [
@@ -980,17 +977,17 @@ export default function AttendanceReportsPage() {
         skeletonClassName: 'w-40',
         render: (r) => {
           const c = r.byPeriod?.[code];
-          if (!c) return 'â€”';
-          const m = c?.markedBy ? formatActor(c.markedBy) : 'â€”';
-          const u = c?.updatedBy ? formatActor(c.updatedBy) : 'â€”';
+          if (!c) return '-';
+          const m = c?.markedBy ? formatActor(c.markedBy) : '-';
+          const u = c?.updatedBy ? formatActor(c.updatedBy) : '-';
 
           let subjectName = '';
           let teacherName = '';
           if (!isTeacher && code !== 'DAY') {
             const dow = getTimetableDayIndexFromISODate(r.date);
             const info = (dow == null) ? null : (sectionSlotInfoByKey?.[`${dow}__${String(code)}`] || null);
-            subjectName = String(info?.subjectName || 'â€”');
-            teacherName = String(info?.teacherName || 'â€”');
+            subjectName = String(info?.subjectName || '-');
+            teacherName = String(info?.teacherName || '-');
           }
 
           return (
@@ -1010,7 +1007,7 @@ export default function AttendanceReportsPage() {
       });
     }
     return cols;
-  }, [summaryMatrix.periodCodes, formatActor, isTeacher, sectionSlotInfoByKey, t]);
+  }, [summaryMatrix.periodCodes, formatActor, formatDateWithDay, isTeacher, sectionSlotInfoByKey, t]);
 
   const detailsHeaderRows = useMemo(() => {
     if (!detailsGrid?.groups?.length) return null;

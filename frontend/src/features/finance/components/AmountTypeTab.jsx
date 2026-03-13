@@ -19,6 +19,12 @@ import Button from '../../../shared/components/ui/Button.jsx';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import DropdownSelect from '../../../shared/components/ui/DropdownSelect.jsx';
 
+const DEFAULT_FEE_TYPES = ['Standard', 'Mandatory', 'Registration', 'Graduation', 'Optional'];
+
+function normalizeFeeType(value) {
+    return String(value || '').trim();
+}
+
 export default function AmountTypeTab() {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
@@ -37,11 +43,12 @@ export default function AmountTypeTab() {
 
     const isSaving = Boolean(createMutation.isPending || updateMutation.isPending);
 
-    const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
+    const categories = useMemo(
+        () => (Array.isArray(categoriesQuery.data) ? categoriesQuery.data : []),
+        [categoriesQuery.data]
+    );
     // Only show skeleton on the initial load; keep rows visible on background refetch.
     const loading = Boolean(categoriesQuery.isLoading);
-
-    const DEFAULT_FEE_TYPES = ['Standard', 'Mandatory', 'Registration', 'Graduation', 'Optional'];
 
     // Edit/Create State
     const [editingId, setEditingId] = useState(null); // null = none, 'new' = creating
@@ -69,6 +76,11 @@ export default function AmountTypeTab() {
     }
 
     const feeTypeOptions = useMemo(() => {
+        const feeTypeLabelInner = (ft) => {
+            const key = String(ft || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            return t(`finance.studentFinance.amountTypeTab.defaults.${key}`, { defaultValue: String(ft || '') });
+        };
+
         const fromExisting = (Array.isArray(categories) ? categories : [])
             .map((c) => String(c?.feeType || '').trim())
             .filter(Boolean);
@@ -81,13 +93,13 @@ export default function AmountTypeTab() {
             ...(pendingCustom ? [pendingCustom] : []),
         ]));
         merged.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        return merged.map((ft) => ({ value: ft, label: feeTypeLabel(ft) }));
-    }, [categories, customFeeType, extraFeeTypes]);
+        return merged.map((ft) => ({ value: ft, label: feeTypeLabelInner(ft) }));
+    }, [categories, customFeeType, extraFeeTypes, t]);
 
     useEffect(() => {
         if (!categoriesQuery.isError) return;
         toast.error(t('finance.studentFinance.amountTypeTab.toasts.loadFailed', { defaultValue: 'Failed to load fee configurations' }));
-    }, [categoriesQuery.isError]);
+    }, [categoriesQuery.isError, t]);
 
     const onSort = (field) => {
         const f = String(field || '').trim();
@@ -126,10 +138,6 @@ export default function AmountTypeTab() {
     const safePage = Math.min(page, totalPages);
     const start = (safePage - 1) * limit;
     const currentRows = tableRows.slice(start, start + limit);
-
-    function normalizeFeeType(value) {
-        return String(value || '').trim();
-    }
 
     const beginFeeTypeEdit = (value) => {
         const normalized = normalizeFeeType(value) || 'Standard';
@@ -228,7 +236,7 @@ export default function AmountTypeTab() {
             toast.error(t('finance.studentFinance.amountTypeTab.toasts.noDeletePermission', { defaultValue: 'You do not have permission to delete amount types' }));
             return;
         }
-        if (!window.confirm(t('finance.studentFinance.amountTypeTab.confirms.delete', { defaultValue: "Delete this Amount Type permanently? If it is already used in invoices/appointments, deletion will be blocked â€” set it Inactive instead." }))) return;
+        if (!window.confirm(t('finance.studentFinance.amountTypeTab.confirms.delete', { defaultValue: "Delete this Amount Type permanently? If it is already used in invoices/appointments, deletion will be blocked - set it Inactive instead." }))) return;
         try {
             const res = await deleteMutation.mutateAsync(id);
             toast.success(res?.message || t('finance.studentFinance.amountTypeTab.toasts.deleted', { defaultValue: 'Deleted successfully' }));

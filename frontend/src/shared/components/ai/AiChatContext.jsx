@@ -32,6 +32,7 @@ export function AiChatProvider({ children }) {
   return <AiChatContext.Provider value={value}>{children}</AiChatContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAiChat() {
   return React.useContext(AiChatContext);
 }

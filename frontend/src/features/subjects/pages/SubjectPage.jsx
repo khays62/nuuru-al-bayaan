@@ -263,7 +263,7 @@ export default function SubjectPage() {
       filename: 'subjects',
       title: t('modules.subjects', { defaultValue: 'Subjects' }),
       subtitle: t('common.export.subtitle', {
-        defaultValue: 'Total: {{count}} â€¢ Generated: {{date}}',
+        defaultValue: 'Total: {{count}} - Generated: {{date}}',
         count: sortedSubjectsForView.length,
         date: new Date().toLocaleString(),
       }),

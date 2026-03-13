@@ -21,8 +21,10 @@ export default function App() {
 
     // Client-side page view tracking (best-effort)
     const lastViewRef = React.useRef({ path: '', at: 0 });
+    const userId = auth?.user?._id || auth?.user?.id;
+    const userDbId = auth?.user?._id;
     useEffect(() => {
-        const uid = auth?.user?._id || auth?.user?.id;
+        const uid = userId;
         if (!uid) return;
 
         const path = String(location?.pathname || '');
@@ -40,7 +42,7 @@ export default function App() {
                 // ignore
             }
         })();
-    }, [auth?.user?._id, auth?.user?.id, location?.pathname]);
+    }, [userId, location?.pathname]);
 
     const flatNavItems = (() => {
         const out = [];
@@ -82,11 +84,10 @@ export default function App() {
             setUserForceOpen(false);
             return;
         }
-        const u = auth?.user;
-        const key = u?._id ? `user_force_pw_dismissed:${String(u._id)}` : 'user_force_pw_dismissed';
+        const key = userDbId ? `user_force_pw_dismissed:${String(userDbId)}` : 'user_force_pw_dismissed';
         const dismissed = sessionStorage.getItem(key) === '1';
         setUserForceOpen(!dismissed);
-    }, [mustChangeNonStudent, auth?.user?._id]);
+    }, [mustChangeNonStudent, userDbId]);
 
     const skipUserPasswordChange = () => {
         const u = auth?.user;
@@ -123,7 +124,7 @@ export default function App() {
                 currentPageTitle={currentPageTitle}
             />
             
-            <main className="flex-1 overflow-y-auto p-6">
+            <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
                 <Outlet />
             </main>
         </div>

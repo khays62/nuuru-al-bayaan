@@ -16,7 +16,6 @@ export default function PayrollDeleteModal({
     onClose,
     onSuccess,
     defaultMonth,
-    academicYears,
     defaultAcademicYearId,
     initialDeleteType,
     initialStaffId,

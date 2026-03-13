@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Card from '../../../shared/components/ui/Card';
 import { Plus, Filter, Search, DollarSign, Layers, X, GraduationCap, RotateCcw } from 'lucide-react';
 import StudentChargeModal from './StudentChargeModal';
@@ -58,7 +58,7 @@ export default function FeeManagement() {
     const [showClearanceModal, setShowClearanceModal] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null); // For payment modal
 
-    const fetchInvoices = async (page = 1, limit = 10) => {
+    const fetchInvoices = useCallback(async (page = 1, limit = 10) => {
         setLoading(true);
         try {
             // Convert filters to query params
@@ -82,11 +82,11 @@ export default function FeeManagement() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters.classId, filters.status, filters.studentId]);
 
     useEffect(() => {
         fetchInvoices(1, meta.limit); // Reset to page 1 on filter change
-    }, [filters.classId, filters.status]);
+    }, [filters.classId, filters.status, fetchInvoices, meta.limit]);
 
     // Debounced search
     useEffect(() => {
@@ -94,7 +94,7 @@ export default function FeeManagement() {
             fetchInvoices(1, meta.limit);
         }, 500);
         return () => clearTimeout(timer);
-    }, [filters.studentId]);
+    }, [filters.studentId, fetchInvoices, meta.limit]);
 
     const getStatusColor = (status) => {
         switch (status) {

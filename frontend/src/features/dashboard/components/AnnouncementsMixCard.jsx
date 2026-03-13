@@ -98,8 +98,8 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
     const [range, setRange] = useState('week');
 
     const safeBuckets = buckets && typeof buckets === 'object' ? buckets : null;
-    const safeInRange = Array.isArray(rowsInRange) ? rowsInRange : [];
-    const safeAllTime = Array.isArray(rowsAllTime) ? rowsAllTime : [];
+    const safeInRange = useMemo(() => (Array.isArray(rowsInRange) ? rowsInRange : []), [rowsInRange]);
+    const safeAllTime = useMemo(() => (Array.isArray(rowsAllTime) ? rowsAllTime : []), [rowsAllTime]);
 
     const activeBucket = safeBuckets?.[String(range || 'week')];
     const safeRows = Array.isArray(activeBucket?.byRole)
@@ -186,7 +186,7 @@ export default function AnnouncementsMixCard({ buckets, rowsInRange, rowsAllTime
                     <div>
                         {bucketLabel(range)}: <span className="font-semibold text-white">{fmt(selectedTotal)}</span>
                     </div>
-                    <div className="text-white/60">â€¢</div>
+                    <div className="text-white/60">-</div>
                     <div>
                         {t('dashboard.cards.announcementsMix.labels.allCreated')}: <span className="font-semibold text-white">{fmt(allTimeCreatedTotal)}</span>
                     </div>

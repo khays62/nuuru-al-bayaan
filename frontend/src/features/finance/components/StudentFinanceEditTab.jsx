@@ -108,7 +108,7 @@ export default function StudentFinanceEditTab() {
             key: 'id',
             label: t('finance.studentFinance.editTab.columns.id', { defaultValue: 'ID' }),
             render: (row) => (
-                <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row.student?.studentId || 'â€”'}</span>
+                <span className="font-mono text-xs font-bold text-(--nb-color-muted)">{row.student?.studentId || '-'}</span>
             ),
         },
         {
@@ -116,7 +116,7 @@ export default function StudentFinanceEditTab() {
             label: t('finance.studentFinance.editTab.columns.studentName', { defaultValue: 'Student Name' }),
             render: (row) => (
                 <div className="flex flex-col">
-                    <span className="font-bold text-(--nb-color-fg)">{row.student?.fullName || 'â€”'}</span>
+                    <span className="font-bold text-(--nb-color-fg)">{row.student?.fullName || '-'}</span>
                     {row.student?.admissionDate ? (
                         <span className="text-[10px] text-(--nb-color-muted) font-mono uppercase tracking-tighter">
                             {t('finance.studentFinance.editTab.labels.regPrefix', { defaultValue: 'Reg:' })}{' '}
@@ -129,14 +129,14 @@ export default function StudentFinanceEditTab() {
         {
             key: 'contact',
             label: t('finance.studentFinance.editTab.columns.contact', { defaultValue: 'Contact' }),
-            render: (row) => row.student?.phoneNumber || row.student?.contactNumber || 'â€”',
+            render: (row) => row.student?.phoneNumber || row.student?.contactNumber || '-',
         },
         {
             key: 'class',
             label: t('finance.studentFinance.editTab.columns.class', { defaultValue: 'Class' }),
             render: (row) => (
                 <span className="px-2 py-1 bg-(--nb-color-bg) text-(--nb-color-muted) rounded text-[10px] font-black uppercase tracking-tight border border-(--nb-color-border)">
-                    {row.student?.currentClass || 'â€”'}
+                    {row.student?.currentClass || '-'}
                 </span>
             ),
         },

@@ -16,7 +16,7 @@ const EMPTY_ARR = [];
 
 export default function TeacherForm({ initialValue, onCancel, onSave }) {
   const { t } = useI18n();
-  const [touched, setTouched] = useState({});
+  const [_touched, setTouched] = useState({});
 
   const BLUR_VALIDATION_TOAST_ID = 'teacher-form:blur-validation';
 
@@ -262,7 +262,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     return isValidSomaliaPhone(value) ? '' : t('teachers.form.validations.phoneInvalidHint');
   };
 
-  const nameFieldState = (field, required = false) => {
+  const nameFieldState = (field) => {
     const v = String(form[field] ?? '');
     const hasValue = Boolean(v.trim());
     if (!hasValue) {
@@ -271,7 +271,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     return validateFourNames(v) ? 'valid' : 'invalid';
   };
 
-  const emailFieldState = (field, required = false) => {
+  const emailFieldState = (field) => {
     const v = String(form[field] ?? '');
     const hasValue = Boolean(v.trim());
     if (!hasValue) {
@@ -280,7 +280,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     return isValidEmail(v) ? 'valid' : 'invalid';
   };
 
-  const phoneFieldState = (field, required = false) => {
+  const phoneFieldState = (field) => {
     const v = String(form[field] ?? '').trim();
     if (!v) {
       return 'neutral';

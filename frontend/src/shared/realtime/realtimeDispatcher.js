@@ -94,7 +94,6 @@ export function createRealtimeDispatcher({ queryClient, debounceMs = 250 } = {})
 
     if (debugEnabled) {
       try {
-        // eslint-disable-next-line no-console
         console.log('[realtime] event', { type, payload });
       } catch {
         // ignore

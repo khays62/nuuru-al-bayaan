@@ -280,8 +280,16 @@ export default function AttendanceChartsCard() {
         [t]
     );
 
-    const attendanceByDay = Array.isArray(data?.charts?.attendanceByDay) ? data.charts.attendanceByDay : [];
-    const attendanceStatusTrend = Array.isArray(data?.charts?.attendanceStatusTrend) ? data.charts.attendanceStatusTrend : [];
+    const attendanceByDay = useMemo(() => {
+        const src = data?.charts?.attendanceByDay;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.attendanceByDay]);
+
+    const attendanceStatusTrend = useMemo(() => {
+        const src = data?.charts?.attendanceStatusTrend;
+        return Array.isArray(src) ? src : [];
+    }, [data?.charts?.attendanceStatusTrend]);
+
     const attendanceByPeriod = Array.isArray(data?.charts?.attendanceByPeriod) ? data.charts.attendanceByPeriod : [];
 
     const trend = useMemo(() => {
@@ -449,12 +457,12 @@ export default function AttendanceChartsCard() {
 
     const exportFilterSummary = useMemo(() => {
         const parts = [];
-        parts.push(`${t('common.range.title')}: ${from} â†’ ${to}`);
+        parts.push(`${t('common.range.title')}: ${from} → ${to}`);
         if (academicYearId) parts.push(`${t('common.filters.academicYearShort')}: ${yearLabel || t('common.selected')}`);
         if (gradeId) parts.push(`${t('common.filters.level')}: ${gradeLabel || t('common.selected')}`);
         if (shiftId) parts.push(`${t('common.filters.shift')}: ${shiftLabel || t('common.selected')}`);
         if (gradeSectionId) parts.push(`${t('common.filters.section')}: ${sectionLabel || t('common.selected')}`);
-        return parts.join(' â€¢ ');
+        return parts.join(' - ');
     }, [t, from, to, academicYearId, gradeId, shiftId, gradeSectionId, yearLabel, gradeLabel, shiftLabel, sectionLabel]);
 
     if (shouldHide) return null;
@@ -590,7 +598,7 @@ export default function AttendanceChartsCard() {
                             />
                         </div>
                         <div className="text-xs text-(--nb-color-muted)">
-                            <span className="font-medium">{t('dashboard.cards.attendance.kpis.presentPct')}</span>: {Number(performanceAgg.presentPct || 0).toFixed(1)}% â€¢{' '}
+                            <span className="font-medium">{t('dashboard.cards.attendance.kpis.presentPct')}</span>: {Number(performanceAgg.presentPct || 0).toFixed(1)}% - 
                             <span className="font-medium">{t('dashboard.cards.attendance.kpis.days')}</span>: {trend.length}
                         </div>
                     </div>

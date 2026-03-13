@@ -9,8 +9,6 @@ import {
     listStudents,
     createStudent,
     updateStudent as updateStudentApi,
-    deactivateStudentApi,
-    reactivateStudentApi,
     getStudentProfile as fetchStudentProfile,
     uploadStudentPhoto,
 } from '../api/studentsApi';
@@ -120,9 +118,9 @@ export default function StudentPage() {
         placeholderData: (prev) => prev,
     });
 
-    const years = yearsQuery.data || [];
-    const grades = gradesQuery.data || [];
-    const shifts = shiftsQuery.data || [];
+    const years = useMemo(() => (yearsQuery.data || []), [yearsQuery.data]);
+    const grades = useMemo(() => (gradesQuery.data || []), [gradesQuery.data]);
+    const shifts = useMemo(() => (shiftsQuery.data || []), [shiftsQuery.data]);
 
     const sectionsQuery = useQuery({
         queryKey: studentKeys.gradeSectionsByGradeShift({ gradeId: gradeFilter, shiftId: shiftFilter, limit: 200 }),
@@ -133,7 +131,7 @@ export default function StudentPage() {
         },
         placeholderData: (prev) => prev,
     });
-    const sections = sectionsQuery.data || [];
+    const sections = useMemo(() => (sectionsQuery.data || []), [sectionsQuery.data]);
 
     const classesQuery = useQuery({
         queryKey: studentKeys.gradeSectionsStudentsForm({ limit: 1000, sortBy: 'createdAt', sortDir: 'desc' }),
@@ -175,7 +173,7 @@ export default function StudentPage() {
         placeholderData: (prev) => prev,
     });
 
-    const students = studentsQuery.data?.data || [];
+    const students = useMemo(() => (studentsQuery.data?.data || []), [studentsQuery.data?.data]);
     const meta = studentsQuery.data?.meta || { page, limit, total: 0, totalPages: 1 };
     const isLoading = Boolean(studentsQuery.isLoading && studentsQuery.data == null);
     const error = studentsQuery.isError ? studentsQuery.error : null;

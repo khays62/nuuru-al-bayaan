@@ -17,7 +17,6 @@ export default function PayrollChargeModal({
     onClose,
     onSuccess,
     defaultMonth,
-    academicYears,
     defaultAcademicYearId,
 }) {
     const { t } = useI18n();

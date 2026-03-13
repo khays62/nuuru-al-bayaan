@@ -39,8 +39,8 @@ export default function CohortSelect({
   const [loading, setLoading] = useState(false);
 
   const resolvedPlaceholder = placeholder ?? t('common.none', { defaultValue: 'None' });
-  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to searchâ€¦' });
-  const loadingLabel = t('common.loading', { defaultValue: 'Loadingâ€¦' });
+  const resolvedSearchPlaceholder = searchPlaceholder ?? t('common.select.searchPlaceholder', { defaultValue: 'Type to search...' });
+  const loadingLabel = t('common.loading', { defaultValue: 'Loading...' });
 
   useEffect(() => {
     let ignore = false;
@@ -127,7 +127,7 @@ export default function CohortSelect({
     const list = Array.isArray(items) ? items : [];
     return list.map((c) => {
       const ay = c?.startAcademicYear?.yearName;
-      const label = `${c?.name || ''}${ay ? ` â€” ${ay}` : ''}`.trim();
+      const label = `${c?.name || ''}${ay ? ` - ${ay}` : ''}`.trim();
       return { value: String(c?._id || ''), label: label || t('common.filters.cohort', { defaultValue: 'Cohort' }) };
     });
   }, [items, t]);
@@ -147,7 +147,7 @@ export default function CohortSelect({
         <option value="">{resolvedPlaceholder}</option>
         {items.map((c) => (
           <option key={c._id} value={c._id}>
-            {c.name}{c.startAcademicYear?.yearName ? ` â€” ${c.startAcademicYear.yearName}` : ''}
+            {c.name}{c.startAcademicYear?.yearName ? ` - ${c.startAcademicYear.yearName}` : ''}
           </option>
         ))}
       </Select>

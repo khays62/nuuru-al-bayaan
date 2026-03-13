@@ -17,7 +17,7 @@ export default function GradeSetupForm({ initial, onCancel, onSubmit, isSubmitti
     setGradeName(init.gradeName || '');
     setOrder(init.order ?? '');
     setErrors({});
-  }, [init._id]);
+  }, [init._id, init.gradeName, init.order]);
 
   const parsedOrder = useMemo(() => {
     if (order === '' || order === null || order === undefined) return null;

@@ -55,7 +55,7 @@ export default function AccountManagement() {
         if (v === 'Bank') return t('finance.accounts.options.accountType.bank', { defaultValue: 'Bank' });
         if (v === 'Cash') return t('finance.accounts.options.accountType.cash', { defaultValue: 'Cash' });
         if (v === 'Mobile Money') return t('finance.accounts.options.accountType.mobileMoney', { defaultValue: 'Mobile Money' });
-        return v || 'â€”';
+        return v || '-';
     }, [t]);
 
     const [expandedSection, setExpandedSection] = useState('list');
@@ -111,8 +111,8 @@ export default function AccountManagement() {
         refetchOnWindowFocus: false,
     });
 
-    const accounts = accountsQuery.data || [];
-    const ledgerLogs = ledgerQuery.data || [];
+    const accounts = useMemo(() => (accountsQuery.data || []), [accountsQuery.data]);
+    const ledgerLogs = useMemo(() => (ledgerQuery.data || []), [ledgerQuery.data]);
 
     // If the current tab becomes unavailable (or user only has one tab), move to the first available one.
     useEffect(() => {
@@ -566,7 +566,7 @@ export default function AccountManagement() {
 
                                     <div className="space-y-1 mb-6">
                                         <h3 className="font-bold text-xl text-slate-900 truncate tracking-tight">{acc.name}</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{acc.institution || 'â€”'} {acc.branch ? `â€¢ ${acc.branch}` : ''}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{acc.institution || '-'} {acc.branch ? `- ${acc.branch}` : ''}</p>
                                         <p className="font-mono text-[10px] text-slate-400 uppercase tracking-tighter">{t('finance.accounts.cards.refPrefix', { defaultValue: 'REF' })}: {acc.accountNumber}</p>
                                     </div>
 
@@ -692,9 +692,9 @@ export default function AccountManagement() {
                                                         <span className="font-mono text-[10px] text-slate-900 font-bold">{new Date(row.createdAt).toLocaleTimeString()}</span>
                                                     </div>
                                                 )
-                                                : 'â€”';
+                                                : '-';
                                         case 'targetModel':
-                                            return <span className="px-3 py-1 bg-slate-100 rounded-lg text-[9px] font-black text-slate-600 uppercase tracking-tighter">{row?.targetModel || 'â€”'}</span>;
+                                            return <span className="px-3 py-1 bg-slate-100 rounded-lg text-[9px] font-black text-slate-600 uppercase tracking-tighter">{row?.targetModel || '-'}</span>;
                                         case 'action':
                                             {
                                                 const action = String(row?.action || '');
@@ -704,7 +704,7 @@ export default function AccountManagement() {
                                                         ? 'bg-blue-50 text-blue-600'
                                                         : 'bg-green-50 text-green-600';
                                                 return (
-                                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${tone}`}>{action || 'â€”'}</span>
+                                                    <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${tone}`}>{action || '-'}</span>
                                                 );
                                             }
                                         case 'user':

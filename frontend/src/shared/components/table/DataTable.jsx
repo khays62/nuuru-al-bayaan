@@ -4,8 +4,8 @@ import SortableTh from './SortableTh.jsx';
 import StickyTableControls from './StickyTableControls.jsx';
 import { fixMojibake } from '../../../utils/fixMojibake';
 
-const TH_BASE = 'px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)';
-const TD_BASE = 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)';
+const TH_BASE = 'px-3 sm:px-6 py-3 text-xs font-medium text-white uppercase tracking-wider border-b border-x border-(--nb-color-border)';
+const TD_BASE = 'px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-fg) border-x border-(--nb-color-border)';
 const TR_BASE = 'border-t border-(--nb-color-border) odd:bg-(--nb-color-bg-card) even:bg-(--nb-color-bg) hover:bg-(--nb-color-brand-50) transition-colors';
 
 function readVisibility(storageKey) {
@@ -66,7 +66,6 @@ export default function DataTable({
   }, [storageKey, visible]);
 
   const cols = useMemo(() => (Array.isArray(columns) ? columns : []).filter(Boolean), [columns]);
-  const isVisible = (key) => visible?.[String(key)] !== false;
   const toggle = (key) => setVisible((prev) => {
     const next = { ...(prev || {}) };
     const k = String(key);
@@ -76,7 +75,7 @@ export default function DataTable({
 
   const resolvedShowControls = showControls != null ? Boolean(showControls) : Boolean(storageKey || controlsProps);
 
-  const visibleCols = useMemo(() => cols.filter((c) => isVisible(c.key)), [cols, visible]);
+  const visibleCols = useMemo(() => cols.filter((c) => visible?.[String(c.key)] !== false), [cols, visible]);
 
   return (
     <div>

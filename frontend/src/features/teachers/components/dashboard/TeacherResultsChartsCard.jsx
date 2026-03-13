@@ -17,6 +17,8 @@ import { teacherKeys } from '../../queryKeys';
 import { getSessionSignal } from '../../../../api/sessionAbort';
 import { useI18n } from '../../../../i18n/useI18n';
 
+const EMPTY_SUMMARY = Object.freeze({ results: [], classAverage: 0, subjects: [] });
+
 const ToggleButton = ({ active, onClick, icon: Icon, label }) => {
   return (
     <button
@@ -180,7 +182,7 @@ export default function TeacherResultsChartsCard() {
     },
   });
 
-  const teacherAssignments = assignmentsQuery.data || [];
+  const teacherAssignments = useMemo(() => assignmentsQuery.data ?? [], [assignmentsQuery.data]);
   const assignmentsLoading = assignmentsQuery.isLoading;
   const assignmentsError = assignmentsQuery.isError
     ? t('teachers.dashboard.results.assignmentsLoadFailed', { defaultValue: 'Failed to load teacher assignments.' })
@@ -263,7 +265,7 @@ export default function TeacherResultsChartsCard() {
       return Array.isArray(list) ? list : (list?.data || []);
     },
   });
-  const examTypes = examTypesQuery.data || [];
+  const examTypes = useMemo(() => examTypesQuery.data ?? [], [examTypesQuery.data]);
 
   useEffect(() => {
     if (mode !== 'examType') return;
@@ -300,7 +302,7 @@ export default function TeacherResultsChartsCard() {
     },
   });
 
-  const summary = summaryQuery.data || { results: [], classAverage: 0, subjects: [] };
+  const summary = useMemo(() => summaryQuery.data ?? EMPTY_SUMMARY, [summaryQuery.data]);
   const loading = summaryQuery.isLoading;
   const error = summaryQuery.isError
     ? (summaryQuery.error?.message || t('teachers.dashboard.results.summaryLoadFailed', { defaultValue: 'Failed to load summary' }))
@@ -352,7 +354,7 @@ export default function TeacherResultsChartsCard() {
       .sort((a, b) => (a.order - b.order) || String(a.label).localeCompare(String(b.label)));
 
     return { rows, templateVersion };
-  }, [view, perfSummaryQuery.data, examTypes]);
+  }, [view, perfSummaryQuery.data, examTypes, t]);
 
   const perfLoading = perfSummaryQuery.isLoading || examTypesQuery.isLoading;
   const perfError = perfSummaryQuery.isError
@@ -583,11 +585,11 @@ export default function TeacherResultsChartsCard() {
               <div className="text-xs text-white/80">
                 {t((mode === 'subject' && subjectId) ? 'teachers.dashboard.results.performance.subjectMode' : 'teachers.dashboard.results.performance.overallMode', {
                   defaultValue: (mode === 'subject' && subjectId) ? 'Subject' : 'Overall',
-                })} â€¢ {t('teachers.dashboard.results.performance.template', { defaultValue: 'Template' })} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : 'â€”'}
+                })} - {t('teachers.dashboard.results.performance.template', { defaultValue: 'Template' })} {perf?.templateVersion ? `v${String(perf.templateVersion)}` : '-'}
               </div>
             </div>
             <div className="p-4 space-y-3">
-              <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.results.performance.help', { defaultValue: 'Vertical bars = exam types â€¢ Left axis = percentage (avg / maxScore)' })}</div>
+              <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.results.performance.help', { defaultValue: 'Vertical bars = exam types - Left axis = percentage (avg / maxScore)' })}</div>
               <ExamTypeBarChart rows={perf.rows} />
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {perf.rows.map((r) => (
@@ -611,7 +613,7 @@ export default function TeacherResultsChartsCard() {
                 <HistogramBar key={b.label} label={b.label} value={b.value} max={maxBin} />
               ))}
               <div className="rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-50) px-3 py-2 text-xs text-(--nb-color-fg) mt-2">
-                {t('teachers.dashboard.results.distribution.kpiIdea', { defaultValue: 'KPI idea:' })} <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg', { defaultValue: 'Class Avg' })}</span> â€¢ <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct', { defaultValue: 'Pass %' })}</span> â€¢ <span className="font-medium">{t('teachers.dashboard.results.kpis.topBottom', { defaultValue: 'Top/Bottom' })}</span>
+                {t('teachers.dashboard.results.distribution.kpiIdea', { defaultValue: 'KPI idea:' })} <span className="font-medium">{t('teachers.dashboard.results.kpis.classAvg', { defaultValue: 'Class Avg' })}</span> - <span className="font-medium">{t('teachers.dashboard.results.kpis.passPct', { defaultValue: 'Pass %' })}</span> - <span className="font-medium">{t('teachers.dashboard.results.kpis.topBottom', { defaultValue: 'Top/Bottom' })}</span>
               </div>
             </div>
           </div>

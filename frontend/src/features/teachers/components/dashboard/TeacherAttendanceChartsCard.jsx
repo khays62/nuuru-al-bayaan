@@ -175,7 +175,7 @@ export default function TeacherAttendanceChartsCard() {
     },
   });
 
-  const teacherAssignments = assignmentsQuery.data || [];
+  const teacherAssignments = useMemo(() => (assignmentsQuery.data || []), [assignmentsQuery.data]);
   const assignmentsLoading = assignmentsQuery.isLoading;
   const assignmentsError = assignmentsQuery.isError
     ? t('teachers.dashboard.attendance.assignmentsLoadFailed', { defaultValue: 'Failed to load teacher assignments.' })
@@ -359,7 +359,7 @@ export default function TeacherAttendanceChartsCard() {
       ? res.lesson.filter((r) => allowed.has(String(r?.periodCode || '')))
       : [];
     setReport({ ...res, lesson: filteredLesson });
-  }, [canRun, reportQuery.data, reportQuery.isLoading, reportQuery.isError, subjectPeriodCodes]);
+  }, [canRun, reportQuery.data, reportQuery.isLoading, reportQuery.isError, subjectPeriodCodes, t]);
 
   const aggByDate = (rows) => {
     const map = new Map();
@@ -698,8 +698,8 @@ export default function TeacherAttendanceChartsCard() {
               {assignmentsError ? ` ${assignmentsError}` : ''}
             </div>
             <div className="text-xs text-(--nb-color-text)">
-              <span className="font-medium">{t('teachers.dashboard.attendance.kpis.allDayPct', { defaultValue: 'All-day%' })}</span>: {kpis.dayPct}% â€¢ <span className="font-medium">{t('teachers.dashboard.attendance.kpis.perPeriodPct', { defaultValue: 'Per-period%' })}</span>: {kpis.periodPct}%
-              {kpis.roster ? ` â€¢ ` : ''}{kpis.roster ? (<><span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>: {kpis.roster}</>) : null}
+              <span className="font-medium">{t('teachers.dashboard.attendance.kpis.allDayPct', { defaultValue: 'All-day%' })}</span>: {kpis.dayPct}% - <span className="font-medium">{t('teachers.dashboard.attendance.kpis.perPeriodPct', { defaultValue: 'Per-period%' })}</span>: {kpis.periodPct}%
+              {kpis.roster ? ' - ' : ''}{kpis.roster ? (<><span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>: {kpis.roster}</>) : null}
             </div>
           </div>
         </div>
@@ -739,7 +739,7 @@ export default function TeacherAttendanceChartsCard() {
               </div>
               <div className="rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg) p-3">
                 <div className="text-xs font-semibold text-(--nb-color-text)">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</div>
-                <div className="text-xl font-bold text-(--nb-color-text) tabular-nums">{Number(kpis.roster || 0) || 'â€”'}</div>
+                <div className="text-xl font-bold text-(--nb-color-text) tabular-nums">{Number(kpis.roster || 0) || '-'}</div>
                 <div className="text-[11px] text-(--nb-color-muted)">{t('teachers.dashboard.attendance.performance.rosterNote', { defaultValue: 'From report meta' })}</div>
               </div>
             </div>
@@ -836,7 +836,7 @@ export default function TeacherAttendanceChartsCard() {
         <div className="pt-2 border-t border-(--nb-color-border) flex items-center justify-between gap-3 flex-wrap">
           <div className="text-xs text-(--nb-color-muted)">{t('teachers.dashboard.attendance.source', { defaultValue: 'Source: Attendance Reports summary (teacher-scoped)' })}</div>
           <div className="text-xs text-(--nb-color-muted)">
-            {t('teachers.dashboard.common.kpis', { defaultValue: 'KPIs' })}: <span className="font-medium">{t('teachers.dashboard.attendance.kpis.attendancePct', { defaultValue: 'Attendance %' })}</span> â€¢ <span className="font-medium">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</span> â€¢ <span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>
+            {t('teachers.dashboard.common.kpis', { defaultValue: 'KPIs' })}: <span className="font-medium">{t('teachers.dashboard.attendance.kpis.attendancePct', { defaultValue: 'Attendance %' })}</span> - <span className="font-medium">{t('teachers.dashboard.attendance.performance.markedDays', { defaultValue: 'Marked days' })}</span> - <span className="font-medium">{t('teachers.dashboard.attendance.kpis.roster', { defaultValue: 'Roster' })}</span>
           </div>
         </div>
       </div>

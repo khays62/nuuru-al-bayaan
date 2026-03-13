@@ -31,6 +31,8 @@ import Input from '../../../shared/components/ui/Input.jsx';
 import { FilterItem, FilterRow } from '../../../shared/components/DataToolbar/FilterLayout.jsx';
 import FilterDropdownSelect from '../../../shared/components/DataToolbar/FilterDropdownSelect.jsx';
 
+const EMPTY_SUMMARY = Object.freeze({ results: [], classAverage: 0 });
+
 export default function ResultPage() {
     const { t } = useI18n();
     const { auth, hasPermission } = useAuth();
@@ -98,9 +100,9 @@ export default function ResultPage() {
         placeholderData: (prev) => prev,
     });
 
-    const teacherSections = teacherSectionsQuery.data || [];
+    const teacherSections = useMemo(() => teacherSectionsQuery.data ?? [], [teacherSectionsQuery.data]);
     const teacherSectionsLoading = teacherSectionsQuery.isLoading;
-    const teacherAssignments = assignmentsQuery.data || [];
+    const teacherAssignments = useMemo(() => assignmentsQuery.data ?? [], [assignmentsQuery.data]);
     const teacherAssignmentsLoading = assignmentsQuery.isLoading;
 
     useEffect(() => {
@@ -121,7 +123,7 @@ export default function ResultPage() {
         // Teachers don't filter by grade/shift; keep the UI scoped to assigned sections.
         setGradeId('');
         setShiftId('');
-    }, [isTeacher]);
+    }, [isTeacher, setGradeId, setShiftId]);
 
     useEffect(() => {
         if (!isTeacher) return;
@@ -220,7 +222,7 @@ export default function ResultPage() {
         placeholderData: (prev) => prev,
     });
 
-    const examTypes = examTypesQuery.data || [];
+    const examTypes = useMemo(() => examTypesQuery.data ?? [], [examTypesQuery.data]);
 
     // Persist filters to sessionStorage
     useEffect(() => {
@@ -245,7 +247,6 @@ export default function ResultPage() {
     // Subjects are React Query-backed; keep existing behavior of clearing subjectId when section changes.
     useEffect(() => {
         setSubjectId('');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gradeSectionId]);
 
     // Auto-fetch summary with debounce
@@ -306,15 +307,15 @@ export default function ResultPage() {
     });
 
     const loading = Boolean(summaryQuery.isLoading && summaryQuery.data == null);
-    const summary = summaryQuery.data || { results: [], classAverage: 0 };
+    const summary = useMemo(() => summaryQuery.data ?? EMPTY_SUMMARY, [summaryQuery.data]);
+    const summaryErrorMessage = summaryQuery.error?.message;
 
     useEffect(() => {
         if (!summaryEnabled) return;
         if (!summaryQuery.isError) return;
-        const msg = summaryQuery.error?.message || t('results.page.errors.loadSummaryFailed');
+        const msg = summaryErrorMessage || t('results.page.errors.loadSummaryFailed');
         if (String(msg).toLowerCase() !== 'aborted') toast.error(msg);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [summaryQuery.isError]);
+    }, [summaryEnabled, summaryQuery.isError, summaryErrorMessage, t]);
 
     useEffect(() => {
         const tv = summary?.templateVersion;
@@ -343,7 +344,7 @@ export default function ResultPage() {
             lastNoMarksToastKeyRef.current = key;
             toast.error(t('results.page.toasts.noMarksForSelection'));
         }
-    }, [summary, summaryEnabled, summaryParams, summaryQuery.isFetching, summaryQuery.isPlaceholderData, summaryQuery.isSuccess]);
+    }, [summary, summaryEnabled, summaryParams, summaryQuery.isFetching, summaryQuery.isPlaceholderData, summaryQuery.isSuccess, t]);
 
     const results = useMemo(() => summary?.results || [], [summary]);
     const subjectCols = useMemo(() => summary?.subjects || [], [summary]);
@@ -476,7 +477,7 @@ export default function ResultPage() {
             filename: 'results.pdf',
             sheetName: t('results.page.export.sheetName'),
             title: minimalMeta ? '' : t('results.page.export.title'),
-            subtitle: subtitleParts.join(' â€¢ '),
+            subtitle: subtitleParts.join(' - '),
             headerImageSrc: headerImg,
             headers,
             rows,
@@ -809,13 +810,13 @@ export default function ResultPage() {
                                                     if (r?.__type === 'summary') {
                                                         if (col.key === 'subject') return <span className="font-medium text-(--nb-color-text)">{t('results.page.table.classAvgSubjects')}</span>;
                                                         if (col.key === 'avg') return Number((summary.classAverage ?? 0).toFixed?.(2));
-                                                        if (col.key === 'students') return 'â€”';
+                                                        if (col.key === 'students') return '-';
                                                         return '';
                                                     }
                                                     switch (col.key) {
                                                         case 'subject': return r.subjectName;
                                                         case 'avg': return Number((r.average ?? 0).toFixed?.(2));
-                                                        case 'students': return r.count ?? 'â€”';
+                                                        case 'students': return r.count ?? '-';
                                                         default: return '';
                                                     }
                                                 }}
@@ -916,7 +917,7 @@ export default function ResultPage() {
                                                     }
 
                                                     if (col.key === 'total') return fmt2(summary.classAverage ?? 0);
-                                                    if (col.key === 'avg') return 'â€”';
+                                                    if (col.key === 'avg') return '-';
                                                     return '';
                                                 }
 

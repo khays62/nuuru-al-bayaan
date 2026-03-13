@@ -230,7 +230,7 @@ function GradePageInner() {
 			filename: 'grade-sections',
 			sheetName: t('gradeSections.export.sheetName', { defaultValue: 'Grade Sections' }),
 			title: t('gradeSections.export.title', { defaultValue: 'Grade Sections' }),
-			subtitle: subtitleParts.join(' â€¢ '),
+			subtitle: subtitleParts.join(' - '),
 			headerImageSrc: headerImg,
 			headers,
 			rows,

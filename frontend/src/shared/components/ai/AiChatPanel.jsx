@@ -260,6 +260,20 @@ export default function AiChatPanel() {
   // Drag-to-resize
   const dragRef = React.useRef({ active: false });
 
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(max-width: 639px)');
+    const onChange = () => setIsMobile(Boolean(mq.matches));
+    onChange();
+    if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
+    else if (typeof mq.addListener === 'function') mq.addListener(onChange);
+    return () => {
+      if (typeof mq.removeEventListener === 'function') mq.removeEventListener('change', onChange);
+      else if (typeof mq.removeListener === 'function') mq.removeListener(onChange);
+    };
+  }, []);
+
   const onDragStart = (e) => {
     e.preventDefault();
     dragRef.current.active = true;
@@ -296,16 +310,18 @@ export default function AiChatPanel() {
   return (
     <aside
       className={
-        'relative shrink-0 h-full flex flex-col bg-(--nb-color-bg-card) ' +
-        'border-(--nb-color-border) border-l'
+        (isMobile
+          ? 'fixed inset-0 z-70 w-screen h-screen '
+          : 'relative shrink-0 h-full ') +
+        'flex flex-col bg-(--nb-color-bg-card) border-(--nb-color-border) border-l'
       }
-      style={{ width }}
+      style={isMobile ? { width: '100vw' } : { width }}
       aria-label={title}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div
         className={
-          'absolute top-0 bottom-0 w-2 left-0 cursor-col-resize bg-(--nb-color-border)/60 hover:bg-(--nb-color-border) '
+          'hidden sm:block absolute top-0 bottom-0 w-2 left-0 cursor-col-resize bg-(--nb-color-border)/60 hover:bg-(--nb-color-border) '
         }
         onMouseDown={onDragStart}
         onTouchStart={onDragStart}

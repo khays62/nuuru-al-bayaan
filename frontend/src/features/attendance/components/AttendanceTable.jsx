@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useI18n } from '../../../i18n/useI18n';
 
 import StandardTable from '../../../shared/components/table/StandardTable.jsx';
+import { displayText } from '../../../utils/displayText.js';
 import AttendanceStatusPills from './AttendanceStatusPills';
 
 export default function AttendanceTable({
@@ -88,15 +89,15 @@ export default function AttendanceTable({
           case 'marked':
             return (
               <div className="leading-tight">
-                <div className="font-medium">{stu?.audit?.markedBy?.name || 'â€”'}</div>
-                <div className="text-xs text-(--nb-color-muted)">{stu?.audit?.markedBy?.role || ''}{stu?.audit?.markedAt ? ` â€¢ ${new Date(stu.audit.markedAt).toLocaleString()}` : ''}</div>
+                <div className="font-medium">{displayText(stu?.audit?.markedBy?.name, '-')}</div>
+                <div className="text-xs text-(--nb-color-muted)">{displayText(stu?.audit?.markedBy?.role, '')}{stu?.audit?.markedAt ? ` - ${new Date(stu.audit.markedAt).toLocaleString()}` : ''}</div>
               </div>
             );
           case 'updated':
             return (
               <div className="leading-tight">
-                <div className="font-medium">{stu?.audit?.updatedBy?.name || 'â€”'}</div>
-                <div className="text-xs text-(--nb-color-muted)">{stu?.audit?.updatedBy?.role || ''}{stu?.audit?.updatedAt ? ` â€¢ ${new Date(stu.audit.updatedAt).toLocaleString()}` : ''}</div>
+                <div className="font-medium">{displayText(stu?.audit?.updatedBy?.name, '-')}</div>
+                <div className="text-xs text-(--nb-color-muted)">{displayText(stu?.audit?.updatedBy?.role, '')}{stu?.audit?.updatedAt ? ` - ${new Date(stu.audit.updatedAt).toLocaleString()}` : ''}</div>
               </div>
             );
           case 'status':

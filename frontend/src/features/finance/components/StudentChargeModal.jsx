@@ -80,7 +80,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
             const hasSelected = feeTypes.some(f => String(f.code).toLowerCase() === String(feeType).toLowerCase());
             if (!hasSelected) setFeeType(String(feeTypes[0].code || 'personal').toLowerCase());
         }
-    }, [feeTypes]);
+    }, [feeTypes, feeType]);
 
     const selectedAmountType = amountTypes.find((amountType) => amountType._id === amountTypeId);
     const isSpecialType = selectedAmountType?.name?.toLowerCase().includes('registration') ||

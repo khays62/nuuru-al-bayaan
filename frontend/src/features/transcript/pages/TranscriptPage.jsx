@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getGrades, getShifts } from '../../lookups/api/lookups';
 import { listStudents, getFullTranscript } from '../../students/api/studentsApi';
@@ -173,37 +173,35 @@ export default function TranscriptPage() {
     return map;
   }, [selectedStudentIds, latestTranscriptQueries]);
 
-  const getLevelNamesForSelected = () => {
+  const selectedLevelNames = useMemo(() => {
     const selected = new Set((selectedLevels || []).map((x) => String(x)));
     return (grades || [])
       .filter((g) => selected.has(String(g._id || g.id)))
       .map((g) => String(g.gradeName || g.name || '').trim())
       .filter(Boolean);
-  };
+  }, [grades, selectedLevels]);
 
-  const getTargetEnrollmentsFromIndex = (studentId) => {
+  const getTargetEnrollmentsFromIndex = useCallback((studentId) => {
     const idx = indexByStudentId[String(studentId)];
     const enrolls = Array.isArray(idx?.enrollments) ? idx.enrollments : [];
     if (!enrolls.length) return [];
 
-    if (mode === 'levels' && selectedLevels.length === 0) return [];
+    if (mode !== 'levels') return enrolls;
+    if (selectedLevelNames.length === 0) return [];
 
-    if (mode === 'levels' && selectedLevels.length > 0) {
-      const allowedNames = new Set(getLevelNamesForSelected().map((x) => x.toLowerCase()));
-      return enrolls.filter((en) => {
-        const gradeName = String(en?.gradeSection?.grade || '').toLowerCase();
-        return gradeName && allowedNames.has(gradeName);
-      });
-    }
-
-    return enrolls;
-  };
+    const allowedNames = new Set(selectedLevelNames.map((x) => String(x).toLowerCase()));
+    return enrolls.filter((en) => {
+      const gradeName = String(en?.gradeSection?.grade || '').toLowerCase();
+      return gradeName && allowedNames.has(gradeName);
+    });
+  }, [indexByStudentId, mode, selectedLevelNames]);
 
   const enrollmentTargets = useMemo(() => {
     if (isLatestMode) return [];
     const targets = [];
     for (const studentId of selectedStudentIds) {
       const list = getTargetEnrollmentsFromIndex(studentId);
+      if (!list.length) continue;
       for (const en of list) {
         const enrollmentId = String(en?.enrollmentId || en?._id || '');
         if (!enrollmentId) continue;
@@ -211,7 +209,7 @@ export default function TranscriptPage() {
       }
     }
     return targets;
-  }, [isLatestMode, selectedStudentIds, mode, selectedLevels, grades, indexByStudentId]);
+  }, [isLatestMode, selectedStudentIds, getTargetEnrollmentsFromIndex]);
 
   const enrollmentTranscriptQueries = useQueries({
     queries: enrollmentTargets.map(({ studentId, enrollmentId }) => ({
@@ -240,11 +238,10 @@ export default function TranscriptPage() {
   // Toast (English) when Levels selection has no transcript for some grades.
   useEffect(() => {
     if (mode !== 'levels') return;
-    if (!selectedLevels.length) return;
+    if (!selectedLevelNames.length) return;
     if (!selectedStudentIds.length) return;
 
-    const selectedNames = getLevelNamesForSelected();
-    if (!selectedNames.length) return;
+    const selectedNames = selectedLevelNames;
 
     const msgs = [];
     for (const studentId of selectedStudentIds) {
@@ -263,7 +260,7 @@ export default function TranscriptPage() {
     noTranscriptToastKeyRef.current = key;
 
     toast.error(unique.length === 1 ? unique[0] : unique.join(' '));
-  }, [mode, selectedLevels, selectedStudentIds, grades, indexByStudentId]);
+  }, [mode, selectedLevelNames, selectedStudentIds, indexByStudentId, t]);
 
   // Load lookups once for labels + levels
   useEffect(() => {
@@ -283,7 +280,7 @@ export default function TranscriptPage() {
         toast.error(t('transcript.page.errors.loadLookupsFailed'));
       }
     })();
-  }, []);
+  }, [t]);
 
   // Load cohort timeline when cohort selected
   useEffect(() => {
@@ -314,7 +311,7 @@ export default function TranscriptPage() {
         }
       }
     })();
-  }, [cohortId]);
+  }, [cohortId, setAcademicYearId, setGradeId, setGradeSectionId, setShiftId]);
 
   // Suggest students based on search once all required filters completed
   const suggTimer = useRef(null);
@@ -509,7 +506,7 @@ export default function TranscriptPage() {
           `${t('common.filters.section')}: ${en.gradeSection?.section || '-'}`,
           `${t('common.filters.shift')}: ${en.gradeSection?.shift || '-'}`,
           `${t('common.filters.status')}: ${formatEnrollmentStatus(en.status) || ''}`,
-        ].join(' â€¢ ');
+        ].join(' - ');
 
         const pageBreakBefore = isFirstEnrollmentForStudent && sIdx > 0;
         // Keep the full title in payload for Excel/Copy, but allow PDF to suppress repeats.

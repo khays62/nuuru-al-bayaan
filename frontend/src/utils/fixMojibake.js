@@ -24,6 +24,7 @@ export function fixMojibake(input) {
     .replace(/â€�/g, '"')
     // misc symbols
     .replace(/â‹¯/g, '...')
+    .replace(/â‹®/g, '...')
     .replace(/âœ“/g, '✓')
     // catch any leftover partial sequences
     .replace(/â€/g, '-');

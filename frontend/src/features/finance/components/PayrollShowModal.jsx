@@ -79,7 +79,7 @@ export default function PayrollShowModal({
                         renderCell={(row, col) => {
                             switch (col.key) {
                                 case 'id':
-                                    return String(row?.staff?.employeeId || row?.staff?.username || row?._id?.slice(-6) || 'â€”');
+                                    return String(row?.staff?.employeeId || row?.staff?.username || row?._id?.slice(-6) || '-');
                                 case 'name':
                                     return <span className="font-bold">{row?.staff?.fullName || '-'}</span>;
                                 case 'phone':
@@ -93,7 +93,7 @@ export default function PayrollShowModal({
                                         </Button>
                                     );
                                 default:
-                                    return 'â€”';
+                                    return '-';
                             }
                         }}
                     />

@@ -76,7 +76,7 @@ export default function AcademicYearSelect({
 
     window.addEventListener('academicYear:created', onCreated);
     return () => { ignore = true; window.removeEventListener('academicYear:created', onCreated); };
-  }, [refreshKey]);
+  }, [refreshKey, onChange]);
 
   if (searchable) {
     const options = (items || []).map((y) => ({ value: y._id, label: y.yearName }));

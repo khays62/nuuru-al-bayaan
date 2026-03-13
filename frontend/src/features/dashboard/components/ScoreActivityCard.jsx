@@ -161,7 +161,7 @@ const TinyStat = ({ label, value, tone = 'gray' }) => {
 export default function ScoreActivityCard({ buckets, series }) {
     const { t } = useI18n();
     const safeBuckets = buckets && typeof buckets === 'object' ? buckets : null;
-    const safeSeries = Array.isArray(series) ? series : [];
+    const safeSeries = useMemo(() => (Array.isArray(series) ? series : []), [series]);
 
     const [range, setRange] = useState('week'); // day | week | month | year
 

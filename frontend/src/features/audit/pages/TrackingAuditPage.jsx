@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Activity, Eye, KeyRound, LogIn, LogOut, MoreVertical, RefreshCcw } from 'lucide-react';
 import {
@@ -19,7 +19,6 @@ import Modal from '../../../shared/components/ui/Modal.jsx';
 import Tabs from '../../attendance/components/Tabs.jsx';
 import { useI18n } from '../../../i18n/useI18n';
 import { apiUrl } from '../../../shared/api/http.js';
-import { formatAuditDescription, prettifyAuditAction } from '../../../shared/utils/auditFormat.js';
 
 import { getAuditAnalytics, getAuditAnalyticsDetails, getAuditEvents, getAuditSummary, getAuditTimeline, getAuditTop } from '../api/auditApi.js';
 import { auditKeys } from '../api/queryKeys.js';
@@ -546,7 +545,10 @@ export default function TrackingAuditPage() {
   const logs = Array.isArray(eventsQuery.data?.data) ? eventsQuery.data.data : [];
   const meta = eventsQuery.data?.meta || null;
   const analytics = analyticsQuery.data?.data || null;
-  const operations = Array.isArray(analytics?.operations) ? analytics.operations : [];
+  const operations = useMemo(() => {
+    const ops = analytics?.operations;
+    return Array.isArray(ops) ? ops : [];
+  }, [analytics?.operations]);
 
   const summaryCards = useMemo(() => ([
     {
@@ -632,14 +634,13 @@ export default function TrackingAuditPage() {
     eventsQuery.refetch();
   };
 
-  const applyRealtimeAuditUpdate = (payload) => {
+  const applyRealtimeAuditUpdate = useCallback((payload) => {
     const log = payload?.log;
     if (!log || !matchesRealtimeFilter(log, filterParams)) return;
 
     const row = toRealtimeRow(log);
     const operationKey = inferRealtimeOperation(log.action, log.description);
     const summaryAction = normalizeAuditValue(log.action);
-    const actorName = row.actor.fullName || row.actor.username || t('common.unknown', { defaultValue: 'Unknown' });
 
     queryClient.setQueryData(auditKeys.summary(filterParams), (prev) => {
       if (!prev?.data?.totals) return prev;
@@ -825,7 +826,7 @@ export default function TrackingAuditPage() {
         };
       }
     }
-  };
+  }, [chartMetric, detailLimit, detailPage, detailScopeKey, filterParams, limit, page, queryClient, selectedDetail]);
 
   const setGlobalMode = (mode) => {
     setGlobalFilter((prev) => ({
@@ -855,7 +856,7 @@ export default function TrackingAuditPage() {
   };
 
   const invalidationTimerRef = useRef(null);
-  const scheduleInvalidate = () => {
+  const scheduleInvalidate = useCallback(() => {
     if (invalidationTimerRef.current) return;
     invalidationTimerRef.current = setTimeout(() => {
       invalidationTimerRef.current = null;
@@ -877,7 +878,7 @@ export default function TrackingAuditPage() {
         });
       }
     }, 500);
-  };
+  }, [chartMetric, detailLimit, detailPage, filterParams, limit, page, queryClient, selectedDetail]);
 
   useEffect(() => {
     const url = apiUrl('/audit/stream');
@@ -954,7 +955,7 @@ export default function TrackingAuditPage() {
       }
       try { es?.close(); } catch { /* ignore */ }
     };
-  }, [queryClient, filterParams, page, limit, selectedDetail, chartMetric, detailPage, detailLimit, detailScopeKey, t]);
+  }, [queryClient, filterParams, page, limit, selectedDetail, chartMetric, detailPage, detailLimit, detailScopeKey, applyRealtimeAuditUpdate, scheduleInvalidate, t]);
 
   return (
     <div className="p-4 md:p-6 space-y-6">

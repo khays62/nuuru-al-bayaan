@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import toast from 'react-hot-toast';
@@ -74,14 +74,14 @@ export default function LoginPage() {
     return `1 ${t('auth.login.duration.minute', { defaultValue: 'minute' })}`;
   };
 
-  const stopAutofillClear = () => {
+  const stopAutofillClear = useCallback(() => {
     if (clearAutofillIntervalRef.current) {
       clearInterval(clearAutofillIntervalRef.current);
       clearAutofillIntervalRef.current = null;
     }
-  };
+  }, []);
 
-  const startAutofillClearUntilFocus = () => {
+  const startAutofillClearUntilFocus = useCallback(() => {
     stopAutofillClear();
     const start = Date.now();
     clearAutofillIntervalRef.current = setInterval(() => {
@@ -98,7 +98,7 @@ export default function LoginPage() {
         stopAutofillClear();
       }
     }, 100);
-  };
+  }, [stopAutofillClear, clearForm]);
 
   const handleInput = () => {
     // Intentionally no auto-login on autofill.
@@ -137,7 +137,7 @@ export default function LoginPage() {
     setTimeout(() => clearForm(), 0);
     startAutofillClearUntilFocus();
     return () => stopAutofillClear();
-  }, [clearForm]);
+  }, [clearForm, startAutofillClearUntilFocus, stopAutofillClear]);
 
   // After logout, reset inputs back to "clean until focus".
   useEffect(() => {
@@ -148,7 +148,7 @@ export default function LoginPage() {
       startAutofillClearUntilFocus();
     }
     wasLoggedInRef.current = loggedIn;
-  }, [auth?.user, clearForm]);
+  }, [auth?.user, clearForm, startAutofillClearUntilFocus]);
 
   useEffect(() => {
     loadingRef.current = loading;

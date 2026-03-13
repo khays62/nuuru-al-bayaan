@@ -416,7 +416,7 @@ function LineChart({ points = [], height = 140, onHover, onLeave }) {
   );
 }
 
-function Card({ to, title, description, Icon, tone }) {
+function Card({ to, title, description, Icon }) {
   const base =
     'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
     'bg-(--nb-color-bg-card) p-5 shadow-md transition';
@@ -674,7 +674,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
     },
   });
 
-  const historyRows = historyQuery.data || [];
+  const historyRows = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
   const chosenEnrollment = useMemo(() => {
     const rows = Array.isArray(historyRows) ? historyRows : [];
     const active = rows.find(r => String(r?.status || '').toLowerCase() === 'active' && !r?.leftAt);
@@ -725,7 +725,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
     },
   });
 
-  const timetableSlots = timetableQuery.data || [];
+  const timetableSlots = useMemo(() => timetableQuery.data ?? [], [timetableQuery.data]);
   const timetableCountsByDay = useMemo(() => {
     const counts = [0, 0, 0, 0, 0, 0, 0];
     for (const s of timetableSlots) {
@@ -768,7 +768,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   const levelsLoading = levelsQuery.isLoading;
 
   const overallSummary = overallSummaryQuery.data ?? null;
-  const levelStats = levelsQuery.data ?? [];
+  const levelStats = useMemo(() => levelsQuery.data ?? [], [levelsQuery.data]);
 
   const showWarmupLoading = !!studentId && historyQuery.isLoading && !historyQuery.data;
 

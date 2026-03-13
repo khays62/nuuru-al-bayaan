@@ -195,7 +195,7 @@ export default function ShiftsSetupPage() {
       sheetName: t('setup.shifts.sheetName', { defaultValue: 'Shifts' }),
       title: '',
       subtitle: t('common.export.subtitle', {
-        defaultValue: 'Total: {{count}} â€¢ Generated: {{date}}',
+        defaultValue: 'Total: {{count}} - Generated: {{date}}',
         count: sorted.length,
         date: new Date().toLocaleString(),
       }),

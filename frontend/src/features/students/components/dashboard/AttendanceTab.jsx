@@ -103,7 +103,7 @@ export default function AttendanceTab() {
   const loading = attendanceQuery.isLoading;
   const error = attendanceQuery.isError ? t('students.attendanceTab.loadFailed') : '';
   const hasFetched = attendanceQuery.isFetched;
-  const items = attendanceQuery.data || [];
+  const items = useMemo(() => (attendanceQuery.data ?? []), [attendanceQuery.data]);
 
   const groupedByDate = useMemo(() => {
     const map = new Map();

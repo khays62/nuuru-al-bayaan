@@ -103,11 +103,11 @@ export default function PromotionPage() {
   const [loadingPromote, setLoadingPromote] = useState(false);
   const [ayRefreshKey, setAyRefreshKey] = useState(0);
 
-  // Also clear preview if the selected set of students changes â€” this prevents running Promote
+  // Also clear preview if the selected set of students changes - this prevents running Promote
   // against a preview that was generated for a different selection.
   useEffect(() => {
     setPreview(null);
-  }, [Array.from(selectedIds).join(',')]);
+  }, [selectedIds]);
 
   const resetPage = () => {
     setPreview(null);

@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }) => {
 
   const idleTimerRef = React.useRef(null);
   const lastActivityWriteRef = React.useRef(0);
+  const logoutRef = React.useRef(null);
 
   const redirectToLogin = () => {
     try {
@@ -39,12 +40,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const clearIdleTimer = () => {
+  const clearIdleTimer = React.useCallback(() => {
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
       idleTimerRef.current = null;
     }
-  };
+  }, []);
 
   const broadcastLogout = () => {
     try {
@@ -54,7 +55,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const noteActivity = () => {
+  const noteActivity = React.useCallback(() => {
     const now = Date.now();
     // Throttle writes to localStorage (mousemove can be very chatty)
     if (now - lastActivityWriteRef.current < 1000) return;
@@ -64,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     } catch {
       // ignore
     }
-  };
+  }, []);
 
   const clientLogout = async ({ redirect = true } = {}) => {
     try {
@@ -230,9 +231,12 @@ export const AuthProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const scheduleIdleCheck = () => {
+  const scheduleIdleCheck = React.useCallback(() => {
     if (!user) return;
-    clearIdleTimer();
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
 
     const idleTimeoutMs = Math.max(
       5 * 60 * 1000,
@@ -251,9 +255,9 @@ export const AuthProvider = ({ children }) => {
     const remaining = Math.max(0, idleTimeoutMs - (Date.now() - last));
     idleTimerRef.current = setTimeout(() => {
       // When truly idle (no tab activity), auto-logout all tabs in this browser.
-      logout({ global: false, broadcast: true, redirect: true });
+      logoutRef.current?.({ global: false, broadcast: true, redirect: true });
     }, remaining);
-  };
+  }, [privacyPolicy?.sessionPolicy?.idleTimeoutMinutes, user]);
 
   // Idle auto-logout (shared across tabs via localStorage).
   useEffect(() => {
@@ -277,8 +281,7 @@ export const AuthProvider = ({ children }) => {
       for (const ev of events) window.removeEventListener(ev, onActivity);
       clearIdleTimer();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [privacyPolicy?.sessionPolicy?.idleTimeoutMinutes, user]);
+  }, [user, noteActivity, clearIdleTimer, scheduleIdleCheck]);
 
   const refreshUser = fetchCurrentUser;
 
@@ -304,7 +307,6 @@ export const AuthProvider = ({ children }) => {
       clearTimeout(timer);
       offEvent(EVENTS.USERS_CHANGED, handler);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -441,6 +443,8 @@ export const AuthProvider = ({ children }) => {
       if (redirect) redirectToLogin();
     }
   };
+
+  logoutRef.current = logout;
 
   return (
     <AuthContext.Provider value={{ auth: { user, privacyPolicy }, loading, login, logout, hasPermission, refreshUser }}>

@@ -16,7 +16,7 @@ import TeacherResultsChartsCard from '../components/dashboard/TeacherResultsChar
 import TeacherDashboardPrefetcher from '../components/dashboard/TeacherDashboardPrefetcher';
 import { useI18n } from '../../../i18n/useI18n';
 
-const QuickCard = ({ title, description, to, Icon, tone = 'indigo' }) => {
+const QuickCard = ({ title, description, to, Icon }) => {
 	const base =
 		'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
 		'bg-(--nb-color-bg-card) p-5 shadow-md transition';

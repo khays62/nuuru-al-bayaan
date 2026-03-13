@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Printer, X, Download, FileText, CheckCircle, Search, Calendar, ChevronRight, Users, TrendingUp, RotateCcw } from 'lucide-react';
 import financeService from '../api/finance';
 import toast from 'react-hot-toast';
@@ -61,10 +61,10 @@ const parseAcademicYearYears = (yearRange) => {
     if (!s) return [new Date().getFullYear().toString()];
 
     // Common patterns: "2025-2026", "2025/2026", "2025-26"
-    const full = s.match(/(\d{4})\s*[-\/]\s*(\d{4})/);
+    const full = s.match(/(\d{4})\s*[-/]\s*(\d{4})/);
     if (full) return [full[1], full[2]];
 
-    const short = s.match(/(\d{4})\s*[-\/]\s*(\d{2})/);
+    const short = s.match(/(\d{4})\s*[-/]\s*(\d{2})/);
     if (short) {
         const y1 = Number(short[1]);
         const y2 = Math.floor(y1 / 100) * 100 + Number(short[2]);
@@ -141,7 +141,7 @@ const getShiftLabelForInvoice = (inv, fallbackShift) => {
         (typeof rawShift === 'string'
             ? (isMongoObjectIdString(rawShift) ? '' : rawShift)
             : (rawShift?.name || rawShift?.shiftName || rawShift?.label || rawShift?.shiftName)) ||
-        'â€”'
+        '-'
     );
 };
 
@@ -314,8 +314,8 @@ export function openMonthlyInvoicesPreview({ month, invoices, students, i18n }) 
     const cardsHtml = (eligible || []).map((inv) => {
         const dateNow = new Date().toLocaleString(lang || undefined);
         const recNo = `RV-${String(inv?._id || '').slice(-6).toUpperCase()}`;
-        const studentName = inv.student?.fullName || 'â€”';
-        const studentId = inv.student?.studentId || 'â€”';
+        const studentName = inv.student?.fullName || '-';
+        const studentId = inv.student?.studentId || '-';
         const gradeName = inv.class?.grade?.gradeName || inv.class?.grade?.name || inv.class?.gradeName || '';
         const section = inv.class?.section || inv.class?.sectionName || '';
         const classLabel = (
@@ -324,10 +324,10 @@ export function openMonthlyInvoicesPreview({ month, invoices, students, i18n }) 
             `${gradeName}${section ? ` - ${section}` : ''}`.trim() ||
             inv.student?.currentClass ||
             inv.student?.classLabel ||
-            'â€”'
+            '-'
         );
         const shiftLabel = getShiftLabelForInvoice(inv, inv?.shiftLabel);
-        const billingMonth = inv.billingMonth || month || 'â€”';
+        const billingMonth = inv.billingMonth || month || '-';
         const billingMonthLabel = `${billingMonth}${isInvoiceHormaris(inv) ? labels.hormarisSuffix : ''}`;
         const description = inv.title || inv.items?.[0]?.category?.name || labels.monthlyFeeFallback;
 
@@ -344,7 +344,7 @@ export function openMonthlyInvoicesPreview({ month, invoices, students, i18n }) 
             headerSrc: logoUrl,
             labels,
             dateNow,
-            academicYear: inv.academicYear?.yearName || 'â€”',
+            academicYear: inv.academicYear?.yearName || '-',
             recNo,
             classLabel,
             studentId,
@@ -639,7 +639,7 @@ export function openDailyAuditPreview({ transactions, i18n }) {
             headerSrc: logoUrl,
             labels,
             dateNow,
-            academicYear: t.invoice?.academicYear?.yearName || 'â€”',
+            academicYear: t.invoice?.academicYear?.yearName || '-',
             recNo,
             classLabel,
             studentId,
@@ -812,7 +812,7 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
                 </div>
 
                 <div class="meta-bar">
-                    <div><span class="meta-lbl">${labels.academicYear}:</span> ${yearLabel || 'â€”'}</div>
+                    <div><span class="meta-lbl">${labels.academicYear}:</span> ${yearLabel || '-'}</div>
                     <div><span class="meta-lbl">${labels.date}:</span> ${nowLabel}</div>
                 </div>
 
@@ -825,12 +825,12 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
 
                 <div class="main-grid">
                     <div class="info-box">
-                        <div class="row"><div class="lbl">${labels.studentName}</div><div class="val">${c.fullName || 'â€”'}</div></div>
-                        <div class="row"><div class="lbl">${labels.classLabel}</div><div class="val">${c.classLabel || 'â€”'}</div></div>
+                        <div class="row"><div class="lbl">${labels.studentName}</div><div class="val">${c.fullName || '-'}</div></div>
+                        <div class="row"><div class="lbl">${labels.classLabel}</div><div class="val">${c.classLabel || '-'}</div></div>
                         <div class="row"><div class="lbl">${labels.shift}</div><div class="val">${(typeof c.shift === 'string' ? c.shift : shiftToLabel(c.shift)) || 'MAIN'}</div></div>
-                        <div class="row"><div class="lbl">${labels.id}</div><div class="val" style="font-family:monospace">${c.studentId || 'â€”'}</div></div>
-                        <div class="row"><div class="lbl">${labels.room}</div><div class="val">${c.room || 'â€”'}</div></div>
-                        <div class="row"><div class="lbl">${labels.hall}</div><div class="val">${c.hall || 'â€”'}</div></div>
+                        <div class="row"><div class="lbl">${labels.id}</div><div class="val" style="font-family:monospace">${c.studentId || '-'}</div></div>
+                        <div class="row"><div class="lbl">${labels.room}</div><div class="val">${c.room || '-'}</div></div>
+                        <div class="row"><div class="lbl">${labels.hall}</div><div class="val">${c.hall || '-'}</div></div>
                     </div>
 
                     <div class="photo-box">
@@ -954,7 +954,7 @@ export function openPasscardsPreview({ cards, examType, academicYear, validFrom,
 // 1. Monthly Invoice Modal
 export const PrintMonthlyInvoiceModal = ({ onClose }) => {
     const { t, lang } = useI18n();
-    const tr = (key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue);
+    const tr = useCallback((key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue), [t]);
 
     const getApiErrorToast = (err) => {
         const code = err?.response?.data?.code;
@@ -1008,7 +1008,7 @@ export const PrintMonthlyInvoiceModal = ({ onClose }) => {
             }
         };
         load();
-    }, []);
+    }, [tr]);
 
     const selectedYearObj = years.find(y => y._id === selectedYear);
     const yearName = selectedYearObj?.yearName || '';
@@ -1258,7 +1258,7 @@ export const PrintDailyInvoiceModal = ({ onClose }) => {
 // 3. Pass Card Modal
 export const PrintPassCardModal = ({ onClose }) => {
     const { t, lang } = useI18n();
-    const tr = (key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue);
+    const tr = useCallback((key, options) => (typeof t === 'function' ? t(key, options) : options?.defaultValue), [t]);
 
     const getApiErrorToast = (err) => {
         const code = err?.response?.data?.code;
@@ -1310,7 +1310,7 @@ export const PrintPassCardModal = ({ onClose }) => {
             }
         };
         load();
-    }, []);
+    }, [tr]);
 
     const handlePrint = async () => {
         const yearName = years.find(y => y._id === selectedYear)?.yearName || '';

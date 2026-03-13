@@ -289,7 +289,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const leftGroup = (
         <div
             dir={isRTL ? 'rtl' : 'ltr'}
-            className="flex items-center gap-4"
+            className="flex items-center gap-2 sm:gap-4 shrink-0"
             style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}
         >
                 {/* Mobile Menu Toggle (Hamburger Icon) */}
@@ -323,8 +323,11 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     );
 
     const searchGroup = (
-        <div dir={isRTL ? 'rtl' : 'ltr'} className="flex-1 flex justify-center px-4 lg:px-12">
-            <div className="relative w-full max-w-lg">
+        <div
+            dir={isRTL ? 'rtl' : 'ltr'}
+            className="w-full order-last sm:order-0 sm:flex-1 flex justify-center px-0 sm:px-4 lg:px-12 min-w-0"
+        >
+            <div className="relative w-full max-w-lg min-w-0">
                 <span className={
                     "absolute inset-y-0 flex items-center " +
                     (isRTL ? 'right-0 pr-3' : 'left-0 pl-3')
@@ -451,7 +454,16 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             {openLocks && (
                 <Card
                     dir={isRTL ? 'rtl' : 'ltr'}
-                    className={(isRTL ? 'left-0' : 'right-0') + " absolute mt-2 w-96 rounded-xl shadow-xl overflow-hidden z-50"}
+                    className={
+                        // Mobile: fixed + constrained so it never renders off-screen.
+                        // Desktop: anchor to bell icon.
+                        (
+                            'fixed left-2 right-2 top-16 max-h-[calc(100vh-5rem)] ' +
+                            'sm:top-auto sm:max-h-none sm:mt-2 sm:w-96 sm:absolute ' +
+                            (isRTL ? 'sm:left-0 sm:right-auto ' : 'sm:right-0 sm:left-auto ')
+                        ) +
+                        'rounded-xl shadow-xl overflow-hidden z-70'
+                    }
                 >
                                 <div className="px-3 py-2 border-b border-(--nb-color-border) flex items-center justify-between bg-(--nb-color-bg)">
                                     <div className="flex items-center gap-2">
@@ -752,7 +764,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     );
 
     const rightGroup = (
-        <div dir="ltr" className="flex items-center gap-4">
+        <div dir="ltr" className="flex items-center gap-2 sm:gap-4 flex-wrap shrink-0">
             {isRTL ? (
                 <>
                     {logoutEl}
@@ -780,7 +792,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             // Important: keep layout direction stable so RTL swaps (DOM order) work predictably.
             // Text direction is applied on inner groups.
             dir="ltr"
-            className="relative bg-(--nb-color-bg-card) shadow-lg p-4 flex items-center justify-between gap-4 z-40 no-print"
+            className="relative bg-(--nb-color-bg-card) shadow-lg p-2 sm:p-4 flex flex-wrap items-center justify-between gap-2 sm:gap-4 z-40 no-print"
         >
             {isRTL ? rightGroup : leftGroup}
             {searchGroup}
