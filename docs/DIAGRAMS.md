@@ -30,6 +30,9 @@ graph LR
   D8[Transfers]
   D9[Announcements]
   D10[Security + Audit]
+  D11[Finance + Payroll]
+  D12[Library]
+  D13[AI Assistant]
 
   API --> D1
   API --> D2
@@ -41,6 +44,9 @@ graph LR
   API --> D8
   API --> D9
   API --> D10
+  API --> D11
+  API --> D12
+  API --> D13
 ```
 
 Qeexid: User = Admin / Staff / Teacher / Student.
@@ -172,14 +178,27 @@ erDiagram
 
 ```mermaid
 erDiagram
+  %% -----------------------------
+  %% Auth / Accounts / Security
+  %% -----------------------------
   USER o|--|| STUDENT : studentRef
   USER o|--|| TEACHER : teacherRef
-  USER ||--o{ AUDIT_LOG : emits
-  USER o|--o{ AUTH_LOCK_EVENT : principalUser
-  ADMIN o|--o{ AUTH_LOCK_EVENT : principalAdmin
-  USER o|--o{ AUTH_LOCK_EVENT : resolvedUser
-  ADMIN o|--o{ AUTH_LOCK_EVENT : resolvedAdmin
 
+  USER ||--o{ AUDIT_LOG : emits
+
+  %% Auth lock alerts can reference either User or Admin (or Unknown)
+  USER o|--o{ AUTH_LOCK_EVENT : principal
+  ADMIN o|--o{ AUTH_LOCK_EVENT : principal
+  USER o|--o{ AUTH_LOCK_EVENT : resolvedBy
+  ADMIN o|--o{ AUTH_LOCK_EVENT : resolvedBy
+
+  %% Activity notifications (internal)
+  USER o|--o{ ACTIVITY_NOTIFICATION : actorUserId
+  USER o|--o{ ACTIVITY_NOTIFICATION : resolvedBy
+
+  %% -----------------------------
+  %% Core Academic
+  %% -----------------------------
   STUDENT ||--o{ ENROLLMENT : has
   ACADEMIC_YEAR ||--o{ ENROLLMENT : inYear
   GRADE_SECTION ||--o{ ENROLLMENT : roster
@@ -187,15 +206,18 @@ erDiagram
   GRADE ||--o{ GRADE_SECTION : has
   SHIFT ||--o{ GRADE_SECTION : has
 
+  %% Many-to-many (via arrays)
   GRADE_SECTION }o--o{ SUBJECT : offers
   SUBJECT }o--o{ GRADE : mapped
 
   TEACHER ||--o{ TEACHER_ASSIGNMENT : teaches
   GRADE_SECTION ||--o{ TEACHER_ASSIGNMENT : inSection
   SUBJECT ||--o{ TEACHER_ASSIGNMENT : forSubject
+
   GRADE_SECTION ||--o{ TIMETABLE : timetable
   SUBJECT o|--o{ TIMETABLE : subject
   TEACHER o|--o{ TIMETABLE : teacher
+
   TEACHER ||--o{ LESSON_PLAN : writes
   ACADEMIC_YEAR ||--o{ LESSON_PLAN : inYear
   GRADE_SECTION ||--o{ LESSON_PLAN : forSection
@@ -211,7 +233,8 @@ erDiagram
   GRADE_SECTION ||--o{ ATTENDANCE_RECORD : has
   STUDENT ||--o{ ATTENDANCE_RECORD : student
   TEACHER o|--o{ ATTENDANCE_RECORD : markedBy
-  USER o|--o{ ATTENDANCE_RECORD : actor
+  USER o|--o{ ATTENDANCE_RECORD : markedByUser
+
   GRADE_SECTION ||--o{ ATTENDANCE_AUDIT_LOG : has
   STUDENT ||--o{ ATTENDANCE_AUDIT_LOG : student
   TEACHER o|--o{ ATTENDANCE_AUDIT_LOG : markedBy
@@ -221,8 +244,61 @@ erDiagram
   GRADE_SECTION ||--o{ TRANSFER_LOG : fromSection
   GRADE_SECTION ||--o{ TRANSFER_LOG : toSection
 
-  USER o|--o{ ANNOUNCEMENT : createdBy
+  %% Announcements
+  USER o|--o{ ANNOUNCEMENT : createdById
   GRADE_SECTION o|--o{ ANNOUNCEMENT : audience
+
+  %% -----------------------------
+  %% Library
+  %% -----------------------------
+  USER o|--o{ LIBRARY_RESOURCE : createdBy
+  GRADE o|--o{ LIBRARY_RESOURCE : grade_scope
+  SUBJECT o|--o{ LIBRARY_RESOURCE : subject_scope
+
+  %% -----------------------------
+  %% Finance
+  %% -----------------------------
+  FINANCE_CATEGORY ||--o{ FEE_INVOICE : items_category_embedded
+  FINANCE_CATEGORY o|--o{ EXPENSE : categoryRef
+  FINANCE_CATEGORY o|--o{ DONATION : project
+  FINANCE_CATEGORY o|--o{ FINANCE_APPOINTMENT : amountType
+
+  ACCOUNT o|--o{ FEE_TRANSACTION : received_to
+  ACCOUNT o|--o{ EXPENSE : spent_from
+  ACCOUNT o|--o{ PAYROLL : paid_from
+  ACCOUNT o|--o{ DONATION : received_to
+
+  STUDENT ||--o{ FEE : fee_ledger
+  STUDENT ||--o{ STUDENT_FEE : monthly_charges
+  STUDENT ||--o{ FEE_INVOICE : invoices
+  STUDENT ||--o{ FEE_TRANSACTION : transactions
+  STUDENT ||--o{ FINANCE_APPOINTMENT : appointments
+
+  GRADE_SECTION o|--o{ FEE : for_section
+  ACADEMIC_YEAR o|--o{ FEE : in_year
+
+  FEE ||--o{ FEE_PAYMENT : payments_legacy
+  STUDENT_FEE ||--o{ PAYMENT_LOG : payments_legacy
+
+  FEE_INVOICE ||--o{ FEE_TRANSACTION : payments
+
+  USER o|--o{ FEE_INVOICE : createdBy
+  USER o|--o{ FEE_PAYMENT : receivedBy
+  USER o|--o{ FEE_TRANSACTION : recordedBy
+  USER o|--o{ EXPENSE : createdBy
+  USER o|--o{ EXPENSE : approvedBy
+  USER o|--o{ PAYROLL : processedBy
+  USER o|--o{ PAYROLL : staff
+  USER o|--o{ DONATION : recordedBy
+  USER o|--o{ FINANCE_APPOINTMENT : createdBy
+
+  DONOR ||--o{ DONATION : gives
+
+  %% -----------------------------
+  %% AI + Settings
+  %% -----------------------------
+  %% AiChatThread is polymorphic: (principalModel, principalId) can point to User/Student/Teacher/Admin.
+  %% PrivacySettings is a singleton config document.
 
   USER {
     string _id PK
@@ -368,6 +444,158 @@ erDiagram
     string principalModel
     string principalId
     string resolvedBy
+  }
+
+  ACTIVITY_NOTIFICATION {
+    string _id PK
+    string category
+    string action
+    bool isRead
+    date createdAt
+  }
+
+  PRIVACY_SETTINGS {
+    string _id PK
+    string singletonKey
+  }
+
+  AI_CHAT_THREAD {
+    string _id PK
+    string principalModel
+    string principalId
+    string locale
+  }
+
+  LIBRARY_RESOURCE {
+    string _id PK
+    string title
+    string audience
+    string grade FK
+    string subject FK
+    string kind
+    string createdById FK
+  }
+
+  FINANCE_CATEGORY {
+    string _id PK
+    string name
+    string type
+    string status
+  }
+
+  FEE_TYPE {
+    string _id PK
+    string code
+    string status
+  }
+
+  ACCOUNT {
+    string _id PK
+    string name
+    string type
+    string status
+  }
+
+  FEE_STRUCTURE {
+    string _id PK
+    string gradeSection FK
+    int monthlyFee
+  }
+
+  FEE {
+    string _id PK
+    string student FK
+    string gradeSection FK
+    string academicYear FK
+    int amount
+    string status
+  }
+
+  STUDENT_FEE {
+    string _id PK
+    string student FK
+    string gradeSection FK
+    string month
+    int amount
+    string status
+  }
+
+  PAYMENT_LOG {
+    string _id PK
+    string studentFee FK
+    int amount
+    string method
+    string receivedBy FK
+  }
+
+  FEE_INVOICE {
+    string _id PK
+    string student FK
+    string academicYear FK
+    string billingMonth
+    int amount
+    int paidAmount
+    int balance
+    string status
+  }
+
+  FEE_TRANSACTION {
+    string _id PK
+    string invoice FK
+    string student FK
+    string account FK
+    int amount
+    string status
+  }
+
+  FEE_PAYMENT {
+    string _id PK
+    string fee FK
+    int amount
+    string paymentMethod
+    string receivedBy FK
+  }
+
+  EXPENSE {
+    string _id PK
+    string categoryRef FK
+    string account FK
+    string createdBy FK
+    int amount
+    string source
+  }
+
+  PAYROLL {
+    string _id PK
+    string staff FK
+    string account FK
+    string month
+    int netSalary
+    string status
+  }
+
+  DONOR {
+    string _id PK
+    string name
+    string status
+  }
+
+  DONATION {
+    string _id PK
+    string donor FK
+    string project FK
+    string account FK
+    int amount
+  }
+
+  FINANCE_APPOINTMENT {
+    string _id PK
+    string appointmentId
+    string student FK
+    string class FK
+    string amountType FK
+    string receipt FK
+    string status
   }
 
   COUNTER {
@@ -748,4 +976,192 @@ sequenceDiagram
     API-->>FE: OK
     API-->>FE: SSE event: updated/deleted
   end
+```
+
+## 13) ERD – Library (Resources + Audience)
+
+```mermaid
+erDiagram
+  USER o|--o{ LIBRARY_RESOURCE : createdBy
+  GRADE o|--o{ LIBRARY_RESOURCE : grade_scope
+  SUBJECT o|--o{ LIBRARY_RESOURCE : subject_scope
+
+  LIBRARY_RESOURCE {
+    string _id PK
+    string title
+    string description
+    string category
+    string audience "public|level"
+    string grade FK
+    string subject FK
+    string kind "pdf|link"
+    string linkUrl
+    string file.url
+    string file.path
+    string createdById FK
+    date createdAt
+  }
+```
+
+## 14) ERD – Finance (Invoices/Transactions/Expenses/Payroll)
+
+```mermaid
+erDiagram
+  STUDENT ||--o{ FEE_INVOICE : billed
+  FINANCE_CATEGORY o|--o{ FEE_INVOICE_ITEM : categorized
+  FEE_INVOICE ||--o{ FEE_TRANSACTION : paid_by
+  ACCOUNT o|--o{ FEE_TRANSACTION : received_to
+
+  ACCOUNT o|--o{ EXPENSE : spent_from
+  FINANCE_CATEGORY o|--o{ EXPENSE : categoryRef
+
+  USER o|--o{ PAYROLL : staff
+  ACCOUNT o|--o{ PAYROLL : paid_from
+
+  DONOR ||--o{ DONATION : gives
+  FINANCE_CATEGORY o|--o{ DONATION : project
+  ACCOUNT o|--o{ DONATION : received_to
+
+  STUDENT ||--o{ FINANCE_APPOINTMENT : schedules
+  FINANCE_CATEGORY o|--o{ FINANCE_APPOINTMENT : amountType
+  FEE_TRANSACTION o|--o{ FINANCE_APPOINTMENT : receipt
+
+  FEE_INVOICE {
+    string _id PK
+    string student FK
+    string academicYear FK
+    string billingMonth
+    string title
+    int amount
+    int paidAmount
+    int balance
+    string status
+    date dueDate
+  }
+
+  FEE_INVOICE_ITEM {
+    string name
+    int amount
+    string category FK
+  }
+
+  FEE_TRANSACTION {
+    string _id PK
+    string invoice FK
+    string student FK
+    string account FK
+    string transactionType
+    string targetMonth
+    int amount
+    string method
+    string status
+    string paymentGroup
+    date date
+  }
+
+  ACCOUNT {
+    string _id PK
+    string name
+    string type
+    string institution
+    string accountNumber
+    int balance
+    string status
+  }
+
+  FINANCE_CATEGORY {
+    string _id PK
+    string name
+    string type "fee|expense|donation|paymentMethod"
+    string status
+  }
+
+  EXPENSE {
+    string _id PK
+    string title
+    string category
+    string categoryRef FK
+    int amount
+    string source
+    string payrollRef FK
+    date date
+  }
+
+  PAYROLL {
+    string _id PK
+    string staff FK
+    string month
+    int basicSalary
+    int netSalary
+    string status
+    string account FK
+    date paymentDate
+  }
+
+  DONOR {
+    string _id PK
+    string name
+    string type
+    string status
+  }
+
+  DONATION {
+    string _id PK
+    string donor FK
+    int amount
+    string project FK
+    string account FK
+    string method
+    date date
+  }
+
+  FINANCE_APPOINTMENT {
+    string _id PK
+    string appointmentId
+    string student FK
+    string class FK
+    string amountType FK
+    int expectedAmount
+    date appointmentDateTime
+    string status
+    string receipt FK
+  }
+```
+
+## 15) ERD – AI + Security Settings
+
+```mermaid
+erDiagram
+  PRIVACY_SETTINGS {
+    string _id PK
+    string singletonKey "unique"
+  }
+
+  AI_CHAT_THREAD {
+    string _id PK
+    string principalModel
+    string principalId
+    string locale
+    string activeThreadId
+  }
+
+  ACTIVITY_NOTIFICATION {
+    string _id PK
+    string category
+    string action
+    string title
+    bool isRead
+    date resolvedAt
+    date createdAt
+  }
+
+  AUTH_LOCK_EVENT {
+    string _id PK
+    string principalModel
+    string principalId
+    string username
+    date lockUntil
+    bool isRead
+    date resolvedAt
+  }
 ```

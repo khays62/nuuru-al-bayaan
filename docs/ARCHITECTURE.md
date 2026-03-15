@@ -34,8 +34,38 @@ Dukumentigan wuxuu daboolayaa Frontend + Backend, qaabka xogta, socodka xogta, i
   - `/api/subjects` — CRUD + filter by grade
   - `/api/grades` — grade sections CRUD/list + fetch by id (+ resync-cohort)
   - `/api/exams` — exam types, grid, score (upsert), summary, transcripts, template versions
+- Additional mounted routes (current `backend/server.js`):
+  - `/api/auth` — login/logout/verify (cookie JWT)
+  - `/api/security` — security endpoints (privacy settings, auth lock events)
+  - `/api/audit` — audit log listing
+  - `/api/users` — admin-only user management
+  - `/api/teachers` — teachers CRUD + password reset/deactivate/reactivate
+  - `/api/attendance` — attendance mark/list + audit
+  - `/api/timetable` — timetable CRUD + period/teacher utilities
+  - `/api/announcements` — announcements CRUD + unread-count + SSE stream
+  - `/api/realtime` — SSE stream for client refresh events
+  - `/api/library` — digital library resources (pdf/link) + permissions
+  - `/api/transcripts` — transcript generation endpoints
+  - `/api/cohorts` — cohort CRUD + archive
+  - `/api/promotions` — preview/execute promotions
+  - `/api/setup` — setup helpers/seed-like endpoints (guarded)
+  - `/api/dashboard` — dashboard statistics/aggregations
+  - `/api/finance` — finance module (invoices, receipts, expenses, payroll, appointments)
+  - `/api/ai` — AI assistant endpoints (thread storage per principal)
 - Server entry: `backend/server.js` → dotenv → connect Mongo → ensureIndexes() → middleware (helmet/cors/limits/cookies/csrf) → mount routes → listen.
 - Env: `backend/.env` (recommended). Required keys are documented in `docs/SETUP.md` and `backend/.env.example`.
+
+### 3.1 Middleware & request lifecycle (current)
+- i18n: `i18nMiddleware()` attaches `req.t()` based on `Accept-Language` (ar/so/en).
+- Response shape: `responseNormalize()` standardizes common JSON responses to `{ success: true|false, ... }` (without breaking array/document responses).
+- Audit trail: `auditTrail()` logs successful mutating `/api/*` requests with permission context.
+- CSRF: `csrfProtection` applied under `/api/*` (double-submit) for cookie-based auth.
+- Uploads:
+  - `/api/uploads/library/*` is protected and audited on GET/HEAD.
+  - `/api/uploads/*` is protected static serving for uploaded files.
+
+### 3.2 Notes (legacy)
+- `backend/routes/finance.routes.js` exists but is not mounted; current server mounts `backend/routes/financeRoutes.js`.
 
 ## 4) Data Models (Kooban)
 - Student: { studentId, fullName, gender, dob, guardianName, contactNumber, address?, admissionDate, status }, text index: (fullName, studentId)
