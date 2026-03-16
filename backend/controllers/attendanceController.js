@@ -1238,7 +1238,22 @@ export const getStudentSelfAttendance = async (req, res) => {
     if (from && !fromDate) return res.status(400).json({ message: 'Invalid from (use YYYY-MM-DD)' });
     if (to && !toDate) return res.status(400).json({ message: 'Invalid to (use YYYY-MM-DD)' });
 
-    const { start, end } = clampDateRange(fromDate, toDate);
+    const hasExplicitRange = Boolean(from || to);
+    let start;
+    let end;
+    if (!hasExplicitRange) {
+      const [first, last] = await Promise.all([
+        AttendanceRecord.findOne({ gradeSection: gradeSectionId }).sort({ date: 1 }).select('date').lean(),
+        AttendanceRecord.findOne({ gradeSection: gradeSectionId }).sort({ date: -1 }).select('date').lean(),
+      ]);
+      if (!first?.date || !last?.date) {
+        return res.json({ meta: { from: null, to: null }, data: [] });
+      }
+      start = new Date(first.date);
+      end = new Date(last.date);
+    } else {
+      ({ start, end } = clampDateRange(fromDate, toDate));
+    }
 
     // Which (date, periodCode) had any attendance taken for the class?
     const anyAgg = await AttendanceRecord.aggregate([
@@ -1420,7 +1435,22 @@ export const getStudentAttendanceSelfForStudentId = async (req, res) => {
     if (from && !fromDate) return res.status(400).json({ message: 'Invalid from (use YYYY-MM-DD)' });
     if (to && !toDate) return res.status(400).json({ message: 'Invalid to (use YYYY-MM-DD)' });
 
-    const { start, end } = clampDateRange(fromDate, toDate);
+    const hasExplicitRange = Boolean(from || to);
+    let start;
+    let end;
+    if (!hasExplicitRange) {
+      const [first, last] = await Promise.all([
+        AttendanceRecord.findOne({ gradeSection: gradeSectionId }).sort({ date: 1 }).select('date').lean(),
+        AttendanceRecord.findOne({ gradeSection: gradeSectionId }).sort({ date: -1 }).select('date').lean(),
+      ]);
+      if (!first?.date || !last?.date) {
+        return res.json({ meta: { from: null, to: null }, data: [] });
+      }
+      start = new Date(first.date);
+      end = new Date(last.date);
+    } else {
+      ({ start, end } = clampDateRange(fromDate, toDate));
+    }
 
     // Which (date, periodCode) had any attendance taken for the class?
     const anyAgg = await AttendanceRecord.aggregate([

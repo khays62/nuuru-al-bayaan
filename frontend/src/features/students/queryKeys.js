@@ -89,6 +89,17 @@ export const studentKeys = {
     'transcript',
     qkStr(studentId || ''),
   ],
+
+  transcriptIndexBase: (studentId) => [
+    'students',
+    'transcriptIndex',
+    qkStr(studentId || ''),
+  ],
+  transcriptIndex: (studentId) => [
+    'students',
+    'transcriptIndex',
+    qkStr(studentId || ''),
+  ],
   transcriptByEnrollment: (studentId, { academicYearId, gradeSectionId } = {}) => [
     'students',
     'transcript',
@@ -151,6 +162,15 @@ export const studentKeys = {
     'students',
     'timetableSlotsByGS',
     qkStr(gradeSectionId || ''),
+  ],
+
+  timetableSlotsSelfBase: () => [
+    'students',
+    'timetableSlotsSelf',
+  ],
+  timetableSlotsSelf: () => [
+    'students',
+    'timetableSlotsSelf',
   ],
 
   // Student Finance (read-only viewer)

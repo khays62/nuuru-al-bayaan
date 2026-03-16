@@ -10,16 +10,6 @@ import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
 import { useI18n } from '../../../../i18n/useI18n';
 
-function isoDateOnly(d) {
-  return new Date(d).toISOString().slice(0, 10);
-}
-
-function subDays(date, days) {
-  const dt = new Date(date);
-  dt.setUTCDate(dt.getUTCDate() - Number(days || 0));
-  return dt;
-}
-
 function statusLabel(s, t) {
   const v = String(s || '').toLowerCase();
   if (v === 'not_marked') return t('students.attendance.status.notMarked');
@@ -81,21 +71,15 @@ export default function AttendanceTab() {
 
   const studentId = paramStudentId || (auth?.user?.role === 'student' ? (studentIdFromAuth || null) : null);
 
-  const { from, to } = useMemo(() => {
-    const end = new Date();
-    const start = subDays(end, 29);
-    return { from: isoDateOnly(start), to: isoDateOnly(end) };
-  }, []);
-
   const attendanceQuery = useQuery({
     queryKey: isStudentSelf
-      ? studentKeys.attendanceSelf({ from, to })
-      : studentKeys.attendanceByStudent(studentId, { from, to }),
+      ? studentKeys.attendanceSelf()
+      : studentKeys.attendanceByStudent(studentId),
     enabled: isStudentSelf ? true : !!studentId,
     queryFn: async () => {
       const res = isStudentSelf
-        ? await getStudentSelfAttendanceWithOptions({ from, to })
-        : await getStudentAttendanceSelfWithOptions(studentId, { from, to });
+        ? await getStudentSelfAttendanceWithOptions()
+        : await getStudentAttendanceSelfWithOptions(studentId);
       return Array.isArray(res?.data) ? res.data : [];
     },
   });

@@ -53,6 +53,7 @@ export function useStudentDashboardRealtimeInvalidation({
   const invalidateStudentTranscript = React.useCallback(() => {
     if (!sid) return;
     invalidate({ queryKey: studentKeys.transcriptBase(sid), refetchType: 'active' });
+    invalidate({ queryKey: studentKeys.transcriptIndexBase(sid), refetchType: 'active' });
     invalidate({ queryKey: studentKeys.overallSummary(sid), refetchType: 'active' });
     invalidate({ queryKey: studentKeys.levelStatsBase(sid), refetchType: 'active' });
   }, [invalidate, sid]);
@@ -69,6 +70,7 @@ export function useStudentDashboardRealtimeInvalidation({
 
   const invalidateStudentTimetable = React.useCallback(() => {
     invalidate({ queryKey: studentKeys.timetableSlotsBase(), refetchType: 'active' });
+    invalidate({ queryKey: studentKeys.timetableSlotsSelfBase(), refetchType: 'active' });
   }, [invalidate]);
 
   useRealtimeInvalidation(

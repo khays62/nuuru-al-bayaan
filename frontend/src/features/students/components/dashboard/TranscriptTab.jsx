@@ -4,7 +4,8 @@ import LoadingState from '../../../../shared/components/ui/LoadingState.jsx';
 import PrintHeader from '../../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../../shared/components/print/PrintFooter.jsx';
 import StandardTable from '../../../../shared/components/table/StandardTable.jsx';
-import { getStudentHistory, getStudentTranscript, getStudentOverallSummary } from '../../../../api';
+import { getStudentTranscript, getStudentOverallSummary } from '../../../../api';
+import { http } from '../../../../shared/api/http.js';
 import { useAuth } from '../../../../auth/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
@@ -24,11 +25,37 @@ export default function TranscriptTab() {
   const [activeEnrId, setActiveEnrId] = useState(null);
 
   const enrollmentsQuery = useQuery({
-    queryKey: studentKeys.history(studentId, { page: 1, limit: 1000 }),
+    queryKey: studentKeys.transcriptIndex(studentId),
     enabled: !!studentId,
-    queryFn: async () => {
-      const res = await getStudentHistory(studentId, { page: 1, limit: 1000 });
-      const rows = Array.isArray(res?.data) ? res.data : [];
+    refetchOnMount: 'always',
+    staleTime: 0,
+    queryFn: async ({ signal }) => {
+      const payload = await http.fetchJson(`students/${String(studentId)}/full-transcript?mode=index`, { signal });
+      const raw = Array.isArray(payload?.enrollments) ? payload.enrollments : [];
+
+      const rows = raw.map((e) => {
+        const gs = e?.gradeSection || null;
+        const gradeName = typeof gs?.grade === 'string' ? gs.grade : (gs?.grade?.gradeName || '');
+        const shiftName = typeof gs?.shift === 'string' ? gs.shift : (gs?.shift?.shiftName || '');
+        return {
+          _id: e?.enrollmentId || e?._id,
+          academicYear: e?.academicYear || null,
+          grade: gradeName ? { gradeName } : (e?.grade || null),
+          shift: shiftName ? { shiftName } : (e?.shift || null),
+          gradeSection: gs
+            ? {
+                _id: gs?._id,
+                section: gs?.section,
+                grade: gradeName ? { gradeName } : gs?.grade,
+                shift: shiftName ? { shiftName } : gs?.shift,
+              }
+            : null,
+          joinedAt: e?.joinedAt,
+          leftAt: e?.leftAt,
+          status: e?.status,
+        };
+      });
+
       return [...rows].sort((a, b) => {
         const ya = ayStart(a?.academicYear?.yearName);
         const yb = ayStart(b?.academicYear?.yearName);
@@ -46,7 +73,7 @@ export default function TranscriptTab() {
     },
   });
 
-  const enrollments = useMemo(() => (enrollmentsQuery.data || []), [enrollmentsQuery.data]);
+  const enrollments = useMemo(() => (Array.isArray(enrollmentsQuery.data) ? enrollmentsQuery.data : []), [enrollmentsQuery.data]);
   const enrLoading = enrollmentsQuery.isLoading;
   const enrError = enrollmentsQuery.isError ? t('students.transcriptTab.enrollmentsLoadFailed') : null;
 

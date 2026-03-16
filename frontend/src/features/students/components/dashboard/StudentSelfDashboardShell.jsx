@@ -7,6 +7,9 @@ import { getSlotsWithOptions } from '../../../timetable/api/timetable';
 import { getStudentAttendanceSelfWithOptions, getStudentSelfAttendanceWithOptions } from '../../../attendance/api/attendance';
 import { getStudentTranscript } from '../../../exams/api/exams';
 import { getStudentProfile, getStudentTransfers } from '../../../../api';
+import { http } from '../../../../shared/api/http.js';
+import { getStudentFinanceMonthHistory } from '../../api/studentFinance';
+import { listLibraryResources } from '../../api/library';
 import { getSessionSignal } from '../../../../api/sessionAbort';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { studentKeys } from '../../queryKeys';
@@ -487,6 +490,11 @@ function StudentSelfPrefetcher() {
   const rawStudentRef = auth?.user?.studentRef;
   const studentId = auth?.user?.role === 'student' ? (rawStudentRef?._id || rawStudentRef || null) : null;
   const canPrefetchSelfAttendance = auth?.user?.role === 'student';
+  const canPrefetchTimetable = auth?.user?.role === 'student' && isStudentDashboardTabEnabled(auth?.privacyPolicy, 'timetable');
+  const canPrefetchTranscript = auth?.user?.role === 'student' && isStudentDashboardTabEnabled(auth?.privacyPolicy, 'transcript');
+  const canPrefetchFinance = auth?.user?.role === 'student' && isStudentDashboardTabEnabled(auth?.privacyPolicy, 'finance');
+  const canPrefetchLibrary = auth?.user?.role === 'student' && isStudentDashboardTabEnabled(auth?.privacyPolicy, 'library');
+  const enrollmentsEnabled = auth?.user?.role === 'student' && isStudentDashboardTabEnabled(auth?.privacyPolicy, 'enrollments');
 
   const { from, to } = useMemo(() => {
     const end = new Date();
@@ -548,7 +556,25 @@ function StudentSelfPrefetcher() {
         return await getStudentOverallSummary(studentId);
       },
     }).catch(() => {});
-  }, [queryClient, studentId, canPrefetchSelfAttendance, from, to]);
+
+    if (canPrefetchFinance) {
+      queryClient.ensureQueryData({
+        queryKey: studentKeys.financeMonthHistory(studentId, { academicYearId: '' }),
+        queryFn: async () => {
+          return await getStudentFinanceMonthHistory(studentId, {}, {});
+        },
+      }).catch(() => {});
+    }
+
+    if (canPrefetchLibrary) {
+      queryClient.ensureQueryData({
+        queryKey: studentKeys.libraryList({ q: '', limit: 10, page: 1 }),
+        queryFn: async () => {
+          return await listLibraryResources({ limit: 10, page: 1 }, {});
+        },
+      }).catch(() => {});
+    }
+  }, [queryClient, studentId, canPrefetchSelfAttendance, canPrefetchFinance, canPrefetchLibrary, from, to]);
 
   // Warm up timetable after we know the active class (gradeSection).
   useEffect(() => {
@@ -557,55 +583,141 @@ function StudentSelfPrefetcher() {
 
     (async () => {
       try {
-        const historyRows = await queryClient.ensureQueryData({
-          queryKey: studentKeys.history(studentId, { page: 1, limit: 1000 }),
-          queryFn: async () => {
-            const res = await getStudentHistory(studentId, { page: 1, limit: 1000 });
-            return Array.isArray(res?.data) ? res.data : [];
-          },
-        });
-        if (canceled) return;
+        const prefetchWithConcurrency = async (tasks, concurrency = 3) => {
+          const list = Array.isArray(tasks) ? tasks.filter(Boolean) : [];
+          if (!list.length) return;
+          const poolSize = Math.max(1, Math.min(Number(concurrency || 3), list.length));
+          const queue = [...list];
+          const workers = Array.from({ length: poolSize }).map(async () => {
+            while (queue.length) {
+              if (canceled) return;
+              const fn = queue.shift();
+              try {
+                await fn();
+              } catch {
+                // non-blocking
+              }
+            }
+          });
+          await Promise.all(workers);
+        };
 
-        const rows = Array.isArray(historyRows) ? historyRows : [];
-        const active = rows.find(r => String(r?.status || '').toLowerCase() === 'active' && !r?.leftAt);
-        const chosen = active || rows[0] || null;
-        const academicYearId = chosen?.academicYear?._id || chosen?.academicYear || null;
-        const gsId = chosen?.gradeSection?._id || chosen?.gradeSection || null;
-        const gradeSectionId = gsId ? String(gsId) : null;
-        if (!gradeSectionId) return;
-
-        // Prefetch the most important/heaviest data early (Transcript for active enrollment)
-        // so opening Transcript is instant and we don't restart/cancel work on tab navigation.
-        if (academicYearId) {
-          const sessionSignal = getSessionSignal();
-          queryClient.ensureQueryData({
-            queryKey: studentKeys.transcriptByEnrollment(studentId, { academicYearId, gradeSectionId }),
+        if (canPrefetchTimetable) {
+          await queryClient.ensureQueryData({
+            queryKey: studentKeys.timetableSlotsSelf(),
             queryFn: async () => {
-              const { ok, data, error } = await getStudentTranscript(
-                { academicYearId, gradeSectionId, studentId },
-                { signal: sessionSignal }
-              );
-              if (!ok) throw new Error(error || 'Transcript load failed');
-              return data;
+              const slotsRes = await getSlotsWithOptions({});
+              return Array.isArray(slotsRes?.data) ? slotsRes.data : [];
             },
-          }).catch(() => {});
+          });
         }
 
-        await queryClient.ensureQueryData({
-          queryKey: studentKeys.timetableSlotsByGradeSection(gradeSectionId),
-          queryFn: async () => {
-            const slotsRes = await getSlotsWithOptions({ gs: String(gradeSectionId) });
-            return Array.isArray(slotsRes?.data) ? slotsRes.data : [];
-          },
-        });
+        // Transcript can be prefetched without Enrollments history via the index API.
+        // When Enrollments are enabled, the dashboard may still compute level stats from the history flow.
+        if (canPrefetchTranscript) {
+          const indexRows = await queryClient.ensureQueryData({
+            queryKey: studentKeys.transcriptIndex(studentId),
+            queryFn: async () => {
+              const payload = await http.fetchJson(`students/${String(studentId)}/full-transcript?mode=index`);
+              const raw = Array.isArray(payload?.enrollments) ? payload.enrollments : [];
 
-        // Prefetch all transcripts (per enrollment) and the derived level stats used by the dashboard.
-        const enrollmentsKey = rows.map(r => String(r?._id || '')).filter(Boolean).join('|');
-        if (enrollmentsKey) {
-          queryClient.ensureQueryData({
-            queryKey: studentKeys.levelStats(studentId, enrollmentsKey),
-            queryFn: async () => buildLevelStats({ queryClient, studentId, historyRows: rows }),
-          }).catch(() => {});
+              const rows = raw.map((e) => {
+                const gs = e?.gradeSection || null;
+                const gradeName = typeof gs?.grade === 'string' ? gs.grade : (gs?.grade?.gradeName || '');
+                const shiftName = typeof gs?.shift === 'string' ? gs.shift : (gs?.shift?.shiftName || '');
+                return {
+                  _id: e?.enrollmentId || e?._id,
+                  academicYear: e?.academicYear || null,
+                  grade: gradeName ? { gradeName } : (e?.grade || null),
+                  shift: shiftName ? { shiftName } : (e?.shift || null),
+                  gradeSection: gs
+                    ? {
+                        _id: gs?._id,
+                        section: gs?.section,
+                        grade: gradeName ? { gradeName } : gs?.grade,
+                        shift: shiftName ? { shiftName } : gs?.shift,
+                      }
+                    : null,
+                  joinedAt: e?.joinedAt,
+                  leftAt: e?.leftAt,
+                  status: e?.status,
+                  sequenceInYear: e?.sequenceInYear,
+                  createdAt: e?.createdAt,
+                };
+              });
+
+              return [...rows].sort((a, b) => {
+                const ya = ayStart(a?.academicYear?.yearName);
+                const yb = ayStart(b?.academicYear?.yearName);
+                if (ya !== yb) return ya - yb;
+                const sa = (a?.sequenceInYear ?? 1);
+                const sb = (b?.sequenceInYear ?? 1);
+                if (sa !== sb) return sa - sb;
+                const aj = a?.joinedAt ? new Date(a.joinedAt).getTime() : 0;
+                const bj = b?.joinedAt ? new Date(b.joinedAt).getTime() : 0;
+                if (aj !== bj) return aj - bj;
+                const ac = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const bc = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return ac - bc;
+              });
+            },
+          });
+
+          // Prefetch marks for all levels so switching tabs is instant.
+          const rows = Array.isArray(indexRows) ? indexRows : [];
+          const sessionSignal = getSessionSignal();
+          const tasks = rows
+            .map((en) => {
+              const academicYearId = en?.academicYear?._id || en?.academicYear;
+              const gradeSectionId = en?.gradeSection?._id || en?.gradeSection;
+              if (!academicYearId || !gradeSectionId) return null;
+              return async () => {
+                await queryClient.ensureQueryData({
+                  queryKey: studentKeys.transcriptByEnrollment(studentId, { academicYearId, gradeSectionId }),
+                  queryFn: async () => {
+                    const { ok, data, error } = await getStudentTranscript(
+                      { academicYearId, gradeSectionId, studentId },
+                      { signal: sessionSignal }
+                    );
+                    if (!ok) throw new Error(error || 'Transcript load failed');
+                    return data;
+                  },
+                });
+              };
+            })
+            .filter(Boolean);
+
+          // Keep network load reasonable while still being ready.
+          await prefetchWithConcurrency(tasks, 3);
+        }
+
+        if (enrollmentsEnabled) {
+          const historyRows = await queryClient.ensureQueryData({
+            queryKey: studentKeys.history(studentId, { page: 1, limit: 1000 }),
+            queryFn: async () => {
+              const res = await getStudentHistory(studentId, { page: 1, limit: 1000 });
+              return Array.isArray(res?.data) ? res.data : [];
+            },
+          });
+          if (canceled) return;
+
+          const rows = Array.isArray(historyRows) ? historyRows : [];
+          const active = rows.find(r => String(r?.status || '').toLowerCase() === 'active' && !r?.leftAt);
+          const chosen = active || rows[0] || null;
+          const academicYearId = chosen?.academicYear?._id || chosen?.academicYear || null;
+          const gsId = chosen?.gradeSection?._id || chosen?.gradeSection || null;
+          const gradeSectionId = gsId ? String(gsId) : null;
+
+          // (Transcript per-level prefetch is handled above using transcriptIndex.)
+
+          // Prefetch derived level stats used by the dashboard.
+          const enrollmentsKey = rows.map(r => String(r?._id || '')).filter(Boolean).join('|');
+          if (enrollmentsKey) {
+            queryClient.ensureQueryData({
+              queryKey: studentKeys.levelStats(studentId, enrollmentsKey),
+              queryFn: async () => buildLevelStats({ queryClient, studentId, historyRows: rows }),
+            }).catch(() => {});
+          }
         }
       } catch {
         // non-blocking
@@ -613,7 +725,7 @@ function StudentSelfPrefetcher() {
     })();
 
     return () => { canceled = true; };
-  }, [queryClient, studentId]);
+  }, [queryClient, studentId, canPrefetchTimetable, canPrefetchTranscript, enrollmentsEnabled]);
 
   return null;
 }
@@ -634,6 +746,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   }, [studentIdOverride]);
 
   const applyStudentPrivacyPolicy = isStudentSelf;
+  const enrollmentsEnabled = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'enrollments') : true;
   const showProfile = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'profile') : true;
   const showTranscript = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'transcript') : true;
   const showAttendance = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'attendance') : true;
@@ -667,7 +780,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
 
   const historyQuery = useQuery({
     queryKey: studentKeys.history(studentId, { page: 1, limit: 1000 }),
-    enabled: !!studentId,
+    enabled: !!studentId && (!isStudentSelf || enrollmentsEnabled),
     queryFn: async () => {
       const res = await getStudentHistory(studentId, { page: 1, limit: 1000 });
       return Array.isArray(res?.data) ? res.data : [];
@@ -717,10 +830,12 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   }, [attendanceQuery.data]);
 
   const timetableQuery = useQuery({
-    queryKey: studentKeys.timetableSlotsByGradeSection(activeGradeSectionId),
-    enabled: !!activeGradeSectionId,
+    queryKey: isStudentSelf ? studentKeys.timetableSlotsSelf() : studentKeys.timetableSlotsByGradeSection(activeGradeSectionId),
+    enabled: showTimetable && (isStudentSelf ? true : !!activeGradeSectionId),
     queryFn: async () => {
-      const slotsRes = await getSlotsWithOptions({ gs: String(activeGradeSectionId) });
+      const slotsRes = isStudentSelf
+        ? await getSlotsWithOptions({})
+        : await getSlotsWithOptions({ gs: String(activeGradeSectionId) });
       return Array.isArray(slotsRes?.data) ? slotsRes.data : [];
     },
   });

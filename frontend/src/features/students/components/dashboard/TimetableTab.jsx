@@ -62,6 +62,8 @@ export default function TimetableTab() {
   const { auth } = useAuth();
   const { t } = useI18n();
 
+  const isStudentSelf = auth?.user?.role === 'student' && !paramStudentId;
+
   const studentIdFromAuth = useMemo(() => {
     const ref = auth?.user?.studentRef;
     if (!ref) return null;
@@ -73,7 +75,7 @@ export default function TimetableTab() {
 
   const historyQuery = useQuery({
     queryKey: studentKeys.history(studentId, { page: 1, limit: 1000 }),
-    enabled: !!studentId,
+    enabled: !!studentId && !isStudentSelf,
     queryFn: async () => {
       const res = await getStudentHistory(studentId, { page: 1, limit: 1000 });
       return Array.isArray(res?.data) ? res.data : [];
@@ -81,26 +83,29 @@ export default function TimetableTab() {
   });
 
   const gradeSectionId = useMemo(() => {
+    if (isStudentSelf) return 'self';
     const rows = historyQuery.data || [];
     const active = rows.find(r => String(r?.status || '').toLowerCase() === 'active' && !r?.leftAt);
     const chosen = active || rows[0] || null;
     const gsId = chosen?.gradeSection?._id || chosen?.gradeSection || null;
     return gsId ? String(gsId) : null;
-  }, [historyQuery.data]);
+  }, [historyQuery.data, isStudentSelf]);
 
   const slotsQuery = useQuery({
-    queryKey: studentKeys.timetableSlotsByGradeSection(gradeSectionId),
-    enabled: !!gradeSectionId,
+    queryKey: isStudentSelf ? studentKeys.timetableSlotsSelf() : studentKeys.timetableSlotsByGradeSection(gradeSectionId),
+    enabled: isStudentSelf ? true : !!gradeSectionId,
     queryFn: async () => {
-      const res = await getSlotsWithOptions({ gs: gradeSectionId });
+      const res = isStudentSelf
+        ? await getSlotsWithOptions({})
+        : await getSlotsWithOptions({ gs: gradeSectionId });
       return Array.isArray(res?.data) ? res.data : [];
     },
   });
 
   const slots = useMemo(() => (slotsQuery.data || []), [slotsQuery.data]);
-  const classLoading = historyQuery.isLoading;
+  const classLoading = isStudentSelf ? false : historyQuery.isLoading;
   const loading = slotsQuery.isLoading;
-  const error = (historyQuery.isError || slotsQuery.isError) ? t('students.timetableTab.loadFailed') : '';
+  const error = ((!isStudentSelf && historyQuery.isError) || slotsQuery.isError) ? t('students.timetableTab.loadFailed') : '';
 
   const periods = useMemo(() => uniqPeriodsFromSlots(slots), [slots]);
   const days = useMemo(() => uniqDaysFromSlots(slots), [slots]);
@@ -145,7 +150,7 @@ export default function TimetableTab() {
         <div className="text-sm text-red-600">{error}</div>
       )}
 
-      {!gradeSectionId && !error && !loading && !classLoading && (
+      {!isStudentSelf && !gradeSectionId && !error && !loading && !classLoading && (
         <div className="text-lg font-semibold text-(--nb-color-text)">{t('students.timetableTab.noActiveClass')}</div>
       )}
 
