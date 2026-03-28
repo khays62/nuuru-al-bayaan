@@ -9,8 +9,8 @@ const AccountSchema = new mongoose.Schema({
     },
     type: {
         type: String,
-        enum: ['Bank', 'Cash', 'Mobile Money'],
-        required: true
+        required: true,
+        trim: true
     },
     institution: {
         type: String,

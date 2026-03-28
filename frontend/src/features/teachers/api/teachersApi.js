@@ -28,17 +28,57 @@ export const getRoster = (teacherId, params = {}, options = {}) => {
   return fetchJson(path, options);
 };
 
-export const createTeacher = (payload) =>
-  fetchJson('teachers', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+export const createTeacher = (payload, photoFile = null) => {
+  const file = photoFile instanceof File ? photoFile : null;
+  if (!file) {
+    return fetchJson('teachers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
 
-export const updateTeacher = (id, payload) =>
-  fetchJson(`teachers/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
+  const fd = new FormData();
+  Object.entries(payload || {}).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    if (k === 'idDocument') {
+      fd.append(k, JSON.stringify(v));
+      return;
+    }
+    if (typeof v === 'boolean') {
+      fd.append(k, v ? 'true' : 'false');
+      return;
+    }
+    fd.append(k, String(v));
   });
+  fd.append('photo', file);
+  return fetchJson('teachers', { method: 'POST', body: fd });
+};
+
+export const updateTeacher = (id, payload, photoFile = null) => {
+  const file = photoFile instanceof File ? photoFile : null;
+  if (!file) {
+    return fetchJson(`teachers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  const fd = new FormData();
+  Object.entries(payload || {}).forEach(([k, v]) => {
+    if (v === undefined || v === null) return;
+    if (k === 'idDocument') {
+      fd.append(k, JSON.stringify(v));
+      return;
+    }
+    if (typeof v === 'boolean') {
+      fd.append(k, v ? 'true' : 'false');
+      return;
+    }
+    fd.append(k, String(v));
+  });
+  fd.append('photo', file);
+  return fetchJson(`teachers/${id}`, { method: 'PUT', body: fd });
+};
 
 export const deactivateTeacher = (id) =>
   fetchJson(`teachers/${id}/deactivate`, {

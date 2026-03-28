@@ -44,6 +44,12 @@ dist-ssr/
 .env.local
 **/.env.local
 
+# Allow committed examples/templates
+!.env.example
+!**/.env.example
+!.env.template
+!**/.env.template
+
 # Misc
 *.local
 

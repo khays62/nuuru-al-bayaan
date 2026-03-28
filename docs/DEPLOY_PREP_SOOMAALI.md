@@ -12,12 +12,12 @@ Ujeeddo: marka mashruuca la nadiifiyo oo standards-kiisa la hagaajiyo, kadib aya
 
 ## 2) Backend: production start script
 
-Hadda `backend/package.json` wuxuu leeyahay `npm run server` oo ku socda `nodemon`, taasina production kuma habboona.
+Backend-ku hadda wuxuu leeyahay scripts-kan (taas oo fiican oo deploy‑ready ah):
 
-Waxa la rabo in la yeesho script cad sida:
+- `start`: `node server.js`  (production)
+- `dev` / `server`: `nodemon server.js` (development)
 
-- `start`: `node server.js`
-- (ikhtiyaari) `start:prod`: `NODE_ENV=production node server.js`
+Talo (ikhtiyaari): ku dar `start:prod` haddii aad rabto command cad oo set‑gareeya `NODE_ENV=production`.
 
 ## 3) Kala saar env-yada (dev / staging / prod)
 
@@ -109,6 +109,27 @@ Waxa fiican in la kala saaro:
 - docs rasmi ah
 - scripts rasmi ah
 - temp/debug artifacts oo la tirtiro ama `.gitignore` lagu daro
+
+### 8.1 Standard cleanup (Windows) — local kaliya
+
+Haddii workspace-kaaga uu buuxo `*_latest.txt` iyo `_tmp_*` files (local debug captures), waxaad nadiifin kartaa adigoo aan taaban code-ka:
+
+- Eeg waxa is beddelay: `git status`
+- Tirtir artifacts root (tusaale):
+	- `Remove-Item -Force -ErrorAction SilentlyContinue *_latest.txt, _tmp_*.txt, build_*.txt, test_*.txt`
+- Haddii aad rabto in untracked files oo dhan la tirtiro (taxaddar!):
+	- `git clean -xfd`
+
+> Fiiro: `git clean -xfd` wuxuu tirtiraa *node_modules* iyo files kale oo aan la commit-gareyn. Isticmaal kaliya marka aad hubto.
+
+### 8.2 `.env.example` (template) waa in la commit-gareeyo
+
+Best practice (MERN):
+- Commit: `backend/.env.example` iyo `frontend/.env.example`
+- Ha commit-gareyn: `backend/.env` ama `.env.production` (secrets)
+
+Haddii `.gitignore` si qalad ah u ignore-gareeyo `.env.example`, ku dar exceptions sida:
+- `!.env.example` iyo `!**/.env.example`
 
 ## 9) Samee deployment document rasmi ah (provider-neutral)
 

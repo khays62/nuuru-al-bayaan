@@ -33,10 +33,39 @@ export async function listStudents(params = {}, opts = {}) {
 }
 
 export async function createStudent(payload) {
+  const photoFile = payload?.photoFile instanceof File ? payload.photoFile : null;
+  const corePayload = photoFile ? (() => {
+    const copy = { ...(payload || {}) };
+    delete copy.photoFile;
+    return copy;
+  })() : payload;
+
   try {
+    if (photoFile) {
+      const fd = new FormData();
+      Object.entries(corePayload || {}).forEach(([k, v]) => {
+        if (v === undefined || v === null) return;
+        if (k === 'transfer' || k === 'medical' || k === 'idDocument') {
+          fd.append(k, JSON.stringify(v));
+          return;
+        }
+        if (typeof v === 'boolean') {
+          fd.append(k, v ? 'true' : 'false');
+          return;
+        }
+        fd.append(k, String(v));
+      });
+      fd.append('photo', photoFile);
+      const data = await fetchJson('/students', {
+        method: 'POST',
+        body: fd,
+      });
+      return { ok: true, status: 201, data };
+    }
+
     const data = await fetchJson('/students', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(corePayload),
     });
     return { ok: true, status: 201, data };
   } catch (e) {
@@ -49,10 +78,39 @@ export async function createStudent(payload) {
 }
 
 export async function updateStudent(id, payload) {
+  const photoFile = payload?.photoFile instanceof File ? payload.photoFile : null;
+  const corePayload = photoFile ? (() => {
+    const copy = { ...(payload || {}) };
+    delete copy.photoFile;
+    return copy;
+  })() : payload;
+
   try {
+    if (photoFile) {
+      const fd = new FormData();
+      Object.entries(corePayload || {}).forEach(([k, v]) => {
+        if (v === undefined || v === null) return;
+        if (k === 'transfer' || k === 'medical' || k === 'idDocument') {
+          fd.append(k, JSON.stringify(v));
+          return;
+        }
+        if (typeof v === 'boolean') {
+          fd.append(k, v ? 'true' : 'false');
+          return;
+        }
+        fd.append(k, String(v));
+      });
+      fd.append('photo', photoFile);
+      const data = await fetchJson(`/students/${id}`, {
+        method: 'PATCH',
+        body: fd,
+      });
+      return { ok: true, status: 200, data };
+    }
+
     const data = await fetchJson(`/students/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(payload),
+      body: JSON.stringify(corePayload),
     });
     return { ok: true, status: 200, data };
   } catch (e) {

@@ -17,6 +17,7 @@ import AuditLog from '../models/AuditLog.js';
 import { parsePagination } from '../utils/pagination.js';
 import { normalizeSomaliaPhone, isValidSomaliaPhone } from '../utils/phoneSomalia.js';
 import { writeAuditLog } from '../services/auditService.js';
+import { deleteRemoteObject, isRemoteUploadsEnabled, putBufferToRemote } from '../services/uploadStorage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,9 +28,58 @@ const isValidEmail = (value) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 };
 
+const normalizeIdDocument = (value) => {
+  const obj = (value && typeof value === 'object') ? value : {};
+  const idType = String(obj.idType || '').trim();
+  const idNumber = String(obj.idNumber || '').trim();
+  const issuedBy = String(obj.issuedBy || '').trim();
+  let expiresAt = null;
+  if (obj.expiresAt) {
+    const d = new Date(obj.expiresAt);
+    if (Number.isNaN(d.getTime())) {
+      const e = new Error('Invalid idDocument.expiresAt');
+      e.code = 'BAD_ID_EXPIRES';
+      throw e;
+    }
+    expiresAt = d;
+  }
+  const anyProvided = Boolean(idType || idNumber || issuedBy || expiresAt);
+  if (anyProvided && (!idType || !idNumber)) {
+    const e = new Error('idType and idNumber are required when providing ID document details.');
+    e.code = 'BAD_ID_REQUIRED';
+    throw e;
+  }
+  return { idType, idNumber, issuedBy, expiresAt };
+};
+
 function getDefaultTeacherPassword() {
   return getDefaultInitialPassword();
 }
+
+const sanitizeUploadsToken = (value, fallback = 'user') => {
+  const s = String(value || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+  return (s || fallback).slice(0, 32);
+};
+
+const imageExtFromMimeOrName = (mimetype, originalName) => {
+  const mt = String(mimetype || '').toLowerCase();
+  if (mt === 'image/jpeg') return '.jpg';
+  if (mt === 'image/png') return '.png';
+  if (mt === 'image/webp') return '.webp';
+  const ext = path.extname(String(originalName || '')).toLowerCase();
+  if (ext === '.jpg' || ext === '.jpeg') return '.jpg';
+  if (ext === '.png') return '.png';
+  if (ext === '.webp') return '.webp';
+  return '.jpg';
+};
+
+const makeUploadsFilename = ({ actor, mimetype, originalName }) => {
+  const who = sanitizeUploadsToken(actor, 'upload');
+  const ts = Date.now();
+  const rand = Math.random().toString(16).slice(2, 10);
+  const ext = imageExtFromMimeOrName(mimetype, originalName);
+  return `${who}-${ts}-${rand}${ext}`;
+};
 
 async function ensureTeacherUser({ teacherId, teacherDoc }) {
   // Username is always teacherId, so teachers can login via:
@@ -86,7 +136,7 @@ export const listTeachers = async (req, res) => {
       ];
     }
     const docs = await Teacher.find(q)
-      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience notes photo lastAcademicYear createdAt')
+      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
       .populate({ path: 'lastAcademicYear', select: 'yearName' })
       .lean();
     res.json({ data: docs });
@@ -97,6 +147,7 @@ export const listTeachers = async (req, res) => {
 
 export const createTeacher = async (req, res) => {
   try {
+    let uploadedPhotoKey = null;
     let {
       fullName,
       teacherId,
@@ -118,6 +169,7 @@ export const createTeacher = async (req, res) => {
       specialization,
       qualification,
       yearsOfExperience,
+      idDocument,
       notes,
     } = req.body || {};
 
@@ -182,6 +234,15 @@ export const createTeacher = async (req, res) => {
 
     const hireDateObj = hireDate ? new Date(hireDate) : null;
     if (hireDate && Number.isNaN(hireDateObj.getTime())) return res.status(400).json({ message: 'hireDate must be a valid date' });
+
+    let normalizedIdDocument = { idType: '', idNumber: '', issuedBy: '', expiresAt: null };
+    try {
+      normalizedIdDocument = normalizeIdDocument(idDocument);
+    } catch (e) {
+      if (e?.code === 'BAD_ID_EXPIRES') return res.status(400).json({ message: 'Invalid id document expiry date.' });
+      if (e?.code === 'BAD_ID_REQUIRED') return res.status(400).json({ message: e.message });
+      return res.status(400).json({ message: 'Invalid idDocument.' });
+    }
 
     const normalizedEmploymentType = employmentType ? String(employmentType).trim().toLowerCase() : '';
     if (normalizedEmploymentType && !['full-time', 'part-time', 'contract'].includes(normalizedEmploymentType)) {
@@ -263,15 +324,54 @@ export const createTeacher = async (req, res) => {
       specialization: specialization ? String(specialization).trim() : '',
       qualification: qualification ? String(qualification).trim() : '',
       yearsOfExperience,
+      idDocument: normalizedIdDocument,
       notes: notes ? String(notes).trim() : '',
       lastAcademicYear,
     });
+
+    // Optional: photo can be attached on create via multipart/form-data (field: photo)
+    if (req.file) {
+      const file = req.file;
+      if (!isRemoteUploadsEnabled()) {
+        throw new Error('Remote uploads are required for teacher photos');
+      }
+
+      const filename = makeUploadsFilename({
+        actor: req.user?._id || req.user?.username || teacherId || 'teacher',
+        mimetype: file.mimetype,
+        originalName: file.originalname,
+      });
+
+      const nextRelPath = path.posix.join('uploads', 'teachers', filename);
+      const nextUrl = `/${path.posix.join('api', 'uploads', 'teachers', filename)}`;
+
+      uploadedPhotoKey = nextRelPath;
+      await putBufferToRemote({
+        buffer: file.buffer,
+        key: uploadedPhotoKey,
+        contentType: String(file.mimetype || ''),
+      });
+
+      doc.photo = {
+        url: nextUrl,
+        path: nextRelPath,
+        mimeType: String(file.mimetype || ''),
+        size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
+        uploadedAt: new Date(),
+      };
+      await doc.save();
+    }
 
     try {
       await ensureTeacherUser({ teacherId, teacherDoc: doc });
     } catch (e) {
       // Best-effort rollback (keep DB consistent for admin)
       await Teacher.deleteOne({ _id: doc._id });
+      try {
+        if (uploadedPhotoKey) await deleteRemoteObject(uploadedPhotoKey);
+      } catch {
+        // ignore
+      }
       if (e?.code === 'DUP_LOGIN') {
         return res.status(409).json({ message: 'Teacher login already exists (username/email conflict)' });
       }
@@ -304,6 +404,7 @@ export const createTeacher = async (req, res) => {
         specialization: doc.specialization,
         qualification: doc.qualification,
         yearsOfExperience: doc.yearsOfExperience,
+        idDocument: doc.idDocument,
         notes: doc.notes,
         photo: doc.photo,
         lastAcademicYear: doc.lastAcademicYear,
@@ -341,6 +442,7 @@ export const createTeacherLoginUser = async (req, res) => {
 };
 
 export const updateTeacher = async (req, res) => {
+  let uploadedNextPhotoKey = null;
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
@@ -365,6 +467,7 @@ export const updateTeacher = async (req, res) => {
       specialization,
       qualification,
       yearsOfExperience,
+      idDocument,
       notes,
     } = req.body || {};
 
@@ -405,8 +508,42 @@ export const updateTeacher = async (req, res) => {
       }
     }
 
-    const existingTeacher = await Teacher.findById(id).select('teacherId email status').lean();
+    const existingTeacher = await Teacher.findById(id).select('teacherId email status photo').lean();
     if (!existingTeacher) return res.status(404).json({ message: 'Not found' });
+
+    const prevPhotoPath = String(existingTeacher?.photo?.path || '').trim();
+
+    const setPatch = {};
+    if (req.file) {
+      const file = req.file;
+      if (!isRemoteUploadsEnabled()) {
+        throw new Error('Remote uploads are required for teacher photos');
+      }
+
+      const filename = makeUploadsFilename({
+        actor: req.user?._id || req.user?.username || existingTeacher.teacherId || 'teacher',
+        mimetype: file.mimetype,
+        originalName: file.originalname,
+      });
+
+      const nextRelPath = path.posix.join('uploads', 'teachers', filename);
+      const nextUrl = `/${path.posix.join('api', 'uploads', 'teachers', filename)}`;
+
+      uploadedNextPhotoKey = nextRelPath;
+      await putBufferToRemote({
+        buffer: file.buffer,
+        key: uploadedNextPhotoKey,
+        contentType: String(file.mimetype || ''),
+      });
+
+      setPatch.photo = {
+        url: nextUrl,
+        path: nextRelPath,
+        mimeType: String(file.mimetype || ''),
+        size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
+        uploadedAt: new Date(),
+      };
+    }
 
     // Uniqueness validation excluding current doc
     const orConds = [];
@@ -439,7 +576,6 @@ export const updateTeacher = async (req, res) => {
       if (emailConflict) return res.status(409).json({ message: 'Teacher login email already exists' });
     }
 
-    const setPatch = {};
     if (fullName !== undefined) setPatch.fullName = String(fullName).trim();
     if (teacherId !== undefined) setPatch.teacherId = String(teacherId).trim();
     if (employeeId !== undefined) setPatch.employeeId = String(employeeId).trim();
@@ -497,6 +633,19 @@ export const updateTeacher = async (req, res) => {
       if (!Number.isFinite(y) || y < 0) return res.status(400).json({ message: 'yearsOfExperience must be a non-negative number' });
       setPatch.yearsOfExperience = y;
     }
+    if (idDocument !== undefined) {
+      // Only update when a valid object was provided.
+      // (In multipart/form-data, malformed values may come through as strings.)
+      if (idDocument && typeof idDocument === 'object') {
+        try {
+          setPatch.idDocument = normalizeIdDocument(idDocument);
+        } catch (e) {
+          if (e?.code === 'BAD_ID_EXPIRES') return res.status(400).json({ message: 'Invalid id document expiry date.' });
+          if (e?.code === 'BAD_ID_REQUIRED') return res.status(400).json({ message: e.message });
+          return res.status(400).json({ message: 'Invalid idDocument.' });
+        }
+      }
+    }
     if (notes !== undefined) setPatch.notes = notes ? String(notes).trim() : '';
 
     const updated = await Teacher.findByIdAndUpdate(
@@ -504,9 +653,21 @@ export const updateTeacher = async (req, res) => {
       { $set: setPatch },
       { new: true }
     )
-      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience notes photo lastAcademicYear createdAt')
+      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
       .lean();
     if (!updated) return res.status(404).json({ message: 'Not found' });
+
+    // Best-effort delete previous photo file if replaced
+    if (req.file && prevPhotoPath && prevPhotoPath.startsWith('uploads/teachers/')) {
+      const absPrev = path.join(__dirname, '..', prevPhotoPath);
+      try {
+        await fs.unlink(absPrev);
+      } catch {
+        // ignore
+      }
+
+      try { await deleteRemoteObject(prevPhotoPath); } catch { /* ignore */ }
+    }
 
     // Best-effort sync to linked User account (if exists)
     try {
@@ -542,6 +703,12 @@ export const updateTeacher = async (req, res) => {
 
     res.json({ data: updated });
   } catch (e) {
+    // Best-effort cleanup if remote upload happened but request failed.
+    try {
+      if (uploadedNextPhotoKey) await deleteRemoteObject(uploadedNextPhotoKey);
+    } catch {
+      // ignore
+    }
     res.status(400).json({ message: e.message || 'Bad Request' });
   }
 };
@@ -550,6 +717,7 @@ export const updateTeacher = async (req, res) => {
 // @desc    Upload / replace teacher photo
 // @route   POST /api/teachers/:id/photo   (multipart/form-data: photo)
 export const uploadTeacherPhoto = async (req, res) => {
+  let uploadedKey = null;
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
@@ -561,12 +729,28 @@ export const uploadTeacherPhoto = async (req, res) => {
 
     const teacher = await Teacher.findById(id);
     if (!teacher) {
-      try { await fs.unlink(file.path); } catch { /* ignore */ }
       return res.status(404).json({ message: 'Teacher not found' });
     }
 
-    const nextRelPath = path.posix.join('uploads', 'teachers', String(file.filename || ''));
-    const nextUrl = `/${path.posix.join('api', 'uploads', 'teachers', String(file.filename || ''))}`;
+    if (!isRemoteUploadsEnabled()) {
+      return res.status(500).json({ message: 'Remote uploads are required for teacher photos' });
+    }
+
+    const filename = makeUploadsFilename({
+      actor: req.user?._id || req.user?.username || teacher.teacherId || 'teacher',
+      mimetype: file.mimetype,
+      originalName: file.originalname,
+    });
+
+    const nextRelPath = path.posix.join('uploads', 'teachers', filename);
+    const nextUrl = `/${path.posix.join('api', 'uploads', 'teachers', filename)}`;
+
+    uploadedKey = nextRelPath;
+    await putBufferToRemote({
+      buffer: file.buffer,
+      key: nextRelPath,
+      contentType: String(file.mimetype || ''),
+    });
 
     const prevPath = String(teacher?.photo?.path || '').trim();
     if (prevPath && prevPath.startsWith('uploads/teachers/')) {
@@ -576,13 +760,15 @@ export const uploadTeacherPhoto = async (req, res) => {
       } catch {
         // ignore
       }
+
+      try { await deleteRemoteObject(prevPath); } catch { /* ignore */ }
     }
 
     teacher.photo = {
       url: nextUrl,
       path: nextRelPath,
       mimeType: String(file.mimetype || ''),
-      size: Number(file.size || 0),
+      size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
       uploadedAt: new Date(),
     };
     await teacher.save();
@@ -595,6 +781,11 @@ export const uploadTeacherPhoto = async (req, res) => {
       teacher,
     });
   } catch (err) {
+    try {
+      if (uploadedKey) await deleteRemoteObject(uploadedKey);
+    } catch {
+      // ignore
+    }
     console.error('uploadTeacherPhoto error', err);
     return res.status(500).json({ message: 'Server Error' });
   }
@@ -869,7 +1060,7 @@ export const getTeacherProfile = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
 
     const teacher = await Teacher.findById(id)
-      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience notes photo lastAcademicYear createdAt')
+      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
       .populate({ path: 'lastAcademicYear', select: 'yearName' })
       .lean();
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });

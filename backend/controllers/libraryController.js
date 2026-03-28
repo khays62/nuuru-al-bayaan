@@ -8,9 +8,35 @@ import Subject from '../models/Subject.js';
 import Enrollment from '../models/Enrollment.js';
 import TeacherAssignment from '../models/TeacherAssignment.js';
 import { publishRealtime } from '../utils/realtimeBus.js';
+import { deleteRemoteObject, isRemoteUploadsEnabled, putBufferToRemote } from '../services/uploadStorage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const sanitizeUploadsToken = (value, fallback = 'user') => {
+  const s = String(value || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+  return (s || fallback).slice(0, 32);
+};
+
+const libraryExtFromMimeOrName = (mimetype, originalName) => {
+  const mt = String(mimetype || '').toLowerCase();
+  if (mt === 'application/pdf') return '.pdf';
+  if (mt === 'application/msword') return '.doc';
+  if (mt === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return '.docx';
+  if (mt === 'application/vnd.ms-powerpoint') return '.ppt';
+  if (mt === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') return '.pptx';
+  const ext = path.extname(String(originalName || '')).toLowerCase();
+  if (['.pdf', '.doc', '.docx', '.ppt', '.pptx'].includes(ext)) return ext;
+  return '.pdf';
+};
+
+const makeLibraryFilename = ({ actor, mimetype, originalName }) => {
+  const who = sanitizeUploadsToken(actor, 'library');
+  const ts = Date.now();
+  const rand = Math.random().toString(16).slice(2, 10);
+  const ext = libraryExtFromMimeOrName(mimetype, originalName);
+  return `${who}-${ts}-${rand}${ext}`;
+};
 
 function normalizeId(v) {
   try {
@@ -132,9 +158,7 @@ export async function listLibraryResources(req, res) {
 
 export async function createLibraryResource(req, res) {
   const cleanupFile = async () => {
-    const file = req.file;
-    if (!file?.path) return;
-    try { await fs.unlink(file.path); } catch { /* ignore */ }
+    // Remote-only uploads use memory storage; nothing to cleanup on disk.
   };
 
   try {
@@ -218,19 +242,38 @@ export async function createLibraryResource(req, res) {
       || ''
     ).trim();
 
+    let uploadedFileKey = null;
     let fileMeta = null;
     if (kind === 'pdf' && req.file) {
       const file = req.file;
-      const relPath = path.posix.join('uploads', 'library', String(file.filename || ''));
-      const url = `/${path.posix.join('api', 'uploads', 'library', String(file.filename || ''))}`;
+      if (!isRemoteUploadsEnabled()) {
+        await cleanupFile();
+        return res.status(500).json({ success: false, message: 'Remote uploads are required for library files' });
+      }
+
+      const filename = makeLibraryFilename({
+        actor: req.user?._id || req.user?.username || 'library',
+        mimetype: file.mimetype,
+        originalName: file.originalname,
+      });
+
+      const relPath = path.posix.join('uploads', 'library', filename);
+      const url = `/${path.posix.join('api', 'uploads', 'library', filename)}`;
       fileMeta = {
         url,
         path: relPath,
         mimeType: String(file.mimetype || ''),
-        size: Number(file.size || 0),
+        size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
         originalName: String(file.originalname || ''),
         uploadedAt: new Date(),
       };
+
+      uploadedFileKey = relPath;
+      await putBufferToRemote({
+        buffer: file.buffer,
+        key: uploadedFileKey,
+        contentType: String(file.mimetype || ''),
+      });
     }
 
     const doc = new LibraryResource({
@@ -248,7 +291,17 @@ export async function createLibraryResource(req, res) {
       createdByName: createdByName || undefined,
     });
 
-    await doc.save();
+    try {
+      await doc.save();
+    } catch (e) {
+      try {
+        if (uploadedFileKey) await deleteRemoteObject(uploadedFileKey);
+      } catch {
+        // ignore
+      }
+      await cleanupFile();
+      throw e;
+    }
 
     // Realtime: tell all connected clients the library changed.
     publishRealtime({ type: 'library:changed', id: String(doc._id), ts: Date.now() });
@@ -291,6 +344,7 @@ export async function deleteLibraryResource(req, res) {
     if (filePath && filePath.startsWith('uploads/library/')) {
       const abs = path.join(__dirname, '..', filePath);
       try { await fs.unlink(abs); } catch { /* ignore */ }
+      try { await deleteRemoteObject(filePath); } catch { /* ignore */ }
     }
 
     // Realtime: tell all connected clients the library changed.

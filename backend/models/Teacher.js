@@ -30,6 +30,13 @@ const TeacherSchema = new mongoose.Schema({
   qualification: { type: String, trim: true, default: '' },
   yearsOfExperience: { type: Number, default: 0, min: 0 },
 
+  idDocument: {
+    idType: { type: String, trim: true, default: '' },
+    idNumber: { type: String, trim: true, default: '' },
+    issuedBy: { type: String, trim: true, default: '' },
+    expiresAt: { type: Date, default: null },
+  },
+
   notes: { type: String, trim: true, default: '' },
 
   photo: {

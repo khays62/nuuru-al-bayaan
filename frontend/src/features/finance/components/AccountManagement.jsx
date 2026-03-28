@@ -22,8 +22,8 @@ import headerImg from '../../../assets/nuuruBayaanHeader.png';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
 
-import { listAccounts as listAccountsApi, createAccount as createAccountApi, updateAccount as updateAccountApi, deleteAccount as deleteAccountApi, transferFunds as transferFundsApi, recordIncome as recordIncomeApi } from '../api/accountsApi';
-import { accountKeys } from '../queryKeys';
+import { listAccounts as listAccountsApi, createAccount as createAccountApi, updateAccount as updateAccountApi, deleteAccount as deleteAccountApi, transferFunds as transferFundsApi, recordIncome as recordIncomeApi, listAccountTypes as listAccountTypesApi, createAccountType as createAccountTypeApi } from '../api/accountsApi';
+import { accountKeys, accountTypeKeys } from '../queryKeys';
 
 import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
@@ -78,6 +78,9 @@ export default function AccountManagement() {
     const [transferData, setTransferData] = useState({ fromAccountId: '', toAccountId: '', amount: '', description: '', date: new Date().toISOString().split('T')[0] });
     const [incomeData, setIncomeData] = useState({ incomeName: '', comment: '', receivedNumber: '', amount: '', accountId: '', date: new Date().toISOString().split('T')[0] });
 
+    const [typeCreatorOpen, setTypeCreatorOpen] = useState(false);
+    const [typeCreatorName, setTypeCreatorName] = useState('');
+
     const queryClient = useQueryClient();
 
     const accountsQuery = useQuery({
@@ -92,6 +95,18 @@ export default function AccountManagement() {
         // App default is refetchOnMount: false; finance wants a mount refetch so
         // moving from Payroll -> Accounts shows latest balances without reload.
         refetchOnMount: 'always',
+        refetchOnWindowFocus: false,
+    });
+
+    const accountTypesQuery = useQuery({
+        queryKey: accountTypeKeys.list({ includeInactive: false }),
+        enabled: canAccessInstitutionTab || canAccessOverviewTab,
+        queryFn: async ({ signal }) => {
+            const res = await listAccountTypesApi({ includeInactive: false }, { signal });
+            return Array.isArray(res) ? res : [];
+        },
+        placeholderData: (prev) => prev,
+        staleTime: 60_000,
         refetchOnWindowFocus: false,
     });
 
@@ -113,6 +128,32 @@ export default function AccountManagement() {
 
     const accounts = useMemo(() => (accountsQuery.data || []), [accountsQuery.data]);
     const ledgerLogs = useMemo(() => (ledgerQuery.data || []), [ledgerQuery.data]);
+    const accountTypes = useMemo(() => (accountTypesQuery.data || []), [accountTypesQuery.data]);
+
+    const baseAccountTypeOptions = useMemo(() => {
+        const rows = Array.isArray(accountTypes) ? accountTypes : [];
+        return rows
+            .filter((r) => String(r?.status || 'active') !== 'inactive')
+            .map((r) => String(r?.name || '').trim())
+            .filter(Boolean)
+            .map((name) => ({ value: name, label: getAccountTypeLabel(name) }));
+    }, [accountTypes, getAccountTypeLabel]);
+
+    const getAccountTypeOptions = useCallback((selected) => {
+        const opts = [...baseAccountTypeOptions];
+        const sel = String(selected || '').trim();
+        if (sel && !opts.some((o) => String(o.value) === sel)) {
+            opts.push({ value: sel, label: getAccountTypeLabel(sel) });
+        }
+        return opts;
+    }, [baseAccountTypeOptions, getAccountTypeLabel]);
+
+    useEffect(() => {
+        if (!showCreateModal && !showEditModal) {
+            setTypeCreatorOpen(false);
+            setTypeCreatorName('');
+        }
+    }, [showCreateModal, showEditModal]);
 
     // If the current tab becomes unavailable (or user only has one tab), move to the first available one.
     useEffect(() => {
@@ -219,6 +260,34 @@ export default function AccountManagement() {
             toast.error(getFinanceAccountsErrorText(error, 'finance.accounts.toasts.transferFailed', 'Transfer failed'));
         },
     });
+
+    const createAccountTypeMutation = useMutation({
+        mutationFn: ({ name }) => createAccountTypeApi({ name }),
+        onSuccess: (created) => {
+            const createdName = String(created?.name || '').trim() || String(typeCreatorName || '').trim();
+            toast.success(t('finance.accounts.toasts.typeCreated', { defaultValue: 'Type created successfully' }));
+            try {
+                queryClient.invalidateQueries({ queryKey: accountTypeKeys.listBase, refetchType: 'active' });
+            } catch { /* ignore */ }
+
+            setTypeCreatorOpen(false);
+            setTypeCreatorName('');
+
+            if (createdName) {
+                if (showCreateModal) {
+                    setNewAccount((prev) => ({ ...prev, type: createdName }));
+                }
+                if (showEditModal) {
+                    setEditingAccount((prev) => (prev ? { ...prev, type: createdName } : prev));
+                }
+            }
+        },
+        onError: (error) => {
+            toast.error(getFinanceAccountsErrorText(error, 'finance.accounts.toasts.typeCreateFailed', 'Failed to create type'));
+        },
+    });
+
+    const isCreatingType = Boolean(createAccountTypeMutation?.isPending ?? createAccountTypeMutation?.isLoading);
 
     const handleDeleteAccount = async (acc) => {
         const id = acc?._id;
@@ -806,7 +875,7 @@ export default function AccountManagement() {
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 title={t('finance.accounts.modals.createTitle', { defaultValue: 'Register New Account' })}
-                panelClassName="max-w-md"
+                panelClassName="max-w-lg"
             >
                 <form onSubmit={handleCreateAccount} className="space-y-4">
                     <FormField label={t('finance.accounts.fields.accountName', { defaultValue: 'Account Name' })} required>
@@ -820,16 +889,29 @@ export default function AccountManagement() {
 
                     <div className="grid grid-cols-2 gap-3">
                         <FormField label={t('finance.accounts.fields.type', { defaultValue: 'Type' })}>
-                            <DropdownSelect
-                                value={newAccount.type}
-                                onChange={(v) => setNewAccount({ ...newAccount, type: v })}
-                                disabled={isCreating}
-                                options={[
-                                    { value: 'Bank', label: t('finance.accounts.options.accountType.bank', { defaultValue: 'Bank' }) },
-                                    { value: 'Cash', label: t('finance.accounts.options.accountType.cash', { defaultValue: 'Cash' }) },
-                                    { value: 'Mobile Money', label: t('finance.accounts.options.accountType.mobileMoney', { defaultValue: 'Mobile Money' }) },
-                                ]}
-                            />
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1">
+                                    <DropdownSelect
+                                        value={newAccount.type}
+                                        onChange={(v) => setNewAccount({ ...newAccount, type: v })}
+                                        disabled={isCreating}
+                                        options={getAccountTypeOptions(newAccount.type)}
+                                    />
+                                </div>
+
+                                {canCreateAccount && !typeCreatorOpen ? (
+                                    <Button
+                                        type="button"
+                                        variant="neutral"
+                                        size="md"
+                                        icon={<Plus className="w-4 h-4" />}
+                                        onClick={() => setTypeCreatorOpen(true)}
+                                        disabled={isCreating || isCreatingType}
+                                    >
+                                        {t('finance.accounts.actions.createType', { defaultValue: 'Create type' })}
+                                    </Button>
+                                ) : null}
+                            </div>
                         </FormField>
                         <FormField label={t('finance.accounts.fields.branch', { defaultValue: 'Branch' })}>
                             <Input
@@ -839,6 +921,41 @@ export default function AccountManagement() {
                             />
                         </FormField>
                     </div>
+
+                    {typeCreatorOpen ? (
+                        <div className="space-y-2">
+                            <FormField label={t('finance.accounts.fields.newTypeName', { defaultValue: 'New type name' })} required>
+                                <Input
+                                    value={typeCreatorName}
+                                    onChange={(e) => setTypeCreatorName(e.target.value)}
+                                    disabled={isCreatingType}
+                                    placeholder={t('finance.accounts.placeholders.typeNameExample', { defaultValue: 'e.g. EVC' })}
+                                />
+                            </FormField>
+                            <div className="flex justify-end gap-2">
+                                <Button
+                                    type="button"
+                                    variant="neutral"
+                                    size="sm"
+                                    onClick={() => { setTypeCreatorOpen(false); setTypeCreatorName(''); }}
+                                    disabled={isCreatingType}
+                                >
+                                    {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="brand"
+                                    size="sm"
+                                    onClick={() => createAccountTypeMutation.mutate({ name: typeCreatorName })}
+                                    disabled={isCreatingType || !String(typeCreatorName || '').trim()}
+                                >
+                                    {isCreatingType
+                                        ? t('common.saving', { defaultValue: 'Saving…' })
+                                        : t('common.actions.save', { defaultValue: 'Save' })}
+                                </Button>
+                            </div>
+                        </div>
+                    ) : null}
 
                     <div className="grid grid-cols-2 gap-3">
                         <FormField label={t('finance.accounts.fields.institution', { defaultValue: 'Institution' })} required>
@@ -880,6 +997,7 @@ export default function AccountManagement() {
                             disabled={
                                 isCreating ||
                                 !String(newAccount.name || '').trim() ||
+                                !String(newAccount.type || '').trim() ||
                                 !String(newAccount.institution || '').trim() ||
                                 !String(newAccount.accountNumber || '').trim() ||
                                 String(newAccount.balance || '') === ''
@@ -974,7 +1092,7 @@ export default function AccountManagement() {
                 isOpen={showEditModal && Boolean(editingAccount)}
                 onClose={() => { setShowEditModal(false); setEditingAccount(null); }}
                 title={t('finance.accounts.modals.editTitle', { defaultValue: 'Edit Account' })}
-                panelClassName="max-w-md"
+                panelClassName="max-w-lg"
             >
                 {editingAccount ? (
                     <form onSubmit={handleEditAccount} className="space-y-4">
@@ -988,16 +1106,29 @@ export default function AccountManagement() {
 
                         <div className="grid grid-cols-2 gap-3">
                             <FormField label={t('finance.accounts.fields.type', { defaultValue: 'Type' })}>
-                                <DropdownSelect
-                                    value={editingAccount.type}
-                                    onChange={(v) => setEditingAccount({ ...editingAccount, type: v })}
-                                    disabled={isUpdating}
-                                    options={[
-                                        { value: 'Bank', label: t('finance.accounts.options.accountType.bank', { defaultValue: 'Bank' }) },
-                                        { value: 'Cash', label: t('finance.accounts.options.accountType.cash', { defaultValue: 'Cash' }) },
-                                        { value: 'Mobile Money', label: t('finance.accounts.options.accountType.mobileMoney', { defaultValue: 'Mobile Money' }) },
-                                    ]}
-                                />
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1">
+                                        <DropdownSelect
+                                            value={editingAccount.type}
+                                            onChange={(v) => setEditingAccount({ ...editingAccount, type: v })}
+                                            disabled={isUpdating}
+                                            options={getAccountTypeOptions(editingAccount.type)}
+                                        />
+                                    </div>
+
+                                    {canCreateAccount && !typeCreatorOpen ? (
+                                        <Button
+                                            type="button"
+                                            variant="neutral"
+                                            size="md"
+                                            icon={<Plus className="w-4 h-4" />}
+                                            onClick={() => setTypeCreatorOpen(true)}
+                                            disabled={isUpdating || isCreatingType}
+                                        >
+                                            {t('finance.accounts.actions.createType', { defaultValue: 'Create type' })}
+                                        </Button>
+                                    ) : null}
+                                </div>
                             </FormField>
                             <FormField label={t('finance.accounts.fields.branch', { defaultValue: 'Branch' })}>
                                 <Input
@@ -1007,6 +1138,41 @@ export default function AccountManagement() {
                                 />
                             </FormField>
                         </div>
+
+                        {typeCreatorOpen ? (
+                            <div className="space-y-2">
+                                <FormField label={t('finance.accounts.fields.newTypeName', { defaultValue: 'New type name' })} required>
+                                    <Input
+                                        value={typeCreatorName}
+                                        onChange={(e) => setTypeCreatorName(e.target.value)}
+                                        disabled={isCreatingType}
+                                        placeholder={t('finance.accounts.placeholders.typeNameExample', { defaultValue: 'e.g. EVC' })}
+                                    />
+                                </FormField>
+                                <div className="flex justify-end gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="neutral"
+                                        size="sm"
+                                        onClick={() => { setTypeCreatorOpen(false); setTypeCreatorName(''); }}
+                                        disabled={isCreatingType}
+                                    >
+                                        {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="brand"
+                                        size="sm"
+                                        onClick={() => createAccountTypeMutation.mutate({ name: typeCreatorName })}
+                                        disabled={isCreatingType || !String(typeCreatorName || '').trim()}
+                                    >
+                                        {isCreatingType
+                                            ? t('common.saving', { defaultValue: 'Saving…' })
+                                            : t('common.actions.save', { defaultValue: 'Save' })}
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : null}
 
                         <div className="grid grid-cols-2 gap-3">
                             <FormField label={t('finance.accounts.fields.institution', { defaultValue: 'Institution' })} required>

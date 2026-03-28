@@ -31,6 +31,11 @@ export default {
     search: 'Raadi…',
     close: 'Xir',
 
+    actions: {
+      cancel: 'Ka noqo',
+      save: 'Kaydi',
+    },
+
     retry: 'Isku day mar kale',
     saving: 'Waa la kaydinayaa…',
     updating: 'Waa la cusboonaysiinayaa…',
@@ -2375,6 +2380,7 @@ export default {
         address: 'Cinwaan',
         employment: 'Shaqo',
         professional: 'Xirfad',
+        idDocument: 'Aqoonsi',
         notes: 'Qoraal',
       },
       fullName: 'Magaca Buuxa',
@@ -2425,6 +2431,22 @@ export default {
       qualificationOtherPlaceholder: 'Qor shahaadada…',
       yearsOfExperience: 'Sano Khibrad',
       notesPlaceholder: 'Qoraal ikhtiyaari ah…',
+
+      idDocument: {
+        idType: 'Nooca Aqoonsiga',
+        idTypeNone: 'Midna',
+        idNumber: 'Lambarka Aqoonsiga',
+        idNumberPlaceholder: 'Ikhtiyaari',
+        issuedBy: 'Waxaa bixiyay',
+        issuedByPlaceholder: 'Ikhtiyaari',
+        expiresAt: 'Dhacaya',
+        types: {
+          nationalId: 'Aqoonsi Qaran',
+          passport: 'Baasaaboorka',
+          birthCertificate: 'Shahaadada Dhalashada',
+          other: 'Kale',
+        },
+      },
 
       validations: {
         fullNameFourNames: 'Magaca buuxa waa inuu noqdaa 4 magac.',
@@ -3300,6 +3322,7 @@ export default {
         date: 'Taariikh',
         totalReceivedAmount: 'Wadarta lacagta la helay',
         status: 'Xaaladda',
+        newTypeName: 'Magaca nooca cusub',
       },
 
       placeholders: {
@@ -3308,6 +3331,7 @@ export default {
         institutionExample: 'tusaale: Salaam Bank',
         incomeNameExample: 'tusaale: Deeq ka timid XYZ',
         notAvailable: 'N/A',
+        typeNameExample: 'tusaale: EVC',
       },
 
       options: {
@@ -3358,6 +3382,7 @@ export default {
         recordIncome: 'Diiwaan geli Dakhli',
         executeFunds: 'Fulinta Wareejinta',
         saveChanges: 'Kaydi Isbeddelada',
+        createType: 'Abuur nooc',
       },
 
       modals: {
@@ -3386,6 +3411,8 @@ export default {
         transferSuccess: 'Lacag si guul ah ayaa loo wareejiyay',
         transferFailed: 'Wareejintu way fashilantay',
         deleteBlockedBalance: 'Lama tirtiri karo xisaab aan eber ahayn',
+        typeCreated: 'Nooca waa la abuuray',
+        typeCreateFailed: 'Abuurista nooca way fashilantay',
       },
 
       apiErrors: {
@@ -3406,6 +3433,9 @@ export default {
         FIN_ACCOUNT_INACTIVE: 'Xisaabtu waa xiran tahay',
 
         FIN_ACCOUNT_DUPLICATE: 'Xisaabkan hore ayuu u diiwaangashan yahay',
+
+        FIN_ACCOUNT_TYPE_NAME_REQUIRED: 'Magaca nooca xisaabta waa qasab',
+        FIN_ACCOUNT_TYPE_DUPLICATE: 'Noocan hore ayuu u jiraa',
         FIN_VALIDATION_ERROR: 'Xogta la geliyay sax ma aha',
         FIN_INTERNAL_ERROR: 'Server-ka ayaa khalad galay',
       },

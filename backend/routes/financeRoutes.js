@@ -33,6 +33,8 @@ import {
   updateFeeType,
   deleteFeeType,
   canDeleteFeeType,
+  getAccountTypes,
+  createAccountType,
   createAccount,
   getAccounts,
   updateAccount,
@@ -368,6 +370,42 @@ router.delete(
     { module: 'financeStudentFeeType', action: 'delete' },
   ]),
   deleteFeeType
+);
+
+router.get(
+  '/config/account-types',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkAnyPermission([
+    // Normal Accounts access
+    { module: 'financeAccountsInstitution', action: 'view' },
+    { module: 'financeAccountsInstitution', action: 'add' },
+    { module: 'financeAccountsInstitution', action: 'edit' },
+    { module: 'financeAccountsInstitution', action: 'delete' },
+    { module: 'financeAccountsInstitution', action: 'transfer' },
+    { module: 'financeAccountsInstitution', action: 'income' },
+    { module: 'financeAccountsInstitution', action: 'download' },
+
+    // Workflows that still need accounts lookup data
+    { module: 'financeStudentReceiptModal', action: 'view' },
+    { module: 'financeStudentReceiptModal', action: 'input' },
+    { module: 'financeStudentReceiptModal', action: 'save' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'view' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'input' },
+    { module: 'financeStudentPreviousBalanceModal', action: 'save' },
+    { module: 'financePayrollEmployeeInfo', action: 'view' },
+    { module: 'financePayrollEmployeeInfo', action: 'input' },
+    { module: 'financePayrollEmployeeInfo', action: 'save' },
+  ]),
+  getAccountTypes
+);
+
+router.post(
+  '/config/account-types',
+  protect,
+  authorizeRoles('admin', 'staff'),
+  checkPermission('financeAccountsInstitution', 'add'),
+  createAccountType
 );
 
 // --- ACCOUNTS (General Ledger) ---

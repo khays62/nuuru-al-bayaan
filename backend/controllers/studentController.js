@@ -17,11 +17,37 @@ import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { writeAuditLog } from '../services/auditService.js';
 import { getResolvedPrivacyPolicy, validatePasswordAgainstPolicy } from '../utils/privacyPolicy.js';
+import { deleteRemoteObject, isRemoteUploadsEnabled, putBufferToRemote } from '../services/uploadStorage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const collapseWs = (v) => String(v || '').replace(/\s+/g, ' ').trim();
+
+const sanitizeUploadsToken = (value, fallback = 'user') => {
+    const s = String(value || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+    return (s || fallback).slice(0, 32);
+};
+
+const imageExtFromMimeOrName = (mimetype, originalName) => {
+    const mt = String(mimetype || '').toLowerCase();
+    if (mt === 'image/jpeg') return '.jpg';
+    if (mt === 'image/png') return '.png';
+    if (mt === 'image/webp') return '.webp';
+    const ext = path.extname(String(originalName || '')).toLowerCase();
+    if (ext === '.jpg' || ext === '.jpeg') return '.jpg';
+    if (ext === '.png') return '.png';
+    if (ext === '.webp') return '.webp';
+    return '.jpg';
+};
+
+const makeUploadsFilename = ({ actor, mimetype, originalName }) => {
+    const who = sanitizeUploadsToken(actor, 'upload');
+    const ts = Date.now();
+    const rand = Math.random().toString(16).slice(2, 10);
+    const ext = imageExtFromMimeOrName(mimetype, originalName);
+    return `${who}-${ts}-${rand}${ext}`;
+};
 
 const toTitleCaseWords = (value) => {
     const s = collapseWs(value);
@@ -500,6 +526,7 @@ export const addStudent = async (req, res) => {
         // Transaction si aan u helno atomicity
         const session = await mongoose.startSession();
         session.startTransaction();
+        let uploadedPhotoKey = null;
         try {
             // NOTE: avoid Student.create([{...}]) here because it uses insertMany and bypasses pre('save') hooks.
             // We need pre('save') to hash the default password.
@@ -529,6 +556,38 @@ export const addStudent = async (req, res) => {
                 residenceNeighborhood: effectiveNeighborhood,
                 admissionDate: admissionDateParsed,
             });
+
+            // Optional: photo can be attached on create via multipart/form-data (field: photo)
+            if (req.file) {
+                const file = req.file;
+                if (!isRemoteUploadsEnabled()) {
+                    throw new Error('Remote uploads are required for student photos');
+                }
+
+                const filename = makeUploadsFilename({
+                    actor: req.user?._id || req.user?.username || 'student',
+                    mimetype: file.mimetype,
+                    originalName: file.originalname,
+                });
+
+                const nextRelPath = path.posix.join('uploads', 'students', filename);
+                const nextUrl = `/${path.posix.join('api', 'uploads', 'students', filename)}`;
+
+                studentDoc.photo = {
+                    url: nextUrl,
+                    path: nextRelPath,
+                    mimeType: String(file.mimetype || ''),
+                    size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
+                    uploadedAt: new Date(),
+                };
+
+                uploadedPhotoKey = nextRelPath;
+                await putBufferToRemote({
+                    buffer: file.buffer,
+                    key: uploadedPhotoKey,
+                    contentType: String(file.mimetype || ''),
+                });
+            }
             await studentDoc.save({ session });
 
             // Check duplicate enrollment same academicYear (in case of rare race conditions)
@@ -629,6 +688,14 @@ export const addStudent = async (req, res) => {
         } catch (err) {
             await session.abortTransaction();
             session.endSession();
+
+            // Best-effort cleanup if remote upload happened but DB transaction failed.
+            try {
+                if (uploadedPhotoKey) await deleteRemoteObject(uploadedPhotoKey);
+            } catch {
+                // ignore
+            }
+
             console.error(err);
             if (err.code === 11000) {
                 return res.status(409).json({ message: 'Unique constraint violation (studentId or enrollment).' });
@@ -986,6 +1053,7 @@ export const reactivateStudent = async (req, res) => {
 // @desc    Update student basic fields
 // @route   PATCH /api/students/:id
 export const updateStudent = async (req, res) => {
+    let uploadedNextKey = null;
     try {
         const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
@@ -1208,8 +1276,55 @@ export const updateStudent = async (req, res) => {
             }
         }
 
+        // Optional: allow replacing photo during update via multipart/form-data (field: photo)
+        const prevPhotoPath = String(current?.photo?.path || '').trim();
+        if (req.file) {
+            const file = req.file;
+            if (!isRemoteUploadsEnabled()) {
+                throw new Error('Remote uploads are required for student photos');
+            }
+
+            const filename = makeUploadsFilename({
+                actor: req.user?._id || req.user?.username || 'student',
+                mimetype: file.mimetype,
+                originalName: file.originalname,
+            });
+
+            const nextRelPath = path.posix.join('uploads', 'students', filename);
+            const nextUrl = `/${path.posix.join('api', 'uploads', 'students', filename)}`;
+
+            uploadedNextKey = nextRelPath;
+            await putBufferToRemote({
+                buffer: file.buffer,
+                key: uploadedNextKey,
+                contentType: String(file.mimetype || ''),
+            });
+
+            updates.photo = {
+                url: nextUrl,
+                path: nextRelPath,
+                mimeType: String(file.mimetype || ''),
+                size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
+                uploadedAt: new Date(),
+            };
+        }
+
         const student = await Student.findByIdAndUpdate(id, { $set: updates }, { new: true });
-    if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!student) {
+            try {
+                if (uploadedNextKey) await deleteRemoteObject(uploadedNextKey);
+            } catch {
+                // ignore
+            }
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        // Best-effort delete previous photo file if replaced
+        if (req.file && prevPhotoPath && prevPhotoPath.startsWith('uploads/students/')) {
+            const absPrev = path.join(__dirname, '..', prevPhotoPath);
+            try { await fs.unlink(absPrev); } catch { /* ignore */ }
+            try { await deleteRemoteObject(prevPhotoPath); } catch { /* ignore */ }
+        }
 
         // Keep linked login account (User) consistent when applicable.
         try {
@@ -1242,6 +1357,12 @@ export const updateStudent = async (req, res) => {
 
         res.json({ message: 'Student updated', student });
     } catch (err) {
+        // Best-effort cleanup if we uploaded a new remote photo but DB update failed.
+        try {
+            if (uploadedNextKey) await deleteRemoteObject(uploadedNextKey);
+        } catch {
+            // ignore
+        }
         console.error('Update student error', err);
         res.status(500).json({ message: 'Server Error' });
     }
@@ -1251,6 +1372,7 @@ export const updateStudent = async (req, res) => {
 // @desc    Upload / replace student photo
 // @route   POST /api/students/:id/photo   (multipart/form-data: photo)
 export const uploadStudentPhoto = async (req, res) => {
+    let uploadedKey = null;
     try {
         const { id } = req.params;
         if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid ID' });
@@ -1264,30 +1386,42 @@ export const uploadStudentPhoto = async (req, res) => {
 
         const student = await Student.findById(id);
         if (!student) {
-            // Clean up orphan file
-            try { await fs.unlink(file.path); } catch { /* ignore */ }
             return res.status(404).json({ message: 'Student not found' });
         }
 
-        const nextRelPath = path.posix.join('uploads', 'students', String(file.filename || ''));
-        const nextUrl = `/${path.posix.join('api', 'uploads', 'students', String(file.filename || ''))}`;
+        if (!isRemoteUploadsEnabled()) {
+            return res.status(500).json({ message: 'Remote uploads are required for student photos' });
+        }
+
+        const filename = makeUploadsFilename({
+            actor: req.user?._id || req.user?.username || 'student',
+            mimetype: file.mimetype,
+            originalName: file.originalname,
+        });
+
+        const nextRelPath = path.posix.join('uploads', 'students', filename);
+        const nextUrl = `/${path.posix.join('api', 'uploads', 'students', filename)}`;
+
+        uploadedKey = nextRelPath;
+
+        await putBufferToRemote({
+            buffer: file.buffer,
+            key: nextRelPath,
+            contentType: String(file.mimetype || ''),
+        });
 
         const prevPath = String(student?.photo?.path || '').trim();
         if (prevPath && prevPath.startsWith('uploads/students/')) {
             const absPrev = path.join(__dirname, '..', prevPath);
-            try {
-                // Delete the previous file (best-effort)
-                await fs.unlink(absPrev);
-            } catch {
-                // ignore
-            }
+            try { await fs.unlink(absPrev); } catch { /* ignore */ }
+            try { await deleteRemoteObject(prevPath); } catch { /* ignore */ }
         }
 
         student.photo = {
             url: nextUrl,
             path: nextRelPath,
             mimeType: String(file.mimetype || ''),
-            size: Number(file.size || 0),
+            size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
             uploadedAt: new Date(),
         };
         await student.save();
@@ -1300,6 +1434,12 @@ export const uploadStudentPhoto = async (req, res) => {
             student,
         });
     } catch (err) {
+        // Best-effort: cleanup remote object if we uploaded but later failed.
+        try {
+            if (uploadedKey) await deleteRemoteObject(uploadedKey);
+        } catch {
+            // ignore
+        }
         console.error('uploadStudentPhoto error', err);
         return res.status(500).json({ message: 'Server Error' });
     }

@@ -2484,6 +2484,7 @@ const en = {
         address: 'Address',
         employment: 'Employment',
         professional: 'Professional',
+        idDocument: 'ID Document',
         notes: 'Notes',
       },
       fullName: 'Full Name',
@@ -2534,6 +2535,22 @@ const en = {
       qualificationOtherPlaceholder: 'Type the qualification…',
       yearsOfExperience: 'Years of Experience',
       notesPlaceholder: 'Optional notes about this teacher…',
+
+      idDocument: {
+        idType: 'ID Type',
+        idTypeNone: 'None',
+        idNumber: 'ID Number',
+        idNumberPlaceholder: 'Optional',
+        issuedBy: 'Issued By',
+        issuedByPlaceholder: 'Optional',
+        expiresAt: 'Expires At',
+        types: {
+          nationalId: 'National ID',
+          passport: 'Passport',
+          birthCertificate: 'Birth Certificate',
+          other: 'Other',
+        },
+      },
 
       validations: {
         fullNameFourNames: 'Full name must be exactly 4 names.',

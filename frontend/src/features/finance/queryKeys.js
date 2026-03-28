@@ -20,6 +20,12 @@ export const accountKeys = {
   list: ({ includeInactive } = {}) => financeAccounts.key('list', qkStr(includeInactive ? '1' : '0')),
 };
 
+export const accountTypeKeys = {
+  base: financeAccounts.key('types'),
+  listBase: financeAccounts.key('types', 'list'),
+  list: ({ includeInactive } = {}) => financeAccounts.key('types', 'list', qkStr(includeInactive ? '1' : '0')),
+};
+
 export const categoryKeys = {
   base: financeCategories.base,
   listBase: financeCategories.key('list'),

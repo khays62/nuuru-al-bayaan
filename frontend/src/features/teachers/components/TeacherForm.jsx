@@ -75,6 +75,11 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     dob: '',
     nationality: 'Somalia',
 
+    idType: '',
+    idNumber: '',
+    idIssuedBy: '',
+    idExpiresAt: '',
+
     email: '',
     phone: '',
     phone2: '',
@@ -193,6 +198,11 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
         gender: initialValue.gender || '',
         dob: toDateInput(initialValue.dob),
         nationality: initialValue.nationality || (initialValue.isSomali === false ? '' : 'Somalia'),
+
+        idType: initialValue?.idDocument?.idType || '',
+        idNumber: initialValue?.idDocument?.idNumber || '',
+        idIssuedBy: initialValue?.idDocument?.issuedBy || '',
+        idExpiresAt: initialValue?.idDocument?.expiresAt ? toDateInput(initialValue.idDocument.expiresAt) : '',
 
         teacherId: initialValue.teacherId || '',
         employeeId: initialValue.employeeId || '',
@@ -404,6 +414,13 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
         gender: form.gender,
         dob: form.dob,
         nationality: form.isSomali === false ? String(form.nationality || '').trim() : 'Somalia',
+
+        idDocument: {
+          idType: String(form.idType || '').trim(),
+          idNumber: String(form.idNumber || '').trim(),
+          issuedBy: String(form.idIssuedBy || '').trim(),
+          expiresAt: form.idExpiresAt || null,
+        },
 
         ...(String(form.teacherId || '').trim() ? { teacherId: String(form.teacherId || '').trim() } : {}),
         // employeeId is auto-generated server-side; send only if already present (edit)
@@ -813,13 +830,81 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
           </div>
         </div>
 
-        {/* Notes (bottom-most) */}
-        <div className={`${cardBase} lg:col-span-2 xl:col-span-3`}>
-          <div className={cardHeaderBase}>
-            <div className="text-sm font-semibold text-(--nb-color-fg)">{t('teachers.form.sections.notes')}</div>
+        <div className="lg:col-span-2 xl:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* ID Document */}
+          <div className={cardBase}>
+            <div className={cardHeaderBase}>
+              <div className="text-sm font-semibold text-(--nb-color-fg)">{t('teachers.form.sections.idDocument')}</div>
+            </div>
+            <div className="p-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div>
+                  <Label>{t('teachers.form.idDocument.idType')}</Label>
+                  <div className="mt-1">
+                    <DropdownSelect
+                      id="teacher-id-type"
+                      name="idType"
+                      value={form.idType}
+                      onChange={(v) => setField('idType', v)}
+                      options={[
+                        { value: 'National ID', label: t('teachers.form.idDocument.types.nationalId') },
+                        { value: 'Passport', label: t('teachers.form.idDocument.types.passport') },
+                        { value: 'Birth Certificate', label: t('teachers.form.idDocument.types.birthCertificate') },
+                        { value: 'Other', label: t('teachers.form.idDocument.types.other') },
+                      ]}
+                      placeholder={t('teachers.form.idDocument.idTypeNone')}
+                      disabled={saving}
+                      className="py-1.5"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>{t('teachers.form.idDocument.idNumber')}</Label>
+                  <Input
+                    name="idNumber"
+                    value={form.idNumber}
+                    onChange={onChange}
+                    type="text"
+                    disabled={saving}
+                    className="mt-1 py-1.5"
+                    placeholder={t('teachers.form.idDocument.idNumberPlaceholder')}
+                  />
+                </div>
+                <div>
+                  <Label>{t('teachers.form.idDocument.issuedBy')}</Label>
+                  <Input
+                    name="idIssuedBy"
+                    value={form.idIssuedBy}
+                    onChange={onChange}
+                    type="text"
+                    disabled={saving}
+                    className="mt-1 py-1.5"
+                    placeholder={t('teachers.form.idDocument.issuedByPlaceholder')}
+                  />
+                </div>
+                <div>
+                  <Label>{t('teachers.form.idDocument.expiresAt')}</Label>
+                  <Input
+                    name="idExpiresAt"
+                    value={form.idExpiresAt}
+                    onChange={onChange}
+                    type="date"
+                    disabled={saving}
+                    className="mt-1 py-1.5"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="p-3">
-            <Textarea name="notes" value={form.notes} onChange={onChange} className="mt-1 py-1.5" rows={3} disabled={saving} placeholder={t('teachers.form.notesPlaceholder')} />
+
+          {/* Notes */}
+          <div className={cardBase}>
+            <div className={cardHeaderBase}>
+              <div className="text-sm font-semibold text-(--nb-color-fg)">{t('teachers.form.sections.notes')}</div>
+            </div>
+            <div className="p-3">
+              <Textarea name="notes" value={form.notes} onChange={onChange} className="mt-1 py-1.5" rows={3} disabled={saving} placeholder={t('teachers.form.notesPlaceholder')} />
+            </div>
           </div>
         </div>
       </div>

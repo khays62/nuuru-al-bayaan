@@ -18,6 +18,7 @@ import { protect } from './middleware/authMiddleware.js';
 import { hasPermission } from './middleware/checkPermission.js';
 import { writeAuditLog } from './services/auditService.js';
 import LibraryResource from './models/LibraryResource.js';
+import { createUploadsRemoteOnlyHandler } from './middleware/serveUploadsRemoteOnly.js';
 // import seedDatabase from './utils/seeder.js'; // Import the seeder function
 
 // Import routes
@@ -264,19 +265,23 @@ const startServer = async () => {
 
       return next();
     },
-    express.static(path.join(__dirname, 'uploads', 'library'), {
-      fallthrough: false,
-      maxAge: isDev ? 0 : '7d',
-      immutable: false,
+    createUploadsRemoteOnlyHandler({
+      keyPrefix: 'uploads/library',
+      isDev,
+      singleSegment: true,
     })
   );
 
-  // Generic uploads: keep protected static serving (includes student photos etc.)
-  app.use('/api/uploads', protect, express.static(path.join(__dirname, 'uploads'), {
-    fallthrough: false,
-    maxAge: isDev ? 0 : '7d',
-    immutable: false,
-  }));
+  // Generic uploads: protected serving (includes student/teacher/user photos etc.)
+  app.use(
+    '/api/uploads',
+    protect,
+    createUploadsRemoteOnlyHandler({
+      keyPrefix: 'uploads',
+      isDev,
+      singleSegment: false,
+    })
+  );
 
   app.use('/api/lookups', lookupRoutes);
   app.use('/api/students', studentRoutes);

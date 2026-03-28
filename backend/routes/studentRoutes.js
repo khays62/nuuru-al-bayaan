@@ -12,6 +12,92 @@ import { uploadStudentPhoto as uploadStudentPhotoMw, STUDENT_PHOTO_MAX_BYTES } f
 
 const router = express.Router();
 
+const isMultipart = (req) => {
+    try {
+        return Boolean(req.is && req.is('multipart/form-data'));
+    } catch {
+        return false;
+    }
+};
+
+const coerceBoolean = (value) => {
+    if (typeof value === 'boolean') return value;
+    if (value == null) return value;
+    const s = String(value).trim().toLowerCase();
+    if (s === 'true' || s === '1' || s === 'yes') return true;
+    if (s === 'false' || s === '0' || s === 'no') return false;
+    return value;
+};
+
+const tryParseJsonObject = (value) => {
+    if (value == null) return value;
+    if (typeof value === 'object') return value;
+    const s = String(value).trim();
+    if (!s) return value;
+    if (!(s.startsWith('{') || s.startsWith('['))) return value;
+    try {
+        return JSON.parse(s);
+    } catch {
+        return value;
+    }
+};
+
+const normalizeStudentMultipartBody = (req, res, next) => {
+    if (!isMultipart(req)) return next();
+
+    const body = req.body || {};
+
+    // JSON-like nested fields
+    body.transfer = tryParseJsonObject(body.transfer);
+    body.medical = tryParseJsonObject(body.medical);
+    body.idDocument = tryParseJsonObject(body.idDocument);
+
+    // Boolean-like fields
+    if (Object.prototype.hasOwnProperty.call(body, 'isSomali')) {
+        body.isSomali = coerceBoolean(body.isSomali);
+    }
+    if (body.transfer && typeof body.transfer === 'object' && Object.prototype.hasOwnProperty.call(body.transfer, 'isTransfer')) {
+        body.transfer.isTransfer = coerceBoolean(body.transfer.isTransfer);
+    }
+
+    req.body = body;
+    return next();
+};
+
+const cleanupUploadedFileOnError = (req, res, next) => {
+    // Remote-only uploads use memory storage; nothing to cleanup on disk.
+    return next();
+};
+
+const maybeUploadStudentPhoto = (req, res, next) => {
+    if (!isMultipart(req)) return next();
+    return uploadStudentPhotoMw.single('photo')(req, res, (err) => {
+        if (!err) return next();
+        const code = String(err?.code || '').toUpperCase();
+        if (code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                success: false,
+                message: req.t('students.photo.tooLarge', { mb: Math.floor(STUDENT_PHOTO_MAX_BYTES / (1024 * 1024)) }, 'Photo is too large.'),
+            });
+        }
+        if (String(err?.code || '') === 'INVALID_FILE_TYPE') {
+            return res.status(400).json({
+                success: false,
+                message: req.t('students.photo.invalidType', null, 'Invalid image type. Only JPG, PNG, or WEBP are allowed.'),
+            });
+        }
+        return res.status(400).json({
+            success: false,
+            message: req.t('students.photo.uploadFailed', null, 'Failed to upload photo.'),
+        });
+    });
+};
+
+const validateUpdateStudentBodyIfJson = (req, res, next) => {
+    if (isMultipart(req)) return next();
+    return validate({ body: updateStudentBody })(req, res, next);
+};
+
 const objectId = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid id');
 
 const listStudentsQuery = z.object({
@@ -110,6 +196,9 @@ router.route('/')
         .post(
             protect,
             checkPermission("students", "add"),
+            maybeUploadStudentPhoto,
+            cleanupUploadedFileOnError,
+            normalizeStudentMultipartBody,
             addStudent
         );  // Marka la sameeyo POST /api/students
 
@@ -147,8 +236,12 @@ router.get(
 router.patch(
     '/:id',
     protect,
-    validate({ params: z.object({ id: objectId }).strip(), body: updateStudentBody }),
+    validate({ params: z.object({ id: objectId }).strip() }),
     checkPermission("students", "edit"),
+    maybeUploadStudentPhoto,
+    cleanupUploadedFileOnError,
+    normalizeStudentMultipartBody,
+    validateUpdateStudentBodyIfJson,
     updateStudent
 ); // PATCH /api/students/:id (update basic fields)
 

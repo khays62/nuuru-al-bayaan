@@ -1,14 +1,11 @@
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-import fsPromises from 'fs/promises';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const UPLOADS_ROOT = path.resolve(__dirname, '..', 'uploads');
-const LIBRARY_UPLOADS_DIR = path.join(UPLOADS_ROOT, 'library');
 
 export const LIBRARY_FILE_MAX_BYTES = 25 * 1024 * 1024; // 25MB
 const ALLOWED_MIME = new Set([
@@ -19,14 +16,6 @@ const ALLOWED_MIME = new Set([
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ]);
 
-function ensureDirs() {
-  try {
-    fs.mkdirSync(LIBRARY_UPLOADS_DIR, { recursive: true });
-  } catch {
-    // ignore
-  }
-}
-
 function safeExt(mimetype) {
   if (mimetype === 'application/pdf') return '.pdf';
   if (mimetype === 'application/msword') return '.doc';
@@ -36,18 +25,7 @@ function safeExt(mimetype) {
   return '';
 }
 
-const storage = multer.diskStorage({
-  destination(_req, _file, cb) {
-    ensureDirs();
-    cb(null, LIBRARY_UPLOADS_DIR);
-  },
-  filename(req, file, cb) {
-    const actor = String(req.user?._id || req.user?.username || 'library').replace(/[^a-zA-Z0-9_-]/g, '');
-    const ts = Date.now();
-    const ext = safeExt(file.mimetype) || path.extname(file.originalname || '') || '.pdf';
-    cb(null, `${actor}-${ts}${ext}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 export const uploadLibraryResource = multer({
   storage,
@@ -76,28 +54,16 @@ function startsWithBytes(buf, bytes) {
   }
 }
 
-async function readHeaderBytes(filePath, length) {
-  const handle = await fsPromises.open(filePath, 'r');
-  try {
-    const buf = Buffer.alloc(length);
-    const { bytesRead } = await handle.read(buf, 0, length, 0);
-    return buf.subarray(0, bytesRead);
-  } finally {
-    try { await handle.close(); } catch { /* ignore */ }
-  }
-}
-
 // Extra hardening: validate file magic bytes after upload.
 // Prevents clients from faking mimetype for non-PDF/DOC/DOCX.
 export async function validateLibraryUploadSignature(req, res, next) {
   const file = req.file;
-  if (!file?.path || !file?.mimetype) return next();
+  if (!file?.buffer || !file?.mimetype) return next();
 
   const mimetype = String(file.mimetype || '');
-  const p = String(file.path || '');
 
   try {
-    const header = await readHeaderBytes(p, 16);
+    const header = Buffer.isBuffer(file.buffer) ? file.buffer.subarray(0, 16) : Buffer.alloc(0);
 
     // PDF: %PDF-
     if (mimetype === 'application/pdf') {
@@ -157,12 +123,11 @@ export async function validateLibraryUploadSignature(req, res, next) {
     // If it passed multer mime allowlist, but isn't recognized here, allow.
     return next();
   } catch (err) {
-    try { await fsPromises.unlink(p); } catch { /* ignore */ }
     return next(err);
   }
 }
 
 export const libraryUploadsPaths = {
   uploadsRoot: UPLOADS_ROOT,
-  libraryDir: LIBRARY_UPLOADS_DIR,
+  libraryDir: path.join(UPLOADS_ROOT, 'library'),
 };

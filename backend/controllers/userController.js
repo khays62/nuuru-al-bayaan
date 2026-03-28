@@ -10,6 +10,32 @@ import Counter from '../models/Counter.js';
 import path from 'path';
 import fs from 'fs/promises';
 import { getResolvedPrivacyPolicy, validatePasswordAgainstPolicy } from '../utils/privacyPolicy.js';
+import { deleteRemoteObject, isRemoteUploadsEnabled, putBufferToRemote } from '../services/uploadStorage.js';
+
+const sanitizeUploadsToken = (value, fallback = 'user') => {
+  const s = String(value || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+  return (s || fallback).slice(0, 32);
+};
+
+const imageExtFromMimeOrName = (mimetype, originalName) => {
+  const mt = String(mimetype || '').toLowerCase();
+  if (mt === 'image/jpeg') return '.jpg';
+  if (mt === 'image/png') return '.png';
+  if (mt === 'image/webp') return '.webp';
+  const ext = path.extname(String(originalName || '')).toLowerCase();
+  if (ext === '.jpg' || ext === '.jpeg') return '.jpg';
+  if (ext === '.png') return '.png';
+  if (ext === '.webp') return '.webp';
+  return '.jpg';
+};
+
+const makeUploadsFilename = ({ actor, mimetype, originalName }) => {
+  const who = sanitizeUploadsToken(actor, 'upload');
+  const ts = Date.now();
+  const rand = Math.random().toString(16).slice(2, 10);
+  const ext = imageExtFromMimeOrName(mimetype, originalName);
+  return `${who}-${ts}-${rand}${ext}`;
+};
 
 
 const parseJsonIfString = (v) => {
@@ -121,6 +147,7 @@ const coerceBool = (v, fallback = undefined) => {
 // CREATE USER
 export const createUser = async (req, res) => {
   try {
+    let uploadedPhotoKey = null;
     let {
       fullName,
       username,
@@ -227,13 +254,31 @@ export const createUser = async (req, res) => {
     // Optional photo (multipart/form-data: photo)
     if (req.file) {
       const file = req.file;
-      const nextRelPath = path.posix.join('uploads', 'users', String(file.filename || ''));
-      const nextUrl = `/${path.posix.join('api', 'uploads', 'users', String(file.filename || ''))}`;
+      if (!isRemoteUploadsEnabled()) {
+        throw new Error('Remote uploads are required for user photos');
+      }
+
+      const filename = makeUploadsFilename({
+        actor: req.user?._id || req.user?.username || username || 'user',
+        mimetype: file.mimetype,
+        originalName: file.originalname,
+      });
+
+      const nextRelPath = path.posix.join('uploads', 'users', filename);
+      const nextUrl = `/${path.posix.join('api', 'uploads', 'users', filename)}`;
+
+      uploadedPhotoKey = nextRelPath;
+      await putBufferToRemote({
+        buffer: file.buffer,
+        key: uploadedPhotoKey,
+        contentType: String(file.mimetype || ''),
+      });
+
       newUser.photo = {
         url: nextUrl,
         path: nextRelPath,
         mimeType: String(file.mimetype || ''),
-        size: Number(file.size || 0),
+        size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
         uploadedAt: new Date(),
       };
       await newUser.save();
@@ -258,6 +303,12 @@ export const createUser = async (req, res) => {
 
     res.status(201).json(safeUserResponse(newUser));
   } catch (error) {
+    // Best-effort cleanup if we uploaded a remote photo but request failed.
+    try {
+      if (uploadedPhotoKey) await deleteRemoteObject(uploadedPhotoKey);
+    } catch {
+      // ignore
+    }
     console.error("❌ Create user error:", error);
     res.status(500).json({ message: error.message });
   }
@@ -265,6 +316,7 @@ export const createUser = async (req, res) => {
 
 // UPDATE USER
 export const updateUser = async (req, res) => {
+  let uploadedNextPhotoKey = null;
   try {
     const { id } = req.params;
 
@@ -372,8 +424,25 @@ export const updateUser = async (req, res) => {
     // Optional photo (multipart/form-data: photo)
     if (req.file) {
       const file = req.file;
-      const nextRelPath = path.posix.join('uploads', 'users', String(file.filename || ''));
-      const nextUrl = `/${path.posix.join('api', 'uploads', 'users', String(file.filename || ''))}`;
+      if (!isRemoteUploadsEnabled()) {
+        throw new Error('Remote uploads are required for user photos');
+      }
+
+      const filename = makeUploadsFilename({
+        actor: req.user?._id || req.user?.username || user.username || 'user',
+        mimetype: file.mimetype,
+        originalName: file.originalname,
+      });
+
+      const nextRelPath = path.posix.join('uploads', 'users', filename);
+      const nextUrl = `/${path.posix.join('api', 'uploads', 'users', filename)}`;
+
+      uploadedNextPhotoKey = nextRelPath;
+      await putBufferToRemote({
+        buffer: file.buffer,
+        key: uploadedNextPhotoKey,
+        contentType: String(file.mimetype || ''),
+      });
 
       const prevPath = String(user?.photo?.path || '').trim();
       if (prevPath && prevPath.startsWith('uploads/users/')) {
@@ -383,13 +452,15 @@ export const updateUser = async (req, res) => {
         } catch {
           // ignore
         }
+
+        try { await deleteRemoteObject(prevPath); } catch { /* ignore */ }
       }
 
       user.photo = {
         url: nextUrl,
         path: nextRelPath,
         mimeType: String(file.mimetype || ''),
-        size: Number(file.size || 0),
+        size: Number(file.size || (Buffer.isBuffer(file.buffer) ? file.buffer.length : 0) || 0),
         uploadedAt: new Date(),
       };
     }
@@ -478,6 +549,11 @@ export const updateUser = async (req, res) => {
 
     res.json({ message: "User updated successfully", user: safeUserResponse(user) });
   } catch (error) {
+    try {
+      if (uploadedNextPhotoKey) await deleteRemoteObject(uploadedNextPhotoKey);
+    } catch {
+      // ignore
+    }
     console.error("❌ Update user error:", error);
     res.status(500).json({ message: error.message });
   }
@@ -570,7 +646,16 @@ export const deleteUser = async (req, res) => {
       }
     }
 
+    const prevPhotoPath = String(target?.photo?.path || '').trim();
+
     await User.deleteOne({ _id: target._id });
+
+    // Best-effort cleanup of photo file/object
+    if (prevPhotoPath && prevPhotoPath.startsWith('uploads/users/')) {
+      const absPrev = path.join(process.cwd(), prevPhotoPath);
+      try { await fs.unlink(absPrev); } catch { /* ignore */ }
+      try { await deleteRemoteObject(prevPhotoPath); } catch { /* ignore */ }
+    }
 
     await writeAuditLog({
       userId: req.user?._id,

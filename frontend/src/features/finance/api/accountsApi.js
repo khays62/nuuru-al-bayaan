@@ -30,3 +30,14 @@ export async function recordIncome(payload, { signal } = {}) {
   const res = await axios.post('/finance/accounts/income', payload, { signal });
   return res.data;
 }
+
+export async function listAccountTypes({ includeInactive } = {}, { signal } = {}) {
+  const include = includeInactive ? 'true' : 'false';
+  const res = await axios.get(`/finance/config/account-types?includeInactive=${include}`, { signal });
+  return res.data;
+}
+
+export async function createAccountType(payload, { signal } = {}) {
+  const res = await axios.post('/finance/config/account-types', payload, { signal });
+  return res.data;
+}

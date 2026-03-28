@@ -10,7 +10,6 @@ import {
     createStudent,
     updateStudent as updateStudentApi,
     getStudentProfile as fetchStudentProfile,
-    uploadStudentPhoto,
 } from '../api/studentsApi';
 import { getAcademicYears, getGrades, getShifts } from '../../lookups/api/lookups';
 import { listGradeSections } from '../../grades/api/gradeSections';
@@ -327,13 +326,8 @@ export default function StudentPage() {
                     toast.error(t('students.table.permissions.noEdit'));
                     return { ok: false };
                 }
-                const { ok, status, data } = await updateStudentApi(editingStudent._id, payload);
+                const { ok, status, data } = await updateStudentApi(editingStudent._id, { ...payload, photoFile });
                 if (ok) {
-                    if (photoFile) {
-                        const up = await uploadStudentPhoto(editingStudent._id, photoFile);
-                        if (up.ok) toast.success(t('students.table.toasts.photoUploaded'));
-                        else toast.error(up.data?.message || t('students.table.errors.photoUploadFailed'));
-                    }
                     toast.success(t('students.table.toasts.updated'));
                     // Invalidate and warm profile cache for immediate re-edit
                     try { queryClient.removeQueries({ queryKey: studentKeys.adminProfile(editingStudent._id) }); } catch { /* ignore */ }
@@ -357,14 +351,9 @@ export default function StudentPage() {
                     toast.error(t('students.table.permissions.noAdd'));
                     return { ok: false };
                 }
-                const { ok, status, data } = await createStudent(payload);
+                const { ok, status, data } = await createStudent({ ...payload, photoFile });
                 if (ok) {
                     const createdId = String(data?.student?._id || '');
-                    if (photoFile && createdId) {
-                        const up = await uploadStudentPhoto(createdId, photoFile);
-                        if (up.ok) toast.success(t('students.table.toasts.photoUploaded'));
-                        else toast.error(up.data?.message || t('students.table.errors.photoUploadFailed'));
-                    }
                     const savedName = String(payload?.fullName || '').trim();
                     toast.success(
                         savedName

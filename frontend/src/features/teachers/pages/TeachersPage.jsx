@@ -6,7 +6,7 @@ import { Plus, Printer, RotateCcw } from 'lucide-react';
 
 import { useAuth } from '../../../auth/AuthContext';
 
-import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, resetTeacherPassword, updateTeacher, uploadTeacherPhoto } from '../api/teachersApi';
+import { createTeacher, deactivateTeacher, listTeachers, reactivateTeacher, resetTeacherPassword, updateTeacher } from '../api/teachersApi';
 
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import SearchInput from '../../../shared/components/DataToolbar/SearchInput.jsx';
@@ -78,7 +78,7 @@ export default function TeachersPage() {
 	});
 
 	const createTeacherMutation = useMutation({
-		mutationFn: (payload) => createTeacher(payload),
+		mutationFn: ({ payload, photoFile }) => createTeacher(payload, photoFile),
 		onSuccess: () => {
 			try {
 				queryClient.invalidateQueries({ queryKey: teacherKeys.adminListBase, refetchType: 'active' });
@@ -90,7 +90,7 @@ export default function TeachersPage() {
 	});
 
 	const updateTeacherMutation = useMutation({
-		mutationFn: ({ id, payload }) => updateTeacher(id, payload),
+		mutationFn: ({ id, payload, photoFile }) => updateTeacher(id, payload, photoFile),
 		onSuccess: () => {
 			toast.success(t('teachers.table.toasts.updated'));
 			try {
@@ -292,9 +292,9 @@ export default function TeachersPage() {
 			if (isEdit) {
 				const id = editing._id || editing.id;
 				teacherId = id;
-				await updateTeacherMutation.mutateAsync({ id, payload });
+				await updateTeacherMutation.mutateAsync({ id, payload, photoFile: photoFile || null });
 			} else {
-				const res = await createTeacherMutation.mutateAsync(payload);
+				const res = await createTeacherMutation.mutateAsync({ payload, photoFile: photoFile || null });
 				teacherId = res?.data?._id || res?.data?.id || res?._id || null;
 				createdName = String(payload?.fullName || '').trim();
 				toast.success(
@@ -306,14 +306,6 @@ export default function TeachersPage() {
 		} catch {
 			// Errors are already toasted in the mutation handlers.
 			return;
-		}
-
-		if (teacherId && photoFile) {
-			try {
-				await uploadTeacherPhoto(teacherId, photoFile);
-			} catch (e) {
-				toast.error(e?.data?.message || e?.message || t('teachers.table.errors.photoUploadFailed'));
-			}
 		}
 
 		if (isEdit) {

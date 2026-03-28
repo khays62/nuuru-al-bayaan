@@ -8,6 +8,11 @@ export default {
     loading: 'جارٍ التحميل…',
     pleaseWait: 'يرجى الانتظار…',
 
+    actions: {
+      cancel: 'إلغاء',
+      save: 'حفظ',
+    },
+
     errors: {
       somethingWentWrong: 'حدث خطأ ما.',
       failedToCreate: 'فشل الإنشاء',
@@ -265,6 +270,7 @@ export default {
           reset: 'إعادة ضبط',
           resetTitle: 'إعادة ضبط الفلاتر',
         },
+          idDocument: 'وثيقة الهوية',
         toasts: {
           fetchFailed: 'فشل جلب بيانات أرصدة الطلاب',
           noPreviousBalanceCategory: 'أنشئ نوع مبلغ باسم "Previous Balance" أولاً',
@@ -2544,6 +2550,7 @@ export default {
         address: 'العنوان',
         employment: 'الوظيفة',
         professional: 'مهني',
+        idDocument: 'وثيقة الهوية',
         notes: 'ملاحظات',
       },
       fullName: 'الاسم الكامل',
@@ -2594,6 +2601,22 @@ export default {
       qualificationOtherPlaceholder: 'اكتب المؤهل…',
       yearsOfExperience: 'سنوات الخبرة',
       notesPlaceholder: 'ملاحظات اختيارية عن هذا المعلم…',
+
+      idDocument: {
+        idType: 'نوع الهوية',
+        idTypeNone: 'لا يوجد',
+        idNumber: 'رقم الهوية',
+        idNumberPlaceholder: 'اختياري',
+        issuedBy: 'الجهة المصدِرة',
+        issuedByPlaceholder: 'اختياري',
+        expiresAt: 'تاريخ الانتهاء',
+        types: {
+          nationalId: 'هوية وطنية',
+          passport: 'جواز سفر',
+          birthCertificate: 'شهادة ميلاد',
+          other: 'أخرى',
+        },
+      },
 
       validations: {
         fullNameFourNames: 'يجب أن يتكون الاسم الكامل من 4 أسماء بالضبط.',
@@ -3477,6 +3500,7 @@ export default {
         date: 'التاريخ',
         totalReceivedAmount: 'إجمالي المبلغ المستلم',
         status: 'الحالة',
+        newTypeName: 'اسم النوع الجديد',
       },
 
       placeholders: {
@@ -3485,6 +3509,7 @@ export default {
         institutionExample: 'مثال: بنك سلام',
         incomeNameExample: 'مثال: تبرع من XYZ',
         notAvailable: 'غير متوفر',
+        typeNameExample: 'مثال: EVC',
       },
 
       options: {
@@ -3535,6 +3560,7 @@ export default {
         recordIncome: 'تسجيل الدخل',
         executeFunds: 'تنفيذ التحويل',
         saveChanges: 'حفظ التغييرات',
+        createType: 'إنشاء نوع',
       },
 
       modals: {
@@ -3563,6 +3589,8 @@ export default {
         transferSuccess: 'تم تحويل الأموال بنجاح',
         transferFailed: 'فشل التحويل',
         deleteBlockedBalance: 'لا يمكن حذف حساب برصيد غير صفري',
+        typeCreated: 'تم إنشاء النوع بنجاح',
+        typeCreateFailed: 'فشل إنشاء النوع',
       },
 
       apiErrors: {
@@ -3583,6 +3611,9 @@ export default {
         FIN_ACCOUNT_INACTIVE: 'الحساب غير نشط',
 
         FIN_ACCOUNT_DUPLICATE: 'يوجد حساب مماثل مسجل مسبقاً',
+
+        FIN_ACCOUNT_TYPE_NAME_REQUIRED: 'اسم نوع الحساب مطلوب',
+        FIN_ACCOUNT_TYPE_DUPLICATE: 'هذا النوع موجود مسبقاً',
         FIN_VALIDATION_ERROR: 'البيانات المدخلة غير صحيحة',
         FIN_INTERNAL_ERROR: 'حدث خطأ في الخادم',
       },

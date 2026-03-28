@@ -1,5 +1,6 @@
 import FinanceCategory from '../../models/FinanceCategory.js';
 import Account from '../../models/Account.js';
+import FinanceAccountType from '../../models/FinanceAccountType.js';
 import AuditLog from '../../models/AuditLog.js';
 import FeeType from '../../models/FeeType.js';
 import FeeInvoice from '../../models/FeeInvoice.js';
@@ -345,6 +346,68 @@ export const canDeleteFeeType = async (req, res) => {
         return res.json({ canDelete: true });
     } catch (error) {
         return res.status(500).json({ message: error.message });
+    }
+};
+
+// --- ACCOUNT TYPES (Bank, Cash, Mobile Money, EVC, etc.) ---
+
+export const getAccountTypes = async (req, res) => {
+    try {
+        // Bootstrap defaults so Accounts UI always has choices.
+        await FinanceAccountType.updateOne(
+            { nameLower: 'bank' },
+            { $setOnInsert: { name: 'Bank', status: 'active' } },
+            { upsert: true }
+        );
+        await FinanceAccountType.updateOne(
+            { nameLower: 'cash' },
+            { $setOnInsert: { name: 'Cash', status: 'active' } },
+            { upsert: true }
+        );
+        await FinanceAccountType.updateOne(
+            { nameLower: 'mobile money' },
+            { $setOnInsert: { name: 'Mobile Money', status: 'active' } },
+            { upsert: true }
+        );
+
+        const includeInactive = ['1', 'true', 'yes'].includes(String(req.query?.includeInactive || '').toLowerCase());
+        const query = includeInactive ? {} : { status: 'active' };
+        const types = await FinanceAccountType.find(query).sort({ name: 1 });
+        res.json(types);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const createAccountType = async (req, res) => {
+    try {
+        const payload = req.body || {};
+        const name = String(payload?.name || '').trim();
+        if (!name) return sendFinanceError(res, 400, 'FIN_ACCOUNT_TYPE_NAME_REQUIRED', 'name is required');
+
+        const nameLower = name.toLowerCase();
+        const exists = await FinanceAccountType.exists({ nameLower });
+        if (exists) return sendFinanceError(res, 409, 'FIN_ACCOUNT_TYPE_DUPLICATE', 'Account type already exists');
+
+        const doc = new FinanceAccountType({ name, status: 'active' });
+        await doc.save();
+
+        await logAction(req.user, 'CREATE_ACCOUNT_TYPE', `Created account type: ${doc.name}`, req, {
+            id: doc._id,
+            model: 'FinanceAccountType',
+            changes: { after: doc.toObject() }
+        });
+
+        try {
+            publishRealtime({ type: 'accountTypes:changed', id: String(doc._id), name: doc.name, ts: Date.now() });
+        } catch { /* ignore */ }
+
+        res.status(201).json(doc);
+    } catch (error) {
+        if (error?.code === 11000) {
+            return sendFinanceError(res, 409, 'FIN_ACCOUNT_TYPE_DUPLICATE', 'Account type already exists');
+        }
+        res.status(500).json({ code: 'FIN_INTERNAL_ERROR', message: error.message });
     }
 };
 
