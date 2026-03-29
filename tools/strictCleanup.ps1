@@ -9,6 +9,8 @@ $keepDocs = @(
   'docs/OVERVIEW.md',
   'docs/API.md',
   'docs/ARCHITECTURE.md',
+  'docs/DIAGRAMS.md',
+  'docs/DATA_MODELS.md',
   'docs/SECURITY.md',
   'docs/DEPLOY_PREP_SOOMAALI.md',
   'docs/DEPLOY_SECURITY_FLOW_SOOMAALI.md',
