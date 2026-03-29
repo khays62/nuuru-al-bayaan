@@ -1,5 +1,5 @@
 // Performance sanity test for promotion preview & execute
-// Usage: `node tests/runPromotionPerfSample.js [N]` where N=number of students (default 50)
+// Usage: `node backend/scripts/promotion/runPromotionPerfSample.js [N]` where N=number of students (default 50)
 console.log('Perf script start');
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';

@@ -1,5 +1,5 @@
 // Sample test harness (not full Jest suite) to validate promotion average gating.
-// Usage: `node tests/runPromotionValidationSample.js`
+// Usage: `node backend/scripts/promotion/runPromotionValidationSample.js`
 // It spins up an in-memory MongoDB, seeds minimal data, runs previewPromotion, and prints results.
 console.log('Validation script start');
 import { MongoMemoryServer } from 'mongodb-memory-server';

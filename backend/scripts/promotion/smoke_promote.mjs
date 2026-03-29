@@ -1,5 +1,5 @@
 // Simple smoke script to preview and execute a mid-year promotion for a single student
-// Usage: node backend/tests/smoke_promote.mjs <studentId>
+// Usage: node backend/scripts/promotion/smoke_promote.mjs <studentId>
 
 const studentId = process.argv[2] || '6905a9ecbca4bcf2594e07c7';
 const base = 'http://localhost:7000/api';
