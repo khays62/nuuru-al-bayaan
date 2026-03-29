@@ -12,7 +12,8 @@ $keepDocs = @(
   'docs/SECURITY.md',
   'docs/DEPLOY_PREP_SOOMAALI.md',
   'docs/DEPLOY_SECURITY_FLOW_SOOMAALI.md',
-  'docs/DEPLOY_AUDIT_SOOMAALI.md'
+  'docs/DEPLOY_AUDIT_SOOMAALI.md',
+  'docs/DEPLOY_HOSTINGER_VPS_CHECKLIST_SOOMAALI.md'
 )
 
 $trackedDocs = @(git ls-files -- docs | ForEach-Object { $_.Trim() }) | Where-Object { $_ -like 'docs/*' }
