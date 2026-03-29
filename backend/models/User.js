@@ -2,7 +2,7 @@
 
 import mongoose from "mongoose";
 
-import { PERMISSION_CONTRACT } from "../utils/permissions.js";
+import { PERMISSION_CONTRACT, getPermissionStorageKey, normalizePermissionsForApi } from "../utils/permissions.js";
 
 const buildModulePermissionSchema = (actions = []) => {
   const fields = {};
@@ -10,7 +10,7 @@ const buildModulePermissionSchema = (actions = []) => {
   // Define only actions allowed for this module.
   for (const actionName of actions) {
     if (!actionName || actionName === 'full') continue;
-    fields[actionName] = { type: Boolean, default: false };
+    fields[getPermissionStorageKey(actionName)] = { type: Boolean, default: false };
   }
 
   // 'full' enables ALL within a module.
@@ -98,5 +98,28 @@ const userSchema = new mongoose.Schema({
 
   status: { type: String, enum: ["active", "inactive"], default: "active" }
 }, { timestamps: true });
+
+const applyPermissionsTransform = (ret) => {
+  try {
+    if (ret && typeof ret === 'object') {
+      ret.permissions = normalizePermissionsForApi(ret.permissions);
+    }
+  } catch {
+    // ignore
+  }
+  return ret;
+};
+
+userSchema.set('toObject', {
+  transform(_doc, ret) {
+    return applyPermissionsTransform(ret);
+  },
+});
+
+userSchema.set('toJSON', {
+  transform(_doc, ret) {
+    return applyPermissionsTransform(ret);
+  },
+});
 
 export default mongoose.model("User", userSchema);

@@ -1,3 +1,5 @@
+import { getPermissionStorageKey } from '../utils/permissions.js';
+
 const isAuthenticated = (req) => Boolean(req?.user);
 
 // Backward-compatible permission aliases.
@@ -35,11 +37,14 @@ export const hasPermission = (user, module, action) => {
 
   const mod = String(module || '');
   const act = String(action || '');
+  const storageKey = getPermissionStorageKey(act);
 
   const modulePerm = user.permissions?.[mod];
   if (modulePerm) {
     if (modulePerm.full === true) return true;
-    return modulePerm?.[act] === true;
+    if (modulePerm?.[storageKey] === true) return true;
+    // Backward-compat: older docs might still have the public key stored.
+    return storageKey !== act && modulePerm?.[act] === true;
   }
 
   // Alias fallback (legacy module grants new module).
@@ -47,7 +52,8 @@ export const hasPermission = (user, module, action) => {
     const aliasPerm = user.permissions?.[alias];
     if (!aliasPerm) continue;
     if (aliasPerm.full === true) return true;
-    if (aliasPerm?.[act] === true) return true;
+    if (aliasPerm?.[storageKey] === true) return true;
+    if (storageKey !== act && aliasPerm?.[act] === true) return true;
   }
 
   return false;

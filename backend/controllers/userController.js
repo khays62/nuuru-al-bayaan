@@ -4,7 +4,7 @@ import Admin from "../models/Admin.js";
 import { writeAuditLog } from "../services/auditService.js";
 import AuditLog from "../models/AuditLog.js";
 import { parsePagination } from '../utils/pagination.js';
-import { sanitizePermissionsPayload } from '../utils/permissions.js';
+import { sanitizePermissionsPayload, normalizePermissionsForApi } from '../utils/permissions.js';
 import { publishRealtime } from '../utils/realtimeBus.js';
 import Counter from '../models/Counter.js';
 import path from 'path';
@@ -617,7 +617,12 @@ export const getUsers = async (req, res) => {
         .select('_id staffCode unit jobTitle photo fullName username email phone phone2 nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood salary role status permissions teacherRef studentRef mustChangePassword createdAt updatedAt')
       .sort({ [safeSortBy]: direction })
       .lean();
-    res.json(users);
+
+    const out = (Array.isArray(users) ? users : []).map((u) => ({
+      ...u,
+      permissions: normalizePermissionsForApi(u?.permissions),
+    }));
+    res.json(out);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -94,6 +94,48 @@ export const PERMISSION_CONTRACT = Object.freeze({
   financePrint: Object.freeze(['print', 'full']),
 });
 
+// Some action names are reserved in Mongoose schemas (e.g. `save`).
+// We keep the public contract stable (frontend/API still use `save`),
+// but map reserved names to safe storage keys in Mongo.
+const RESERVED_ACTION_TO_STORAGE_KEY = Object.freeze({
+  save: 'saveAction',
+});
+
+const STORAGE_KEY_TO_PUBLIC_ACTION = Object.freeze(
+  Object.entries(RESERVED_ACTION_TO_STORAGE_KEY).reduce((acc, [publicAction, storageKey]) => {
+    acc[storageKey] = publicAction;
+    return acc;
+  }, {})
+);
+
+export const getPermissionStorageKey = (actionName) => {
+  const a = String(actionName || '');
+  return RESERVED_ACTION_TO_STORAGE_KEY[a] || a;
+};
+
+export const normalizePermissionsForApi = (permissions) => {
+  if (!permissions || typeof permissions !== 'object') return permissions;
+
+  const out = {};
+  for (const [moduleName, permObjRaw] of Object.entries(permissions)) {
+    if (!permObjRaw || typeof permObjRaw !== 'object') {
+      out[moduleName] = permObjRaw;
+      continue;
+    }
+
+    const permObj = { ...permObjRaw };
+    for (const [storageKey, publicAction] of Object.entries(STORAGE_KEY_TO_PUBLIC_ACTION)) {
+      if (storageKey in permObj) {
+        if (!(publicAction in permObj)) permObj[publicAction] = permObj[storageKey];
+        delete permObj[storageKey];
+      }
+    }
+
+    out[moduleName] = permObj;
+  }
+  return out;
+};
+
 export const PERMISSION_MODULES = Object.freeze(Object.keys(PERMISSION_CONTRACT));
 
 export const PERMISSION_ACTIONS = Object.freeze(
@@ -147,7 +189,7 @@ export function sanitizePermissionsPayload(input) {
     const out = {};
     const allowed = PERMISSION_CONTRACT[moduleName] || [];
     for (const actionName of allowed) {
-      if (modulePerm?.[actionName] === true) out[actionName] = true;
+      if (modulePerm?.[actionName] === true) out[getPermissionStorageKey(actionName)] = true;
     }
     sanitized[moduleName] = out;
   }

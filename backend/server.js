@@ -1,12 +1,12 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import chalk from 'chalk';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import './config/config.js';
 import connectDB from './config/db.js';
 import { ensureIndexes } from './utils/indexMaintenance.js';
 import { getDefaultInitialPassword } from './utils/defaultPasswords.js';
@@ -47,8 +47,6 @@ import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import securityRoutes from './routes/securityRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
