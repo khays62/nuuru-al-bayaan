@@ -63,6 +63,9 @@ frontend/lint*.txt
 # Ignore temporary root lint captures
 _tmp_frontend_lint*.txt
 
+# Ignore generic temp text artifacts
+_tmp_*.txt
+
 # Local debug artifacts (do not commit)
 backend/cookies.txt
 backend/login_response.txt
@@ -97,8 +100,19 @@ backend/*_test_*.txt
 backend/backend_test_*.txt
 backend/_vite_build_*.txt
 
+# Local install logs (do not commit)
+backend/npm_install_*.txt
+
 # Root-level backend test capture outputs (do not commit)
 backend_test_*.txt
+
+# Frontend lint artifacts (do not commit)
+frontend/eslint_*.txt
+frontend/eslint_report.txt
+
+# Docs artifacts (do not commit)
+docs/MONGOOSE_SCHEMAS_ALL.txt
+docs/_drafts/
 
 # Uploads (student photos, etc.)
 backend/uploads/
