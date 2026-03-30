@@ -94,6 +94,16 @@ Samee `backend/.env` (ha commit-gareyn). Waxaad ka bilaabi kartaa template-ka `b
 - `COOKIE_SAMESITE=strict` (same-origin; haddii aad kala domain sameyso, waxaa laga yaabaa `none`)
 - `TRUST_PROXY=1` (maadaama Nginx uu proxy yahay)
 
+**Uploads (Backblaze B2) — haddii aad isticmaaleyso remote uploads (recommended):**
+- `UPLOADS_DRIVER=b2`
+- `B2_KEY_ID=...`
+- `B2_APPLICATION_KEY=...`
+- `B2_ENDPOINT=...` (tusaale: `https://s3.us-east-005.backblazeb2.com`)
+- `B2_REGION=us-east-005`
+- `B2_BUCKET_NAME=...`
+
+> Waxaad ka bilaabi kartaa template-ka `backend/.env.example`.
+
 ---
 
 ## 5) Process manager (PM2) — recommended

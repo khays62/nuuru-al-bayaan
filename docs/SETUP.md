@@ -14,6 +14,15 @@ PORT=7000
 MONG_URL=mongodb://127.0.0.1:27017/nuuru_al_bayaan  # ama MongoDB Atlas URI-gaaga
 ```
 
+Sidoo kale (recommended):
+
+```env
+JWT_SECRET=CHANGE_ME_TO_A_STRONG_SECRET
+UPLOADS_DRIVER=b2
+```
+
+> Uploads (B2) settings-ka kale waxaad ka bilaabi kartaa template-ka [backend/.env.example](backend/.env.example).
+
 Haddii aad isticmaaleyso Atlas, hubi in IP-gaaga la oggolaaday (whitelist). Tijaabo ahaan 0.0.0.0/0 waa la isticmaali karaa, balse kadib ka saar.
 
 ## 3) Frontend — diyaari .env
@@ -26,8 +35,11 @@ Copy-Item .env.example .env.development
 `frontend/.env.development` ku qor:
 
 ```env
-VITE_API_BASE_URL=http://localhost:7000/api
+VITE_API_BASE_URL=/api
+VITE_API_PROXY_TARGET=http://localhost:7000
 ```
+
+Tani waxay ka dhigeysaa frontend-ka (5173) inuu `/api` u sii mariyo backend-ka (7000) via Vite proxy, si **cookie auth** + **CSRF** ay u shaqeeyaan si fudud.
 
 Ikhtiyaari (production build): `frontend/.env.production`
 
