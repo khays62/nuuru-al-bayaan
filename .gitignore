@@ -18,6 +18,13 @@ Thumbs.db
 node_modules/
 **/node_modules/
 
+# Python (local tooling)
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
 # Logs
 logs/
 **/logs/
