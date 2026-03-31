@@ -377,8 +377,9 @@ if (role !== "admin" && user.status?.toLowerCase() !== "active") {
     const usedDefaultInitialPassword = String(passwordStr) === String(DEFAULT_INITIAL_PASSWORD);
 
     // If the user logged in using the default initial password, force password change.
-    // Persist this on User accounts so `/api/auth/verify` consistently reports it.
-    if (usedDefaultInitialPassword && role !== 'admin') {
+    // This project stores admin/staff/teacher/student in the User collection (role field).
+    // Persist the flag on User docs so `/api/auth/verify` consistently reports it.
+    if (usedDefaultInitialPassword) {
       const modelName = user?.constructor?.modelName;
       if (modelName === 'User' && user?.mustChangePassword !== true) {
         user.mustChangePassword = true;
@@ -409,7 +410,7 @@ if (role !== "admin" && user.status?.toLowerCase() !== "active") {
       mustChangePassword = Boolean(user?.mustChangePassword);
     }
 
-    if (usedDefaultInitialPassword && role !== 'admin') {
+    if (usedDefaultInitialPassword) {
       mustChangePassword = true;
     }
 
@@ -688,6 +689,9 @@ export const changePassword = async (req, res) => {
     const role = String(req.user.role).toLowerCase();
     if (role === 'student') return res.status(403).json({ message: 'Use student change-password endpoint' });
 
+    const principalId = req.user?._id || req.user?.id;
+    if (!principalId) return res.status(401).json({ message: 'Not authorized' });
+
     const { currentPassword, newPassword } = req.body || {};
     const nextPwd = String(newPassword || '').trim();
     const privacyPolicy = await getResolvedPrivacyPolicy();
@@ -703,8 +707,24 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ message: `newPassword failed policy: ${first}` });
     }
 
-    const Model = role === 'admin' ? Admin : User;
-    const account = await Model.findById(req.user._id).select('password mustChangePassword').lean();
+    // IMPORTANT: Do not select the model based only on `role`.
+    // In this codebase, some admin-role principals live in the User collection.
+    // Use the authenticated principal's model when possible.
+    const principalModelName = req.user?.constructor?.modelName;
+    let Model = principalModelName === 'Admin' ? Admin : User;
+
+    let account = await Model.findById(principalId).select('password mustChangePassword').lean();
+
+    // Safety fallback: if role says admin but principal is stored in the other collection,
+    // try the other model before failing.
+    if (!account && role === 'admin') {
+      const fallbackModel = Model === Admin ? User : Admin;
+      const fallbackAccount = await fallbackModel.findById(principalId).select('password mustChangePassword').lean();
+      if (fallbackAccount) {
+        Model = fallbackModel;
+        account = fallbackAccount;
+      }
+    }
     if (!account) return res.status(404).json({ message: 'User not found' });
 
     const storedPassword = account.password || '';
@@ -720,12 +740,12 @@ export const changePassword = async (req, res) => {
 
     const hashed = await bcrypt.hash(nextPwd, 10);
     await Model.updateOne(
-      { _id: req.user._id },
+      { _id: principalId },
       { $set: { password: hashed, mustChangePassword: false, failedLoginAttempts: 0, lockUntil: null } }
     );
 
     await writeAuditLog({
-      userId: req.user._id,
+      userId: principalId,
       action: 'auth.changePassword',
       description: `role=${role}`,
       req,
