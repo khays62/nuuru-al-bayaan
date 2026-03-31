@@ -5,8 +5,9 @@ import ActionButton from '../../ui/ActionButton';
 import { exportTableToExcel } from '../../../../utils/exportTable';
 import { useI18n } from '../../../../i18n/useI18n';
 
-export default function ExcelDownloadButton({ getPayload, disabled = false, className = '', variant = 'outline' }) {
+export default function ExcelDownloadButton({ getPayload, disabled = false, className = '', size = 'md', variant = 'outline' }) {
   const { t } = useI18n();
+  const label = t('common.export.excel', { defaultValue: 'Excel' });
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -48,13 +49,15 @@ export default function ExcelDownloadButton({ getPayload, disabled = false, clas
   return (
     <ActionButton
       variant={variant}
+      size={size}
       className={className}
       icon={<FileDown size={16} />}
       disabled={disabled || busy}
       onClick={run}
-      title={t('common.export.excel', { defaultValue: 'Excel' })}
+      title={label}
+      aria-label={label}
     >
-      {t('common.export.excel', { defaultValue: 'Excel' })}
+      <span className="sr-only sm:not-sr-only">{label}</span>
     </ActionButton>
   );
 }

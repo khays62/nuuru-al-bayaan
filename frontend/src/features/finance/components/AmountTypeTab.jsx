@@ -249,7 +249,7 @@ export default function AmountTypeTab() {
     return (
         <div className="space-y-4">
             <Card className="p-6 rounded-3xl shadow-xl no-print">
-                <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-4 min-w-0">
                         <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-600/20">
                             <Settings size={24} />
@@ -263,9 +263,9 @@ export default function AmountTypeTab() {
                     <Button
                         onClick={startNew}
                         variant="brand"
-                        size="lg"
+                        size="md"
                         icon={<Plus size={18} strokeWidth={3} />}
-                        className="font-black text-xs uppercase tracking-widest"
+                        className="w-full sm:w-auto justify-center font-black text-xs uppercase tracking-widest"
                         disabled={!canAdd}
                         title={!canAdd ? t('finance.studentFinance.amountTypeTab.toasts.noAddPermission', { defaultValue: 'You do not have permission to add amount types' }) : undefined}
                     >

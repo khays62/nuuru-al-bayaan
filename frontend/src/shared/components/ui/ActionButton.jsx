@@ -12,6 +12,7 @@ import Button from './Button.jsx';
  */
 export default function ActionButton({
   variant = 'neutral',
+  size = 'md',
   onClick,
   title,
   icon,
@@ -24,7 +25,7 @@ export default function ActionButton({
     <Button
       type="button"
       variant={variant}
-      size="md"
+      size={size}
       title={title}
       onClick={onClick}
       icon={icon}

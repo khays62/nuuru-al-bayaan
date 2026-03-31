@@ -250,7 +250,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                         </div>
                     ) : (
                         <div className="space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
                                         {t('finance.studentFinance.chargeModal.labels.amountType', { defaultValue: 'Amount Type' })}
@@ -294,7 +294,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
                                         {t('finance.studentFinance.chargeModal.labels.billingMonth', { defaultValue: 'Billing Month' })}
@@ -363,14 +363,14 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                         </div>
                     )}
 
-                <div className="flex items-center justify-between gap-2 pt-4 border-t border-(--nb-color-border)">
-                    <Button type="button" onClick={onClose} variant="neutral" size="md">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-4 border-t border-(--nb-color-border)">
+                    <Button type="button" onClick={onClose} variant="neutral" size="md" className="w-full sm:w-auto justify-center">
                         {t('finance.studentFinance.chargeModal.actions.close', { defaultValue: 'Close' })}
                     </Button>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         {formStep === 2 ? (
-                            <Button type="button" onClick={() => setFormStep(1)} variant="neutral" size="md">
+                            <Button type="button" onClick={() => setFormStep(1)} variant="neutral" size="md" className="w-full sm:w-auto justify-center">
                                 {t('finance.studentFinance.chargeModal.actions.back', { defaultValue: 'Back' })}
                             </Button>
                         ) : null}
@@ -385,6 +385,7 @@ export default function StudentChargeModal({ onClose, onSuccess }) {
                             }
                             variant="primary"
                             size="md"
+                            className="w-full sm:w-auto justify-center"
                         >
                             {loading
                                 ? t('finance.studentFinance.chargeModal.actions.processing', { defaultValue: 'Processing...' })

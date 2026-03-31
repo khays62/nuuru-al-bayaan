@@ -540,18 +540,19 @@ export default function ExpenseManagement() {
                                 </div>
                             </div>
 
-                            <div className="shrink-0 flex flex-wrap items-center gap-2">
+                            <div className="w-full sm:w-auto shrink-0 flex flex-wrap items-center gap-2 justify-start sm:justify-end">
                                 <input
                                     type="month"
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(e.target.value)}
-                                    className="h-10 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                    className="h-10 w-full sm:w-auto px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
                                     aria-label={t('finance.expenses.ledger.monthAria', { defaultValue: 'Select month' })}
                                 />
 
                                 {canAddExpense ? (
                                     <ActionButton
                                         variant="brand"
+                                        size="sm"
                                         icon={<Plus size={16} />}
                                         onClick={() => setShowModal(true)}
                                     >
@@ -562,6 +563,7 @@ export default function ExpenseManagement() {
                                 {canPrint ? (
                                     <ActionButton
                                         variant="outline"
+                                        size="sm"
                                         icon={<Printer size={16} />}
                                         disabled={!canPrintExport}
                                         onClick={() => { if (canPrintExport) setTimeout(() => window.print(), 0); }}
@@ -573,10 +575,10 @@ export default function ExpenseManagement() {
 
                                 {canDownloadExpenses ? (
                                     <>
-                                        <PdfDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
-                                        <ExcelDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
-                                        <CsvDownloadButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
-                                        <CopyTableButton getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                        <PdfDownloadButton size="sm" getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                        <ExcelDownloadButton size="sm" getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                        <CsvDownloadButton size="sm" getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
+                                        <CopyTableButton size="sm" getPayload={buildExportPayload} disabled={!canExport} variant="outline" />
                                     </>
                                 ) : null}
                             </div>
@@ -612,7 +614,7 @@ export default function ExpenseManagement() {
                                     setLimit(v);
                                     setPage(1);
                                 },
-                                    className: 'px-8 bg-(--nb-color-bg-card)',
+                                    className: 'px-3 sm:px-8 bg-(--nb-color-bg-card)',
                             }}
                             sortBy={sortBy}
                             sortDir={sortDir}
@@ -681,28 +683,30 @@ export default function ExpenseManagement() {
                             </div>
 
                             {canAddCategory ? (
-                                <div className="shrink-0 flex flex-wrap gap-2 items-center">
+                                <div className="w-full sm:w-auto sm:shrink-0 flex flex-col sm:flex-row gap-2 sm:items-center">
                                     <input
                                         type="text"
                                         value={newCategoryName}
                                         onChange={(e) => setNewCategoryName(e.target.value)}
                                         placeholder={t('finance.expenses.categories.newPlaceholder', { defaultValue: 'New category name' })}
-                                        className="h-10 w-64 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                        className="h-10 w-full sm:w-64 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
                                     />
                                     <input
                                         type="number"
                                         value={newCategoryBudget}
                                         onChange={(e) => setNewCategoryBudget(e.target.value)}
                                         placeholder={t('finance.expenses.categories.budgetPlaceholder', { defaultValue: 'Budget (optional)' })}
-                                        className="h-10 w-44 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
+                                        className="h-10 w-full sm:w-44 px-3 bg-(--nb-color-bg-card) border border-(--nb-color-border) rounded-(--nb-radius-md) text-sm text-(--nb-color-fg) shadow-(--nb-shadow-sm) outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--nb-color-brand) focus-visible:ring-offset-2"
                                         min="0"
                                         step="0.01"
                                     />
                                     <ActionButton
                                         type="button"
                                         variant="brand"
+                                        size="sm"
                                         onClick={handleCreateCategory}
                                         disabled={createCategoryMutation.isPending}
+                                        className="w-full sm:w-auto"
                                     >
                                         {createCategoryMutation.isPending
                                             ? t('common.working', { defaultValue: 'WORKINGâ€¦' })
@@ -777,7 +781,7 @@ export default function ExpenseManagement() {
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             <div className="bg-(--nb-color-bg) rounded-2xl p-4 border border-(--nb-color-border) shadow-(--nb-shadow-sm)">
                                                                 <p className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest">{t('finance.expenses.categories.spent', { defaultValue: 'Spent' })}</p>
                                                                 <p className={"mt-1 text-2xl font-black tracking-tighter " + (over ? 'text-red-600' : 'text-(--nb-color-fg)')}>

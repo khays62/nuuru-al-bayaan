@@ -16,6 +16,9 @@ import StandardTable from '../../../shared/components/table/StandardTable.jsx';
 import { useI18n } from '../../../i18n/useI18n';
 import { printHtmlDocument } from '../../../utils/exportTable';
 import { useAuth } from '../../../auth/AuthContext';
+import { useRealtimeInvalidation } from '../../../shared/realtime/useRealtimeInvalidation';
+import { EVENTS } from '../../../utils/events';
+import { isValidSomaliaPhone } from '../../../shared/utils/phoneSomalia.js';
 
 export default function PayrollEmployeeInfoModal({
     onClose,
@@ -25,6 +28,13 @@ export default function PayrollEmployeeInfoModal({
 }) {
     const { t } = useI18n();
     const { hasPermission } = useAuth();
+
+    const sanitizeSomaliaPhoneInput = (value) => {
+        const raw = String(value ?? '');
+        const hasPlus = raw.startsWith('+');
+        const digits = raw.replace(/\D/g, '');
+        return hasPlus ? `+${digits}` : digits;
+    };
 
     const canView =
         hasPermission('financePayrollEmployeeInfo', 'view') ||
@@ -94,6 +104,16 @@ export default function PayrollEmployeeInfoModal({
 
     const ledgerQuery = usePayrollStaffLedgerQuery(
         { staffId: selected.staffId, academicYear: selected.academicYear || undefined },
+        { enabled: Boolean(canView) && Boolean(selected.staffId) && Boolean(selected.academicYear) }
+    );
+
+    useRealtimeInvalidation(
+        EVENTS.PAYROLL_CHANGED,
+        () => {
+            try {
+                ledgerQuery.refetch?.();
+            } catch { /* ignore */ }
+        },
         { enabled: Boolean(canView) && Boolean(selected.staffId) && Boolean(selected.academicYear) }
     );
 
@@ -259,6 +279,10 @@ export default function PayrollEmployeeInfoModal({
         const sendNumberValue = String(edit.sendNumber ?? row.sendNumber ?? '').trim();
         if (!sendNumberValue) {
             toast.error(t('finance.payroll.employeeInfo.errors.sendNumberRequired', { defaultValue: 'Send number is required' }));
+            return;
+        }
+        if (!isValidSomaliaPhone(sendNumberValue)) {
+            toast.error(t('finance.payroll.employeeInfo.errors.sendNumberInvalid', { defaultValue: 'Invalid Somalia phone number' }));
             return;
         }
 
@@ -484,20 +508,29 @@ export default function PayrollEmployeeInfoModal({
                                 case 'month':
                                     return <span className="font-mono">{r.month}</span>;
                                 case 'sendNumber':
-                                    return editingRowId === r._id && canEditRow(r) ? (
+                                    {
+                                        const v = String(r.sendNumber ?? '').trim();
+                                        const hasValue = Boolean(v);
+                                        const isValid = !hasValue || isValidSomaliaPhone(v);
+
+                                        return editingRowId === r._id && canEditRow(r) ? (
                                         <Input
                                             value={r.sendNumber}
-                                            onChange={(e) => onRowChange(r._id, 'sendNumber', e.target.value)}
-                                            className="w-full min-w-45 h-9 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded text-xs font-bold text-(--nb-color-fg) outline-none focus:ring-2 focus:ring-blue-500/10 transition-all"
+                                            onChange={(e) => onRowChange(r._id, 'sendNumber', sanitizeSomaliaPhoneInput(e.target.value))}
+                                            className={
+                                                "w-full min-w-45 h-9 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded text-xs font-bold text-(--nb-color-fg) outline-none focus:ring-2 focus:ring-blue-500/10 transition-all " +
+                                                (hasValue && !isValid ? '!border-red-300 !text-red-700' : '')
+                                            }
                                         />
-                                    ) : (
+                                        ) : (
                                         <div
                                             className={canEditRow(r) ? 'cursor-pointer' : ''}
                                             onClick={() => requestEdit(r)}
                                         >
                                             <span className="text-sm text-(--nb-color-fg)">{r.sendNumber || '-'}</span>
                                         </div>
-                                    );
+                                        );
+                                    }
                                 case 'description':
                                     return editingRowId === r._id && canEditRow(r) ? (
                                         <Input

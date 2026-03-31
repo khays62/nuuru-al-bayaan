@@ -262,71 +262,70 @@ const ReceiptTab = () => {
         <div className="space-y-4">
             {/* Toolbar (actions + filters) */}
             <Card className="p-6 rounded-3xl shadow-(--nb-shadow-md) no-print">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                    {canCharge ? (
-                        <Button
-                            onClick={() => setShowChargeModal(true)}
-                            variant="brand"
-                            size="lg"
-                            icon={<PlusCircle size={18} />}
-                            className="rounded-lg font-bold"
-                        >
-                            {t('finance.studentFinance.receiptTab.actions.charge', { defaultValue: 'Charge' })}
-                        </Button>
-                    ) : null}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                        {canCharge ? (
+                            <Button
+                                onClick={() => setShowChargeModal(true)}
+                                variant="brand"
+                                size="md"
+                                icon={<PlusCircle size={18} />}
+                                className="w-full sm:w-auto justify-center rounded-lg font-bold"
+                            >
+                                {t('finance.studentFinance.receiptTab.actions.charge', { defaultValue: 'Charge' })}
+                            </Button>
+                        ) : null}
 
-                    {canUpdateCharge ? (
-                        <Button
-                            onClick={() => setShowUpdateModal(true)}
-                            variant="primary"
-                            size="lg"
-                            icon={<Edit size={18} />}
-                            className="rounded-lg font-bold"
-                        >
-                            {t('finance.studentFinance.receiptTab.actions.updateCharge', { defaultValue: 'Update Charge' })}
-                        </Button>
-                    ) : null}
+                        {canUpdateCharge ? (
+                            <Button
+                                onClick={() => setShowUpdateModal(true)}
+                                variant="primary"
+                                size="md"
+                                icon={<Edit size={18} />}
+                                className="w-full sm:w-auto justify-center rounded-lg font-bold"
+                            >
+                                {t('finance.studentFinance.receiptTab.actions.updateCharge', { defaultValue: 'Update Charge' })}
+                            </Button>
+                        ) : null}
 
-                    {canDeleteCharge ? (
-                        <Button
-                            onClick={() => setShowDeleteModal(true)}
-                            variant="danger"
-                            size="lg"
-                            icon={<Trash2 size={18} />}
-                            className="rounded-lg font-bold"
-                        >
-                            {t('finance.studentFinance.receiptTab.actions.deleteCharge', { defaultValue: 'Delete Charge' })}
-                        </Button>
-                    ) : null}
+                        {canDeleteCharge ? (
+                            <Button
+                                onClick={() => setShowDeleteModal(true)}
+                                variant="danger"
+                                size="md"
+                                icon={<Trash2 size={18} />}
+                                className="w-full sm:w-auto justify-center rounded-lg font-bold"
+                            >
+                                {t('finance.studentFinance.receiptTab.actions.deleteCharge', { defaultValue: 'Delete Charge' })}
+                            </Button>
+                        ) : null}
 
-                    {/* Print Group */}
                         {canPrint ? (
-                            <div className="flex gap-2 lg:mx-2 border-l border-(--nb-color-border) pl-2">
+                            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:w-auto sm:mx-2 sm:border-l sm:border-(--nb-color-border) sm:pl-2">
                                 <Button
                                     onClick={() => setShowMonthlyPrint(true)}
                                     variant="neutral"
-                                    size="md"
+                                    size="sm"
                                     icon={<Printer size={16} />}
-                                    className="rounded-lg font-bold text-xs"
+                                    className="w-full sm:w-auto justify-center rounded-lg font-bold text-xs"
                                 >
                                     {t('finance.studentFinance.receiptTab.actions.printMonthly', { defaultValue: 'Monthly' })}
                                 </Button>
                                 <Button
                                     onClick={() => setShowDailyPrint(true)}
                                     variant="neutral"
-                                    size="md"
+                                    size="sm"
                                     icon={<Printer size={16} />}
-                                    className="rounded-lg font-bold text-xs"
+                                    className="w-full sm:w-auto justify-center rounded-lg font-bold text-xs"
                                 >
                                     {t('finance.studentFinance.receiptTab.actions.printDaily', { defaultValue: 'Daily' })}
                                 </Button>
                                 <Button
                                     onClick={() => setShowPassCardPrint(true)}
                                     variant="neutral"
-                                    size="md"
+                                    size="sm"
                                     icon={<GraduationCap size={16} />}
-                                    className="rounded-lg font-bold text-xs"
+                                    className="w-full sm:w-auto justify-center rounded-lg font-bold text-xs"
                                 >
                                     {t('finance.studentFinance.receiptTab.actions.printPasscard', { defaultValue: 'Passcard' })}
                                 </Button>
@@ -334,15 +333,14 @@ const ReceiptTab = () => {
                         ) : null}
                     </div>
 
-                    {/* Export Group */}
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         {canDownload ? (
                             <Button
                                 onClick={exportToCSV}
                                 variant="neutral"
-                                size="lg"
+                                size="sm"
                                 icon={<FileText size={18} />}
-                                className="rounded-lg font-bold"
+                                className="w-full sm:w-auto justify-center rounded-lg font-bold"
                             >
                                 {t('finance.studentFinance.receiptTab.actions.excelExport', { defaultValue: 'Excel Export' })}
                             </Button>
@@ -625,26 +623,24 @@ export default function StudentFees() {
     return (
         <div className="space-y-6">
             <div className="no-print">
-                <div className="w-full overflow-x-auto">
-                    <div className="min-w-max">
-                        <Tabs
-                            value={activeTab}
-                            onChange={setActiveTab}
-                            tone="blue"
-                            options={visibleTabs.map((tab) => {
-                                const Icon = tab.icon;
-                                return {
-                                    value: tab.id,
-                                    label: (
-                                        <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                                            <Icon size={14} />
-                                            <span>{tab.label}</span>
-                                        </span>
-                                    ),
-                                };
-                            })}
-                        />
-                    </div>
+                <div className="w-full">
+                    <Tabs
+                        value={activeTab}
+                        onChange={setActiveTab}
+                        tone="blue"
+                        options={visibleTabs.map((tab) => {
+                            const Icon = tab.icon;
+                            return {
+                                value: tab.id,
+                                label: (
+                                    <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                                        <Icon size={14} />
+                                        <span>{tab.label}</span>
+                                    </span>
+                                ),
+                            };
+                        })}
+                    />
                 </div>
             </div>
 

@@ -536,12 +536,12 @@ export default function AccountManagement() {
                 {/* 1. Account List & Actions */}
                 {expandedSection === 'list' && canAccessInstitutionTab && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="flex justify-between items-center mb-8">
-                            <div>
+                        <div className="flex flex-wrap items-start sm:items-center justify-between gap-4 mb-8">
+                            <div className="min-w-0">
                                 <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">{t('finance.accounts.sections.institutionAccounts', { defaultValue: 'Institution Accounts' })}</h3>
                                 <p className="text-xs text-slate-400 font-medium font-mono uppercase tracking-widest mt-1">{t('finance.accounts.sections.institutionAccountsSubtitle', { defaultValue: 'Real-time liquidity management' })}</p>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
                                 {canTransfer ? (
                                     <ActionButton
                                         variant="neutral"
@@ -687,16 +687,17 @@ export default function AccountManagement() {
                 {expandedSection === 'ledger' && canAccessLedgerTab && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="space-y-4">
-                            <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 flex items-center justify-between gap-4 no-print">
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 flex flex-wrap items-center justify-between gap-4 no-print">
                                 <div className="min-w-0">
                                     <h4 className="text-xl font-black text-slate-900 uppercase tracking-tighter truncate">{t('finance.accounts.ledger.title', { defaultValue: 'General Ledger History' })}</h4>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">{t('finance.accounts.ledger.subtitle', { defaultValue: 'Immutable transaction audit stream' })}</p>
                                 </div>
 
-                                <div className="shrink-0 flex items-center gap-2">
+                                <div className="w-full sm:w-auto shrink-0 flex flex-wrap items-center gap-2 justify-start sm:justify-end">
                                     {canPrint ? (
                                         <ActionButton
                                             variant="outline"
+                                            size="sm"
                                             icon={<Printer size={16} />}
                                             disabled={!ledgerCanExport}
                                             onClick={() => { if (ledgerCanExport) setTimeout(() => window.print(), 0); }}
@@ -708,10 +709,10 @@ export default function AccountManagement() {
 
                                     {canLedgerDownload ? (
                                         <>
-                                            <PdfDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
-                                            <ExcelDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
-                                            <CsvDownloadButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
-                                            <CopyTableButton getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                            <PdfDownloadButton size="sm" getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                            <ExcelDownloadButton size="sm" getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                            <CsvDownloadButton size="sm" getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
+                                            <CopyTableButton size="sm" getPayload={buildLedgerExportPayload} disabled={!ledgerCanExport} variant="outline" />
                                         </>
                                     ) : null}
                                 </div>
@@ -745,7 +746,7 @@ export default function AccountManagement() {
                                         setLedgerLimit(v);
                                         setLedgerPage(1);
                                     },
-                                    className: 'px-8 bg-white',
+                                    className: 'px-3 sm:px-8 bg-white',
                                 }}
                                 sortBy={ledgerSortBy}
                                 sortDir={ledgerSortDir}
@@ -887,10 +888,10 @@ export default function AccountManagement() {
                         />
                     </FormField>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <FormField label={t('finance.accounts.fields.type', { defaultValue: 'Type' })}>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex-1 min-w-44">
                                     <DropdownSelect
                                         value={newAccount.type}
                                         onChange={(v) => setNewAccount({ ...newAccount, type: v })}
@@ -907,6 +908,7 @@ export default function AccountManagement() {
                                         icon={<Plus className="w-4 h-4" />}
                                         onClick={() => setTypeCreatorOpen(true)}
                                         disabled={isCreating || isCreatingType}
+                                        className="w-full sm:w-auto"
                                     >
                                         {t('finance.accounts.actions.createType', { defaultValue: 'Create type' })}
                                     </Button>
@@ -957,7 +959,7 @@ export default function AccountManagement() {
                         </div>
                     ) : null}
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <FormField label={t('finance.accounts.fields.institution', { defaultValue: 'Institution' })} required>
                             <Input
                                 value={newAccount.institution}
@@ -1038,7 +1040,7 @@ export default function AccountManagement() {
                         />
                     </FormField>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <FormField label={t('finance.accounts.fields.refNumber', { defaultValue: 'Ref #' })}>
                             <Input
                                 value={incomeData.receivedNumber}
@@ -1104,10 +1106,10 @@ export default function AccountManagement() {
                             />
                         </FormField>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <FormField label={t('finance.accounts.fields.type', { defaultValue: 'Type' })}>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <div className="flex-1 min-w-44">
                                         <DropdownSelect
                                             value={editingAccount.type}
                                             onChange={(v) => setEditingAccount({ ...editingAccount, type: v })}
@@ -1124,6 +1126,7 @@ export default function AccountManagement() {
                                             icon={<Plus className="w-4 h-4" />}
                                             onClick={() => setTypeCreatorOpen(true)}
                                             disabled={isUpdating || isCreatingType}
+                                            className="w-full sm:w-auto"
                                         >
                                             {t('finance.accounts.actions.createType', { defaultValue: 'Create type' })}
                                         </Button>
@@ -1174,7 +1177,7 @@ export default function AccountManagement() {
                             </div>
                         ) : null}
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <FormField label={t('finance.accounts.fields.institution', { defaultValue: 'Institution' })} required>
                                 <Input
                                     value={editingAccount.institution}

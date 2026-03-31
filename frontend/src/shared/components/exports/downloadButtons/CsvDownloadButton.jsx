@@ -4,8 +4,9 @@ import ActionButton from '../../ui/ActionButton';
 import { exportTableToCSV } from '../../../../utils/exportTable';
 import { useI18n } from '../../../../i18n/useI18n';
 
-export default function CsvDownloadButton({ getPayload, disabled = false, className = '', variant = 'outline' }) {
+export default function CsvDownloadButton({ getPayload, disabled = false, className = '', size = 'md', variant = 'outline' }) {
   const { t } = useI18n();
+  const label = t('common.export.csv', { defaultValue: 'CSV' });
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -39,13 +40,15 @@ export default function CsvDownloadButton({ getPayload, disabled = false, classN
   return (
     <ActionButton
       variant={variant}
+      size={size}
       className={className}
       icon={<FileDown size={16} />}
       disabled={disabled || busy}
       onClick={run}
-      title={t('common.export.csv', { defaultValue: 'CSV' })}
+      title={label}
+      aria-label={label}
     >
-      {t('common.export.csv', { defaultValue: 'CSV' })}
+      <span className="sr-only sm:not-sr-only">{label}</span>
     </ActionButton>
   );
 }

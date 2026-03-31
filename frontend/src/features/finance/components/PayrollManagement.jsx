@@ -227,22 +227,24 @@ export default function PayrollManagement() {
                         </FilterItem>
 
                         <FilterItem className="sm:ml-auto">
-                            <div className="flex items-center justify-end gap-3 flex-wrap">
-                                <div className="flex items-center justify-end gap-2 flex-wrap">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                                <div className="w-full sm:w-auto flex flex-wrap items-center gap-2 justify-start sm:justify-end">
                                     {canCharge ? (
-                                        <Button variant="brand" size="lg" onClick={() => setShowCharge(true)} className="w-full sm:w-auto justify-center">
+                                        <Button variant="brand" size="md" onClick={() => setShowCharge(true)} className="w-full sm:w-auto justify-center">
                                             {t('finance.payroll.actions.charge', { defaultValue: 'Charge' })}
                                         </Button>
                                     ) : null}
-                                    <Button variant="neutral" size="lg" onClick={() => setShowUnpaid(true)} className="w-full sm:w-auto justify-center">
+                                    <Button variant="neutral" size="md" onClick={() => setShowUnpaid(true)} className="w-full sm:w-auto justify-center">
                                         {t('finance.payroll.actions.show', { defaultValue: 'Show' })}
                                     </Button>
                                     {canPrint ? (
                                         <ActionButton
                                             variant="outline"
+                                            size="sm"
                                             icon={<Printer size={16} />}
                                             onClick={() => setShowPrint(true)}
                                             title={t('common.actions.print', { defaultValue: 'Print' })}
+                                            className="w-full sm:w-auto justify-center"
                                         >
                                             {t('common.actions.print', { defaultValue: 'Print' })}
                                         </ActionButton>
@@ -251,12 +253,14 @@ export default function PayrollManagement() {
                                     {canUpdate ? (
                                         <ActionButton
                                             variant="outline"
+                                            size="sm"
                                             icon={<Pencil size={16} />}
                                             onClick={() => {
                                                 setUpdateContext(null);
                                                 setShowUpdate(true);
                                             }}
                                             title={t('common.actions.update', { defaultValue: 'Update' })}
+                                            className="w-full sm:w-auto justify-center"
                                         >
                                             {t('common.actions.update', { defaultValue: 'Update' })}
                                         </ActionButton>
@@ -265,12 +269,14 @@ export default function PayrollManagement() {
                                     {canDelete ? (
                                         <ActionButton
                                             variant="danger"
+                                            size="sm"
                                             icon={<Trash2 size={16} />}
                                             onClick={() => {
                                                 setUpdateContext(null);
                                                 setShowDelete(true);
                                             }}
                                             title={t('common.actions.delete', { defaultValue: 'Delete' })}
+                                            className="w-full sm:w-auto justify-center"
                                         >
                                             {t('common.actions.delete', { defaultValue: 'Delete' })}
                                         </ActionButton>
@@ -278,15 +284,17 @@ export default function PayrollManagement() {
 
                                     <ActionButton
                                         variant="outline"
+                                        size="sm"
                                         onClick={onReset}
                                         title={t('common.filters.resetTitle', { defaultValue: 'Reset filters' })}
                                         icon={<RotateCcw size={16} />}
+                                        className="w-full sm:w-auto justify-center"
                                     >
                                         {t('common.actions.reset', { defaultValue: 'Reset' })}
                                     </ActionButton>
 
                                     <div
-                                        className="inline-flex items-center justify-end gap-2 h-10 px-3 rounded-md border border-green-200 bg-(--nb-color-bg-card) text-green-800 whitespace-nowrap"
+                                        className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-end gap-2 h-10 px-3 rounded-md border border-green-200 bg-(--nb-color-bg-card) text-green-800 whitespace-nowrap"
                                         title={t('common.total', { defaultValue: 'Total' })}
                                     >
                                         <span className="relative flex h-2 w-2">

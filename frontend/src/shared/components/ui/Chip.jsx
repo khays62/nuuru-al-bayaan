@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useI18n } from '../../../i18n/useI18n';
 
@@ -38,14 +39,14 @@ export default function Chip({
           type="button"
           onClick={onRemove}
           className={cn(
-            'ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full',
+            'ml-1 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full',
             'opacity-80 hover:opacity-100',
             variant === 'brand' ? 'bg-white/20 hover:bg-white/25' : 'hover:bg-(--nb-color-brand-a08)'
           )}
           aria-label={resolvedRemoveLabel}
           title={resolvedRemoveLabel}
         >
-          Ã—
+          <X size={12} aria-hidden="true" />
         </button>
       ) : null}
     </span>

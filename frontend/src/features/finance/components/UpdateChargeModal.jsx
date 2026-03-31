@@ -255,7 +255,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                 ) : (
                     <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
                         {/* Form Fields */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
                                     {t('finance.studentFinance.updateChargeModal.labels.studentId', { defaultValue: 'Student ID' })}
@@ -300,7 +300,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                             )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {updateType !== 'overall_discount' && (
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">
@@ -394,12 +394,13 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                     </div>
                 )}
 
-                <div className="flex items-center justify-between gap-2 pt-4 border-t border-(--nb-color-border)">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-4 border-t border-(--nb-color-border)">
                     <Button
                         type="button"
                         onClick={step === 1 ? onClose : () => setStep(1)}
                         variant="neutral"
                         size="md"
+                        className="w-full sm:w-auto justify-center"
                     >
                         {step === 1
                             ? t('finance.studentFinance.updateChargeModal.actions.cancel', { defaultValue: 'Cancel' })
@@ -413,6 +414,7 @@ export default function UpdateChargeModal({ onClose, onSuccess }) {
                             disabled={loading || !formData.reason}
                             variant="brand"
                             size="md"
+                            className="w-full sm:w-auto justify-center"
                         >
                             {loading
                                 ? t('finance.studentFinance.updateChargeModal.actions.processing', { defaultValue: 'Processingâ€¦' })

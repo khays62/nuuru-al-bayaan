@@ -9,10 +9,12 @@ export default function PdfDownloadButton({
   getPayload,
   disabled = false,
   className = '',
+  size = 'md',
   orientation = 'landscape',
   variant = 'outline',
 }) {
   const { t } = useI18n();
+  const label = t('common.export.pdf', { defaultValue: 'PDF' });
   const [busy, setBusy] = useState(false);
   const run = async () => {
     if (busy || disabled) return;
@@ -32,13 +34,15 @@ export default function PdfDownloadButton({
   return (
     <ActionButton
       variant={variant}
+      size={size}
       className={className}
       icon={<FileDown size={16} />}
       disabled={disabled || busy}
       onClick={run}
-      title={t('common.export.pdf', { defaultValue: 'PDF' })}
+      title={label}
+      aria-label={label}
     >
-      {t('common.export.pdf', { defaultValue: 'PDF' })}
+      <span className="sr-only sm:not-sr-only">{label}</span>
     </ActionButton>
   );
 }

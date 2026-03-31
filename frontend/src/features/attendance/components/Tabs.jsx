@@ -14,7 +14,7 @@ export default function Tabs({ value, options, onChange, className = '', tone = 
 
   const toneStyles = stylesByTone[tone] || stylesByTone.gray;
   return (
-    <div className={`inline-flex rounded-md border overflow-hidden ${toneStyles.container} ${className}`}>
+    <div className={`flex flex-wrap w-full sm:inline-flex sm:w-auto rounded-md border ${toneStyles.container} ${className}`}>
       {options.map((opt) => {
         const active = value === opt.value;
         const disabled = Boolean(opt.disabled);
@@ -31,7 +31,7 @@ export default function Tabs({ value, options, onChange, className = '', tone = 
               onChange(opt.value);
             }}
             className={
-              `px-4 py-2 text-base font-medium border-r last:border-r-0 ` +
+              `flex-1 sm:flex-none min-w-0 px-3 sm:px-4 py-2 text-sm sm:text-base font-medium border-r last:border-r-0 ` +
               (active
                 ? toneStyles.active
                 : toneStyles.inactive) +

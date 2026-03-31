@@ -16,6 +16,7 @@ import { useI18n } from '../../../i18n/useI18n';
 import { printHtmlDocument } from '../../../utils/exportTable';
 import { useRealtimeInvalidation } from '../../../shared/realtime/useRealtimeInvalidation';
 import { EVENTS } from '../../../utils/events';
+import { isValidSomaliaPhone } from '../../../shared/utils/phoneSomalia.js';
 import {
     useInvoicesQuery,
     useStudentMonthHistoryQuery,
@@ -111,8 +112,9 @@ export default function StudentFinancePaymentModal({
         { studentId: student?._id, limit: 200 },
         {
             enabled: Boolean(canViewPerm) && !!student?._id,
-            staleTime: 0,
-            refetchOnMount: 'always',
+            staleTime: 60 * 1000,
+            refetchOnMount: false,
+            refetchOnWindowFocus: false,
         }
     );
 
@@ -120,8 +122,9 @@ export default function StudentFinancePaymentModal({
         { studentId: student?._id },
         {
             enabled: Boolean(canViewPerm) && !!student?._id,
-            staleTime: 0,
-            refetchOnMount: 'always',
+            staleTime: 60 * 1000,
+            refetchOnMount: false,
+            refetchOnWindowFocus: false,
         }
     );
 
@@ -149,6 +152,13 @@ export default function StudentFinancePaymentModal({
         const m1 = raw.match(/^(\d{4})-(\d{1})$/);
         if (m1) return `${m1[1]}-0${m1[2]}`;
         return null;
+    };
+
+    const sanitizeSomaliaPhoneInput = (value) => {
+        const raw = String(value ?? '');
+        const hasPlus = raw.startsWith('+');
+        const digits = raw.replace(/\D/g, '');
+        return hasPlus ? `+${digits}` : digits;
     };
 
     const isInvoiceHormaris = (inv) => {
@@ -223,8 +233,10 @@ export default function StudentFinancePaymentModal({
     };
 
     useEffect(() => {
-        setLoading(Boolean(accountsQuery.isFetching || invoicesQuery.isFetching || historyQuery.isFetching));
-    }, [accountsQuery.isFetching, invoicesQuery.isFetching, historyQuery.isFetching]);
+        // Only show the loading state for the initial load; background refetches
+        // (e.g., SSE-triggered) should update silently without a blocking spinner.
+        setLoading(Boolean(accountsQuery.isLoading || invoicesQuery.isLoading || historyQuery.isLoading));
+    }, [accountsQuery.isLoading, invoicesQuery.isLoading, historyQuery.isLoading]);
 
     useEffect(() => {
         const accList = Array.isArray(accountsQuery.data) ? accountsQuery.data : (accountsQuery.data?.data || []);
@@ -249,7 +261,7 @@ export default function StudentFinancePaymentModal({
     };
 
     const handleReferenceChange = (id, val) => {
-        setEditingReference(prev => ({ ...prev, [id]: val }));
+        setEditingReference(prev => ({ ...prev, [id]: sanitizeSomaliaPhoneInput(val) }));
     };
 
     const handleSavePayment = async (inv) => {
@@ -260,6 +272,9 @@ export default function StudentFinancePaymentModal({
 
         const referenceRaw = String(editingReference?.[inv._id] ?? '').trim();
         if (!referenceRaw) return toast.error(t('finance.studentFinance.paymentModal.validation.phoneRefRequired', { defaultValue: 'Phone/Ref is required' }));
+        if (!isValidSomaliaPhone(referenceRaw)) {
+            return toast.error(t('finance.studentFinance.paymentModal.validation.phoneInvalid', { defaultValue: 'Invalid Somalia phone number' }));
+        }
 
         setProcessingId(inv._id);
         try {
@@ -504,6 +519,9 @@ export default function StudentFinancePaymentModal({
         if (!accountId) return toast.error(t('finance.studentFinance.paymentModal.validation.selectAccountShort', { defaultValue: 'Select account' }));
         const reference = String(hormarisReference || '').trim();
         if (!reference) return toast.error(t('finance.studentFinance.paymentModal.validation.phoneRefRequired', { defaultValue: 'Phone/Ref is required' }));
+        if (!isValidSomaliaPhone(reference)) {
+            return toast.error(t('finance.studentFinance.paymentModal.validation.phoneInvalid', { defaultValue: 'Invalid Somalia phone number' }));
+        }
         try {
             toast.loading(t('finance.studentFinance.paymentModal.toasts.processingHormaris', { defaultValue: 'Processing advance payment...' }));
             const months = [...selectedHormarisMonths].sort();
@@ -940,8 +958,12 @@ export default function StudentFinancePaymentModal({
                                         type="text"
                                         placeholder={t('finance.studentFinance.paymentModal.placeholders.phoneRef', { defaultValue: 'Phone/Ref' })}
                                         value={hormarisReference}
-                                        onChange={(e) => setHormarisReference(e.target.value)}
-                                        className="h-8 w-full px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-lg font-black text-[10px] uppercase tracking-widest text-(--nb-color-fg)"
+                                        inputMode="tel"
+                                        onChange={(e) => setHormarisReference(sanitizeSomaliaPhoneInput(e.target.value))}
+                                        className={
+                                            "h-8 w-full px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded-lg font-black text-[10px] uppercase tracking-widest text-(--nb-color-fg) " +
+                                            (hormarisReference && !isValidSomaliaPhone(hormarisReference) ? 'border-red-300! text-red-700!' : '')
+                                        }
                                         disabled={!canInputPerm}
                                     />
 
@@ -1033,10 +1055,17 @@ export default function StudentFinancePaymentModal({
                                                     </div>
                                                 );
                                             case 'phoneRef':
-                                                return (
+                                                {
+                                                    const value = String(editingReference?.[inv._id] ?? '').trim();
+                                                    const showInvalid = Boolean(value) && !isValidSomaliaPhone(value);
+                                                    return (
                                                     <Input
-                                                        type="text"
-                                                        className="w-full h-9 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded text-xs font-bold text-(--nb-color-fg) outline-none focus:ring-2 focus:ring-blue-500/10 transition-all"
+                                                        type="tel"
+                                                        inputMode="tel"
+                                                        className={
+                                                            "w-full h-9 px-3 bg-(--nb-color-bg) border border-(--nb-color-border) rounded text-xs font-bold text-(--nb-color-fg) outline-none focus:ring-2 focus:ring-blue-500/10 transition-all " +
+                                                            (showInvalid ? 'border-red-300! text-red-700!' : '')
+                                                        }
                                                         placeholder={student?.phoneNumber
                                                             ? t('finance.studentFinance.paymentModal.placeholders.defaultPhone', { defaultValue: 'Default: {{phone}}', phone: student.phoneNumber })
                                                             : t('finance.studentFinance.paymentModal.placeholders.phoneRef', { defaultValue: 'Phone/Ref' })}
@@ -1044,7 +1073,8 @@ export default function StudentFinancePaymentModal({
                                                         onChange={(e) => handleReferenceChange(inv._id, e.target.value)}
                                                         disabled={paymentLocked || !canInputPerm}
                                                     />
-                                                );
+                                                    );
+                                                }
                                             case 'description':
                                                 return (
                                                     <div className={isHormaris ? 'text-red-700' : ''}>

@@ -103,7 +103,7 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
                     </button>
                 </div>
 
-                <div className="p-6 grid grid-cols-2 gap-6 overflow-y-auto max-h-[70vh]">
+                <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 overflow-y-auto max-h-[70vh]">
                     <div className="space-y-6">
                         <h4 className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest border-b border-(--nb-color-border) pb-2">Salary Components</h4>
 
@@ -117,7 +117,7 @@ export default function EditPayrollModal({ payroll, onClose, onSuccess }) {
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-xs font-black text-(--nb-color-fg) uppercase tracking-wider">Commission (+)</label>
                                 <input

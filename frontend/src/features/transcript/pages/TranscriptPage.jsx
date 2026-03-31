@@ -912,7 +912,7 @@ export default function TranscriptPage() {
                 {t('transcript.page.levels.levelsButton')} {selectedLevels.length ? <span className="text-(--nb-color-brand)">({selectedLevels.length})</span> : null}
               </button>
               {levelsOpen && mode === 'levels' && (
-                <Card className="absolute z-40 mt-1 w-48 max-h-64 overflow-auto">
+                <Card className="absolute right-0 sm:right-auto sm:left-0 top-full z-40 mt-1 w-48 max-w-[calc(100vw-1rem)] max-h-64 overflow-auto">
                   <div className="sticky top-0 bg-(--nb-color-bg-card) border-b border-(--nb-color-border) px-2 py-1 text-xs font-medium">{t('transcript.page.levels.selectTitle')}</div>
                   {(!grades || grades.length === 0) && <div className="px-3 py-2 text-xs text-(--nb-color-muted)">{t('transcript.page.levels.noGrades')}</div>}
                   {grades && [...grades]
@@ -939,18 +939,18 @@ export default function TranscriptPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
+          <div className="flex items-center justify-end gap-2 flex-wrap sm:flex-nowrap w-full sm:w-auto">
             {canPrintTranscript ? (
-              <ActionButton variant="outline" onClick={handlePrint} title={t('common.actions.print')} icon={<Printer size={16} />}>
+              <ActionButton size="sm" variant="outline" onClick={handlePrint} title={t('common.actions.print')} icon={<Printer size={16} />}>
                 {t('common.actions.print')}
               </ActionButton>
             ) : null}
 
-            <PdfDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" orientation="landscape" />
-            <ExcelDownloadButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" />
-            <CopyTableButton getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" />
+            <PdfDownloadButton size="sm" getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" orientation="landscape" />
+            <ExcelDownloadButton size="sm" getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" />
+            <CopyTableButton size="sm" getPayload={buildTranscriptTablesExportPayload} disabled={!canExport} variant="outline" />
 
-            <ActionButton variant="outline" onClick={handleReset} title={t('common.filters.resetTitle')} icon={<RotateCcw size={16} />}>
+            <ActionButton size="sm" variant="outline" onClick={handleReset} title={t('common.filters.resetTitle')} icon={<RotateCcw size={16} />}>
               {t('common.actions.reset')}
             </ActionButton>
           </div>

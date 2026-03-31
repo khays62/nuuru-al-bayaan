@@ -139,8 +139,8 @@ export default function GenerateMonthlyFeeModal({ onClose, onSuccess }) {
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-4">
+                    <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Target Class</label>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

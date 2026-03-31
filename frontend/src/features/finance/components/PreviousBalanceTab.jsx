@@ -332,7 +332,7 @@ export default function PreviousBalanceTab() {
                             setAddMode(false);
                         }}
                         placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.grade', { defaultValue: 'Grade' })}
-                        className="h-11 min-w-40 font-bold text-sm"
+                        className="h-11 w-full min-w-0 md:min-w-40 font-bold text-sm"
                     />
 
                     <ShiftSelect
@@ -343,7 +343,7 @@ export default function PreviousBalanceTab() {
                             setAddMode(false);
                         }}
                         placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.shift', { defaultValue: 'Shift' })}
-                        className="h-11 min-w-40 font-bold text-sm"
+                        className="h-11 w-full min-w-0 md:min-w-40 font-bold text-sm"
                     />
 
                     <GradeSectionSelect
@@ -359,7 +359,7 @@ export default function PreviousBalanceTab() {
                         maxVisible={6}
                         placeholder={t('finance.studentFinance.previousBalanceTab.placeholders.section', { defaultValue: 'Section' })}
                         searchPlaceholder={t('finance.studentFinance.previousBalanceTab.placeholders.searchShort', { defaultValue: 'Searchâ€¦' })}
-                        className="h-11 min-w-50 font-bold text-sm"
+                        className="h-11 w-full min-w-0 md:min-w-50 font-bold text-sm"
                     />
 
                     <DropdownSelect
@@ -373,16 +373,16 @@ export default function PreviousBalanceTab() {
                             { value: 'withPrev', label: t('finance.studentFinance.previousBalanceTab.filters.showPrev', { defaultValue: 'Show Previous Balance' }) },
                         ]}
                         clearable={false}
-                        className="h-11 min-w-50 font-bold text-sm"
+                        className="h-11 w-full min-w-0 md:min-w-50 font-bold text-sm"
                     />
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                         {canSave ? (
                             <Button
                                 onClick={handleSavePreviousBalances}
                                 variant="primary"
-                                size="lg"
-                                className="h-11 px-8 font-black text-sm uppercase tracking-widest"
+                                size="md"
+                                className="h-11 w-full sm:w-auto px-4 sm:px-8 font-black text-sm uppercase tracking-widest justify-center"
                             >
                                 {t('finance.studentFinance.previousBalanceTab.actions.save', { defaultValue: 'Save' })}
                             </Button>
@@ -394,8 +394,8 @@ export default function PreviousBalanceTab() {
                                     handleSearch();
                                 }}
                                 variant="brand"
-                                size="lg"
-                                className="h-11 px-8 font-black text-sm uppercase tracking-widest"
+                                size="md"
+                                className="h-11 w-full sm:w-auto px-4 sm:px-8 font-black text-sm uppercase tracking-widest justify-center"
                             >
                                 {t('finance.studentFinance.previousBalanceTab.actions.add', { defaultValue: 'Add' })}
                             </Button>
@@ -403,9 +403,9 @@ export default function PreviousBalanceTab() {
                         <Button
                             onClick={resetFilters}
                             variant="neutral"
-                            size="lg"
+                            size="md"
                             icon={<RotateCcw size={16} />}
-                            className="h-11 px-6 font-black text-sm uppercase tracking-widest"
+                            className="h-11 w-full sm:w-auto px-4 sm:px-6 font-black text-sm uppercase tracking-widest justify-center"
                             title={t('finance.studentFinance.previousBalanceTab.actions.resetTitle', { defaultValue: 'Reset filters' })}
                         >
                             {t('finance.studentFinance.previousBalanceTab.actions.reset', { defaultValue: 'Reset' })}

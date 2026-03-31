@@ -70,7 +70,7 @@ export default function CreateInvoiceModal({ onClose, onSuccess }) {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="text-[10px] font-black text-(--nb-color-muted) uppercase tracking-widest ml-1">Type</label>
                             <select

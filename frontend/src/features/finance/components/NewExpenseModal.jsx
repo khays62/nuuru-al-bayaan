@@ -220,7 +220,7 @@ export default function NewExpenseModal({
                     />
                 </FormField>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <FormField label={t('finance.expenses.fields.amountUsd', { defaultValue: 'Amount (USD)' })} required>
                         <Input
                             type="number"
