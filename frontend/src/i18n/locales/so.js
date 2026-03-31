@@ -1420,6 +1420,11 @@ export default {
       loginAttempts: 'Tirada isku dayada waa inay noqotaa ugu yaraan 1.',
       cooldownSeconds: 'Qiimaha cooldown-ku waa inuu noqdaa ugu yaraan 1 ilbiriqsi.',
       lockoutDurationMin: 'Muddada block-gu waa inay noqotaa ugu yaraan 1 daqiiqo.',
+      aiChat: {
+        dailyLimitStudent: 'Xadka maalinlaha ee ardayga waa inuu noqdaa 0 ama ka badan.',
+        dailyLimitTeacher: 'Xadka maalinlaha ee macallinka waa inuu noqdaa 0 ama ka badan.',
+        dailyLimitStaff: 'Xadka maalinlaha ee shaqaalaha waa inuu noqdaa 0 ama ka badan.',
+      },
     },
     loginProtection: {
       title: 'Ilaalinta gelitaanka',
@@ -1461,6 +1466,17 @@ export default {
       withWidget: 'Waxay sidoo kale maamushaa home widget-ka ku xiran.',
       withShortcut: 'Waxay sidoo kale maamushaa shortcut card-ka ku xiran.',
       routeOnly: 'Waxay maamushaa sidebar-ka iyo muuqaalka route-ka.',
+    },
+
+    aiChat: {
+      title: 'Xaddidaadaha AI chat-ka',
+      subtitle: 'Deji xadka fariimaha AI maalintii (role kasta). Admin-ka waa ka reeban.',
+      enabled: 'Daar AI chat',
+      enabledHint: 'Haddii la damiyo, isticmaalayaasha kale ma isticmaali karaan AI chat.',
+      dailyLimitStudent: 'Arday (fariimo maalintii)',
+      dailyLimitTeacher: 'Macallin (fariimo maalintii)',
+      dailyLimitStaff: 'Shaqaale (fariimo maalintii)',
+      dailyLimitHint: 'Geli 0 si aad u damiso role-kaas.',
     },
   },
 

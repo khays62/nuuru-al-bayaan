@@ -21,6 +21,7 @@ import {
 import { useI18n } from '../../../../i18n/useI18n';
 import { getSomaliaDistrictLabel, getSomaliaRegionLabel } from '../../../../shared/data/somaliaAdminDivisions.js';
 import { displayText } from '../../../../utils/displayText';
+import { isStudentDashboardTabEnabled } from '../../../privacy-control/privacyPolicyDefaults.js';
 
 export default function ProfileTab() {
   const { studentId: paramStudentId } = useParams();
@@ -122,9 +123,13 @@ export default function ProfileTab() {
     },
   });
 
+  const canLoadTransfers = Boolean(
+    studentId && (!isStudentSelf || isStudentDashboardTabEnabled(auth?.privacyPolicy, 'transfers')),
+  );
+
   const transfersQuery = useQuery({
     queryKey: studentKeys.transfers(studentId, { limit: 1 }),
-    enabled: !!studentId,
+    enabled: canLoadTransfers,
     queryFn: async () => {
       const res = await getStudentTransfers(studentId, { limit: 1 });
       return Array.isArray(res?.data) ? res.data : [];

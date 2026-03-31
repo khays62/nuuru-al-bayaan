@@ -47,6 +47,7 @@ export async function updatePrivacyPolicy(req, res) {
           passwordPolicy: normalized.passwordPolicy,
           sessionPolicy: normalized.sessionPolicy,
           studentDashboard: normalized.studentDashboard,
+          aiChat: normalized.aiChat,
         },
       },
       {

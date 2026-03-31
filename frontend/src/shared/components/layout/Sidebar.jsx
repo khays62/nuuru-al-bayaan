@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 
 import { navItems } from '../../../config/navigation';
 import logo from '../../../assets/Logo.jpeg';
@@ -373,15 +373,26 @@ export default function Sidebar({ isMobileMenuOpen, isCollapsed, closeMobileMenu
 
       {/* Sidebar for Mobile */}
       <aside className={
-        `fixed top-0 ${isRTL ? 'right-0' : 'left-0'} h-full w-64 bg-(--nb-color-bg) text-(--nb-color-fg) flex-col z-30 transition-transform duration-300 ease-in-out md:hidden flex no-print border-e border-(--nb-color-border) shadow-lg ` +
+        `fixed top-0 ${isRTL ? 'right-0' : 'left-0'} h-full w-64 bg-(--nb-color-bg) text-(--nb-color-fg) flex-col z-50 transition-transform duration-300 ease-in-out md:hidden flex no-print border-e border-(--nb-color-border) shadow-lg ` +
         (isMobileMenuOpen
           ? 'translate-x-0'
           : (isRTL ? 'translate-x-full' : '-translate-x-full'))
       }>
-        <Link to={homePath} onClick={onMobileNavClick} className="flex items-center justify-center h-16 border-b border-(--nb-color-border) px-4 shrink-0 bg-(--nb-color-bg-card)">
-          <img src={logo} alt="Nuuru Al-Bayaan Logo" className="h-10" />
-          <span className="ms-3 font-semibold text-lg text-(--nb-color-brand-ui)">Nuuru Al-Bayaan</span>
-        </Link>
+        <div className="flex items-center h-16 border-b border-(--nb-color-border) px-4 shrink-0 bg-(--nb-color-bg-card)">
+          <Link to={homePath} onClick={onMobileNavClick} className="flex items-center flex-1 min-w-0">
+            <img src={logo} alt="Nuuru Al-Bayaan Logo" className="h-10" />
+            <span className="ms-3 font-semibold text-lg text-(--nb-color-brand-ui) truncate">Nuuru Al-Bayaan</span>
+          </Link>
+          <button
+            type="button"
+            onClick={closeMobileMenu}
+            className="ms-2 p-2 rounded-md border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-accent-50) text-(--nb-color-fg)"
+            aria-label={t('common.close', { defaultValue: 'Close' })}
+            title={t('common.close', { defaultValue: 'Close' })}
+          >
+            {isRTL ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </button>
+        </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <nav className="min-h-full rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) px-3 py-3 shadow-(--nb-shadow-md) transition-colors hover:border-(--nb-color-focus) focus-within:border-(--nb-color-focus)">

@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../../../auth/AuthContext';
 import Button from '../ui/Button';
 import { Menu, X, LogOut, ChevronLeft, ChevronRight, Search, User, Bell, ShieldAlert, Languages, Sparkles, Sun, Moon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import {
@@ -25,12 +26,14 @@ import { useAiChat } from '../ai/AiChatContext.jsx';
 import { useTheme } from '../../theme/ThemeContext.jsx';
 
 // This is the updated Navbar component with a new design.
-const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPageTitle }) => {
+const Navbar = ({ onToggleMobileMenu, isMobileMenuOpen = false, onToggleCollapse, isCollapsed, currentPageTitle }) => {
     const { auth, logout, hasPermission } = useAuth();
     const { lang, setLang, isRTL, t } = useI18n();
+    const navigate = useNavigate();
     const theme = useTheme();
     const ai = useAiChat();
     const user = auth?.user;
+    const aiChatEnabled = auth?.privacyPolicy?.aiChat?.enabled !== false;
     const queryClient = useQueryClient();
     const [openLocks, setOpenLocks] = React.useState(false);
     const [openLang, setOpenLang] = React.useState(false);
@@ -82,6 +85,21 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
     const displayRole = user?.role ? String(user.role).toUpperCase() : '';
     const displayEmail = user?.email || '';
     const meta = [displayRole, displayEmail].filter(Boolean).join(' - ');
+
+    const profilePath = React.useMemo(() => {
+        if (roleLower === 'student') return '/student-dashboard/profile';
+        if (roleLower === 'teacher') return '/teacher-profile';
+        return '/profile';
+    }, [roleLower]);
+
+    const goToProfile = React.useCallback(() => {
+        try {
+            if (!profilePath) return;
+            navigate(profilePath);
+        } catch {
+            // ignore
+        }
+    }, [navigate, profilePath]);
 
     const formatActivityKind = (value) => {
         const key = String(value || '').trim().toLowerCase();
@@ -298,7 +316,9 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
                     className="text-(--nb-color-muted) hover:text-(--nb-color-fg) md:hidden"
                     title={t('common.openMenu', { defaultValue: 'Open Menu' })}
                 >
-                    <Menu size={24} />
+                    {isMobileMenuOpen
+                        ? (isRTL ? <ChevronRight size={24} /> : <ChevronLeft size={24} />)
+                        : <Menu size={24} />}
                 </button>
                 
                 {/* Desktop Collapse Toggle */}
@@ -362,7 +382,16 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
             {openLang ? (
                 <Card
                     dir={isRTL ? 'rtl' : 'ltr'}
-                    className={(isRTL ? 'left-0' : 'right-0') + ' absolute mt-2 w-44 overflow-hidden z-50'}
+                    className={
+                        // Mobile: fixed + centered so it never goes off-screen.
+                        // Desktop: anchored to the button.
+                        (
+                            'fixed left-1/2 -translate-x-1/2 top-16 w-56 max-w-[calc(100vw-1rem)] ' +
+                            'sm:top-auto sm:translate-x-0 sm:mt-2 sm:w-44 sm:absolute ' +
+                            (isRTL ? 'sm:left-0 sm:right-auto ' : 'sm:right-0 sm:left-auto ')
+                        ) +
+                        'overflow-hidden z-70'
+                    }
                 >
                     <button
                         type="button"
@@ -420,7 +449,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         </button>
     );
 
-    const aiEl = (
+    const aiEl = aiChatEnabled ? (
         <button
             type="button"
             onClick={() => ai?.toggle?.()}
@@ -430,7 +459,7 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
         >
             <Sparkles size={18} className="text-(--nb-color-brand-ui)" />
         </button>
-    );
+    ) : null;
 
     const bellEl = canSeeLocks ? (
         <div className="relative" ref={locksRef}>
@@ -741,11 +770,25 @@ const Navbar = ({ onToggleMobileMenu, onToggleCollapse, isCollapsed, currentPage
 
     const userEl = (
         <>
-            <div dir={isRTL ? 'rtl' : 'ltr'} className={(isRTL ? 'text-left' : 'text-right') + " hidden sm:block"}>
+            <button
+                type="button"
+                onClick={goToProfile}
+                className={(isRTL ? 'text-left' : 'text-right') + " hidden sm:block"}
+                title={t('nav.profile', { defaultValue: 'Profile' })}
+            >
                 <p className="font-semibold text-sm text-(--nb-color-fg)">{displayName}</p>
                 <p className="text-xs text-(--nb-color-muted)">{meta || ' '}</p>
-            </div>
-            <User size={24} className="text-(--nb-color-muted) sm:hidden" />
+            </button>
+
+            <button
+                type="button"
+                onClick={goToProfile}
+                className="sm:hidden p-2 rounded-md border border-(--nb-color-border) bg-(--nb-color-bg-card) hover:bg-(--nb-color-brand-50) text-(--nb-color-fg)"
+                title={t('nav.profile', { defaultValue: 'Profile' })}
+                aria-label={t('nav.profile', { defaultValue: 'Profile' })}
+            >
+                <User size={20} />
+            </button>
         </>
     );
 

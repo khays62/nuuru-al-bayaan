@@ -4,14 +4,56 @@ import { z } from 'zod';
 import { protect } from '../middleware/authMiddleware.js';
 import { validate } from '../middleware/validate.js';
 import AiChatThread from '../models/AiChatThread.js';
+import AiChatDailyUsage from '../models/AiChatDailyUsage.js';
 import { aiGenerateReply } from '../services/aiChat.js';
 import { executeAiTool, getAllowedAiToolNamesForUser, isAiToolError } from '../services/aiDbTools.js';
+import { getResolvedPrivacyPolicy } from '../utils/privacyPolicy.js';
 
 const router = express.Router();
 
+const MAX_MESSAGE_WORDS = 300;
+
+function countWords(text) {
+  const s = String(text || '').trim();
+  if (!s) return 0;
+  return s.split(/\s+/).filter(Boolean).length;
+}
+
+function toUtcDateKey(date = new Date()) {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function secondsUntilUtcMidnight(date = new Date()) {
+  const now = date.getTime();
+  const next = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 0, 0, 0, 0);
+  return Math.max(1, Math.ceil((next - now) / 1000));
+}
+
+async function requireAiChatEnabled(req, res) {
+  const policy = await getResolvedPrivacyPolicy();
+  if (policy?.aiChat?.enabled === false) {
+    res.status(403).json({
+      success: false,
+      message: req.t('ai.disabledByPolicy', null, 'AI chat is disabled by policy'),
+    });
+    return null;
+  }
+  return policy;
+}
+
 const messageBody = z
   .object({
-    message: z.string().trim().min(1).max(2000),
+    message: z
+      .string()
+      .trim()
+      .min(1)
+      .max(6000)
+      .refine((v) => countWords(v) <= MAX_MESSAGE_WORDS, {
+        message: `Message is too long (max ${MAX_MESSAGE_WORDS} words)`,
+      }),
     threadId: z.string().trim().optional(),
   })
   .strip();
@@ -301,6 +343,9 @@ function pickThreadOrFallback(store, threadId) {
 // List chat threads (per account)
 router.get('/chat/threads', protect, validate({ query: threadsQuery }), async (req, res, next) => {
   try {
+    const policy = await requireAiChatEnabled(req, res);
+    if (!policy) return;
+
     const principalModel = getPrincipalModel(req);
     const principalId = req.user?._id;
     const locale = req.locale || 'en';
@@ -339,6 +384,9 @@ router.get('/chat/threads', protect, validate({ query: threadsQuery }), async (r
 // Create a new chat thread
 router.post('/chat/threads', protect, validate({ body: threadsCreateBody }), async (req, res, next) => {
   try {
+    const policy = await requireAiChatEnabled(req, res);
+    if (!policy) return;
+
     const principalModel = getPrincipalModel(req);
     const principalId = req.user?._id;
     const locale = req.locale || 'en';
@@ -364,6 +412,9 @@ router.post('/chat/threads', protect, validate({ body: threadsCreateBody }), asy
 // Delete a chat thread
 router.delete('/chat/threads/:threadId', protect, validate({ params: threadIdParams }), async (req, res, next) => {
   try {
+    const policy = await requireAiChatEnabled(req, res);
+    if (!policy) return;
+
     const principalModel = getPrincipalModel(req);
     const principalId = req.user?._id;
     const locale = req.locale || 'en';
@@ -400,6 +451,9 @@ router.delete('/chat/threads/:threadId', protect, validate({ params: threadIdPar
 // Fetch the current user's chat history (single thread)
 router.get('/chat/history', protect, validate({ query: historyQuery }), async (req, res, next) => {
   try {
+    const policy = await requireAiChatEnabled(req, res);
+    if (!policy) return;
+
     const principalModel = getPrincipalModel(req);
     const principalId = req.user?._id;
     const locale = req.locale || 'en';
@@ -434,6 +488,55 @@ router.post('/chat/message', protect, validate({ body: messageBody }), async (re
     const principalId = req.user?._id;
     const locale = req.locale || 'en';
     const role = req.user?.role;
+
+    const policy = await requireAiChatEnabled(req, res);
+    if (!policy) return;
+
+    // Enforce daily quota via privacy policy (admin exempt).
+    const now = new Date();
+    const dateKey = toUtcDateKey(now);
+    let quotaInfo = null;
+    try {
+      const aiPolicy = policy?.aiChat || {};
+      const roleLower = String(role || '').toLowerCase();
+      const isAdmin = roleLower === 'admin';
+
+      if (!isAdmin) {
+        if (aiPolicy?.enabled === false) {
+          return res.status(403).json({
+            success: false,
+            message: req.t('ai.disabledByPolicy', null, 'AI chat is disabled by policy'),
+          });
+        }
+
+        const limit = roleLower === 'teacher'
+          ? Number(aiPolicy?.dailyLimitTeacher)
+          : roleLower === 'student'
+            ? Number(aiPolicy?.dailyLimitStudent)
+            : Number(aiPolicy?.dailyLimitStaff);
+
+        if (!Number.isFinite(limit) || limit <= 0) {
+          return res.status(403).json({
+            success: false,
+            message: req.t('ai.disabledForRole', null, 'AI chat is disabled for your account'),
+          });
+        }
+
+        const usage = await AiChatDailyUsage.findOne({ principalModel, principalId, dateKey }).lean();
+        const used = Number(usage?.count || 0);
+        if (used >= limit) {
+          return res.status(429).json({
+            success: false,
+            message: req.t('ai.dailyLimitExceeded', null, 'Daily AI message limit reached. Try again tomorrow.'),
+            retryAfterSeconds: secondsUntilUtcMidnight(now),
+          });
+        }
+
+        quotaInfo = { limit };
+      }
+    } catch {
+      // Non-blocking: if policy lookup fails, do not break AI chat.
+    }
 
     const store = await getOrCreateThread({ principalModel, principalId, locale });
     let thread = pickThreadOrFallback(store, req.body?.threadId);
@@ -555,6 +658,18 @@ router.post('/chat/message', protect, validate({ body: messageBody }), async (re
     thread.messages.push({ role: 'assistant', content: assistantText });
     thread.updatedAt = new Date();
     await store.save();
+
+    if (quotaInfo?.limit) {
+      try {
+        await AiChatDailyUsage.findOneAndUpdate(
+          { principalModel, principalId, dateKey },
+          { $inc: { count: 1 }, $set: { lastMessageAt: new Date() } },
+          { upsert: true, setDefaultsOnInsert: true }
+        );
+      } catch {
+        // ignore
+      }
+    }
 
     return res.json({
       threadId: String(thread._id),

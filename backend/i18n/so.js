@@ -44,4 +44,14 @@ export default {
     subjectIdRequired: 'subjectId waa khasab',
     notAssignedToClass: 'Laguma xilsaarin fasalkan',
   },
+
+  ai: {
+    disabledByPolicy: 'Chat-ka AI waa la damiyay (policy)',
+    disabledForRole: 'Chat-ka AI lama oggola akoonkaaga',
+    dailyLimitExceeded: 'Xadka maalintii ee AI waa la gaaray. Isku day berri.',
+    quotaExceeded: 'Quota AI waa la dhaafay. Fadlan mar kale isku day goor dambe.',
+    retryIn: 'Mar kale isku day',
+    busy: 'AI-ga wuu mashquulsan yahay. Isku day wax yar kadib.',
+    missingApiKey: 'AI-ga server-ka lama dejin',
+  },
 };

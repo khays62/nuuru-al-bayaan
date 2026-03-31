@@ -13,7 +13,10 @@ export const allowStudentSelfOr = (permissionMiddleware, opts = {}) => {
 
       // New model: students authenticate via User account with a studentRef.
       // Legacy model: students authenticate directly as a Student document.
-      const ownStudentId = req.user?.studentRef || req.user?._id;
+      const studentRef = req.user?.studentRef;
+      const ownStudentId = (studentRef && typeof studentRef === 'object' && studentRef._id)
+        ? studentRef._id
+        : (studentRef || req.user?._id);
 
       if (!provided || String(provided) !== String(ownStudentId)) {
         return res.status(403).json({ message: req.t('common.accessDenied', null, 'Access denied') });

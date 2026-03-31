@@ -5,7 +5,7 @@ import { getFullTranscript } from '../controllers/transcriptController.js';
 import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
 import { checkAnyPermission, checkPermission } from "../middleware/checkPermission.js";
 import { allowStudentSelfOr } from '../middleware/studentSelf.js';
-import { requireStudentDashboardAccess } from '../middleware/studentDashboardPolicy.js';
+import { requireStudentDashboardAccess, requireStudentDashboardAccessAny } from '../middleware/studentDashboardPolicy.js';
 import { z } from 'zod';
 import { validate } from '../middleware/validate.js';
 import { uploadStudentPhoto as uploadStudentPhotoMw, STUDENT_PHOTO_MAX_BYTES } from '../middleware/uploadStudentPhoto.js';
@@ -280,7 +280,7 @@ router.get(
     '/:id/history',
     protect,
     validate({ params: z.object({ id: objectId }).strip() }),
-    requireStudentDashboardAccess('enrollments'),
+    requireStudentDashboardAccessAny(['enrollments', 'transcript', 'timetable']),
     allowStudentSelfOr(canReadStudents),
     getStudentHistory
 ); // GET /api/students/:id/history

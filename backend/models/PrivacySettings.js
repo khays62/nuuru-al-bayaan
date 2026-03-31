@@ -39,12 +39,20 @@ const studentDashboardSchema = new Schema({
   transfers: { type: Boolean, default: true },
 }, { _id: false });
 
+const aiChatSchema = new Schema({
+  enabled: { type: Boolean, default: true },
+  dailyLimitStudent: { type: Number, default: 30, min: 0, max: 10_000 },
+  dailyLimitTeacher: { type: Number, default: 60, min: 0, max: 10_000 },
+  dailyLimitStaff: { type: Number, default: 80, min: 0, max: 10_000 },
+}, { _id: false });
+
 const privacySettingsSchema = new Schema({
   singletonKey: { type: String, required: true, default: 'privacy-policy', unique: true, index: true },
   loginProtection: { type: loginProtectionSchema, default: () => ({}) },
   passwordPolicy: { type: passwordPolicySchema, default: () => ({}) },
   sessionPolicy: { type: sessionPolicySchema, default: () => ({}) },
   studentDashboard: { type: studentDashboardSchema, default: () => ({}) },
+  aiChat: { type: aiChatSchema, default: () => ({}) },
 }, {
   timestamps: true,
   minimize: false,

@@ -55,9 +55,38 @@ function normalizeMessages(raw) {
     .filter((m) => m.content.trim().length > 0);
 }
 
+const MAX_MESSAGE_WORDS = 300;
+
+function countWords(text) {
+  const s = String(text || '');
+  const matches = s.match(/\S+/g);
+  return matches ? matches.length : 0;
+}
+
+function clampToWords(text, maxWords) {
+  const s = String(text || '');
+  const re = /\S+/g;
+  let match;
+  let count = 0;
+  let endIndex = 0;
+
+  while ((match = re.exec(s))) {
+    count += 1;
+    if (count === maxWords) {
+      endIndex = re.lastIndex;
+      break;
+    }
+  }
+
+  if (count < maxWords) return s;
+  return s.slice(0, endIndex);
+}
+
 export default function AiChatPanel() {
   const { t, isRTL } = useI18n();
   const ctx = useAiChat();
+
+  const isEnabled = ctx?.enabled !== false;
 
   const isOpen = Boolean(ctx?.isOpen);
   const close = typeof ctx?.close === 'function' ? ctx.close : () => {};
@@ -82,6 +111,23 @@ export default function AiChatPanel() {
   const loadedRef = React.useRef(false);
   const listRef = React.useRef(null);
 
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(max-width: 639px)');
+    const onChange = () => setIsMobile(Boolean(mq.matches));
+    onChange();
+    if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
+    else if (typeof mq.addListener === 'function') mq.addListener(onChange);
+    return () => {
+      if (typeof mq.removeEventListener === 'function') mq.removeEventListener('change', onChange);
+      else if (typeof mq.removeListener === 'function') mq.removeListener(onChange);
+    };
+  }, []);
+
+  // Mobile keyboard handling: keep the footer/input visible when the on-screen keyboard opens.
+  const [viewportBottomInset, setViewportBottomInset] = React.useState(0);
+
   const title = t('aiChat.title', { defaultValue: 'AI Assistant' });
 
   const threadUiLocked = Boolean(
@@ -99,6 +145,33 @@ export default function AiChatPanel() {
     const id = window.setTimeout(scrollToBottom, 0);
     return () => window.clearTimeout(id);
   }, [isOpen, messages.length, scrollToBottom]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    if (typeof window === 'undefined') return;
+    if (!isMobile) {
+      setViewportBottomInset(0);
+      return;
+    }
+
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      const bottom = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+      setViewportBottomInset(bottom);
+    };
+
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    window.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      window.removeEventListener('scroll', update);
+    };
+  }, [isMobile, isOpen]);
 
   const loadThreads = React.useCallback(async () => {
     setLoadingThreads(true);
@@ -260,20 +333,6 @@ export default function AiChatPanel() {
   // Drag-to-resize
   const dragRef = React.useRef({ active: false });
 
-  const [isMobile, setIsMobile] = React.useState(false);
-  React.useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const mq = window.matchMedia('(max-width: 639px)');
-    const onChange = () => setIsMobile(Boolean(mq.matches));
-    onChange();
-    if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
-    else if (typeof mq.addListener === 'function') mq.addListener(onChange);
-    return () => {
-      if (typeof mq.removeEventListener === 'function') mq.removeEventListener('change', onChange);
-      else if (typeof mq.removeListener === 'function') mq.removeListener(onChange);
-    };
-  }, []);
-
   const onDragStart = (e) => {
     e.preventDefault();
     dragRef.current.active = true;
@@ -300,6 +359,7 @@ export default function AiChatPanel() {
     window.addEventListener('touchend', onUp);
   };
 
+  if (!isEnabled) return null;
   if (!isOpen) return null;
 
   const showInitialSkeleton = !hasLoaded && (loadingThreads || loadingHistory);
@@ -311,11 +371,18 @@ export default function AiChatPanel() {
     <aside
       className={
         (isMobile
-          ? 'fixed inset-0 z-70 w-screen h-screen '
+          ? 'fixed inset-0 z-70 w-screen '
           : 'relative shrink-0 h-full ') +
         'flex flex-col bg-(--nb-color-bg-card) border-(--nb-color-border) border-l'
       }
-      style={isMobile ? { width: '100vw' } : { width }}
+      style={isMobile
+        ? {
+          width: '100vw',
+          height: '100dvh',
+          maxHeight: '100dvh',
+          paddingBottom: `calc(${viewportBottomInset}px + env(safe-area-inset-bottom))`,
+        }
+        : { width }}
       aria-label={title}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
@@ -485,7 +552,7 @@ export default function AiChatPanel() {
         <div className="flex items-end gap-2">
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => setInput(clampToWords(e.target.value, MAX_MESSAGE_WORDS))}
             onKeyDown={onInputKeyDown}
             rows={2}
             className={
@@ -508,6 +575,7 @@ export default function AiChatPanel() {
               || Boolean(deletingThreadId)
               || !hasLoaded
               || String(input || '').trim().length === 0
+              || countWords(input) > MAX_MESSAGE_WORDS
             }
             title={t('aiChat.send', { defaultValue: 'Send' })}
             icon={<Send size={16} />}

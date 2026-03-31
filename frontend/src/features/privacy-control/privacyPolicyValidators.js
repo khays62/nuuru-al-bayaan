@@ -48,6 +48,22 @@ export function validatePrivacyPolicyDraft(input, t) {
     pushError(errors, 'loginProtection.lockoutSeconds', t('privacyControl.validation.lockoutDurationMin', { defaultValue: 'Block duration must be at least 1 minute.' }));
   }
 
+  if (policy?.aiChat) {
+    const student = Number(policy.aiChat.dailyLimitStudent);
+    const teacher = Number(policy.aiChat.dailyLimitTeacher);
+    const staff = Number(policy.aiChat.dailyLimitStaff);
+
+    if (!Number.isFinite(student) || student < 0) {
+      pushError(errors, 'aiChat.dailyLimitStudent', t('privacyControl.validation.aiChat.dailyLimitStudent', { defaultValue: 'Student daily limit must be 0 or greater.' }));
+    }
+    if (!Number.isFinite(teacher) || teacher < 0) {
+      pushError(errors, 'aiChat.dailyLimitTeacher', t('privacyControl.validation.aiChat.dailyLimitTeacher', { defaultValue: 'Teacher daily limit must be 0 or greater.' }));
+    }
+    if (!Number.isFinite(staff) || staff < 0) {
+      pushError(errors, 'aiChat.dailyLimitStaff', t('privacyControl.validation.aiChat.dailyLimitStaff', { defaultValue: 'Staff daily limit must be 0 or greater.' }));
+    }
+  }
+
   return errors;
 }
 

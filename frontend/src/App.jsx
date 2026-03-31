@@ -119,6 +119,7 @@ export default function App() {
         <div className="flex flex-col flex-1 overflow-hidden">
             <Navbar
                 onToggleMobileMenu={toggleMobileMenu}
+                isMobileMenuOpen={isMobileMenuOpen}
                 onToggleCollapse={toggleCollapse}
                 isCollapsed={isCollapsed}
                 currentPageTitle={currentPageTitle}
@@ -131,7 +132,7 @@ export default function App() {
     );
 
     return (
-        <AiChatProvider>
+        <AiChatProvider enabled={auth?.privacyPolicy?.aiChat?.enabled !== false}>
             <div className="flex h-screen bg-gray-100" style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                 {String(auth?.user?.role || '').toLowerCase() === 'teacher' ? <TeacherDashboardPrefetcher /> : null}
 
@@ -152,7 +153,7 @@ export default function App() {
 
                 {isMobileMenuOpen && (
                     <div 
-                        className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden no-print" 
+                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden no-print" 
                         onClick={closeMobileMenu}
                     ></div>
                 )}

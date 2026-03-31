@@ -15,6 +15,7 @@ import LoginProtectionPolicyCard from '../components/LoginProtectionPolicyCard.j
 import PasswordPolicyCard from '../components/PasswordPolicyCard.jsx';
 import SessionExpiryPolicyCard from '../components/SessionExpiryPolicyCard.jsx';
 import StudentDashboardTabsPolicyCard from '../components/StudentDashboardTabsPolicyCard.jsx';
+import AiChatPolicyCard from '../components/AiChatPolicyCard.jsx';
 import { getPrivacyPolicy, updatePrivacyPolicy } from '../api/privacyPolicyApi.js';
 import { getResolvedPrivacyPolicy } from '../privacyPolicyDefaults.js';
 import { privacyPolicyKeys } from '../queryKeys.js';
@@ -28,6 +29,7 @@ function PolicySkeleton() {
       <Skeleton className="h-64 w-full rounded-xl" />
       <Skeleton className="h-52 w-full rounded-xl" />
       <Skeleton className="h-36 w-full rounded-xl" />
+      <Skeleton className="h-52 w-full rounded-xl" />
       <Skeleton className="h-52 w-full rounded-xl" />
     </div>
   );
@@ -134,6 +136,7 @@ export default function PrivacyControlPage() {
       <PasswordPolicyCard value={draft.passwordPolicy} onChange={(next) => setDraft((prev) => ({ ...prev, passwordPolicy: next }))} errors={errors} disabled={!canEdit} />
       <SessionExpiryPolicyCard value={draft.sessionPolicy} onChange={(next) => setDraft((prev) => ({ ...prev, sessionPolicy: next }))} errors={errors} disabled={!canEdit} />
       <StudentDashboardTabsPolicyCard value={draft.studentDashboard} onChange={(next) => setDraft((prev) => ({ ...prev, studentDashboard: next }))} disabled={!canEdit} />
+      <AiChatPolicyCard value={draft.aiChat} onChange={(next) => setDraft((prev) => ({ ...prev, aiChat: next }))} errors={errors} disabled={!canEdit} />
     </div>
   );
 }

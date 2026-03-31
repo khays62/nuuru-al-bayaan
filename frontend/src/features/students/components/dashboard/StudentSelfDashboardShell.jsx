@@ -495,6 +495,7 @@ function StudentSelfPrefetcher() {
   const canPrefetchFinance = auth?.user?.role === 'student' && isStudentDashboardTabEnabled(auth?.privacyPolicy, 'finance');
   const canPrefetchLibrary = auth?.user?.role === 'student' && isStudentDashboardTabEnabled(auth?.privacyPolicy, 'library');
   const enrollmentsEnabled = auth?.user?.role === 'student' && isStudentDashboardTabEnabled(auth?.privacyPolicy, 'enrollments');
+  const needsHistory = Boolean(auth?.user?.role === 'student' && (enrollmentsEnabled || canPrefetchTranscript || canPrefetchTimetable));
 
   const { from, to } = useMemo(() => {
     const end = new Date();
@@ -522,23 +523,6 @@ function StudentSelfPrefetcher() {
         const data = await getStudentProfile(studentId);
         if (!data) throw new Error('Failed to load profile');
         return data;
-      },
-    }).catch(() => {});
-
-    queryClient.ensureQueryData({
-      queryKey: studentKeys.transfers(studentId, { limit: 1 }),
-      queryFn: async () => {
-        const res = await getStudentTransfers(studentId, { limit: 1 });
-        return Array.isArray(res?.data) ? res.data : [];
-      },
-    }).catch(() => {});
-
-    // Transfers tab loads up to 50; prefetch it so opening Transfers is instant.
-    queryClient.ensureQueryData({
-      queryKey: studentKeys.transfers(studentId, { limit: 50 }),
-      queryFn: async () => {
-        const res = await getStudentTransfers(studentId, { limit: 50 });
-        return Array.isArray(res?.data) ? res.data : [];
       },
     }).catch(() => {});
 
@@ -691,7 +675,7 @@ function StudentSelfPrefetcher() {
           await prefetchWithConcurrency(tasks, 3);
         }
 
-        if (enrollmentsEnabled) {
+        if (needsHistory) {
           const historyRows = await queryClient.ensureQueryData({
             queryKey: studentKeys.history(studentId, { page: 1, limit: 1000 }),
             queryFn: async () => {
@@ -725,7 +709,7 @@ function StudentSelfPrefetcher() {
     })();
 
     return () => { canceled = true; };
-  }, [queryClient, studentId, canPrefetchTimetable, canPrefetchTranscript, enrollmentsEnabled]);
+  }, [queryClient, studentId, canPrefetchTimetable, canPrefetchTranscript, enrollmentsEnabled, needsHistory]);
 
   return null;
 }
@@ -752,6 +736,9 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
   const showAttendance = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'attendance') : true;
   const showTimetable = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'timetable') : true;
   const showLibrary = applyStudentPrivacyPolicy ? isStudentDashboardTabEnabled(auth?.privacyPolicy, 'library') : true;
+
+  // History drives active enrollment lookup which is required for timetable + transcript widgets.
+  const needsHistory = Boolean(!isStudentSelf || enrollmentsEnabled || showTranscript || showTimetable);
 
   const profileNameQuery = useQuery({
     queryKey: studentKeys.profile(studentId),
@@ -780,7 +767,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
 
   const historyQuery = useQuery({
     queryKey: studentKeys.history(studentId, { page: 1, limit: 1000 }),
-    enabled: !!studentId && (!isStudentSelf || enrollmentsEnabled),
+    enabled: !!studentId && needsHistory,
     queryFn: async () => {
       const res = await getStudentHistory(studentId, { page: 1, limit: 1000 });
       return Array.isArray(res?.data) ? res.data : [];

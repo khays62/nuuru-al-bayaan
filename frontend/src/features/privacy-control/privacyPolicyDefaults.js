@@ -32,12 +32,19 @@ export const PRIVACY_POLICY_DEFAULTS = Object.freeze({
     library: true,
     transfers: true,
   }),
+  aiChat: Object.freeze({
+    enabled: true,
+    dailyLimitStudent: 30,
+    dailyLimitTeacher: 60,
+    dailyLimitStaff: 80,
+  }),
 });
 
 export const CLIENT_PRIVACY_POLICY_DEFAULTS = Object.freeze({
   passwordPolicy: Object.freeze({ ...PRIVACY_POLICY_DEFAULTS.passwordPolicy }),
   sessionPolicy: Object.freeze({ ...PRIVACY_POLICY_DEFAULTS.sessionPolicy }),
   studentDashboard: Object.freeze({ ...PRIVACY_POLICY_DEFAULTS.studentDashboard }),
+  aiChat: Object.freeze({ ...PRIVACY_POLICY_DEFAULTS.aiChat }),
 });
 
 export const STUDENT_DASHBOARD_TABS = Object.freeze([
@@ -69,6 +76,10 @@ export function getResolvedPrivacyPolicy(input = {}) {
       ...PRIVACY_POLICY_DEFAULTS.studentDashboard,
       ...(input?.studentDashboard || {}),
     },
+    aiChat: {
+      ...PRIVACY_POLICY_DEFAULTS.aiChat,
+      ...(input?.aiChat || {}),
+    },
   };
 }
 
@@ -77,11 +88,13 @@ export function getResolvedClientPrivacyPolicy(input = {}) {
     passwordPolicy: input?.passwordPolicy,
     sessionPolicy: input?.sessionPolicy,
     studentDashboard: input?.studentDashboard,
+    aiChat: input?.aiChat,
   });
   return {
     passwordPolicy: resolved.passwordPolicy,
     sessionPolicy: resolved.sessionPolicy,
     studentDashboard: resolved.studentDashboard,
+    aiChat: resolved.aiChat,
   };
 }
 

@@ -4,7 +4,7 @@ const AiChatContext = React.createContext(null);
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-export function AiChatProvider({ children }) {
+export function AiChatProvider({ children, enabled = true }) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [width, setWidthState] = React.useState(420);
 
@@ -16,18 +16,32 @@ export function AiChatProvider({ children }) {
     setWidthState(clamp(n, 320, max));
   }, []);
 
-  const open = React.useCallback(() => setIsOpen(true), []);
+  const open = React.useCallback(() => {
+    if (!enabled) return;
+    setIsOpen(true);
+  }, [enabled]);
+
   const close = React.useCallback(() => setIsOpen(false), []);
-  const toggle = React.useCallback(() => setIsOpen((v) => !v), []);
+
+  const toggle = React.useCallback(() => {
+    if (!enabled) return;
+    setIsOpen((v) => !v);
+  }, [enabled]);
+
+  React.useEffect(() => {
+    if (enabled) return;
+    setIsOpen(false);
+  }, [enabled]);
 
   const value = React.useMemo(() => ({
+    enabled,
     isOpen,
     open,
     close,
     toggle,
     width,
     setWidth,
-  }), [isOpen, open, close, toggle, width, setWidth]);
+  }), [enabled, isOpen, open, close, toggle, width, setWidth]);
 
   return <AiChatContext.Provider value={value}>{children}</AiChatContext.Provider>;
 }

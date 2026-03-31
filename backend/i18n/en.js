@@ -44,4 +44,14 @@ export default {
     subjectIdRequired: 'subjectId required',
     notAssignedToClass: 'Not assigned to this class',
   },
+
+  ai: {
+    disabledByPolicy: 'AI chat is disabled by policy',
+    disabledForRole: 'AI chat is disabled for your account',
+    dailyLimitExceeded: 'Daily AI message limit reached. Try again tomorrow.',
+    quotaExceeded: 'AI quota exceeded. Please try again later.',
+    retryIn: 'Retry in',
+    busy: 'AI service is busy. Please try again shortly.',
+    missingApiKey: 'AI is not configured on the server',
+  },
 };

@@ -37,6 +37,12 @@ export const DEFAULT_PRIVACY_POLICY = Object.freeze({
     library: true,
     transfers: true,
   }),
+  aiChat: Object.freeze({
+    enabled: true,
+    dailyLimitStudent: 30,
+    dailyLimitTeacher: 60,
+    dailyLimitStaff: 80,
+  }),
 });
 
 function toInt(value, fallback, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
@@ -57,6 +63,7 @@ function cloneDefaults() {
     passwordPolicy: { ...DEFAULT_PRIVACY_POLICY.passwordPolicy },
     sessionPolicy: { ...DEFAULT_PRIVACY_POLICY.sessionPolicy },
     studentDashboard: { ...DEFAULT_PRIVACY_POLICY.studentDashboard },
+    aiChat: { ...DEFAULT_PRIVACY_POLICY.aiChat },
   };
 }
 
@@ -66,6 +73,7 @@ export function normalizePrivacyPolicy(input = {}) {
   const passwordPolicy = input?.passwordPolicy || {};
   const sessionPolicy = input?.sessionPolicy || {};
   const studentDashboard = input?.studentDashboard || {};
+  const aiChat = input?.aiChat || {};
 
   base.loginProtection.enabled = toBool(loginProtection.enabled, base.loginProtection.enabled);
   base.loginProtection.stageOneAttempts = toInt(loginProtection.stageOneAttempts, base.loginProtection.stageOneAttempts, { min: 1, max: 100 });
@@ -95,6 +103,11 @@ export function normalizePrivacyPolicy(input = {}) {
     base.studentDashboard[key] = toBool(studentDashboard[key], base.studentDashboard[key]);
   }
 
+  base.aiChat.enabled = toBool(aiChat.enabled, base.aiChat.enabled);
+  base.aiChat.dailyLimitStudent = toInt(aiChat.dailyLimitStudent, base.aiChat.dailyLimitStudent, { min: 0, max: 10_000 });
+  base.aiChat.dailyLimitTeacher = toInt(aiChat.dailyLimitTeacher, base.aiChat.dailyLimitTeacher, { min: 0, max: 10_000 });
+  base.aiChat.dailyLimitStaff = toInt(aiChat.dailyLimitStaff, base.aiChat.dailyLimitStaff, { min: 0, max: 10_000 });
+
   return base;
 }
 
@@ -109,6 +122,7 @@ export function getClientPrivacyPolicy(input = {}) {
     passwordPolicy: { ...resolved.passwordPolicy },
     sessionPolicy: { ...resolved.sessionPolicy },
     studentDashboard: { ...resolved.studentDashboard },
+    aiChat: { ...resolved.aiChat },
   };
 }
 
