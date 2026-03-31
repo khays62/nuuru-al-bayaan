@@ -31,7 +31,13 @@ function getCookie(name) {
 
 export function apiUrl(path = '/') {
 	const base = String(API_BASE_URL || '').replace(/\/$/, '');
-	const p = String(path || '/');
+	let p = String(path || '/');
+	// Normalize common mistake: callers passing '/api/...' while base already ends with '/api'.
+	// This would otherwise produce '/api/api/...'
+	if (base.endsWith('/api')) {
+		if (p === '/api') p = '/';
+		else if (p.startsWith('/api/')) p = p.slice('/api'.length);
+	}
 	return p.startsWith('/') ? `${base}${p}` : `${base}/${p}`;
 }
 

@@ -9,6 +9,12 @@ describe('shared/api/http bridge', () => {
     expect(url.includes('//users')).toBe(false);
   });
 
+  test('apiUrl avoids duplicating /api prefix', () => {
+    const url = apiUrl('/api/users');
+    expect(url.includes('/api/api/')).toBe(false);
+    expect(url.endsWith('/api/users')).toBe(true);
+  });
+
   test('fetchJson is exported as a function', () => {
     expect(typeof fetchJson).toBe('function');
   });

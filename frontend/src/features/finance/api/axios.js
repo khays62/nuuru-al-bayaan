@@ -17,6 +17,20 @@ const getCookie = (name) => {
 };
 
 instance.interceptors.request.use((config) => {
+
+  // Normalize common mistake: passing '/api/...' while baseURL is already '/api'
+  // would otherwise produce '/api/api/...'.
+  try {
+    const base = String(config?.baseURL ?? instance.defaults.baseURL ?? '').replace(/\/$/, '');
+    const url = String(config?.url ?? '');
+    if (base.endsWith('/api') && url && !/^https?:\/\//i.test(url)) {
+      if (url === '/api') config.url = '/';
+      else if (url.startsWith('/api/')) config.url = url.slice('/api'.length);
+    }
+  } catch {
+    // ignore
+  }
+
   const token = getCookie('csrf_token');
   if (token) {
     config.headers = config.headers || {};
