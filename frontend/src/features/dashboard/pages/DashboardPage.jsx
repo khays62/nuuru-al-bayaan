@@ -190,16 +190,16 @@ const DashboardSkeleton = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-5 shadow-md">
+                    <div key={i} className="rounded-2xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-3 sm:p-5 shadow-md">
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                                 <Skeleton className="h-4 w-24" />
-                                <Skeleton className="h-9 w-20 mt-3" />
+                                <Skeleton className="h-8 sm:h-9 w-20 mt-3" />
                                 <Skeleton className="h-3 w-28 mt-2" />
                             </div>
-                            <Skeleton className="h-11 w-11 rounded-xl" />
+                            <Skeleton className="h-9 w-9 sm:h-11 sm:w-11 rounded-xl" />
                         </div>
                     </div>
                 ))}
@@ -232,7 +232,7 @@ const ModuleCard = ({ title, subtitle, to, Icon, count, tone = 'blue', disabled 
 
     const base =
         'relative overflow-hidden rounded-2xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
-        'bg-(--nb-color-bg-card) p-5 shadow-md transition';
+        'bg-(--nb-color-bg-card) p-3 sm:p-5 shadow-md transition';
     const active = 'hover:shadow-lg hover:border-(--nb-color-accent-200) hover:-translate-y-0.5';
     const off = 'opacity-60 cursor-not-allowed';
 
@@ -240,12 +240,12 @@ const ModuleCard = ({ title, subtitle, to, Icon, count, tone = 'blue', disabled 
         <div className="relative">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                    <div className="text-sm font-semibold text-(--nb-color-text) truncate">{title}</div>
-                    <div className="mt-2 text-3xl font-extrabold tracking-tight text-(--nb-color-text) tabular-nums">{fmtCount(count)}</div>
-                    {subtitle ? <div className="mt-1 text-xs text-(--nb-color-muted) truncate">{subtitle}</div> : null}
+                    <div className="text-xs sm:text-sm font-semibold text-(--nb-color-text) truncate">{title}</div>
+                    <div className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight text-(--nb-color-text) tabular-nums">{fmtCount(count)}</div>
+                    {subtitle ? <div className="mt-1 text-[11px] sm:text-xs text-(--nb-color-muted) truncate">{subtitle}</div> : null}
                 </div>
-                <div className="shrink-0 w-11 h-11 rounded-xl bg-(--nb-color-accent-50) border border-(--nb-color-accent-100) flex items-center justify-center text-(--nb-color-brand-ui)">
-                    {Icon ? <Icon size={22} /> : null}
+                <div className="shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-(--nb-color-accent-50) border border-(--nb-color-accent-100) flex items-center justify-center text-(--nb-color-brand-ui)">
+                    {Icon ? <Icon className="w-[18px] h-[18px] sm:w-[22px] sm:h-[22px]" /> : null}
                 </div>
             </div>
         </div>
@@ -901,7 +901,7 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-4">
                 {moduleCards.map((card) => (
                     <ModuleCard
                         key={card.key}

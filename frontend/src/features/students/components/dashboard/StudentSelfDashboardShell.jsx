@@ -109,9 +109,9 @@ function SmallStat({ label, value, tone = 'gray', size = 'md' }) {
 
 function DashboardSkeletonCard() {
   return (
-    <div className="rounded-xl border border-(--nb-color-border) p-5 shadow-sm bg-(--nb-color-bg-card) animate-pulse">
-      <div className="flex items-start gap-4">
-        <div className="shrink-0 w-11 h-11 rounded-lg bg-(--nb-color-bg) border border-(--nb-color-border)" />
+    <div className="rounded-xl border border-(--nb-color-border) p-3 sm:p-5 shadow-sm bg-(--nb-color-bg-card) animate-pulse">
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className="shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-lg bg-(--nb-color-bg) border border-(--nb-color-border)" />
         <div className="min-w-0 flex-1">
           <div className="h-4 w-28 bg-(--nb-color-bg) rounded" />
           <div className="h-3 w-44 bg-(--nb-color-bg) rounded mt-3" />
@@ -129,7 +129,7 @@ function StudentDashboardSkeleton({ t }) {
         <div className="h-4 w-72 bg-(--nb-color-bg-card) opacity-70 rounded mt-3" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
         {Array.from({ length: 5 }).map((_, i) => <DashboardSkeletonCard key={i} />)}
       </div>
 
@@ -422,7 +422,7 @@ function LineChart({ points = [], height = 140, onHover, onLeave }) {
 function Card({ to, title, description, Icon }) {
   const base =
     'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
-    'bg-(--nb-color-bg-card) p-5 shadow-md transition';
+    'bg-(--nb-color-bg-card) p-3 sm:p-5 shadow-md transition';
   const active = 'hover:shadow-lg hover:border-(--nb-color-accent-200)';
 
   return (
@@ -430,13 +430,13 @@ function Card({ to, title, description, Icon }) {
       to={to}
       className={`${base} ${active}`}
     >
-      <div className="flex items-start gap-4">
-        <div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) flex items-center justify-center">
-          {Icon ? <Icon size={20} /> : null}
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className="shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) flex items-center justify-center">
+          {Icon ? <Icon className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" /> : null}
         </div>
         <div className="min-w-0">
-          <div className="text-base font-semibold text-(--nb-color-text)">{title}</div>
-          <div className="text-sm text-(--nb-color-muted) mt-1">{description}</div>
+          <div className="text-sm sm:text-base font-semibold text-(--nb-color-text)">{title}</div>
+          <div className="text-xs sm:text-sm text-(--nb-color-muted) mt-1">{description}</div>
         </div>
       </div>
     </NavLink>
@@ -948,7 +948,7 @@ export function StudentSelfHomeCards({ studentIdOverride } = {}) {
             <div className="text-sm text-(--nb-color-muted) mt-1">{t('students.selfDashboard.chooseBelow')}</div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
             {showTranscript ? (
               <Card
                 to={`${cardsBasePath}/transcript`}

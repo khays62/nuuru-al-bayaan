@@ -19,20 +19,20 @@ import { useI18n } from '../../../i18n/useI18n';
 const QuickCard = ({ title, description, to, Icon }) => {
 	const base =
 		'block rounded-xl border border-(--nb-color-border) border-b-4 border-b-(--nb-color-accent) ' +
-		'bg-(--nb-color-bg-card) p-5 shadow-md transition';
+		'bg-(--nb-color-bg-card) p-3 sm:p-5 shadow-md transition';
 	const active = 'hover:shadow-lg hover:border-(--nb-color-accent-200)';
 	return (
 		<Link
 			to={to}
 			className={`${base} ${active}`}
 		>
-			<div className="flex items-start gap-4">
-				<div className="shrink-0 w-11 h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) flex items-center justify-center">
-					{Icon ? <Icon size={20} /> : null}
+			<div className="flex items-start gap-3 sm:gap-4">
+				<div className="shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-lg border border-(--nb-color-border) bg-(--nb-color-accent-100) text-(--nb-color-brand-ui) flex items-center justify-center">
+					{Icon ? <Icon className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" /> : null}
 				</div>
 				<div className="min-w-0">
-					<div className="text-base font-semibold text-(--nb-color-text)">{title}</div>
-					<div className="text-sm text-(--nb-color-muted) mt-1">{description}</div>
+					<div className="text-sm sm:text-base font-semibold text-(--nb-color-text)">{title}</div>
+					<div className="text-xs sm:text-sm text-(--nb-color-muted) mt-1">{description}</div>
 				</div>
 			</div>
 		</Link>
@@ -56,7 +56,7 @@ export default function TeacherDashboardPage() {
 				<div className="text-sm text-(--nb-color-muted) mt-1">{summaryLine}</div>
 			</div>
 
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+			<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
 				<QuickCard
 					title={t('teachers.dashboard.home.cards.myClasses.title', { defaultValue: 'My Classes' })}
 					description={t('teachers.dashboard.home.cards.myClasses.description', { defaultValue: 'View your assigned classes and active rosters' })}

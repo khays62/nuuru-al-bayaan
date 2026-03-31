@@ -59,12 +59,12 @@ const FinanceDashboardSkeleton = () => (
             <SkeletonBlock className="h-4 w-80 mt-2" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
                 <Card key={i} className="rounded-2xl shadow-md overflow-hidden border-b-4 border-b-(--nb-color-accent)">
-                    <div className="p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <SkeletonBlock className="h-10 w-10 rounded-lg" />
+                    <div className="p-4 sm:p-5">
+                        <div className="flex items-center justify-between mb-3 sm:mb-4">
+                            <SkeletonBlock className="h-9 w-9 sm:h-10 sm:w-10 rounded-lg" />
                             <SkeletonBlock className="h-5 w-16 rounded-full" />
                         </div>
                         <SkeletonBlock className="h-4 w-28" />
@@ -134,10 +134,10 @@ const SectionCard = ({ title, subtitle, children, right }) => (
 
 const StatWidget = ({ title, value, subtext, icon: Icon, trend }) => (
     <Card className="rounded-2xl shadow-md hover:shadow-lg transition-shadow overflow-hidden border-b-4 border-b-(--nb-color-accent)" noPadding>
-        <div className="p-5">
-            <div className="flex items-center justify-between mb-4">
-                <div className="p-2.5 rounded-lg bg-(--nb-color-accent-50) text-(--nb-color-brand-ui) border border-(--nb-color-accent-100)">
-                    {Icon ? React.createElement(Icon, { size: 20 }) : null}
+        <div className="p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className="p-2 sm:p-2.5 rounded-lg bg-(--nb-color-accent-50) text-(--nb-color-brand-ui) border border-(--nb-color-accent-100)">
+                    {Icon ? React.createElement(Icon, { className: 'w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]' }) : null}
                 </div>
                 {typeof trend === 'number' ? (
                     <span
@@ -154,9 +154,9 @@ const StatWidget = ({ title, value, subtext, icon: Icon, trend }) => (
                 ) : null}
             </div>
             <div>
-                <p className="text-sm font-medium text-(--nb-color-muted)">{title}</p>
-                <h3 className="text-2xl font-bold text-(--nb-color-text) mt-1">{value}</h3>
-                <p className="text-xs text-(--nb-color-muted) mt-1">{subtext}</p>
+                <p className="text-xs sm:text-sm font-medium text-(--nb-color-muted)">{title}</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-(--nb-color-text) mt-1">{value}</h3>
+                <p className="text-[11px] sm:text-xs text-(--nb-color-muted) mt-1">{subtext}</p>
             </div>
         </div>
     </Card>
@@ -233,7 +233,7 @@ export default function FinanceDashboard() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <StatWidget
                     title={t('finance.dashboard.cards.totalRevenue', { defaultValue: 'Total Revenue' })}
                     value={formatCurrency(stats.revenue)}
