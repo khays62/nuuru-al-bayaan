@@ -338,7 +338,7 @@ export default function LoginPage() {
           </div>
 
           {/* Small switch */}
-          <div className="absolute top-4 right-4 z-20">
+          <div className="hidden md:block absolute top-4 right-4 z-20">
             <button
               type="button"
               role="switch"
@@ -447,7 +447,7 @@ export default function LoginPage() {
 
             {/* Welcome panel */}
             <div
-              className="w-full md:absolute md:inset-y-0 md:left-1/2 md:w-1/2 p-8 md:p-12 transition-transform duration-500 ease-out will-change-transform"
+              className="hidden md:block w-full md:absolute md:inset-y-0 md:left-1/2 md:w-1/2 p-8 md:p-12 transition-transform duration-500 ease-out will-change-transform"
               style={isDesktop ? { transform: `translateX(${welcomeShiftPct}%)` } : undefined}
             >
               <div className="relative h-full overflow-hidden rounded-3xl bg-linear-to-br from-(--nb-color-brand) via-(--nb-color-brand) to-(--nb-color-accent) text-white">
@@ -476,9 +476,6 @@ export default function LoginPage() {
                 </div>
               </div>
             </div>
-
-            {/* Mobile spacing: keep panels stacked nicely */}
-            <div className="md:hidden h-6" />
           </div>
         </div>
       </div>
