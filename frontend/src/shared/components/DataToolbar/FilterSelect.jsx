@@ -26,8 +26,10 @@ export default function FilterSelect({ value, onChange, options = [], placeholde
       className={className}
     >
       {!multiple && resolvedPlaceholder ? (<option value="">{resolvedPlaceholder}</option>) : null}
-      {options.map(opt => (
-        <option key={opt.value} value={opt.value}>{opt.label}</option>
+      {options.map((opt, idx) => (
+        <option key={`${String(opt.value)}::${idx}`} value={opt.value}>
+          {opt.label}
+        </option>
       ))}
     </Select>
   );

@@ -151,11 +151,11 @@ export default function SearchableSelect({
             {listOptions.length === 0 ? (
               <div className="px-3 py-2 text-sm text-(--nb-color-muted)">{resolvedNoOptionsFound}</div>
             ) : (
-              listOptions.map((o) => {
+              listOptions.map((o, idx) => {
                 const active = String(value || '') === o.value;
                 return (
                   <button
-                    key={o.value}
+                    key={`${o.value}::${idx}`}
                     type="button"
                     className={
                       `w-full text-left px-3 py-2 text-sm hover:bg-(--nb-color-brand-50) ` +

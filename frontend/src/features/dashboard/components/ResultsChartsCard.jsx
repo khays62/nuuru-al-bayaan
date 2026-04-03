@@ -109,7 +109,7 @@ const ExamTypeBarChart = ({ rows }) => {
             {tickVals.map((tv, idx) => {
                 const yy = y(tv);
                 return (
-                    <g key={idx}>
+                    <g key={`tick-${idx}`}>
                         <line x1={padL} x2={w - padR} y1={yy} y2={yy} stroke="var(--nb-chart-grid)" strokeWidth="1" />
                         <text x={padL - 6} y={yy + 4} textAnchor="end" fontSize="10" fill="var(--nb-chart-axis)">
                             {tv.toFixed(0)}%
@@ -124,7 +124,7 @@ const ExamTypeBarChart = ({ rows }) => {
                 const yy = y(vv);
                 const hh = Math.max(0, y0 - yy);
                 return (
-                    <g key={r.id || i}>
+                    <g key={`bar-${String(r.id ?? i)}`}>
                         <rect x={x} y={yy} width={barW} height={hh} rx="6" fill="var(--nb-chart-series-1)" />
                         <text x={x + barW / 2} y={yy - 6} textAnchor="middle" fontSize="10" fill="var(--nb-color-fg)">
                             {Number.isFinite(vv) ? vv.toFixed(0) : 0}%

@@ -15,12 +15,12 @@ export default function Tabs({ value, options, onChange, className = '', tone = 
   const toneStyles = stylesByTone[tone] || stylesByTone.gray;
   return (
     <div className={`flex flex-wrap w-full sm:inline-flex sm:w-auto rounded-md border ${toneStyles.container} ${className}`}>
-      {options.map((opt) => {
+      {options.map((opt, idx) => {
         const active = value === opt.value;
         const disabled = Boolean(opt.disabled);
         return (
           <button
-            key={opt.value}
+            key={`${String(opt.value)}::${idx}`}
             type="button"
             disabled={disabled}
             onClick={() => {

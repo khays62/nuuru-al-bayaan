@@ -4,78 +4,138 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import User from "../models/User.js";
+import { PERMISSION_CONTRACT } from "../utils/permissions.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Prefer backend/.env regardless of working directory
+// Always load backend/.env (regardless of working directory)
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
-dotenv.config();
 
-const MONGO_URI = process.env.MONG_URL;
+const MONGO_URI = process.env.MONG_URL || process.env.MONGO_URI || process.env.MONGODB_URI;
 
-async function createAdmin() {
+const parseArgValue = (key) => {
+  const index = process.argv.findIndex((a) => a === key || a.startsWith(`${key}=`));
+  if (index === -1) return undefined;
+  const arg = process.argv[index];
+  if (arg.includes("=")) return arg.split("=").slice(1).join("=");
+  return process.argv[index + 1];
+};
+
+const hasFlag = (flag) => process.argv.includes(flag);
+
+const buildFullPermissions = () => {
+  const permissions = {};
+  for (const moduleName of Object.keys(PERMISSION_CONTRACT)) {
+    permissions[moduleName] = { full: true };
+  }
+  return permissions;
+};
+
+const pickDefined = (obj) => {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+};
+
+async function createOrUpdateAdmin() {
+  let connected = false;
   try {
-    if (!MONGO_URI) throw new Error("MongoDB URI is missing in .env");
+    if (!MONGO_URI) throw new Error("MongoDB URI is missing (expected MONG_URL in backend/.env)");
 
     await mongoose.connect(MONGO_URI);
+    connected = true;
     console.log("✅ Connected to MongoDB");
 
-    const username = process.env.ADMIN_USERNAME || "admin";
-    const password = process.env.ADMIN_PASSWORD;
+    const username = parseArgValue("--username") || process.env.ADMIN_USERNAME || "admin";
+    const fullName = parseArgValue("--fullName") || process.env.ADMIN_FULL_NAME || "Super Admin";
+    const emailRaw = parseArgValue("--email") || process.env.ADMIN_EMAIL;
+    const email = emailRaw ? String(emailRaw).trim().toLowerCase() : undefined;
+
+    // IMPORTANT: Don't set a default phone because phone has a unique index.
+    const phoneRaw = parseArgValue("--phone") || process.env.ADMIN_PHONE;
+    const phone = phoneRaw ? String(phoneRaw).trim() : undefined;
+
+    const wantResetPassword = hasFlag("--reset-password") || process.env.ADMIN_RESET_PASSWORD === "true";
+    const mustChangePasswordFlag = parseArgValue("--must-change-password") ?? process.env.ADMIN_MUST_CHANGE_PASSWORD;
+    const mustChangePassword = mustChangePasswordFlag === undefined ? undefined : mustChangePasswordFlag === "true";
+
+    // Password sources (in priority order): CLI --password, ADMIN_PASSWORD env, and optional DEFAULT_INITIAL_PASSWORD.
+    const cliPassword = parseArgValue("--password");
+    const envPassword = process.env.ADMIN_PASSWORD;
+    const allowDefaultInitial = hasFlag("--use-default-initial-password") || process.env.ALLOW_DEFAULT_ADMIN_PASSWORD === "true";
+    const defaultInitial = allowDefaultInitial ? process.env.DEFAULT_INITIAL_PASSWORD : undefined;
+
+    const password = cliPassword || envPassword || defaultInitial;
     if (!password) {
-      throw new Error("ADMIN_PASSWORD is missing in .env (refusing to use an insecure default)");
+      throw new Error(
+        "Admin password not provided. Set ADMIN_PASSWORD in backend/.env OR run with --password. " +
+          "(Optional for dev) add --use-default-initial-password to reuse DEFAULT_INITIAL_PASSWORD."
+      );
     }
-    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Remove old admin if exists
-    await User.deleteOne({ username, role: "admin" });
+    const or = [];
+    if (username) or.push({ username });
+    if (email) or.push({ email });
+    if (or.length === 0) {
+      throw new Error("Missing identity fields: provide --username and/or --email (or set ADMIN_USERNAME/ADMIN_EMAIL)");
+    }
 
-    // Create new admin
-    const adminUser = new User({
-      fullName: "Super Admin",
+    const existing = await User.findOne({ $or: or });
+
+    const permissions = buildFullPermissions();
+    const updateBase = pickDefined({
+      fullName,
       username,
-      email: "admin@example.com",
-      phone: "1234567890",
-      password: hashedPassword,
+      email,
+      phone,
       role: "admin",
-      permissions: {
-        students: { full: true },
-        teachers: { full: true },
-        transfers: { full: true },
-        subjects: { full: true },
-        grades: { full: true },
-        exams: { full: true },
-        cohorts: { full: true },
-        results: { full: true },
-        transcript: { full: true },
-        promotions: { full: true },
-        timetable: { full: true },
-        attendance: { full: true },
-        attendanceReports: { full: true },
-        security: { full: true },
-        trackingAudit: { full: true },
-        privacyControl: { full: true },
-        announcements: { full: true }
-      },
-      status: "active"
+      status: "active",
+      permissions,
     });
 
-    await adminUser.save();
-    console.log("🎉 Admin user created successfully!");
-    console.log("Username:", username);
-    console.log("Password: (set via ADMIN_PASSWORD)");
+    if (!existing) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const doc = new User({
+        ...updateBase,
+        password: hashedPassword,
+        mustChangePassword: mustChangePassword ?? true,
+      });
+      await doc.save();
+      console.log("🎉 Admin user created successfully!");
+      console.log("Username:", username);
+      console.log("Password: (provided via env/CLI)");
+    } else {
+      const next = existing;
+      Object.assign(next, updateBase);
 
-    await mongoose.disconnect();
-    console.log("✅ Disconnected from MongoDB");
+      if (wantResetPassword) {
+        next.password = await bcrypt.hash(password, 10);
+        next.mustChangePassword = mustChangePassword ?? true;
+      } else if (mustChangePassword !== undefined) {
+        next.mustChangePassword = mustChangePassword;
+      }
+
+      await next.save();
+      console.log("✅ Admin user already existed; updated successfully!");
+      console.log("Username:", next.username);
+      console.log("Password:", wantResetPassword ? "(reset via env/CLI)" : "(unchanged)");
+    }
   } catch (err) {
     console.error("❌ Error creating admin:", err);
-    try {
-      await mongoose.disconnect();
-    } catch {
-      // ignore
+    process.exitCode = 1;
+  } finally {
+    if (connected) {
+      try {
+        await mongoose.disconnect();
+        console.log("✅ Disconnected from MongoDB");
+      } catch {
+        // ignore
+      }
     }
   }
 }
 
-createAdmin();
+createOrUpdateAdmin();

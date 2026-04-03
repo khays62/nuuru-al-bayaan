@@ -71,11 +71,11 @@ const RangeTabs = ({ value, onChange, items }) => {
     const safe = Array.isArray(items) ? items : [];
     return (
         <div className="inline-flex flex-wrap gap-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-1 shadow-sm">
-            {safe.map((it) => {
+            {safe.map((it, idx) => {
                 const active = value === it.value;
                 return (
                     <button
-                        key={it.value}
+                        key={`${String(it.value)}::${idx}`}
                         type="button"
                         onClick={() => onChange?.(it.value)}
                         className={

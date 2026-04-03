@@ -47,8 +47,11 @@ export default function MultiSelectDropdown({ value = [], onChange, options = []
             <button type="button" className="text-xs text-(--nb-color-brand)" onClick={clearAll}>{t('common.actions.clear', { defaultValue: 'Clear' })}</button>
           </div>
           <div className="max-h-48 overflow-auto space-y-1">
-            {options.map(opt => (
-              <label key={opt.value} className="flex items-center gap-2 px-2 py-1 hover:bg-(--nb-color-bg) rounded-(--nb-radius-sm) cursor-pointer">
+            {options.map((opt, idx) => (
+              <label
+                key={`${String(opt.value)}::${idx}`}
+                className="flex items-center gap-2 px-2 py-1 hover:bg-(--nb-color-bg) rounded-(--nb-radius-sm) cursor-pointer"
+              >
                 <Checkbox checked={isChecked(opt.value)} onChange={() => toggleOption(opt.value)} />
                 <span className="text-sm">{opt.label}</span>
               </label>

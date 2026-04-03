@@ -106,7 +106,7 @@ export default function AttendanceStatusPills({
           const active = value === o.value;
           const isLast = idx === opts.length - 1;
           return (
-            <div key={o.value} className="relative inline-flex">
+            <div key={`${String(o.value)}::${idx}`} className="relative inline-flex">
               <button
                 type="button"
                 disabled={disabled}
@@ -163,11 +163,11 @@ export default function AttendanceStatusPills({
             role="menu"
           >
             <div className="py-1">
-              {extras.map(e => {
+              {extras.map((e, idx) => {
                 const active = value === e.value;
                 return (
                   <button
-                    key={e.value}
+                    key={`${String(e.value)}::${idx}`}
                     type="button"
                     onClick={() => {
                       closeMenu();

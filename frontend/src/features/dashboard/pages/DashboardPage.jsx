@@ -156,11 +156,11 @@ const RangeTabs = ({ value, onChange, items }) => {
     const safe = Array.isArray(items) ? items : [];
     return (
         <div className="inline-flex flex-wrap gap-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-1 shadow-sm">
-            {safe.map((it) => {
+            {safe.map((it, idx) => {
                 const active = value === it.value;
                 return (
                     <button
-                        key={it.value}
+                        key={`${String(it.value)}::${idx}`}
                         type="button"
                         onClick={() => onChange?.(it.value)}
                         className={
@@ -337,7 +337,7 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
             {ticks.map((tv, idx) => {
                 const yy = toY(tv);
                 return (
-                    <g key={idx}>
+                    <g key={`tick-${idx}`}>
                         <line x1={padL} x2={w - padR} y1={yy} y2={yy} stroke="var(--nb-color-border)" strokeWidth="1" />
                         <text x={padL - 10} y={yy + 4} textAnchor="end" fontSize="10" fill="var(--nb-color-muted)">
                             {fmtCount(tv)}
@@ -368,7 +368,7 @@ const SvgNewStudentsLineChart = ({ series = [], height = 320, yAxisLabel = '' })
             {rows.map((r, i) => {
                 const active = i === hoverIdx;
                 return (
-                    <g key={String(r?.x || i)}>
+                    <g key={`pt-${String(r?.x ?? '')}-${i}`}>
                         <circle
                             cx={toX(i)}
                             cy={toY(r.y)}

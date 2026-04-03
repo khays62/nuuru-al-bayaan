@@ -38,11 +38,11 @@ const RangeTabs = ({ value, onChange, items }) => {
     const safe = Array.isArray(items) ? items : [];
     return (
         <div className="inline-flex flex-wrap gap-2 rounded-xl border border-(--nb-color-border) bg-(--nb-color-bg-card) p-1 shadow-sm">
-            {safe.map((it) => {
+            {safe.map((it, idx) => {
                 const active = value === it.value;
                 return (
                     <button
-                        key={it.value}
+                        key={`${String(it.value)}::${idx}`}
                         type="button"
                         onClick={() => onChange?.(it.value)}
                         className={
@@ -99,10 +99,10 @@ const SvgBars = ({ series, height = 180 }) => {
                 {/* Y axis */}
                 <line x1={padL} y1={padY} x2={padL} y2={padY + innerH} stroke="var(--nb-color-border)" strokeWidth="1" />
 
-                {ticks.map((t) => {
+                {ticks.map((t, idx) => {
                     const y = padY + innerH - (t / maxV) * innerH;
                     return (
-                        <g key={t}>
+                        <g key={`tick-${idx}`}>
                             <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="var(--nb-color-border)" strokeWidth="1" />
                             <text x={padL - 8} y={y + 4} textAnchor="end" fontSize="10" fill="var(--nb-color-muted)">
                                 {t}
@@ -115,7 +115,7 @@ const SvgBars = ({ series, height = 180 }) => {
                 <line x1={padL} y1={padY + innerH} x2={width - padR} y2={padY + innerH} stroke="var(--nb-color-border)" strokeWidth="1" />
 
                 {bars.map((b, i) => (
-                    <g key={i}>
+                    <g key={`bar-${i}`}>
                         <rect
                             x={b.x}
                             y={b.y}
@@ -133,7 +133,7 @@ const SvgBars = ({ series, height = 180 }) => {
 
             <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-(--nb-color-muted)">
                 {bars.map((b, i) => (
-                    <div key={i} className="flex-1 text-center tabular-nums truncate">
+                    <div key={`label-${i}`} className="flex-1 text-center tabular-nums truncate">
                         {b.label}
                     </div>
                 ))}
