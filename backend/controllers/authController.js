@@ -105,18 +105,51 @@ export const login = async (req, res) => {
       role = modelName === 'Admin' ? 'admin' : user.role;
     }
 
-    // 🔍 1b. TeacherId fallback: if loginId matches Teacher.teacherId, resolve to its linked User.
-    // This supports older teacher accounts where username might be the email.
-    if (!user) {
-      const t = await Teacher.findOne({ teacherId: loginIdStr }).select('_id').lean();
-      if (t?._id) {
-        user = await User.findOne({ teacherRef: t._id });
-        if (user) role = user.role;
+    // 🔍 2. Try Student (legacy)
+    // If a Student matches, ensure a User account exists for the studentId.
+    if (!user && loginIdStr) {
+      const escapeRegex = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const sidRegex = new RegExp(`^${escapeRegex(loginIdStr)}$`, 'i');
+      const student = await Student.findOne({ studentId: sidRegex });
+      if (student) {
+        let existingUser = await User.findOne({ username: sidRegex });
+        if (!existingUser) {
+          const storedPwd = String(student.password || '');
+          const looksHashedStudent = storedPwd.startsWith('$2');
+          const defaultPwd = getDefaultInitialPassword();
+          const isDefaultPwd = looksHashedStudent
+            ? await bcrypt.compare(defaultPwd, storedPwd)
+            : storedPwd === String(defaultPwd);
+          const normalizedStatus = String(student.status || '').toLowerCase() === 'active' ? 'active' : 'inactive';
+          const passwordToStore = looksHashedStudent
+            ? storedPwd
+            : await bcrypt.hash(storedPwd || String(defaultPwd), 10);
+
+          try {
+            existingUser = await User.create({
+              fullName: student.fullName,
+              username: String(student.studentId || loginIdStr).trim(),
+              password: passwordToStore,
+              role: 'student',
+              studentRef: student._id,
+              mustChangePassword: isDefaultPwd,
+              status: normalizedStatus,
+            });
+          } catch (err) {
+            if (err?.code === 11000) {
+              existingUser = await User.findOne({ username: sidRegex });
+            } else {
+              throw err;
+            }
+          }
+        }
+
+        if (existingUser) {
+          user = existingUser;
+          role = String(existingUser.role || 'student');
+        }
       }
     }
-
-    // 🔍 2. Try Student
-    // CUTOVER: Students now authenticate via User accounts (role=student, username=studentId).
 
     // ❌ Not found
     if (!user) {

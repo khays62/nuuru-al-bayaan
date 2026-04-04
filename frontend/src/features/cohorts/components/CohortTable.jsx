@@ -40,7 +40,7 @@ export default function CohortTable({
       loadingMessage={t('common.loading', { defaultValue: 'Loading...' })}
       loadingVariant="table"
       loadingRows={6}
-      loadingColumns={5}
+      loadingColumns={6}
       emptyTitle={t('cohorts.table.emptyTitle', { defaultValue: 'No cohorts found' })}
       emptyDescription={t('cohorts.table.emptyDescription', { defaultValue: 'Try adjusting filters or create a new cohort.' })}
       emptyActionLabel={canAdd ? t('cohorts.actions.add', { defaultValue: 'Add Cohort' }) : undefined}
@@ -59,7 +59,7 @@ export default function CohortTable({
         </div>
       }
       rows={rows}
-      storageKey="cohorts:columns:v1"
+      storageKey="cohorts:columns:v2"
       sortBy={sortBy}
       sortDir={sortDir}
       onSort={onSort}
@@ -76,6 +76,7 @@ export default function CohortTable({
           field: 'name',
           tdClassName: 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-x border-gray-200',
         },
+        { key: 'orderNumber', label: t('cohorts.table.columns.orderNumber', { defaultValue: 'Order' }), sortable: true, field: 'orderNumber' },
         { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }), sortable: true, field: 'status' },
         { key: 'startAy', label: t('cohorts.table.columns.startAy', { defaultValue: 'AY (Start)' }), sortable: true, field: 'startAcademicYear' },
         { key: 'createdAt', label: t('common.table.created', { defaultValue: 'Created' }), sortable: true, field: 'createdAt' },
@@ -104,6 +105,8 @@ export default function CohortTable({
                   : t('cohorts.status.archived', { defaultValue: 'Archived' })}
               </span>
             );
+          case 'orderNumber':
+            return row.orderNumber ?? '-';
           case 'startAy':
             return row.startAcademicYear?.yearName || row.startAcademicYearName || '-';
           case 'createdAt':

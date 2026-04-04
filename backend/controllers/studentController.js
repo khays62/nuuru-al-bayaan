@@ -133,6 +133,41 @@ const normalizeStudentStatusToModel = (value) => {
     return raw;
 };
 
+const extractLetters = (value) => (String(value || '').match(/\p{L}/gu) || []).join('');
+const getCohortPrefix = (name) => {
+    const letters = extractLetters(name);
+    if (!letters) return '';
+    return letters.slice(0, 2).toUpperCase();
+};
+const normalizeSectionLetter = (value) => {
+    const letters = String(value || '').trim().match(/\p{L}/u) || [];
+    const letter = letters[0] || '';
+    return letter ? letter.toUpperCase() : '';
+};
+
+const STUDENT_GLOBAL_COUNTER_KEY = 'stu-code:global';
+
+const getMaxStudentIdSuffix = async (session) => {
+    const result = await Student.aggregate([
+        { $match: { studentId: { $type: 'string', $ne: '' } } },
+        { $project: { suffix: { $regexFind: { input: '$studentId', regex: /(\d+)$/ } } } },
+        { $project: { suffixNum: { $toInt: { $ifNull: ['$suffix.match', '0'] } } } },
+        { $group: { _id: null, maxSeq: { $max: '$suffixNum' } } }
+    ]).session(session);
+    return Number(result?.[0]?.maxSeq || 0) || 0;
+};
+
+const ensureGlobalStudentCounter = async (session) => {
+    const existing = await Counter.findOne({ key: STUDENT_GLOBAL_COUNTER_KEY }).session(session);
+    if (existing) return;
+    const maxSeq = await getMaxStudentIdSuffix(session);
+    try {
+        await Counter.create([{ key: STUDENT_GLOBAL_COUNTER_KEY, seq: maxSeq }], { session });
+    } catch (err) {
+        if (err?.code !== 11000) throw err;
+    }
+};
+
 // @desc    List students including details of their current section
 // @route   GET /api/students
 // @access  Private (mustaqbalka)
@@ -387,6 +422,11 @@ export const addStudent = async (req, res) => {
         cohortDoc = await Cohort.findById(cohortId).lean();
         if (!cohortDoc) return res.status(400).json({ message: 'Invalid cohortId' });
 
+        const sectionCode = normalizeSectionLetter(cls.section);
+        if (!sectionCode) {
+            return res.status(400).json({ message: 'Invalid grade section letter; update the section to a single letter.' });
+        }
+
         // Normalize names + date-only dob
         const normalizedFullName = toTitleCaseWords(fullName);
         const normalizedMotherName = toTitleCaseWords(motherName);
@@ -611,26 +651,26 @@ export const addStudent = async (req, res) => {
             // After creating enrollment, generate cohort-coded Student ID if cohort exists
             try {
                 if (cohortDoc?._id) {
-                    // Global continuous sequence (not tied to section/GS)
-                    const sectionCode = String(cls.section || '1').toUpperCase();
-                    const key = 'stu-code:global';
+                    const cohortName = String(cohortDoc?.name || '').trim();
+                    const prefix = getCohortPrefix(cohortName) || 'DU';
+                    let orderStr = '';
+                    const orderValue = Number(cohortDoc?.orderNumber || 0);
+                    if (Number.isFinite(orderValue) && orderValue > 0) {
+                        orderStr = String(orderValue);
+                    } else {
+                        const numMatch = (cohortName.match(/\d+/) || [''])[0];
+                        orderStr = numMatch || '1';
+                    }
+
+                    await ensureGlobalStudentCounter(session);
                     const ctr = await Counter.findOneAndUpdate(
-                        { key },
+                        { key: STUDENT_GLOBAL_COUNTER_KEY },
                         { $inc: { seq: 1 } },
                         { new: true, upsert: true, session }
                     );
-                    const seq = String(ctr.seq).padStart(2, '0');
-                    // Prefix: first two letters of cohort name, default 'DU'
-                    // Number: first digits found in cohort name (e.g., 'dufcada 1aad' -> '1')
-                    let cName = '';
-                    try {
-                        const Cohort = (await import('../models/Cohort.js')).default;
-                        const c = await Cohort.findById(cohortDoc._id).select('name').lean();
-                        cName = c?.name || '';
-                    } catch {}
-                    const prefix = (cName.match(/[A-Za-z]/g) || []).join('').slice(0,2).toUpperCase() || 'DU';
-                    const numMatch = (cName.match(/\d+/) || [ '' ])[0];
-                    const code = `${prefix}${numMatch}S${sectionCode}${seq}`;
+                    const seq = String(ctr?.seq || 1).padStart(2, '0');
+
+                    const code = `${prefix}${orderStr}${sectionCode}${seq}`;
                     // Update studentId to cohort-coded form
                     studentDoc.studentId = code;
                     await studentDoc.save({ session });

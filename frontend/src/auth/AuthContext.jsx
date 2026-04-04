@@ -351,16 +351,20 @@ export const AuthProvider = ({ children }) => {
       const secret = String(password || '');
 
       const upperIdentifier = identifier.toUpperCase();
+      const cohortCodeRegex = /^[\p{L}]{2}\d+[\p{L}]\d{2,}$/u;
+      const legacyCohortCodeRegex = /^[A-Z]{2}\d+S[A-Z]\d{2,}$/i;
       // Student ID formats supported:
       // - numeric only (legacy)
       // - starts with ST (legacy)
-      // - cohort-coded IDs like DU5SA15 (2 letters + digits + S + section letter + digits)
+      // - cohort-coded IDs like DU5A15 (2 letters + order + section letter + digits)
+      // - legacy cohort-coded IDs like DU5SA15 (2 letters + digits + S + section letter + digits)
+      const isCohortId = cohortCodeRegex.test(identifier) || legacyCohortCodeRegex.test(identifier);
       const isStudent =
         /^[0-9]+$/.test(identifier) ||
         upperIdentifier.startsWith('ST') ||
-        /^[A-Z]{2}\d+S[A-Z]\d{2,}$/i.test(identifier);
+        isCohortId;
 
-      const normalizedStudentId = /^[A-Z]{2}\d+S[A-Z]\d{2,}$/i.test(identifier)
+      const normalizedStudentId = isCohortId
         ? upperIdentifier
         : (upperIdentifier.startsWith('ST') ? upperIdentifier : identifier);
 

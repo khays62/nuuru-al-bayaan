@@ -281,6 +281,12 @@ const en = {
         usernameOrStudentId: 'Username',
         password: 'Password',
       },
+      placeholders: {
+        usernameOrStudentId: 'e.g. DU1A01',
+      },
+      hints: {
+        studentIdExample: 'Student ID example: DU1A01',
+      },
       layout: {
         switchLabel: 'Switch layout',
       },
@@ -1366,7 +1372,7 @@ const en = {
         capacity: 'Capacity',
       },
       placeholders: {
-        section: 'e.g. 1, 2, A, B',
+        section: 'e.g. A',
       },
       subjects: {
         refreshTitle: 'Refresh subjects for this grade',
@@ -1487,10 +1493,20 @@ const en = {
       labels: {
         name: 'Name',
         startAcademicYear: 'Start Academic Year',
+        orderNumber: 'Order Number',
       },
       placeholders: {
-        name: 'e.g. Dufcada 1aad',
+        name: 'e.g. Cohort One',
         selectAcademicYear: 'Select Academic Year',
+        orderNumber: 'Auto',
+      },
+      hints: {
+        nameRules: '2-5 letters only.',
+      },
+      validations: {
+        nameRequired: 'Cohort name is required.',
+        nameLength: 'Cohort name must be 2-5 letters.',
+        startAcademicYearRequired: 'Start academic year is required.',
       },
     },
     table: {
@@ -1498,6 +1514,7 @@ const en = {
       emptyDescription: 'Try adjusting filters or create a new cohort.',
       columns: {
         name: 'Name',
+        orderNumber: 'Order',
         startAy: 'AY (Start)',
       },
     },
@@ -2415,6 +2432,7 @@ const en = {
       columns: {
         name: 'Name',
         teacherId: 'Teacher ID',
+        username: 'Username',
         email: 'Email',
         phone: 'Phone',
         salary: 'Salary',
@@ -2497,11 +2515,14 @@ const en = {
       nationality: 'Nationality',
       nationalityDetail: 'Nationality (details)',
       nationalityDetailPlaceholder: 'e.g. Kenya',
-      teacherId: 'Username',
+      teacherId: 'Teacher ID',
       employeeId: 'Employee ID',
       employeeIdAuto: 'Auto-generated',
-      teacherIdPlaceholder: 'e.g. ID01',
-      teacherIdHelp: 'Teacher can login using this username or their email.',
+      teacherIdPlaceholder: 'Auto-generated (TECH01)',
+      teacherIdHelp: 'Auto-generated teacher ID (e.g. TECH01). Not used for login.',
+      username: 'Username',
+      usernamePlaceholder: 'e.g. tch01',
+      usernameHelp: '4-6 characters. Teacher can login using this username or their email.',
       email: 'Email',
       phone: 'Phone',
       primaryPhone: 'Primary Phone',
@@ -2558,6 +2579,9 @@ const en = {
         dobRequired: 'Date of birth is required.',
         nationalityRequired: 'Nationality is required.',
         emailRequired: 'Email is required.',
+        usernameRequired: 'Username is required.',
+        usernameLength: 'Username must be 4-6 characters.',
+        usernameExists: 'Username already exists.',
         emailInvalid: 'Email is invalid.',
         phoneRequired: 'Primary phone is required.',
         phoneInvalid: 'Primary phone is invalid (Somalia number).',

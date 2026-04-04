@@ -347,6 +347,7 @@ export default function TeachersPage() {
 		const cols = [
 			{ key: 'name', label: t('teachers.table.columns.name'), get: (tch) => tch?.fullName || `${tch?.firstName || ''} ${tch?.lastName || ''}`.trim() || '' },
 			{ key: 'teacherId', label: t('teachers.table.columns.teacherId'), get: (tch) => tch?.teacherId || '' },
+			{ key: 'username', label: t('teachers.table.columns.username'), get: (tch) => tch?.username || tch?.user?.username || '' },
 			{ key: 'email', label: t('teachers.table.columns.email'), get: (tch) => tch?.email || '' },
 			{ key: 'phone', label: t('teachers.table.columns.phone'), get: (tch) => tch?.phone || '' },
 			{ key: 'salary', label: t('teachers.table.columns.salary'), get: (tch) => Number(tch?.salary || 0) },

@@ -80,6 +80,8 @@ export default function CohortsPage() {
       switch (field) {
         case 'name':
           return String(row?.name || '').toLowerCase();
+        case 'orderNumber':
+          return Number(row?.orderNumber || 0);
         case 'status':
           return String(row?.status || '').toLowerCase();
         case 'startAcademicYear': {
@@ -151,7 +153,7 @@ export default function CohortsPage() {
     if (!canExport) return null;
 
     // Export should match the currently visible table columns (and exclude action buttons).
-    const STORAGE_KEY = 'cohorts:columns:v1';
+    const STORAGE_KEY = 'cohorts:columns:v2';
     let visible = {};
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -164,6 +166,7 @@ export default function CohortsPage() {
 
     const cols = [
       isVisible('name') ? { key: 'name', label: t('cohorts.table.columns.name', { defaultValue: 'Name' }) } : null,
+      isVisible('orderNumber') ? { key: 'orderNumber', label: t('cohorts.table.columns.orderNumber', { defaultValue: 'Order' }) } : null,
       isVisible('status') ? { key: 'status', label: t('common.filters.status', { defaultValue: 'Status' }) } : null,
       isVisible('startAy') ? { key: 'startAy', label: t('cohorts.table.columns.startAy', { defaultValue: 'AY (Start)' }) } : null,
       isVisible('createdAt') ? { key: 'createdAt', label: t('common.table.created', { defaultValue: 'Created' }) } : null,
@@ -174,6 +177,8 @@ export default function CohortsPage() {
       switch (col.key) {
         case 'name':
           return c?.name || '';
+        case 'orderNumber':
+          return c?.orderNumber ?? '';
         case 'status':
           return c?.status || '';
         case 'startAy':

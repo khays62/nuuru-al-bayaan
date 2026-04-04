@@ -2,9 +2,10 @@ import mongoose from 'mongoose';
 
 const TeacherSchema = new mongoose.Schema({
   fullName: { type: String, required: true, trim: true, unique: true },
-  // Internal staff code (separate from login username=teacherId)
+  // Internal staff code (separate from login username)
   employeeId: { type: String, unique: true, sparse: true, index: true, trim: true },
   teacherId: { type: String, required: true, unique: true, index: true },
+  username: { type: String, required: true, unique: true, sparse: true, index: true, trim: true },
   email: { type: String, trim: true, unique: true, sparse: true },
   // Primary phone
   phone: { type: String, trim: true, unique: true, sparse: true },

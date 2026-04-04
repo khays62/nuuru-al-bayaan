@@ -8,6 +8,9 @@ import { publishRealtime } from '../utils/realtimeBus.js';
 // Policy: Maximum number of cohorts allowed per Academic Year
 const MAX_COHORTS_PER_ACADEMIC_YEAR = 2; // Mid-year + Year-end intakes
 
+const collapseWs = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+const isLettersOnly = (value) => /^\p{L}[\p{L}\s]*$/u.test(value);
+
 function parseSort(req) {
   const { sort, sortBy = 'createdAt', sortDir = 'desc' } = req.query || {};
   if (sort) {
@@ -103,7 +106,12 @@ export const createCohort = async (req, res) => {
     let { name, startAcademicYear, status = 'active' } = req.body || {};
     if (!name || !String(name).trim()) return res.status(400).json({ message: 'name is required' });
     if (!startAcademicYear) return res.status(400).json({ message: 'startAcademicYear is required' });
-    name = String(name).trim();
+    name = collapseWs(name);
+    if (!isLettersOnly(name)) return res.status(400).json({ message: 'name must contain letters only' });
+    const letters = name.match(/\p{L}/gu) || [];
+    if (letters.length < 2 || letters.length > 5) {
+      return res.status(400).json({ message: 'name must contain 2 to 5 letters' });
+    }
     const payload = { name, status };
     if (!mongoose.isValidObjectId(startAcademicYear)) return res.status(400).json({ message: 'Invalid startAcademicYear' });
     payload.startAcademicYear = startAcademicYear;
@@ -116,6 +124,13 @@ export const createCohort = async (req, res) => {
         code: 'COHORT_LIMIT_REACHED'
       });
     }
+
+    const lastOrder = await Cohort.findOne({ startAcademicYear, orderNumber: { $gt: 0 } })
+      .select('orderNumber createdAt')
+      .sort({ orderNumber: -1, createdAt: -1 })
+      .lean();
+    const nextOrder = Number(lastOrder?.orderNumber || 0) + 1;
+    payload.orderNumber = nextOrder;
     let created;
     try {
       created = await Cohort.create(payload);
@@ -149,8 +164,13 @@ export const updateCohort = async (req, res) => {
       if (locked && name !== doc.name) {
         return res.status(409).json({ message: 'Cannot change name; cohort already has enrollments.', code: 'COHORT_LOCKED_NAME' });
       }
-      const trimmed = String(name).trim();
+      const trimmed = collapseWs(name);
       if (!trimmed) return res.status(400).json({ message: 'name cannot be empty' });
+      if (!isLettersOnly(trimmed)) return res.status(400).json({ message: 'name must contain letters only' });
+      const letters = trimmed.match(/\p{L}/gu) || [];
+      if (letters.length < 2 || letters.length > 5) {
+        return res.status(400).json({ message: 'name must contain 2 to 5 letters' });
+      }
       // check duplicate
       const dup = await Cohort.findOne({ name: trimmed, _id: { $ne: id } }).lean();
       if (dup) return res.status(409).json({ message: 'Cohort name already exists', code: 'DUPLICATE_COHORT_NAME' });

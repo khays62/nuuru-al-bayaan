@@ -4,12 +4,18 @@ import Shift from '../models/Shift.js';
 import ExamType from '../models/ExamType.js';
 
 // Academic Years
-export const getAcademicYears = async (_req, res) => {
+export const getAcademicYears = async (req, res) => {
     try {
-        const years = await AcademicYear.find().sort({ yearName: -1 });
-        res.json(years);
+        const role = String(req.user?.role || '').toLowerCase();
+        if (role === 'admin') {
+            const years = await AcademicYear.find().sort({ yearName: -1 });
+            return res.json(years);
+        }
+
+        const latest = await AcademicYear.findOne({}).sort({ createdAt: -1 }).select('yearName').lean();
+        return res.json(latest ? [latest] : []);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching academic years', error: error.message });
+        return res.status(500).json({ message: 'Error fetching academic years', error: error.message });
     }
 };
 

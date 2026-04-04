@@ -42,6 +42,7 @@ export default function TeacherTable({
   const columns = useMemo(() => ([
     { key: 'name', label: t('teachers.table.columns.name'), sortable: true, field: 'fullName' },
     { key: 'teacherId', label: t('teachers.table.columns.teacherId'), sortable: true, field: 'teacherId' },
+    { key: 'username', label: t('teachers.table.columns.username'), sortable: true, field: 'username' },
     { key: 'email', label: t('teachers.table.columns.email'), sortable: true, field: 'email' },
     { key: 'phone', label: t('teachers.table.columns.phone'), sortable: true, field: 'phone' },
     { key: 'salary', label: t('teachers.table.columns.salary'), sortable: false, field: 'salary' },
@@ -58,7 +59,7 @@ export default function TeacherTable({
       loadingMessage={t('teachers.table.loading')}
       loadingVariant="table"
       loadingRows={6}
-      loadingColumns={8}
+      loadingColumns={9}
       emptyTitle={t('teachers.table.emptyTitle')}
       emptyDescription={t('teachers.table.emptyDescription')}
 
@@ -85,6 +86,8 @@ export default function TeacherTable({
             return row.fullName || `${row.firstName || ''} ${row.lastName || ''}`.trim() || '-';
           case 'teacherId':
             return row.teacherId || '-';
+          case 'username':
+            return row.username || row?.user?.username || '-';
           case 'email':
             return row.email || '-';
           case 'phone':

@@ -11,6 +11,7 @@ import SomaliaAddressFields from '../../../shared/components/address/SomaliaAddr
 import { useI18n } from '../../../i18n/useI18n';
 import { isValidSomaliaPhone, normalizeSomaliaPhone } from '../../../shared/utils/phoneSomalia';
 import { getSubjects } from '../../subjects/api/subjects';
+import { checkTeacherUsernameAvailability } from '../api/teachersApi';
 
 const EMPTY_ARR = [];
 
@@ -69,6 +70,11 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     // Simple, robust email check (not RFC-perfect, but matches typical UI expectations)
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   };
+
+  const isValidUsernameLength = (value) => {
+    const v = String(value ?? '').trim();
+    return v.length >= 4 && v.length <= 6;
+  };
   const [form, setForm] = useState({
     fullName: '',
     gender: '',
@@ -86,6 +92,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
 
     employeeId: '',
     teacherId: '',
+    username: '',
     hireDate: '',
     employmentType: '',
     salary: '',
@@ -103,6 +110,8 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
 
     notes: '',
   });
+
+  const isCreate = !initialValue;
 
   const subjectsQuery = useQuery({
     queryKey: ['subjects', 'teacher-form:specialization'],
@@ -206,6 +215,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
 
         teacherId: initialValue.teacherId || '',
         employeeId: initialValue.employeeId || '',
+        username: initialValue.username || initialValue?.user?.username || '',
         email: initialValue.email || '',
         phone: initialValue.phone || '',
         phone2: initialValue.phone2 || '',
@@ -233,6 +243,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
 
       // Reset touched state when switching edit targets
       setTouched({});
+      setUsernameAvailability('idle');
     }
   }, [initialValue]);
 
@@ -241,6 +252,9 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
     if (name === 'fullName') {
       setForm((prev) => ({ ...prev, [name]: toTitleCaseWordsLive(value) }));
       return;
+    }
+    if (name === 'username') {
+      setUsernameAvailability('idle');
     }
     if (name === 'phone' || name === 'phone2') {
       setForm((prev) => ({ ...prev, [name]: sanitizeSomaliaPhoneInput(value) }));
@@ -296,6 +310,24 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
       return 'neutral';
     }
     return isValidSomaliaPhone(v) ? 'valid' : 'invalid';
+  };
+
+  const [usernameAvailability, setUsernameAvailability] = useState('idle');
+  const usernameFieldState = () => {
+    const v = String(form.username ?? '').trim();
+    if (!v) return 'neutral';
+    if (!isValidUsernameLength(v)) return 'invalid';
+    if (usernameAvailability === 'taken') return 'invalid';
+    if (usernameAvailability === 'available') return 'valid';
+    return 'neutral';
+  };
+
+  const usernameErrorMessage = () => {
+    const v = String(form.username ?? '').trim();
+    if (!v) return isCreate && _touched.username ? t('teachers.form.validations.usernameRequired') : '';
+    if (!isValidUsernameLength(v)) return t('teachers.form.validations.usernameLength');
+    if (usernameAvailability === 'taken') return t('teachers.form.validations.usernameExists');
+    return '';
   };
 
   const stateToClass = (state) => {
@@ -357,6 +389,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
         fullName: true,
         email: true,
         phone: true,
+        ...(isCreate ? { username: true } : {}),
       }));
 
       if (!validateFourNames(form.fullName)) {
@@ -382,6 +415,18 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
       }
       if (!String(form.email || '').trim()) {
         toast.error(t('teachers.form.validations.emailRequired'));
+        return;
+      }
+      if (isCreate && !String(form.username || '').trim()) {
+        toast.error(t('teachers.form.validations.usernameRequired'));
+        return;
+      }
+      if (String(form.username || '').trim() && !isValidUsernameLength(form.username)) {
+        toast.error(t('teachers.form.validations.usernameLength'));
+        return;
+      }
+      if (usernameAvailability === 'taken') {
+        toast.error(t('teachers.form.validations.usernameExists'));
         return;
       }
       if (!isValidEmail(form.email)) {
@@ -422,7 +467,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
           expiresAt: form.idExpiresAt || null,
         },
 
-        ...(String(form.teacherId || '').trim() ? { teacherId: String(form.teacherId || '').trim() } : {}),
+        ...(String(form.username || '').trim() ? { username: String(form.username || '').trim() } : {}),
         // employeeId is auto-generated server-side; send only if already present (edit)
         ...(form.employeeId ? { employeeId: String(form.employeeId).trim() } : {}),
 
@@ -527,6 +572,47 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
           </div>
           <div className="p-3">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              <div>
+                <Label>{t('teachers.form.username')}</Label>
+                <Input
+                  name="username"
+                  value={form.username}
+                  onChange={onChange}
+                  onBlur={async () => {
+                    setTouched((p) => ({ ...p, username: true }));
+                    const v = String(form.username || '').trim();
+                    if (!v) {
+                      setUsernameAvailability('idle');
+                      return;
+                    }
+                    if (!isValidUsernameLength(v)) {
+                      setUsernameAvailability('idle');
+                      return;
+                    }
+                    if (!isCreate) {
+                      setUsernameAvailability('idle');
+                      return;
+                    }
+
+                    try {
+                      const res = await checkTeacherUsernameAvailability(v);
+                      setUsernameAvailability(res?.available ? 'available' : 'taken');
+                    } catch {
+                      setUsernameAvailability('idle');
+                    }
+                  }}
+                  className={`mt-1 py-1.5 ${stateToClass(usernameFieldState())}`}
+                  placeholder={t('teachers.form.usernamePlaceholder')}
+                  required={isCreate}
+                  disabled={saving}
+                />
+                {(() => {
+                  const msg = usernameErrorMessage();
+                  if (!msg) return null;
+                  return <p className="text-xs mt-1 text-red-600">{msg}</p>;
+                })()}
+                <div className="text-[11px] text-(--nb-color-muted) mt-1">{t('teachers.form.usernameHelp')}</div>
+              </div>
               <div>
                 <Label>{t('teachers.form.email')}</Label>
                 <Input
@@ -674,7 +760,14 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               <div>
                 <Label>{t('teachers.form.teacherId')}</Label>
-                <Input name="teacherId" value={form.teacherId} onChange={onChange} className="mt-1 py-1.5" placeholder={t('teachers.form.teacherIdPlaceholder')} disabled={saving} />
+                <Input
+                  name="teacherId"
+                  value={form.teacherId}
+                  readOnly
+                  className="mt-1 py-1.5"
+                  placeholder={t('teachers.form.teacherIdPlaceholder')}
+                  disabled={saving}
+                />
                 <div className="text-[11px] text-(--nb-color-muted) mt-1">{t('teachers.form.teacherIdHelp')}</div>
               </div>
               <div>

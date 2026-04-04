@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const { Schema } = mongoose;
 
 const gradeSectionSchema = new Schema({
-  section: { type: String, required: true, trim: true, default: '1' },
+  section: { type: String, required: true, trim: true, default: 'A' },
   capacity: { type: Number },
   grade: { type: Schema.Types.ObjectId, ref: 'Grade', required: true },
   shift: { type: Schema.Types.ObjectId, ref: 'Shift', required: true },

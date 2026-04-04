@@ -28,6 +28,12 @@ const isValidEmail = (value) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 };
 
+const normalizeUsername = (value) => String(value || '').trim();
+const isValidUsernameLength = (value) => {
+  const v = String(value || '').trim();
+  return v.length >= 4 && v.length <= 6;
+};
+
 const normalizeIdDocument = (value) => {
   const obj = (value && typeof value === 'object') ? value : {};
   const idType = String(obj.idType || '').trim();
@@ -81,17 +87,14 @@ const makeUploadsFilename = ({ actor, mimetype, originalName }) => {
   return `${who}-${ts}-${rand}${ext}`;
 };
 
-async function ensureTeacherUser({ teacherId, teacherDoc }) {
-  // Username is always teacherId, so teachers can login via:
-  // - username: teacherId
-  // - email: teacher email (if set)
-  const username = String(teacherDoc.teacherId || teacherId || '').trim();
-  if (!username) throw new Error('Cannot create teacher login: missing teacherId');
+async function ensureTeacherUser({ username, teacherDoc }) {
+  const loginUsername = String(username || '').trim();
+  if (!loginUsername) throw new Error('Cannot create teacher login: missing username');
 
   const conflicts = [];
   const existing = await User.findOne({
     $or: [
-      { username },
+      { username: loginUsername },
       ...(teacherDoc.email ? [{ email: teacherDoc.email }] : []),
     ],
   })
@@ -107,7 +110,7 @@ async function ensureTeacherUser({ teacherId, teacherDoc }) {
   const hashed = await bcrypt.hash(getDefaultTeacherPassword(), 10);
   const user = await User.create({
     fullName: teacherDoc.fullName,
-    username,
+    username: loginUsername,
     email: teacherDoc.email || undefined,
     phone: teacherDoc.phone || undefined,
     salary: Number(teacherDoc.salary || 0),
@@ -131,15 +134,41 @@ export const listTeachers = async (req, res) => {
       q.$or = [
         { fullName: { $regex: safe, $options: 'i' } },
         { teacherId: { $regex: safe, $options: 'i' } },
+        { username: { $regex: safe, $options: 'i' } },
         { email: { $regex: safe, $options: 'i' } },
         { phone: { $regex: safe, $options: 'i' } }
       ];
+
+      const userMatches = await User.find({ username: { $regex: safe, $options: 'i' } })
+        .select('teacherRef')
+        .lean();
+      const teacherRefs = userMatches
+        .map((u) => u?.teacherRef)
+        .filter(Boolean);
+      if (teacherRefs.length) {
+        q.$or.push({ _id: { $in: teacherRefs } });
+      }
     }
     const docs = await Teacher.find(q)
-      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
+      .select('fullName employeeId teacherId username email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
       .populate({ path: 'lastAcademicYear', select: 'yearName' })
       .lean();
-    res.json({ data: docs });
+
+    const ids = docs.map((doc) => doc?._id).filter(Boolean);
+    let usernameByTeacher = new Map();
+    if (ids.length) {
+      const users = await User.find({ teacherRef: { $in: ids } })
+        .select('teacherRef username')
+        .lean();
+      usernameByTeacher = new Map(users.map((u) => [String(u.teacherRef), u.username]));
+    }
+
+    const enriched = docs.map((doc) => ({
+      ...doc,
+      username: doc.username || usernameByTeacher.get(String(doc._id)) || '',
+    }));
+
+    res.json({ data: enriched });
   } catch (e) {
     res.status(500).json({ message: 'Server Error' });
   }
@@ -152,6 +181,7 @@ export const createTeacher = async (req, res) => {
       fullName,
       teacherId,
       employeeId,
+      username,
       email,
       phone,
       phone2,
@@ -182,6 +212,10 @@ export const createTeacher = async (req, res) => {
 
     if (!email || String(email).trim() === '') return res.status(400).json({ message: 'email is required' });
     if (!phone || String(phone).trim() === '') return res.status(400).json({ message: 'phone is required' });
+
+    if (!username || String(username).trim() === '') return res.status(400).json({ message: 'username is required' });
+    username = normalizeUsername(username);
+    if (!isValidUsernameLength(username)) return res.status(400).json({ message: 'username must be 4-6 characters' });
 
     fullName = String(fullName).trim();
     const fullNameWordCount = fullName.split(/\s+/).filter(Boolean).length;
@@ -248,7 +282,7 @@ export const createTeacher = async (req, res) => {
     if (normalizedEmploymentType && !['full-time', 'part-time', 'contract'].includes(normalizedEmploymentType)) {
       return res.status(400).json({ message: 'employmentType invalid' });
     }
-    // Auto-generate teacherId like ID01, ID02 if not provided
+    // Auto-generate teacherId like TECH01, TECH02 if not provided
     if (!teacherId) {
       const c = await Counter.findOneAndUpdate(
         { key: 'teacherId' },
@@ -256,7 +290,7 @@ export const createTeacher = async (req, res) => {
         { new: true, upsert: true }
       ).lean();
       const n = c?.seq || 1;
-      teacherId = `ID${String(n).padStart(2, '0')}`;
+      teacherId = `TECH${String(n).padStart(2, '0')}`;
     }
     // Auto-set lastAcademicYear to the latest AY in the system
     let lastAcademicYear = null;
@@ -286,13 +320,17 @@ export const createTeacher = async (req, res) => {
       const exists = await Teacher.exists({ teacherId });
       if (exists) conflicts.push('teacherId');
     }
+    if (username) {
+      const exists = await Teacher.exists({ username });
+      if (exists) conflicts.push('username');
+    }
     if (conflicts.length) {
       return res.status(409).json({ message: `Duplicate ${conflicts.join(', ')}` });
     }
 
     // Pre-check that we can create the linked login user (avoid creating Teacher without login)
-    const prospectiveUsername = String(teacherId || '').trim();
-    if (!prospectiveUsername) return res.status(400).json({ message: 'TeacherId required for login' });
+    const prospectiveUsername = String(username || '').trim();
+    if (!prospectiveUsername) return res.status(400).json({ message: 'username is required' });
     const loginConflict = await User.exists({
       $or: [
         { username: prospectiveUsername },
@@ -307,6 +345,7 @@ export const createTeacher = async (req, res) => {
       fullName,
       employeeId,
       teacherId,
+      username,
       email,
       phone,
       phone2: phone2 || '',
@@ -363,7 +402,7 @@ export const createTeacher = async (req, res) => {
     }
 
     try {
-      await ensureTeacherUser({ teacherId, teacherDoc: doc });
+      await ensureTeacherUser({ username: prospectiveUsername, teacherDoc: doc });
     } catch (e) {
       // Best-effort rollback (keep DB consistent for admin)
       await Teacher.deleteOne({ _id: doc._id });
@@ -387,6 +426,7 @@ export const createTeacher = async (req, res) => {
         fullName: doc.fullName,
         employeeId: doc.employeeId,
         teacherId: doc.teacherId,
+        username: doc.username,
         email: doc.email,
         phone: doc.phone,
         phone2: doc.phone2,
@@ -419,15 +459,27 @@ export const createTeacher = async (req, res) => {
 export const createTeacherLoginUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const { username } = req.body || {};
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
-    const teacher = await Teacher.findById(id).select('fullName teacherId email phone salary status').lean();
+    const teacher = await Teacher.findById(id).select('fullName teacherId username email phone salary status').lean();
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });
+
+    const loginUsername = normalizeUsername(username);
+    if (!loginUsername) return res.status(400).json({ message: 'username is required' });
+    if (!isValidUsernameLength(loginUsername)) return res.status(400).json({ message: 'username must be 4-6 characters' });
+
+    const teacherUsernameConflict = await Teacher.exists({ _id: { $ne: id }, username: loginUsername });
+    if (teacherUsernameConflict) return res.status(409).json({ message: 'Teacher username already exists' });
 
     // If a user already exists for this teacherRef, do nothing.
     const existing = await User.findOne({ teacherRef: id }).select('_id username email').lean();
     if (existing) return res.json({ data: { ok: true, userId: String(existing._id), username: existing.username } });
 
-    const user = await ensureTeacherUser({ teacherId: teacher.teacherId, teacherDoc: teacher });
+    const user = await ensureTeacherUser({ username: loginUsername, teacherDoc: teacher });
+
+    if (teacher.username !== loginUsername) {
+      await Teacher.updateOne({ _id: id }, { $set: { username: loginUsername } });
+    }
 
     publishRealtime({ type: 'users:changed', ts: Date.now() });
     publishRealtime({ type: 'teachers:changed', id: String(id), ts: Date.now() });
@@ -450,6 +502,7 @@ export const updateTeacher = async (req, res) => {
       fullName,
       teacherId,
       employeeId,
+      username,
       email,
       phone,
       phone2,
@@ -490,6 +543,13 @@ export const updateTeacher = async (req, res) => {
     if (teacherId !== undefined) {
       const trimmed = String(teacherId || '').trim();
       teacherId = trimmed ? trimmed : undefined;
+    }
+
+    if (username !== undefined) {
+      const trimmed = normalizeUsername(username);
+      if (!trimmed) return res.status(400).json({ message: 'username is required' });
+      if (!isValidUsernameLength(trimmed)) return res.status(400).json({ message: 'username must be 4-6 characters' });
+      username = trimmed;
     }
 
     if (phone !== undefined) {
@@ -552,19 +612,19 @@ export const updateTeacher = async (req, res) => {
     if (email) orConds.push({ email });
     if (phone) orConds.push({ phone });
     if (teacherId) orConds.push({ teacherId });
+    if (username) orConds.push({ username });
     if (orConds.length) {
       const dup = await Teacher.exists({ _id: { $ne: id }, $or: orConds });
-      if (dup) return res.status(409).json({ message: 'Duplicate fields detected (fullName/email/phone/teacherId)' });
+      if (dup) return res.status(409).json({ message: 'Duplicate fields detected (fullName/email/phone/teacherId/username)' });
     }
 
-    // If teacherId/email changes, keep linked login user in sync (and detect conflicts).
-    const nextTeacherId = teacherId ? String(teacherId).trim() : existingTeacher.teacherId;
+    // If username/email changes, keep linked login user in sync (and detect conflicts).
     const nextEmail = email != null && String(email).trim() !== '' ? String(email).trim() : (existingTeacher.email || undefined);
 
-    if (nextTeacherId && String(nextTeacherId) !== String(existingTeacher.teacherId)) {
+    if (username !== undefined) {
       const usernameConflict = await User.exists({
         teacherRef: { $ne: id },
-        username: nextTeacherId,
+        username,
       });
       if (usernameConflict) return res.status(409).json({ message: 'Teacher login username already exists' });
     }
@@ -578,6 +638,7 @@ export const updateTeacher = async (req, res) => {
 
     if (fullName !== undefined) setPatch.fullName = String(fullName).trim();
     if (teacherId !== undefined) setPatch.teacherId = String(teacherId).trim();
+    if (username !== undefined) setPatch.username = String(username).trim();
     if (employeeId !== undefined) setPatch.employeeId = String(employeeId).trim();
     if (email !== undefined) {
       if (String(email).trim() === '') return res.status(400).json({ message: 'email is required' });
@@ -653,7 +714,7 @@ export const updateTeacher = async (req, res) => {
       { $set: setPatch },
       { new: true }
     )
-      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
+      .select('fullName employeeId teacherId username email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
       .lean();
     if (!updated) return res.status(404).json({ message: 'Not found' });
 
@@ -672,7 +733,7 @@ export const updateTeacher = async (req, res) => {
     // Best-effort sync to linked User account (if exists)
     try {
       const patch = {};
-      if (nextTeacherId) patch.username = nextTeacherId;
+      if (username !== undefined) patch.username = username;
       if (email !== undefined) patch.email = nextEmail || undefined;
       if (phone !== undefined) patch.phone = phone || undefined;
       if (salary !== undefined) patch.salary = Number(updated.salary || 0);
@@ -1060,7 +1121,7 @@ export const getTeacherProfile = async (req, res) => {
     if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: 'Invalid teacher id' });
 
     const teacher = await Teacher.findById(id)
-      .select('fullName employeeId teacherId email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
+      .select('fullName employeeId teacherId username email phone phone2 gender dob nationality isSomali residenceRegionId residenceDistrictId residenceNeighborhood hireDate employmentType salary status specialization qualification yearsOfExperience idDocument notes photo lastAcademicYear createdAt')
       .populate({ path: 'lastAcademicYear', select: 'yearName' })
       .lean();
     if (!teacher) return res.status(404).json({ message: 'Teacher not found' });

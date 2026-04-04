@@ -459,6 +459,12 @@ export default {
         usernameOrStudentId: 'Magaca isticmaalaha',
         password: 'Erayga sirta',
       },
+      placeholders: {
+        usernameOrStudentId: 'tusaale: DU1A01',
+      },
+      hints: {
+        studentIdExample: 'Tusaale ID arday: DU1A01',
+      },
       layout: {
         switchLabel: 'Beddel muuqaalka',
       },
@@ -723,10 +729,20 @@ export default {
       labels: {
         name: 'Magac',
         startAcademicYear: 'Sanadka Tacliinta ee Bilowga',
+        orderNumber: 'Lambarka Cohort-ka',
       },
       placeholders: {
-        name: 'tusaale: Dufcada 1aad',
+        name: 'tusaale: Dufcada Koowaad',
         selectAcademicYear: 'Dooro Sanadka Tacliinta',
+        orderNumber: 'Auto',
+      },
+      hints: {
+        nameRules: '2-5 xaraf oo kaliya.',
+      },
+      validations: {
+        nameRequired: 'Magaca cohort-ka waa waajib.',
+        nameLength: 'Magaca cohort-ka waa inuu noqdaa 2-5 xaraf.',
+        startAcademicYearRequired: 'Sanadka tacliinta ee bilowga waa waajib.',
       },
     },
     table: {
@@ -734,6 +750,7 @@ export default {
       emptyDescription: 'Isku day inaad beddesho filters ama abuur cohort cusub.',
       columns: {
         name: 'Magac',
+        orderNumber: 'Lambar',
         startAy: 'AY (Bilow)',
       },
     },
@@ -805,7 +822,7 @@ export default {
         capacity: 'Awood',
       },
       placeholders: {
-        section: 'tusaale: 1, 2, A, B',
+        section: 'tusaale: A',
       },
       subjects: {
         refreshTitle: 'Cusbooneysii maadooyinka darajadan',
@@ -2327,6 +2344,7 @@ export default {
       columns: {
         name: 'Magac',
         teacherId: 'ID Macallin',
+        username: 'Username',
         email: 'Email',
         phone: 'Telefoon',
         salary: 'Mushahar',
@@ -2409,11 +2427,14 @@ export default {
       nationality: 'Dhalasho / Qaranimo',
       nationalityDetail: 'Qaranimo (faahfaahin)',
       nationalityDetailPlaceholder: 'tusaale: Kenya',
-      teacherId: 'Username',
+      teacherId: 'ID-ga Macallinka',
       employeeId: 'Employee ID',
       employeeIdAuto: 'Si otomaatig ah',
-      teacherIdPlaceholder: 'tusaale: ID01',
-      teacherIdHelp: 'Macallinku wuxuu ku geli karaa username-kan ama email-kiisa.',
+      teacherIdPlaceholder: 'Si otomaatig ah (TECH01)',
+      teacherIdHelp: 'ID-ga macallinka waa otomaatig (tusaale TECH01). Lama isticmaalo login.',
+      username: 'Username',
+      usernamePlaceholder: 'tusaale: tch01',
+      usernameHelp: '4-6 xaraf. Macallinku wuxuu ku geli karaa username-kan ama email-kiisa.',
       email: 'Email',
       phone: 'Telefoon',
       primaryPhone: 'Telefoonka 1aad',
@@ -2470,6 +2491,9 @@ export default {
         dobRequired: 'Taariikhda dhalashada waa waajib.',
         nationalityRequired: 'Qaranimo waa waajib.',
         emailRequired: 'Email waa waajib.',
+        usernameRequired: 'Username waa waajib.',
+        usernameLength: 'Username waa inuu noqdaa 4-6 xaraf.',
+        usernameExists: 'Username hore ayuu u jiraa.',
         emailInvalid: 'Email sax ma aha.',
         phoneRequired: 'Telefoonka 1aad waa waajib.',
         phoneInvalid: 'Telefoonka 1aad ma saxna (Somalia).',

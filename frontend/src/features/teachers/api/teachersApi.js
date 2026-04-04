@@ -117,3 +117,13 @@ export const uploadTeacherPhoto = (teacherId, file) => {
     body: fd,
   });
 };
+
+export const checkTeacherUsernameAvailability = async (username, opts = {}) => {
+  const u = String(username || '').trim();
+  if (!u) return { available: false };
+  const query = new URLSearchParams();
+  query.set('username', u);
+  if (opts?.excludeId) query.set('excludeId', String(opts.excludeId));
+  const data = await fetchJson(`/users/check-username?${query.toString()}`, { signal: opts?.signal });
+  return data?.data || data;
+};

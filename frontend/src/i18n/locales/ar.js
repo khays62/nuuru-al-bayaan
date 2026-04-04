@@ -586,8 +586,14 @@ export default {
       title: 'تسجيل الدخول',
       subtitle: 'أدخل اسم المستخدم وكلمة المرور لتسجيل الدخول.',
       fields: {
-        usernameOrStudentId: 'اسم المستخدم / رقم الطالب',
+        usernameOrStudentId: 'اسم المستخدم',
         password: 'كلمة المرور',
+      },
+      placeholders: {
+        usernameOrStudentId: 'مثال: DU1A01',
+      },
+      hints: {
+        studentIdExample: 'مثال رقم الطالب: DU1A01',
       },
       layout: {
         switchLabel: 'تبديل التخطيط',
@@ -1450,7 +1456,7 @@ export default {
         capacity: 'السعة',
       },
       placeholders: {
-        section: 'مثال: 1، 2، A، B',
+        section: 'مثال: A',
       },
       subjects: {
         refreshTitle: 'تحديث المواد لهذا الصف',
@@ -1571,10 +1577,20 @@ export default {
       labels: {
         name: 'الاسم',
         startAcademicYear: 'سنة البداية',
+        orderNumber: 'رقم الدفعة',
       },
       placeholders: {
         name: 'مثلاً: الدفعة الأولى',
         selectAcademicYear: 'اختر السنة الدراسية',
+        orderNumber: 'تلقائي',
+      },
+      hints: {
+        nameRules: 'من 2 إلى 5 أحرف فقط.',
+      },
+      validations: {
+        nameRequired: 'اسم الدفعة مطلوب.',
+        nameLength: 'يجب أن يكون اسم الدفعة من 2 إلى 5 أحرف.',
+        startAcademicYearRequired: 'سنة البداية مطلوبة.',
       },
     },
     table: {
@@ -1582,6 +1598,7 @@ export default {
       emptyDescription: 'جرّب تعديل الفلاتر أو أنشئ دفعة جديدة.',
       columns: {
         name: 'الاسم',
+        orderNumber: 'الترتيب',
         startAy: 'السنة (البداية)',
       },
     },
@@ -2497,6 +2514,7 @@ export default {
       columns: {
         name: 'الاسم',
         teacherId: 'معرف المعلم',
+        username: 'اسم المستخدم',
         email: 'البريد الإلكتروني',
         phone: 'الهاتف',
         salary: 'الراتب',
@@ -2579,11 +2597,14 @@ export default {
       nationality: 'الجنسية',
       nationalityDetail: 'الجنسية (تفاصيل)',
       nationalityDetailPlaceholder: 'مثال: كينيا',
-      teacherId: 'اسم المستخدم',
+      teacherId: 'معرّف المعلم',
       employeeId: 'رقم الموظف',
       employeeIdAuto: 'يُنشأ تلقائياً',
-      teacherIdPlaceholder: 'مثال: ID01',
-      teacherIdHelp: 'يمكن للمعلم تسجيل الدخول باستخدام اسم المستخدم هذا أو البريد الإلكتروني.',
+      teacherIdPlaceholder: 'يُولّد تلقائياً (TECH01)',
+      teacherIdHelp: 'معرّف المعلم يُولّد تلقائياً (مثال TECH01). غير مستخدم لتسجيل الدخول.',
+      username: 'اسم المستخدم',
+      usernamePlaceholder: 'مثال: tch01',
+      usernameHelp: '4-6 أحرف. يمكن للمعلم تسجيل الدخول باسم المستخدم أو البريد الإلكتروني.',
       email: 'البريد الإلكتروني',
       phone: 'الهاتف',
       primaryPhone: 'الهاتف الأساسي',
@@ -2640,6 +2661,9 @@ export default {
         dobRequired: 'تاريخ الميلاد مطلوب.',
         nationalityRequired: 'الجنسية مطلوبة.',
         emailRequired: 'البريد الإلكتروني مطلوب.',
+        usernameRequired: 'اسم المستخدم مطلوب.',
+        usernameLength: 'يجب أن يكون اسم المستخدم من 4 إلى 6 أحرف.',
+        usernameExists: 'اسم المستخدم موجود بالفعل.',
         emailInvalid: 'البريد الإلكتروني غير صالح.',
         phoneRequired: 'الهاتف الأساسي مطلوب.',
         phoneInvalid: 'الهاتف الأساسي غير صالح (رقم صومالي).',

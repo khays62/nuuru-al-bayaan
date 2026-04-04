@@ -41,6 +41,11 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
   const pendingGradeRef = useRef(null);
   const skipFirstGradeEffectRef = useRef(true); // avoid fetch on initial mount/open
 
+  const normalizeSection = (value) => {
+    const letter = String(value || '').trim().match(/\p{L}/u)?.[0] || '';
+    return letter ? letter.toUpperCase() : '';
+  };
+
   // Load lookups
   useEffect(() => {
     (async () => {
@@ -242,7 +247,16 @@ const GradeForm = ({ cls, onClose, onSuccess }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700">{t('common.filters.section', { defaultValue: 'Section' })}</label>
-            <Input disabled={submitting} value={section} onChange={e=>setSection(e.target.value)} type="text" className="mt-1" placeholder={t('gradeSections.form.placeholders.section', { defaultValue: 'e.g. 1, 2, A, B' })} required />
+            <Input
+              disabled={submitting}
+              value={section}
+              onChange={(e) => setSection(normalizeSection(e.target.value))}
+              type="text"
+              className="mt-1"
+              placeholder={t('gradeSections.form.placeholders.section', { defaultValue: 'e.g. A' })}
+              maxLength={1}
+              required
+            />
           </div>
           {/* Academic Year field removed (managed via Enrollment) */}
           <div>

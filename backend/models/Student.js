@@ -108,6 +108,6 @@ studentSchema.pre('insertMany', async function (next, docs) {
 });
 
 // Note: Student ID is now generated in the studentController after enrollment is created,
-// using cohort + section based sequencing (e.g., DU1SA01). Model no longer auto-assigns.
+// using cohort prefix + cohort order + section letter + sequence (e.g., DU1A01).
 
 export default mongoose.model('Student', studentSchema);

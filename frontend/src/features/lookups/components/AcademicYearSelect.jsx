@@ -1,10 +1,11 @@
 // AcademicYearSelect.jsx
 // Select reusable oo soo bandhiga Academic Years.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getAcademicYears, invalidateAcademicYearsCache } from '../api/lookups';
 import SearchableSelect from '../../../shared/components/ui/SearchableSelect.jsx';
 import Select from '../../../shared/components/ui/Select.jsx';
 import { useI18n } from '../../../i18n/useI18n';
+import { useAuth } from '../../../auth/AuthContext';
 
 export default function AcademicYearSelect({
   value,
@@ -21,6 +22,7 @@ export default function AcademicYearSelect({
   ...rest
 }) {
   const { t } = useI18n();
+  const { auth } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -78,8 +80,24 @@ export default function AcademicYearSelect({
     return () => { ignore = true; window.removeEventListener('academicYear:created', onCreated); };
   }, [refreshKey, onChange]);
 
+  const visibleItems = useMemo(() => {
+    const list = Array.isArray(items) ? items : [];
+    const role = String(auth?.user?.role || '').toLowerCase();
+    if (role === 'admin') return list;
+    if (list.length <= 1) return list;
+
+    const sorted = [...list].sort((a, b) => {
+      const aTime = new Date(a?.createdAt || 0).getTime();
+      const bTime = new Date(b?.createdAt || 0).getTime();
+      if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) return bTime - aTime;
+      return String(b?.yearName || '').localeCompare(String(a?.yearName || ''), undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    return sorted.slice(0, 1);
+  }, [items, auth?.user?.role]);
+
   if (searchable) {
-    const options = (items || []).map((y) => ({ value: y._id, label: y.yearName }));
+    const options = (visibleItems || []).map((y) => ({ value: y._id, label: y.yearName }));
     return (
       <SearchableSelect
         id={id}
@@ -108,7 +126,7 @@ export default function AcademicYearSelect({
       className={className}
     >
       <option value="">{resolvedPlaceholder}</option>
-      {items.map(y => <option key={y._id} value={y._id}>{y.yearName}</option>)}
+      {visibleItems.map(y => <option key={y._id} value={y._id}>{y.yearName}</option>)}
     </Select>
   );
 }

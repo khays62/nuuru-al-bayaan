@@ -10,6 +10,14 @@ import { publishRealtime } from '../utils/realtimeBus.js';
 // Note: Cohort and AcademicYear are no longer part of GradeSection. Uniformity per AY
 // is enforced at Enrollment layer, not at GS layer.
 
+const normalizeSectionLetter = (value) => {
+  const letters = String(value || '').trim().match(/\p{L}/u) || [];
+  const letter = letters[0] || '';
+  return letter ? letter.toUpperCase() : '';
+};
+
+const isSingleLetter = (value) => /^\p{L}$/u.test(String(value || '').trim());
+
 function buildSort(sortParam) {
   if (!sortParam) return { createdAt: -1 };
   const [field, dirStr] = sortParam.split(':');
@@ -134,8 +142,13 @@ export const createGradeSection = async (req, res) => {
     if (!gradeDoc) return res.status(400).json({ message: 'Invalid grade' });
     if (!shiftDoc) return res.status(400).json({ message: 'Invalid shift' });
 
-  // Default section if empty
-  if (!section || String(section).trim() === '') section = '1';
+    if (!section || String(section).trim() === '') {
+      return res.status(400).json({ message: 'section is required' });
+    }
+    if (!isSingleLetter(section)) {
+      return res.status(400).json({ message: 'section must be a single letter' });
+    }
+    section = normalizeSectionLetter(section);
 
     // Subjects validation: ensure they belong to this grade
     if (subjects.length) {
@@ -231,8 +244,11 @@ export const updateGradeSection = async (req, res) => {
     }
 
   if (capacity !== undefined) cls.capacity = capacity; // allowed
-  let sectionChanged = false;
-  if (section !== undefined && String(section).trim() !== '') { cls.section = section; sectionChanged = true; }
+    if (section !== undefined) {
+      if (!String(section).trim()) return res.status(400).json({ message: 'section is required' });
+      if (!isSingleLetter(section)) return res.status(400).json({ message: 'section must be a single letter' });
+      cls.section = normalizeSectionLetter(section);
+    }
     if (grade !== undefined && !enrollmentExists) cls.grade = grade;
     if (shift !== undefined && !enrollmentExists) cls.shift = shift;
     // Before applying subject changes, compute which subjects are being removed
