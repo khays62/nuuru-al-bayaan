@@ -73,7 +73,7 @@ export default function TeacherForm({ initialValue, onCancel, onSave }) {
 
   const isValidUsernameLength = (value) => {
     const v = String(value ?? '').trim();
-    return v.length >= 4 && v.length <= 6;
+    return v.length >= 4 && v.length <= 10;
   };
   const [form, setForm] = useState({
     fullName: '',

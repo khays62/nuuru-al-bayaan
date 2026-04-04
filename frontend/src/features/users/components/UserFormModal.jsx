@@ -255,10 +255,10 @@ export default function UserFormModal({
       return;
     }
 
-    if (value.length < 4 || value.length > 6) {
+    if (value.length < 4 || value.length > 10) {
       setUsernameCheck({
         status: 'invalid',
-        message: t('users.form.validations.usernameLength', { defaultValue: 'Username must be 4â€“6 characters' }),
+        message: t('users.form.validations.usernameLength', { defaultValue: 'Username must be 4-10 characters' }),
       });
       return;
     }
@@ -403,7 +403,7 @@ export default function UserFormModal({
   const usernameFieldState = () => {
     const v = String(form?.username ?? '').trim();
     if (!v) return 'empty';
-    if (v.length < 4 || v.length > 6) return touched.username ? 'invalid' : 'empty';
+    if (v.length < 4 || v.length > 10) return touched.username ? 'invalid' : 'empty';
     if (usernameCheck.status === 'taken') return 'invalid';
     if (usernameCheck.status === 'valid') return 'valid';
     return 'empty';

@@ -31,7 +31,7 @@ const isValidEmail = (value) => {
 const normalizeUsername = (value) => String(value || '').trim();
 const isValidUsernameLength = (value) => {
   const v = String(value || '').trim();
-  return v.length >= 4 && v.length <= 6;
+  return v.length >= 4 && v.length <= 10;
 };
 
 const normalizeIdDocument = (value) => {
@@ -215,7 +215,7 @@ export const createTeacher = async (req, res) => {
 
     if (!username || String(username).trim() === '') return res.status(400).json({ message: 'username is required' });
     username = normalizeUsername(username);
-    if (!isValidUsernameLength(username)) return res.status(400).json({ message: 'username must be 4-6 characters' });
+    if (!isValidUsernameLength(username)) return res.status(400).json({ message: 'username must be 4-10 characters' });
 
     fullName = String(fullName).trim();
     const fullNameWordCount = fullName.split(/\s+/).filter(Boolean).length;
@@ -466,7 +466,7 @@ export const createTeacherLoginUser = async (req, res) => {
 
     const loginUsername = normalizeUsername(username);
     if (!loginUsername) return res.status(400).json({ message: 'username is required' });
-    if (!isValidUsernameLength(loginUsername)) return res.status(400).json({ message: 'username must be 4-6 characters' });
+    if (!isValidUsernameLength(loginUsername)) return res.status(400).json({ message: 'username must be 4-10 characters' });
 
     const teacherUsernameConflict = await Teacher.exists({ _id: { $ne: id }, username: loginUsername });
     if (teacherUsernameConflict) return res.status(409).json({ message: 'Teacher username already exists' });
@@ -548,7 +548,7 @@ export const updateTeacher = async (req, res) => {
     if (username !== undefined) {
       const trimmed = normalizeUsername(username);
       if (!trimmed) return res.status(400).json({ message: 'username is required' });
-      if (!isValidUsernameLength(trimmed)) return res.status(400).json({ message: 'username must be 4-6 characters' });
+      if (!isValidUsernameLength(trimmed)) return res.status(400).json({ message: 'username must be 4-10 characters' });
       username = trimmed;
     }
 

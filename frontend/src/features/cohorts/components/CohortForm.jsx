@@ -69,8 +69,8 @@ export default function CohortForm({ initial = {}, onSubmit, onCancel }) {
   const getNameError = (value) => {
     const letters = getLetterCount(value);
     if (letters === 0) return t('cohorts.form.validations.nameRequired', { defaultValue: 'Cohort name is required.' });
-    if (letters < 2 || letters > 5) {
-      return t('cohorts.form.validations.nameLength', { defaultValue: 'Cohort name must be 2-5 letters.' });
+    if (letters < 4 || letters > 10) {
+      return t('cohorts.form.validations.nameLength', { defaultValue: 'Cohort name must be 4-10 letters.' });
     }
     return '';
   };
@@ -113,7 +113,7 @@ export default function CohortForm({ initial = {}, onSubmit, onCancel }) {
         />
         {nameError
           ? <p className="text-xs mt-1 text-red-600">{nameError}</p>
-          : <p className="text-[11px] mt-1 text-(--nb-color-muted)">{t('cohorts.form.hints.nameRules', { defaultValue: '2-5 letters only.' })}</p>}
+          : <p className="text-[11px] mt-1 text-(--nb-color-muted)">{t('cohorts.form.hints.nameRules', { defaultValue: '4-10 letters only.' })}</p>}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>

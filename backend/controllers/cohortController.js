@@ -109,8 +109,8 @@ export const createCohort = async (req, res) => {
     name = collapseWs(name);
     if (!isLettersOnly(name)) return res.status(400).json({ message: 'name must contain letters only' });
     const letters = name.match(/\p{L}/gu) || [];
-    if (letters.length < 2 || letters.length > 5) {
-      return res.status(400).json({ message: 'name must contain 2 to 5 letters' });
+    if (letters.length < 4 || letters.length > 10) {
+      return res.status(400).json({ message: 'name must contain 4 to 10 letters' });
     }
     const payload = { name, status };
     if (!mongoose.isValidObjectId(startAcademicYear)) return res.status(400).json({ message: 'Invalid startAcademicYear' });
@@ -168,8 +168,8 @@ export const updateCohort = async (req, res) => {
       if (!trimmed) return res.status(400).json({ message: 'name cannot be empty' });
       if (!isLettersOnly(trimmed)) return res.status(400).json({ message: 'name must contain letters only' });
       const letters = trimmed.match(/\p{L}/gu) || [];
-      if (letters.length < 2 || letters.length > 5) {
-        return res.status(400).json({ message: 'name must contain 2 to 5 letters' });
+      if (letters.length < 4 || letters.length > 10) {
+        return res.status(400).json({ message: 'name must contain 4 to 10 letters' });
       }
       // check duplicate
       const dup = await Cohort.findOne({ name: trimmed, _id: { $ne: id } }).lean();
