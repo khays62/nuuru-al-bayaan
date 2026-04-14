@@ -86,6 +86,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         gender: 'Male',
         dob: '',
         birthPlace: '',
+        emisNumber: '',
         guardianName: '',
         guardianRelationship: 'Guardian',
         guardianPhone1: '',
@@ -97,9 +98,9 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         transferPreviousSchoolName: '',
         transferReason: '',
         notes: '',
-        medicalAllergies: '',
-        medicalConditions: '',
-        disabilityFlags: '', // comma-separated
+        medicalAllergies: 'no',
+        medicalConditions: 'no',
+        disabilityFlags: 'no',
         bloodGroup: '',
         idType: '',
         idNumber: '',
@@ -188,6 +189,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                 gender: student.gender || 'Male',
                 dob: student.dob ? new Date(student.dob).toISOString().split('T')[0] : '',
                 birthPlace: student.birthPlace || '',
+                emisNumber: student.emisNumber || '',
                 guardianName: student.guardianName || '',
                 guardianRelationship: student.guardianRelationship || 'Guardian',
                 guardianPhone1: student.guardianPhone1 || student.contactNumber || '',
@@ -199,9 +201,17 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                 transferPreviousSchoolName: transfer.previousSchoolName || '',
                 transferReason: transfer.transferReason || '',
                 notes: student.notes || '',
-                medicalAllergies: medical.allergies || '',
-                medicalConditions: medical.medicalConditions || '',
-                disabilityFlags: Array.isArray(medical.disabilityFlags) ? medical.disabilityFlags.join(', ') : (medical.disabilityFlags || ''),
+                medicalAllergies: (typeof medical.hasAllergies === 'boolean'
+                    ? medical.hasAllergies
+                    : Boolean(String(medical.allergies || '').trim())) ? 'yes' : 'no',
+                medicalConditions: (typeof medical.hasMedicalConditions === 'boolean'
+                    ? medical.hasMedicalConditions
+                    : Boolean(String(medical.medicalConditions || '').trim())) ? 'yes' : 'no',
+                disabilityFlags: (typeof medical.hasDisability === 'boolean'
+                    ? medical.hasDisability
+                    : (Array.isArray(medical.disabilityFlags)
+                        ? medical.disabilityFlags.filter(Boolean).length > 0
+                        : Boolean(String(medical.disabilityFlags || '').trim()))) ? 'yes' : 'no',
                 bloodGroup: medical.bloodGroup || '',
                 idType: idDoc.idType || '',
                 idNumber: idDoc.idNumber || '',
@@ -404,6 +414,7 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
             dob: formData.dob,
             birthPlace: formData.birthPlace.trim(),
             guardianName: formData.guardianName.trim(),
+            emisNumber: String(formData.emisNumber || '').trim(),
             guardianRelationship: formData.guardianRelationship,
             guardianPhone1: normalizedGuardianPhone1 || formData.guardianPhone1.trim(),
             guardianPhone2: normalizedGuardianPhone2,
@@ -417,12 +428,9 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
             },
             notes: String(formData.notes || '').trim(),
             medical: {
-                allergies: String(formData.medicalAllergies || '').trim(),
-                medicalConditions: String(formData.medicalConditions || '').trim(),
-                disabilityFlags: String(formData.disabilityFlags || '')
-                    .split(',')
-                    .map((s) => String(s || '').trim())
-                    .filter(Boolean),
+                hasAllergies: String(formData.medicalAllergies || '').toLowerCase() === 'yes',
+                hasMedicalConditions: String(formData.medicalConditions || '').toLowerCase() === 'yes',
+                hasDisability: String(formData.disabilityFlags || '').toLowerCase() === 'yes',
                 bloodGroup: String(formData.bloodGroup || '').trim(),
             },
             idDocument: {
@@ -486,6 +494,11 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
         'px-3 py-1.5 border-b border-(--nb-color-border) ' +
         'bg-linear-to-r from-(--nb-color-brand-100) to-(--nb-color-accent-100) ' +
         'rounded-t-(--nb-radius-md)';
+
+    const yesNoOptions = [
+        { value: 'yes', label: t('common.yes', { defaultValue: 'Yes' }) },
+        { value: 'no', label: t('common.no', { defaultValue: 'No' }) },
+    ];
 
     return (
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -556,6 +569,18 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                             <div>
                                 <Label>{t('students.form.birthPlace')}</Label>
                                 <Input name="birthPlace" value={formData.birthPlace} onChange={handleChange} type="text" required disabled={submitting} className="mt-1 py-1.5" />
+                            </div>
+                            <div>
+                                <Label>{t('students.form.emisNumber')}</Label>
+                                <Input
+                                    name="emisNumber"
+                                    value={formData.emisNumber}
+                                    onChange={handleChange}
+                                    type="number"
+                                    disabled={submitting}
+                                    className="mt-1 py-1.5"
+                                    placeholder={t('students.form.emisNumberPlaceholder')}
+                                />
                             </div>
                             <div>
                                 <Label>{t('students.form.admissionDate')}</Label>
@@ -892,27 +917,33 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                             <div>
                                 <Label>{t('students.form.medical.allergies')}</Label>
-                                <Textarea
-                                    name="medicalAllergies"
-                                    value={formData.medicalAllergies}
-                                    onChange={handleChange}
-                                    disabled={submitting}
-                                    className="mt-1 py-1.5"
-                                    rows={1}
-                                    placeholder={t('students.form.medical.allergiesPlaceholder')}
-                                />
+                                <div className="mt-1">
+                                    <DropdownSelect
+                                        id="student-medical-allergies"
+                                        name="medicalAllergies"
+                                        value={formData.medicalAllergies}
+                                        onChange={(v) => setField('medicalAllergies', v)}
+                                        options={yesNoOptions}
+                                        disabled={submitting}
+                                        clearable={false}
+                                        className="py-1.5"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <Label>{t('students.form.medical.medicalConditions')}</Label>
-                                <Textarea
-                                    name="medicalConditions"
-                                    value={formData.medicalConditions}
-                                    onChange={handleChange}
-                                    disabled={submitting}
-                                    className="mt-1 py-1.5"
-                                    rows={1}
-                                    placeholder={t('students.form.medical.medicalConditionsPlaceholder')}
-                                />
+                                <div className="mt-1">
+                                    <DropdownSelect
+                                        id="student-medical-conditions"
+                                        name="medicalConditions"
+                                        value={formData.medicalConditions}
+                                        onChange={(v) => setField('medicalConditions', v)}
+                                        options={yesNoOptions}
+                                        disabled={submitting}
+                                        clearable={false}
+                                        className="py-1.5"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <Label>{t('students.form.medical.bloodGroup')}</Label>
@@ -931,15 +962,18 @@ export default function StudentForm({ student, onClose, onSubmit, submitting = f
                             </div>
                             <div>
                                 <Label>{t('students.form.medical.disabilityFlags')}</Label>
-                                <Input
-                                    name="disabilityFlags"
-                                    value={formData.disabilityFlags}
-                                    onChange={handleChange}
-                                    type="text"
-                                    disabled={submitting}
-                                    className="mt-1 py-1.5"
-                                    placeholder={t('students.form.medical.disabilityFlagsPlaceholder')}
-                                />
+                                <div className="mt-1">
+                                    <DropdownSelect
+                                        id="student-medical-disability"
+                                        name="disabilityFlags"
+                                        value={formData.disabilityFlags}
+                                        onChange={(v) => setField('disabilityFlags', v)}
+                                        options={yesNoOptions}
+                                        disabled={submitting}
+                                        clearable={false}
+                                        className="py-1.5"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -153,9 +153,22 @@ export default function ProfileTab() {
     ? t('common.yes', { defaultValue: 'Yes' })
     : t('common.no', { defaultValue: 'No' });
 
-  const disabilityLabel = Array.isArray(student?.medical?.disabilityFlags)
-    ? student.medical.disabilityFlags.filter(Boolean).join(', ')
-    : (student?.medical?.disabilityFlags || '');
+  const yesLabel = t('common.yes', { defaultValue: 'Yes' });
+  const noLabel = t('common.no', { defaultValue: 'No' });
+
+  const hasAllergies = (typeof student?.medical?.hasAllergies === 'boolean')
+    ? student.medical.hasAllergies
+    : Boolean(String(student?.medical?.allergies || '').trim());
+
+  const hasMedicalConditions = (typeof student?.medical?.hasMedicalConditions === 'boolean')
+    ? student.medical.hasMedicalConditions
+    : Boolean(String(student?.medical?.medicalConditions || '').trim());
+
+  const hasDisability = (typeof student?.medical?.hasDisability === 'boolean')
+    ? student.medical.hasDisability
+    : (Array.isArray(student?.medical?.disabilityFlags)
+        ? student.medical.disabilityFlags.filter(Boolean).length > 0
+        : Boolean(String(student?.medical?.disabilityFlags || '').trim()));
 
   const cardBase =
     'rounded-(--nb-radius-md) border border-(--nb-color-border) bg-(--nb-color-bg-card) ' +
@@ -321,9 +334,9 @@ export default function ProfileTab() {
                   <p className="text-xs text-(--nb-color-muted)">{t('students.profileTab.medical.subtitle', { defaultValue: 'Important medical notes (optional)' })}</p>
                 </div>
                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InfoItem label={t('students.form.medical.allergies')} value={student?.medical?.allergies} />
-                  <InfoItem label={t('students.form.medical.medicalConditions')} value={student?.medical?.medicalConditions} />
-                  <InfoItem label={t('students.form.medical.disabilityFlags')} value={disabilityLabel} />
+                  <InfoItem label={t('students.form.medical.allergies')} value={hasAllergies ? yesLabel : noLabel} />
+                  <InfoItem label={t('students.form.medical.medicalConditions')} value={hasMedicalConditions ? yesLabel : noLabel} />
+                  <InfoItem label={t('students.form.medical.disabilityFlags')} value={hasDisability ? yesLabel : noLabel} />
                   <InfoItem label={t('students.form.medical.bloodGroup')} value={student?.medical?.bloodGroup} />
                 </div>
               </Card>

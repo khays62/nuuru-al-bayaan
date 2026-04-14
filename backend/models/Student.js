@@ -6,6 +6,7 @@ const { Schema } = mongoose;
 
 const studentSchema = new Schema({
     studentId: { type: String }, // Assigned after enrollment; unique enforced via partial index below
+    emisNumber: { type: String, trim: true, default: '' },
     fullName: { type: String, required: true, trim: true },
     motherName: { type: String, trim: true, default: '' },
     gender: { type: String, enum: ['Male', 'Female'], required: true },
@@ -40,6 +41,9 @@ const studentSchema = new Schema({
     notes: { type: String, trim: true, default: '' },
 
     medical: {
+        hasAllergies: { type: Boolean, default: false },
+        hasMedicalConditions: { type: Boolean, default: false },
+        hasDisability: { type: Boolean, default: false },
         allergies: { type: String, trim: true, default: '' },
         medicalConditions: { type: String, trim: true, default: '' },
         disabilityFlags: { type: [String], default: [] },

@@ -81,6 +81,9 @@ const en = {
     selectDays: 'Select days',
 
     none: 'None',
+    yes: 'Yes',
+    no: 'No',
+    optional: 'Optional',
 
     table: {
       order: 'Order',
@@ -713,6 +716,12 @@ const en = {
 
       export: {
         filename: 'timetable.csv',
+        filenamePdf: 'timetable.pdf',
+        sheetName: 'Timetable',
+        sheet: {
+          table: 'Slots',
+          matrix: 'Grid',
+        },
         headers: {
           day: 'Day',
           start: 'Start',
@@ -1352,6 +1361,7 @@ const en = {
       emptyDescription: 'No active students found for this grade section.',
       columns: {
         studentId: 'Student ID',
+        emisNumber: 'EMIS Number',
         fullName: 'Full Name',
         gender: 'Gender',
       },
@@ -1926,6 +1936,7 @@ const en = {
       emptyAction: 'Add Student',
       columns: {
         studentId: 'Student ID',
+        emisNumber: 'EMIS Number',
         fullName: 'Full Name',
         gender: 'Gender',
         grade: 'Grade',
@@ -1997,6 +2008,94 @@ const en = {
       selected: 'selected',
     },
 
+    import: {
+      hints: {
+        idOrName: 'ID or Name',
+      },
+      fields: {
+        residenceRegion: 'Residence Region',
+        residenceDistrict: 'Residence District',
+        residenceNeighborhood: 'Residence Neighborhood',
+        studentPhotoUrl: 'Student Photo URL',
+      },
+      title: 'Import Students (Excel)',
+      help: 'Download the template, fill required fields, then upload it here.',
+      labels: {
+        file: 'Excel File',
+      },
+      actions: {
+        downloadTemplate: 'Download Template',
+        importExcel: 'Import Excel',
+        validate: 'Validate',
+        import: 'Import',
+      },
+      toasts: {
+        validated: 'Validated successfully.',
+        imported: 'Imported successfully.',
+      },
+      summary: 'Rows: {{rows}}, Created: {{created}}',
+      errors: {
+        pickFile: 'Please choose an Excel file.',
+        validateFirst: 'Please validate the file first.',
+        mismatch: 'Template does not match current filters.',
+        selectFiltersFirst: 'Please select filters first.',
+        sectionHasStudents: 'This section already has students. Template download is disabled.',
+        noWorksheetFound: 'No worksheet found in the Excel file.',
+        missingColumns: 'Template is missing required columns.',
+      },
+
+      serverMessages: {
+        validated: 'Validated',
+        imported: 'Imported',
+      },
+
+      serverErrors: {
+        badRequest: 'Invalid import request.',
+        missingRows: 'No rows found to import.',
+        validationFailed: 'Import validation failed.',
+        cohortRequired: 'Cohort is required. Please select a cohort for this academic year.',
+        sectionHasStudents: 'This section already has students. Import is disabled.',
+        fullNameRequired: 'Full Name is required.',
+        motherNameRequired: 'Mother Name is required.',
+        genderRequired: 'Gender is required.',
+        dobRequired: 'Date of Birth is required.',
+        birthPlaceRequired: 'Birth Place is required.',
+        guardianNameRequired: 'Guardian Name is required.',
+        guardianRelationshipRequired: 'Guardian Relationship is required.',
+        guardianPhone1Required: 'Guardian Phone (Primary) is required.',
+        admissionDateRequired: 'Admission Date is required.',
+        regionRequired: 'Region is required.',
+        districtRequired: 'District is required.',
+        neighborhoodRequired: 'Neighborhood is required.',
+        isSomaliInvalid: 'Is Somali must be Yes or No.',
+        transferPreviousSchoolRequired: 'Previous school name is required for transfer students.',
+        transferFlagInvalid: 'Transfer Student must be Yes or No.',
+        medicalAllergiesInvalid: 'Allergies must be Yes or No.',
+        medicalConditionsInvalid: 'Medical Conditions must be Yes or No.',
+        disabilityFlagsInvalid: 'Disability Flags must be Yes or No.',
+        fullNameFourNames: 'Full Name must contain exactly 4 names.',
+        motherNameFourNames: 'Mother Name must contain exactly 4 names.',
+        guardianNameFourNames: 'Guardian name must contain exactly 4 names.',
+        genderInvalid: 'Invalid gender.',
+        guardianRelationshipInvalid: 'Invalid guardian relationship.',
+        guardianPhone1Invalid: 'Invalid guardian phone number.',
+        guardianPhone2Invalid: 'Invalid guardian phone number (secondary).',
+        studentPhoneInvalid: 'Invalid student phone number.',
+        guardianEmailInvalid: 'Invalid guardian email.',
+        studentEmailInvalid: 'Invalid student email.',
+        regionInvalid: 'Invalid region.',
+        districtInvalid: 'Invalid district.',
+        bloodGroupInvalid: 'Invalid blood group.',
+        dobInvalid: 'Invalid Date of Birth.',
+        admissionDateInvalid: 'Invalid Admission Date.',
+        idDocumentRequired: 'ID Type and ID Number are required when providing ID document details.',
+        idDocumentExpiryInvalid: 'Invalid ID document expiry date.',
+        duplicateRow: 'Duplicate student row in template.',
+        duplicatePerson: 'Student already exists in the system.',
+        serverError: 'Server Error.',
+      },
+    },
+
     form: {
       sections: {
         personal: 'Personal',
@@ -2016,6 +2115,8 @@ const en = {
       female: 'Female',
       dob: 'Date of Birth',
       birthPlace: 'Birth Place',
+      emisNumber: 'EMIS Number',
+      emisNumberPlaceholder: 'Optional',
       guardianName: 'Parent/Guardian Name',
       guardianRelationship: 'Guardian Relationship',
       relationships: {

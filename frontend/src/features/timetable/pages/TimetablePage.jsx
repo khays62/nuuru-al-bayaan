@@ -13,7 +13,9 @@ import Spinner from '../../../shared/components/feedback/Spinner.jsx';
 import ActionButton from '../../../shared/components/ui/ActionButton.jsx';
 import PrintHeader from '../../../shared/components/print/PrintHeader.jsx';
 import PrintFooter from '../../../shared/components/print/PrintFooter.jsx';
-import { Download, Printer } from 'lucide-react';
+import { PdfDownloadButton, ExcelDownloadButton, CsvDownloadButton, CopyTableButton, PrintButton } from '../../../shared/components/exports/downloadButtons';
+import headerImg from '../../../assets/nuuruBayaanHeader.png';
+import { buildSubjectColorMap, getSubjectTextColor, toShortTeacherName } from '../utils/slotFormatters';
 import { useAuth } from '../../../auth/AuthContext';
 import { getGrades, getShifts } from '../../lookups/api/lookups';
 import { listGradeSections } from '../../grades/api/gradeSections';
@@ -446,6 +448,16 @@ export default function TimetablePage() {
     return arr;
   }, [effectiveSlots, startTime, endTime]);
 
+  const subjectColorMap = useMemo(() => {
+    const names = [];
+    for (const s of effectiveSlots) {
+      if (s?.isBreak) continue;
+      const name = String(s?.subject?.subjectName || '').trim();
+      if (name) names.push(name);
+    }
+    return buildSubjectColorMap(names);
+  }, [effectiveSlots]);
+
   const resetAll = () => {
     setGradeId(''); setShiftId(''); setSectionId(''); setSubjectId('');
     setDays([]); setStartTime(''); setEndTime(''); setRoom(''); setIsBreak(false);
@@ -463,84 +475,83 @@ export default function TimetablePage() {
     window.print();
   };
 
-  const exportColumns = useMemo(
-    () => [
-      { key: 'day', header: t('timetable.page.export.headers.day') },
-      { key: 'start', header: t('timetable.page.export.headers.start') },
-      { key: 'end', header: t('timetable.page.export.headers.end') },
-      { key: 'type', header: t('timetable.page.export.headers.type') },
-      { key: 'subject', header: t('timetable.page.export.headers.subject') },
-      { key: 'teacher', header: t('timetable.page.export.headers.teacher') },
-      { key: 'room', header: t('timetable.page.export.headers.room') },
-    ],
-    [t]
-  );
-
-  const getExportRows = () => {
-    const rows = (effectiveSlots || []).slice();
-    rows.sort((a, b) => {
-      const da = Number(a.dayOfWeek ?? 0);
-      const db = Number(b.dayOfWeek ?? 0);
-      if (da !== db) return da - db;
-      const sa = String(a.startTime || '');
-      const sb = String(b.startTime || '');
-      if (sa !== sb) return sa.localeCompare(sb);
-      const ea = String(a.endTime || '');
-      const eb = String(b.endTime || '');
-      if (ea !== eb) return ea.localeCompare(eb);
-      return String(a._id || '').localeCompare(String(b._id || ''));
-    });
-    return rows.map((s) => {
-      const d = Number(s.dayOfWeek);
-      const dayLabel = Number.isInteger(d) && d >= 0 && d <= 6 ? dayNames[d] : String(s.dayOfWeek ?? '');
-      return {
-        day: dayLabel,
-        start: s.startTime || '',
-        end: s.endTime || '',
-        type: s.isBreak ? t('timetable.page.export.type.break') : t('timetable.page.export.type.class'),
-        subject: s.isBreak ? '' : (s.subject?.subjectName || ''),
-        teacher: s.isBreak ? '' : (s.teacher?.fullName || ''),
-        room: s.room || '',
-      };
-    });
-  };
-
-  const handleDownloadCsv = () => {
+  const buildExportPayload = async () => {
     if (!canTimetableDownload) {
       toast.error(t('timetable.page.errors.noDownloadPermission'));
-      return;
+      return null;
     }
     if (!sectionId) {
       toast.error(t('timetable.page.errors.selectSection'));
-      return;
+      return null;
     }
-    const rows = getExportRows();
-    if (!rows.length) {
+    const slotList = Array.isArray(effectiveSlots) ? effectiveSlots : [];
+    if (!slotList.length) {
       toast.error(t('timetable.page.errors.noSlotsToExport'));
-      return;
+      return null;
     }
 
-    const keys = exportColumns.map((c) => c.key);
-    const headers = exportColumns.map((c) => c.header);
-    const lines = [headers.join(',')];
-    for (const r of rows) {
-      const vals = keys.map((k) => {
-        const raw = String(r[k] ?? '');
-        const escaped = raw.replaceAll('"', '""');
-        return `"${escaped}"`;
-      });
-      lines.push(vals.join(','));
+    if (!periods.length || !displayDays.length) {
+      toast.error(t('timetable.page.errors.noSlotsToExport'));
+      return null;
     }
-    const csv = lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = t('timetable.page.export.filename');
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+
+    const subtitleParts = [
+      selectedSection
+        ? `${selectedSection.grade?.gradeName || ''} - ${selectedSection.shift?.shiftName || ''} - ${t('common.sectionPrefix')} ${selectedSection.section}`
+        : null,
+    ].filter(Boolean);
+
+    // Build a matrix where rows = days, columns = periods (matches UI layout).
+    const dayIdxs = displayDays.length ? displayDays : [0, 1, 2, 3, 4, 5, 6];
+    const dayLabels = dayIdxs.map((d) => dayNames[d] || String(d));
+    const periodLabels = periods.map((p) => formatRangeWithAmPm(p.startTime, p.endTime));
+    const cellMap = new Map();
+    for (const s of slotList) {
+      const dayKey = Number(s?.dayOfWeek);
+      const start = String(s?.startTime || '');
+      const end = String(s?.endTime || '');
+      const periodKey = `${start}__${end}`;
+      const cellKey = `${dayKey}__${periodKey}`;
+      if (s?.isBreak) {
+        cellMap.set(cellKey, {
+          lines: [
+            { text: t('timetable.page.export.type.break'), bold: false, size: 11, color: '#6B7280' },
+          ],
+        });
+        continue;
+      }
+      const subject = String(s?.subject?.subjectName || '').trim();
+      const teacher = toShortTeacherName(s?.teacher?.fullName) || '';
+      const room = String(s?.room || '').trim();
+      const subjectColor = getSubjectTextColor(subject, subjectColorMap);
+      const lines = [
+        { text: subject || '-', bold: true, size: 13, color: subjectColor || '#111827' },
+      ];
+      if (teacher) lines.push({ text: teacher, bold: false, size: 9, color: '#6B7280' });
+      if (room) lines.push({ text: `${t('common.room')} ${room}`, bold: false, size: 9, color: '#6B7280' });
+      cellMap.set(cellKey, { lines });
+    }
+
+    const headers = [t('timetable.page.export.headers.day'), ...periodLabels];
+    const rows = dayIdxs.map((dayIdx, dayPos) => {
+      const dayLabel = dayLabels[dayPos] || String(dayIdx);
+      const rowCells = periods.map((p) => {
+        const key = `${Number(dayIdx)}__${String(p.startTime || '')}__${String(p.endTime || '')}`;
+        return cellMap.get(key) || '';
+      });
+      return [dayLabel, ...rowCells];
+    });
+
+    return {
+      filename: t('timetable.page.export.filenamePdf', { defaultValue: 'timetable.pdf' }),
+      sheetName: t('timetable.page.export.sheetName', { defaultValue: 'Timetable' }),
+      title: t('nav.timetable'),
+      subtitle: subtitleParts.join(' - '),
+      headerImageSrc: headerImg,
+      headers,
+      rows,
+      renderAsImage: true,
+    };
   };
 
   const sectionLabel = (gs) => {
@@ -610,40 +621,7 @@ export default function TimetablePage() {
         </div>
       </Modal>
 
-      <div className="w-full flex items-center justify-between gap-2 flex-wrap no-print">
-        <h1 className="text-2xl font-semibold">{t('nav.timetable')}</h1>
-        <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
-          {!isTeacher ? (
-            <>
-              {canTimetablePrint ? (
-                <ActionButton variant="neutral" onClick={handlePrint} title={t('common.actions.print')} icon={<Printer size={16} />}>
-                  {t('common.actions.print')}
-                </ActionButton>
-              ) : null}
-              {canTimetableDownload ? (
-                <ActionButton
-                  variant="neutral"
-                  onClick={handleDownloadCsv}
-                  title={t('timetable.page.actions.downloadCsv')}
-                  icon={<Download size={16} />}
-                >
-                  CSV
-                </ActionButton>
-              ) : null}
-            </>
-          ) : null}
-          {!isTeacher && canTimetableAdd ? (
-            <>
-              <ActionButton variant="brand" onClick={onAddSingle} disabled={addingSingle} className={addingSingle ? 'opacity-70 cursor-wait' : ''}>
-                {addingSingle ? t('timetable.page.states.adding') : t('timetable.page.actions.addSlot')}
-              </ActionButton>
-              <ActionButton variant="brand" onClick={onAddBulk} disabled={addingBulk} className={addingBulk ? 'opacity-70 cursor-wait' : ''}>
-                {addingBulk ? t('timetable.page.states.adding') : t('timetable.page.actions.addSlotsDays')}
-              </ActionButton>
-            </>
-          ) : null}
-        </div>
-      </div>
+
 
       <div className="print-only">
         <div className="text-xl font-semibold">{t('nav.timetable')}</div>
@@ -676,7 +654,7 @@ export default function TimetablePage() {
         />
       ) : (
         <>
-          <div className="no-print">
+          <div className="no-print space-y-2">
             <DataToolbar
               filtersSlot={(
                 <FilterRow align="center">
@@ -786,6 +764,76 @@ export default function TimetablePage() {
               )}
               onReset={resetAll}
             />
+
+            {!isTeacher && (canTimetableAdd || canTimetablePrint || canTimetableDownload) ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                {canTimetableAdd ? (
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:w-auto">
+                    <ActionButton
+                      variant="brand"
+                      onClick={onAddSingle}
+                      disabled={addingSingle}
+                      className={`w-full sm:w-auto justify-center ${addingSingle ? 'opacity-70 cursor-wait' : ''}`}
+                    >
+                      {addingSingle ? t('timetable.page.states.adding') : t('timetable.page.actions.addSlot')}
+                    </ActionButton>
+                    <ActionButton
+                      variant="brand"
+                      onClick={onAddBulk}
+                      disabled={addingBulk}
+                      className={`w-full sm:w-auto justify-center ${addingBulk ? 'opacity-70 cursor-wait' : ''}`}
+                    >
+                      {addingBulk ? t('timetable.page.states.adding') : t('timetable.page.actions.addSlotsDays')}
+                    </ActionButton>
+                  </div>
+                ) : null}
+
+                {(canTimetablePrint || canTimetableDownload) ? (
+                  <div className="flex items-center gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto sm:ml-auto">
+                    {canTimetablePrint ? (
+                      <PrintButton
+                        onClick={handlePrint}
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 sm:px-2.5 sm:py-1.5"
+                      />
+                    ) : null}
+                    {canTimetableDownload ? (
+                      <>
+                        <PdfDownloadButton
+                          getPayload={buildExportPayload}
+                          disabled={!sectionId}
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 sm:px-2.5 sm:py-1.5"
+                        />
+                        <ExcelDownloadButton
+                          getPayload={buildExportPayload}
+                          disabled={!sectionId}
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 sm:px-2.5 sm:py-1.5"
+                        />
+                        <CsvDownloadButton
+                          getPayload={buildExportPayload}
+                          disabled={!sectionId}
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 sm:px-2.5 sm:py-1.5"
+                        />
+                        <CopyTableButton
+                          getPayload={buildExportPayload}
+                          disabled={!sectionId}
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 sm:px-2.5 sm:py-1.5"
+                        />
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <StandardTable

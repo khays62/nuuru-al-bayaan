@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStudents, addStudent, getStudentProfile, getStudentHistory, getStudentTransfers, deactivateStudent, reactivateStudent, updateStudent, getLatestTransfer, setEnrollmentActiveFlag, changeStudentPassword, resetStudentPassword, uploadStudentPhoto } from '../controllers/studentController.js';
+import { getStudents, addStudent, importStudents, getStudentProfile, getStudentHistory, getStudentTransfers, deactivateStudent, reactivateStudent, updateStudent, getLatestTransfer, setEnrollmentActiveFlag, changeStudentPassword, resetStudentPassword, uploadStudentPhoto } from '../controllers/studentController.js';
 import { getFullTranscript } from '../controllers/transcriptController.js';
 
 import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
@@ -58,6 +58,17 @@ const normalizeStudentMultipartBody = (req, res, next) => {
     }
     if (body.transfer && typeof body.transfer === 'object' && Object.prototype.hasOwnProperty.call(body.transfer, 'isTransfer')) {
         body.transfer.isTransfer = coerceBoolean(body.transfer.isTransfer);
+    }
+    if (body.medical && typeof body.medical === 'object') {
+        if (Object.prototype.hasOwnProperty.call(body.medical, 'hasAllergies')) {
+            body.medical.hasAllergies = coerceBoolean(body.medical.hasAllergies);
+        }
+        if (Object.prototype.hasOwnProperty.call(body.medical, 'hasMedicalConditions')) {
+            body.medical.hasMedicalConditions = coerceBoolean(body.medical.hasMedicalConditions);
+        }
+        if (Object.prototype.hasOwnProperty.call(body.medical, 'hasDisability')) {
+            body.medical.hasDisability = coerceBoolean(body.medical.hasDisability);
+        }
     }
 
     req.body = body;
@@ -133,6 +144,7 @@ const updateStudentBody = z.object({
     guardianEmail: z.string().trim().max(128).optional(),
     studentPhone: z.string().trim().max(32).optional(),
     studentEmail: z.string().trim().max(128).optional(),
+    emisNumber: z.string().trim().max(64).optional(),
 
     transfer: z.object({
         isTransfer: z.boolean().optional(),
@@ -143,6 +155,9 @@ const updateStudentBody = z.object({
     notes: z.string().trim().max(2000).optional(),
 
     medical: z.object({
+        hasAllergies: z.boolean().optional(),
+        hasMedicalConditions: z.boolean().optional(),
+        hasDisability: z.boolean().optional(),
         allergies: z.string().trim().max(512).optional(),
         medicalConditions: z.string().trim().max(512).optional(),
         disabilityFlags: z.union([
@@ -185,14 +200,14 @@ const canReadStudents = (req, res, next) => {
     ])(req, res, next);
 };
 
-// Waxaan habaynaynaa routes-ka
+// Student routes
 router.route('/')
         .get(
             protect,
             canReadStudents,
             validate({ query: listStudentsQuery }),
             getStudents
-        )   // Marka la sameeyo GET /api/students
+        )   // GET /api/students
         .post(
             protect,
             checkPermission("students", "add"),
@@ -200,7 +215,14 @@ router.route('/')
             cleanupUploadedFileOnError,
             normalizeStudentMultipartBody,
             addStudent
-        );  // Marka la sameeyo POST /api/students
+        );  // POST /api/students
+
+router.post(
+    '/import',
+    protect,
+    checkPermission('students', 'add'),
+    importStudents
+);
 
 // Student self: change password
 router.put(

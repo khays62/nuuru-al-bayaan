@@ -7,6 +7,9 @@ export default {
 
     loading: 'جارٍ التحميل…',
     pleaseWait: 'يرجى الانتظار…',
+    yes: 'نعم',
+    no: 'لا',
+    optional: 'اختياري',
 
     actions: {
       cancel: 'إلغاء',
@@ -1011,6 +1014,12 @@ export default {
 
       export: {
         filename: 'timetable.csv',
+        filenamePdf: 'timetable.pdf',
+        sheetName: 'الجدول',
+        sheet: {
+          table: 'الحصص',
+          matrix: 'الشبكة',
+        },
         headers: {
           day: 'اليوم',
           start: 'البداية',
@@ -1436,6 +1445,7 @@ export default {
       emptyDescription: 'لم يتم العثور على طلاب نشطين لهذه الشعبة.',
       columns: {
         studentId: 'رقم الطالب',
+        emisNumber: 'رقم EMIS',
         fullName: 'الاسم الكامل',
         gender: 'الجنس',
       },
@@ -2018,6 +2028,7 @@ export default {
       emptyAction: 'إضافة طالب',
       columns: {
         studentId: 'رقم الطالب',
+        emisNumber: 'رقم EMIS',
         fullName: 'الاسم الكامل',
         gender: 'الجنس',
         grade: 'الصف',
@@ -2087,6 +2098,94 @@ export default {
       selected: 'محدد',
     },
 
+    import: {
+      hints: {
+        idOrName: 'المعرّف أو الاسم',
+      },
+      fields: {
+        residenceRegion: 'منطقة السكن',
+        residenceDistrict: 'مديرية السكن',
+        residenceNeighborhood: 'حيّ السكن',
+        studentPhotoUrl: 'رابط صورة الطالب',
+      },
+      title: 'استيراد الطلاب (Excel)',
+      help: 'نزّل القالب، املأ الحقول المطلوبة، ثم ارفعه هنا.',
+      labels: {
+        file: 'ملف Excel',
+      },
+      actions: {
+        downloadTemplate: 'تنزيل القالب',
+        importExcel: 'استيراد Excel',
+        validate: 'تحقق',
+        import: 'استيراد',
+      },
+      toasts: {
+        validated: 'تم التحقق بنجاح.',
+        imported: 'تم الاستيراد بنجاح.',
+      },
+      summary: 'الصفوف: {{rows}}، تم الإنشاء: {{created}}',
+      errors: {
+        pickFile: 'يرجى اختيار ملف Excel.',
+        validateFirst: 'يرجى التحقق من الملف أولاً.',
+        mismatch: 'القالب لا يطابق الفلاتر الحالية.',
+        selectFiltersFirst: 'يرجى اختيار الفلاتر أولاً.',
+        sectionHasStudents: 'هذه الشعبة لديها طلاب بالفعل. تنزيل القالب معطل.',
+        noWorksheetFound: 'لم يتم العثور على ورقة عمل داخل ملف Excel.',
+        missingColumns: 'القالب يفتقد الأعمدة المطلوبة.',
+      },
+
+      serverMessages: {
+        validated: 'تم التحقق',
+        imported: 'تم الاستيراد',
+      },
+
+      serverErrors: {
+        badRequest: 'طلب الاستيراد غير صالح.',
+        missingRows: 'لا توجد صفوف للاستيراد.',
+        validationFailed: 'فشل التحقق من الاستيراد.',
+        cohortRequired: 'المجموعة مطلوبة. يرجى اختيار مجموعة لهذه السنة الدراسية.',
+        sectionHasStudents: 'هذه الشعبة لديها طلاب بالفعل. الاستيراد معطل.',
+        fullNameRequired: 'الاسم الكامل مطلوب.',
+        motherNameRequired: 'اسم الأم مطلوب.',
+        genderRequired: 'الجنس مطلوب.',
+        dobRequired: 'تاريخ الميلاد مطلوب.',
+        birthPlaceRequired: 'مكان الميلاد مطلوب.',
+        guardianNameRequired: 'اسم ولي الأمر مطلوب.',
+        guardianRelationshipRequired: 'صلة ولي الأمر مطلوبة.',
+        guardianPhone1Required: 'هاتف ولي الأمر (أساسي) مطلوب.',
+        admissionDateRequired: 'تاريخ القبول مطلوب.',
+        regionRequired: 'المنطقة مطلوبة.',
+        districtRequired: 'المديرية مطلوبة.',
+        neighborhoodRequired: 'الحي مطلوب.',
+        isSomaliInvalid: 'يجب أن تكون قيمة Is Somali نعم أو لا.',
+        transferPreviousSchoolRequired: 'اسم المدرسة السابقة مطلوب للطلاب المحوّلين.',
+        transferFlagInvalid: 'يجب أن تكون قيمة Transfer Student نعم أو لا.',
+        medicalAllergiesInvalid: 'يجب أن تكون الحساسية نعم أو لا.',
+        medicalConditionsInvalid: 'يجب أن تكون الحالات الطبية نعم أو لا.',
+        disabilityFlagsInvalid: 'يجب أن تكون الإعاقة نعم أو لا.',
+        fullNameFourNames: 'الاسم الكامل يجب أن يتكون من 4 أسماء.',
+        motherNameFourNames: 'اسم الأم يجب أن يتكون من 4 أسماء.',
+        guardianNameFourNames: 'اسم ولي الأمر يجب أن يتكون من 4 أسماء.',
+        genderInvalid: 'الجنس غير صالح.',
+        guardianRelationshipInvalid: 'صلة ولي الأمر غير صالحة.',
+        guardianPhone1Invalid: 'رقم هاتف ولي الأمر غير صالح.',
+        guardianPhone2Invalid: 'رقم هاتف ولي الأمر (ثانوي) غير صالح.',
+        studentPhoneInvalid: 'رقم هاتف الطالب غير صالح.',
+        guardianEmailInvalid: 'بريد ولي الأمر غير صالح.',
+        studentEmailInvalid: 'بريد الطالب غير صالح.',
+        regionInvalid: 'المنطقة غير صالحة.',
+        districtInvalid: 'المديرية غير صالحة.',
+        bloodGroupInvalid: 'فصيلة الدم غير صالحة.',
+        dobInvalid: 'تاريخ الميلاد غير صالح.',
+        admissionDateInvalid: 'تاريخ القبول غير صالح.',
+        idDocumentRequired: 'نوع الهوية ورقم الهوية مطلوبان عند إدخال بيانات الهوية.',
+        idDocumentExpiryInvalid: 'تاريخ انتهاء الهوية غير صالح.',
+        duplicateRow: 'صف طالب مكرر في القالب.',
+        duplicatePerson: 'الطالب موجود بالفعل في النظام.',
+        serverError: 'خطأ في الخادم.',
+      },
+    },
+
     form: {
       sections: {
         personal: 'البيانات الشخصية',
@@ -2106,6 +2205,8 @@ export default {
       female: 'أنثى',
       dob: 'تاريخ الميلاد',
       birthPlace: 'مكان الميلاد',
+      emisNumber: 'رقم EMIS',
+      emisNumberPlaceholder: 'اختياري',
       guardianName: 'اسم ولي الأمر/الوصي',
       guardianRelationship: 'صلة ولي الأمر',
       relationships: {

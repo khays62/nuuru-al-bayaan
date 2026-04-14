@@ -111,6 +111,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
 
     const columns = useMemo(() => ([
         { key: 'studentId', label: t('students.table.columns.studentId'), sortable: true, field: 'studentId', tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-text) border-x border-(--nb-color-border)' },
+        { key: 'emisNumber', label: t('students.table.columns.emisNumber'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-muted) border-x border-(--nb-color-border)' },
         { key: 'fullName', label: t('students.table.columns.fullName'), sortable: true, field: 'fullName', tdClassName: 'px-6 py-4 text-sm font-medium text-(--nb-color-text) border-x border-(--nb-color-border)' },
         { key: 'gender', label: t('students.table.columns.gender'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-muted) border-x border-(--nb-color-border)' },
         { key: 'grade', label: t('students.table.columns.grade'), tdClassName: 'px-6 py-4 whitespace-nowrap text-sm text-(--nb-color-text) border-x border-(--nb-color-border)' },
@@ -141,6 +142,7 @@ const StudentTable = ({ students, onEdit, sortBy, sortDir, onSort, limit, total,
                 switch (col.key) {
                     case 'studentId': return st.studentId;
                     case 'fullName': return st.fullName;
+                    case 'emisNumber': return st.emisNumber || '-';
                     case 'gender': return st.gender;
                     case 'grade': return st.grade || '-';
                     case 'section': return st.section ? `${t('students.export.sectionPrefix')} ${st.section}` : '-';

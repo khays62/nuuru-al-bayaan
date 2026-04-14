@@ -241,6 +241,22 @@ export async function resetStudentPassword(id) {
   }
 }
 
+export async function importStudents(payload = {}) {
+  try {
+    const data = await fetchJson('/students/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return { ok: true, status: 200, data };
+  } catch (e) {
+    return {
+      ok: false,
+      status: e?.status || 0,
+      data: e?.data || { message: e?.message || 'Network or server error' },
+    };
+  }
+}
+
 export async function getStudentOverallSummary(studentId, opts = {}) {
   try {
     const data = await fetchJson(`/transcripts/students/${studentId}/overall-summary`, {

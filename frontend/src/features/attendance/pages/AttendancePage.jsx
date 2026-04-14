@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAttendanceWithOptions, markAttendanceBulk } from '../api/attendance';
 import { getSlotsWithOptions } from '../../timetable/api/timetable';
 import { getAssignments as getTeacherAssignments } from '../../teachers/api/teachersApi';
@@ -20,10 +20,12 @@ import { useAuth } from '../../../auth/AuthContext';
 import { teacherKeys } from '../../teachers/queryKeys.js';
 import { useAttendanceRealtimeInvalidation } from '../useAttendanceRealtimeInvalidation';
 import { useI18n } from '../../../i18n/useI18n';
+import { on as onEvent, off as offEvent, EVENTS } from '../../../utils/events';
 
 export default function AttendancePage() {
   const { t } = useI18n();
   const { auth, hasPermission } = useAuth();
+  const queryClient = useQueryClient();
   const role = String(auth?.user?.role || '').toLowerCase();
   const isTeacher = role === 'teacher';
   const isAdmin = role === 'admin';
@@ -294,6 +296,33 @@ export default function AttendancePage() {
   const queryRosterScope = useDebounce(rosterScope, 250);
   const queryMode = useDebounce(mode, 150);
   const queryPeriodCode = useDebounce(periodCode, 150);
+
+  const onTimetableChanged = useCallback(() => {
+    if (dirtyRef.current) return;
+    if (saving) return;
+
+    if (isTeacher && teacherRef) {
+      try {
+        queryClient.invalidateQueries({ queryKey: teacherKeys.assignments(teacherRef) });
+      } catch {
+        // ignore
+      }
+    }
+
+    if (querySectionId) {
+      try {
+        queryClient.invalidateQueries({ queryKey: teacherKeys.timetableSlots({ gradeSectionId: querySectionId }) });
+      } catch {
+        // ignore
+      }
+      setRealtimeTick((t) => t + 1);
+    }
+  }, [isTeacher, queryClient, querySectionId, saving, teacherRef]);
+
+  useEffect(() => {
+    onEvent(EVENTS.TIMETABLE_CHANGED, onTimetableChanged);
+    return () => offEvent(EVENTS.TIMETABLE_CHANGED, onTimetableChanged);
+  }, [onTimetableChanged]);
 
   const jsDayUTC = useMemo(() => {
     // selectedDate is an ISO date-only string (YYYY-MM-DD) derived from UTC.

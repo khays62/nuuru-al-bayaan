@@ -37,6 +37,11 @@ const toText = (v) => {
   if (v == null) return '';
   // Support rich cell objects from callers (e.g. { content, tone }).
   if (typeof v === 'object' && !(v instanceof Date)) {
+    if (Array.isArray(v.lines)) {
+      return v.lines
+        .map((line) => toText(line?.text ?? line?.content ?? line?.value ?? ''))
+        .join('\n');
+    }
     if (Object.prototype.hasOwnProperty.call(v, 'content')) return toText(v.content);
     if (Object.prototype.hasOwnProperty.call(v, 'text')) return toText(v.text);
     if (Object.prototype.hasOwnProperty.call(v, 'value')) return toText(v.value);
@@ -45,6 +50,37 @@ const toText = (v) => {
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
   if (v instanceof Date) return v.toISOString();
   return String(v);
+};
+
+const getCellLines = (v) => {
+  if (!v || typeof v !== 'object' || v instanceof Date) return null;
+  if (Array.isArray(v.lines)) {
+    return v.lines.map((line) => ({
+      text: toText(line?.text ?? line?.content ?? line?.value ?? ''),
+      color: line?.color,
+      bold: line?.bold,
+      size: line?.size,
+    }));
+  }
+  const hasStyle =
+    Object.prototype.hasOwnProperty.call(v, 'color') ||
+    Object.prototype.hasOwnProperty.call(v, 'bold') ||
+    Object.prototype.hasOwnProperty.call(v, 'size');
+  if (!hasStyle) return null;
+  return [{
+    text: toText(v.text ?? v.content ?? v.value ?? ''),
+    color: v.color,
+    bold: v.bold,
+    size: v.size,
+  }];
+};
+
+const hasRichCellStyle = (v) => {
+  if (!v || typeof v !== 'object' || v instanceof Date) return false;
+  return Array.isArray(v.lines) ||
+    Object.prototype.hasOwnProperty.call(v, 'color') ||
+    Object.prototype.hasOwnProperty.call(v, 'bold') ||
+    Object.prototype.hasOwnProperty.call(v, 'size');
 };
 
 const getCellTone = (v) => {
@@ -80,6 +116,21 @@ const tableHasArabic = (headers = [], rows = []) => {
     const cells = Array.isArray(r) ? r : [];
     for (const c of cells) {
       if (containsArabic(toText(c))) return true;
+    }
+  }
+  return false;
+};
+
+const tableHasRichCells = (headers = [], rows = []) => {
+  const safeHeaders = Array.isArray(headers) ? headers : [];
+  const safeRows = Array.isArray(rows) ? rows : [];
+  for (const h of safeHeaders) {
+    if (hasRichCellStyle(h)) return true;
+  }
+  for (const r of safeRows) {
+    const cells = Array.isArray(r) ? r : [];
+    for (const c of cells) {
+      if (hasRichCellStyle(c)) return true;
     }
   }
   return false;
@@ -226,6 +277,35 @@ const parseCssColorToRgb = (raw, fallback = { r: 31, g: 41, b: 55 }) => {
     return { r: Number(rgb[1]) || 0, g: Number(rgb[2]) || 0, b: Number(rgb[3]) || 0 };
   }
 
+  const hsl = s.match(/^hsla?\(([-\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%(?:\s*,\s*([\d.]+))?\)$/i);
+  if (hsl) {
+    const hue = ((Number(hsl[1]) % 360) + 360) % 360;
+    const sat = Math.max(0, Math.min(100, Number(hsl[2]) || 0)) / 100;
+    const light = Math.max(0, Math.min(100, Number(hsl[3]) || 0)) / 100;
+
+    if (sat === 0) {
+      const v = Math.round(light * 255);
+      return { r: v, g: v, b: v };
+    }
+
+    const q = light < 0.5 ? (light * (1 + sat)) : (light + sat - light * sat);
+    const p = (2 * light) - q;
+    const hk = hue / 360;
+    const hue2rgb = (pp, qq, tt) => {
+      let t = tt;
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return pp + (qq - pp) * 6 * t;
+      if (t < 1 / 2) return qq;
+      if (t < 2 / 3) return pp + (qq - pp) * (2 / 3 - t) * 6;
+      return pp;
+    };
+    const r = hue2rgb(p, q, hk + 1 / 3);
+    const g = hue2rgb(p, q, hk);
+    const b = hue2rgb(p, q, hk - 1 / 3);
+    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+  }
+
   return fallback;
 };
 
@@ -235,6 +315,25 @@ const rgbToExcelArgb = ({ r, g, b }) => {
     return v.toString(16).padStart(2, '0').toUpperCase();
   };
   return `FF${toHex2(r)}${toHex2(g)}${toHex2(b)}`;
+};
+
+const buildExcelRichText = (cellInput) => {
+  const lines = getCellLines(cellInput);
+  if (!lines || lines.length === 0) return null;
+  const runs = lines.map((line, idx) => {
+    const text = toText(line?.text ?? '');
+    const font = {};
+    if (line?.bold) font.bold = true;
+    if (line?.size) font.size = Number(line.size) || undefined;
+    if (line?.color) {
+      font.color = { argb: rgbToExcelArgb(parseCssColorToRgb(line.color, { r: 17, g: 24, b: 39 })) };
+    }
+    return {
+      text: `${text}${idx < lines.length - 1 ? '\n' : ''}`,
+      ...(Object.keys(font).length ? { font } : {}),
+    };
+  });
+  return { runs, lineCount: lines.length };
 };
 
 const buildTableImageDataUrl = async ({ headers = [], rows = [], theme, rtl = false }) => {
@@ -286,7 +385,22 @@ const buildTableImageDataUrl = async ({ headers = [], rows = [], theme, rtl = fa
     for (let i = 0; i < safeHeaders.length; i += 1) {
       const td = document.createElement('td');
       const cellInput = cells[i];
-      td.textContent = toText(cellInput);
+      const lines = getCellLines(cellInput);
+      if (lines && lines.length) {
+        td.textContent = '';
+        td.style.lineHeight = '1.25';
+        lines.forEach((line, idx) => {
+          const span = document.createElement('span');
+          span.textContent = toText(line?.text ?? '');
+          if (line?.color) span.style.color = String(line.color);
+          if (line?.bold) span.style.fontWeight = '700';
+          if (line?.size) span.style.fontSize = `${Number(line.size) || 12}px`;
+          td.appendChild(span);
+          if (idx < lines.length - 1) td.appendChild(document.createElement('br'));
+        });
+      } else {
+        td.textContent = toText(cellInput);
+      }
       td.style.padding = '7px 10px';
       td.style.border = `1px solid ${theme?.gridBorder || '#E5E7EB'}`;
       td.style.verticalAlign = 'top';
@@ -671,6 +785,7 @@ export async function exportTableToExcel({
     // 4) Data rows
     for (const rawRow of safeRows) {
       const row = ws.getRow(rowCursor);
+      let rowLineCount = 1;
       const cells = Array.isArray(rawRow) ? rawRow : [];
       for (let c = 1; c <= totalCols; c += 1) {
         const cell = row.getCell(c);
@@ -680,7 +795,13 @@ export async function exportTableToExcel({
         }
 
         const cellInput = cells[c - firstDataCol];
-        cell.value = toText(cellInput);
+        const rich = buildExcelRichText(cellInput);
+        if (rich) {
+          cell.value = { richText: rich.runs };
+          rowLineCount = Math.max(rowLineCount, rich.lineCount || 1);
+        } else {
+          cell.value = toText(cellInput);
+        }
 
         const tone = getCellTone(cellInput);
         const st = getAttendanceToneStyle(tone);
@@ -690,12 +811,17 @@ export async function exportTableToExcel({
             pattern: 'solid',
             fgColor: { argb: rgbToExcelArgb(parseCssColorToRgb(st.bg, { r: 255, g: 255, b: 255 })) },
           };
-          cell.font = {
-            ...(cell.font || {}),
-            bold: Boolean(st.bold),
-            color: { argb: rgbToExcelArgb(parseCssColorToRgb(st.fg, { r: 17, g: 24, b: 39 })) },
-          };
+          if (!rich) {
+            cell.font = {
+              ...(cell.font || {}),
+              bold: Boolean(st.bold),
+              color: { argb: rgbToExcelArgb(parseCssColorToRgb(st.fg, { r: 17, g: 24, b: 39 })) },
+            };
+          }
         }
+      }
+      if (rowLineCount > 1) {
+        row.height = Math.max(Number(row.height) || 18, rowLineCount * 14);
       }
       rowCursor += 1;
     }
@@ -733,7 +859,7 @@ export async function exportTableToExcel({
           right: { style: 'thin', color: { argb: excelTheme.borderArgb } },
         };
         if (rowNumber !== headerRowIndex) {
-          cell.alignment = { vertical: 'top', horizontal: hAlign, wrapText: false };
+          cell.alignment = { vertical: 'top', horizontal: hAlign, wrapText: true };
         }
       }
     });
@@ -833,6 +959,7 @@ export async function exportTableToPDF({
   orientation = 'landscape',
   headerImageSrc = '',
   tables = null,
+  renderAsImage = false,
 }) {
   const doc = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
 
@@ -958,7 +1085,9 @@ export async function exportTableToPDF({
     }
 
     const hasArabic = tableHasArabic(safeHeaders, safeRows);
-    if (!hasArabic) {
+    const hasRich = tableHasRichCells(safeHeaders, safeRows);
+    const preferImage = Boolean(renderAsImage || hasRich);
+    if (!hasArabic && !preferImage) {
       const buildAutoTableCell = (cellInput) => {
         const content = toText(cellInput);
         const tone = getCellTone(cellInput);
@@ -1005,7 +1134,7 @@ export async function exportTableToPDF({
       return;
     }
 
-    // Arabic-safe path: render using browser fonts (RTL), then embed as images.
+    // Render using browser fonts, then embed as images.
     // Use paged image rendering to avoid canvas size limits for tall tables.
     try {
       const pageW = doc.internal.pageSize.getWidth();

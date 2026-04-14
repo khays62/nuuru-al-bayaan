@@ -117,6 +117,32 @@ const normalizeBloodGroup = (value) => {
     return allowed.has(s) ? s : '';
 };
 
+const normalizeGenderInput = (value) => {
+    const s = String(value || '').trim().toLowerCase();
+    if (!s) return '';
+    if (['male', 'm'].includes(s)) return 'Male';
+    if (['female', 'f'].includes(s)) return 'Female';
+    return '';
+};
+
+const normalizeGuardianRelationshipInput = (value) => {
+    const s = String(value || '').trim().toLowerCase();
+    if (!s) return '';
+    if (['father'].includes(s)) return 'Father';
+    if (['mother'].includes(s)) return 'Mother';
+    if (['guardian'].includes(s)) return 'Guardian';
+    if (['other'].includes(s)) return 'Other';
+    return '';
+};
+
+const normalizeBooleanInput = (value) => {
+    const s = String(value ?? '').trim().toLowerCase();
+    if (!s) return null;
+    if (['true', 'yes', '1', 'y', 'somali'].includes(s)) return true;
+    if (['false', 'no', '0', 'n', 'not somali', 'not-somali', 'notsomali', 'non somali', 'non-somali', 'nonsomali'].includes(s)) return false;
+    return null;
+};
+
 const normalizeStudentStatusToUserStatus = (studentStatus) => {
     const s = String(studentStatus || '').trim().toLowerCase();
     return s === 'active' ? 'active' : 'inactive';
@@ -323,6 +349,7 @@ export const getStudents = async (req, res) => {
             { $project: {
                 _id: '$student._id',
                 studentId: '$student.studentId',
+                emisNumber: '$student.emisNumber',
                 fullName: '$student.fullName',
                 gender: '$student.gender',
                 admissionDate: '$student.admissionDate',
@@ -394,6 +421,7 @@ export const addStudent = async (req, res) => {
         idDocument,
         notes,
         contactNumber,
+        emisNumber,
         address,
         admissionDate,
         isSomali,
@@ -431,6 +459,7 @@ export const addStudent = async (req, res) => {
         const normalizedFullName = toTitleCaseWords(fullName);
         const normalizedMotherName = toTitleCaseWords(motherName);
         const normalizedGuardianName = toTitleCaseWords(guardianName);
+        const normalizedEmisNumber = String(emisNumber || '').trim();
         const normalizedBirthPlace = collapseWs(birthPlace);
         let dobDate;
         let admissionDateParsed;
@@ -512,10 +541,22 @@ export const addStudent = async (req, res) => {
 
         // Medical + ID doc normalization
         const mObj = (medical && typeof medical === 'object') ? medical : {};
-        const allergies = collapseWs(mObj.allergies);
-        const medicalConditions = collapseWs(mObj.medicalConditions);
-        const disabilityFlags = normalizeDisabilityFlags(mObj.disabilityFlags);
+        const hasAllergiesInput = normalizeBooleanInput(mObj.hasAllergies);
+        const hasMedicalConditionsInput = normalizeBooleanInput(mObj.hasMedicalConditions);
+        const hasDisabilityInput = normalizeBooleanInput(mObj.hasDisability);
+
+        const allergiesText = collapseWs(mObj.allergies);
+        const medicalConditionsText = collapseWs(mObj.medicalConditions);
+        let disabilityFlags = normalizeDisabilityFlags(mObj.disabilityFlags);
         const bloodGroup = normalizeBloodGroup(mObj.bloodGroup);
+
+        const hasAllergies = (hasAllergiesInput === null) ? Boolean(allergiesText) : hasAllergiesInput;
+        const hasMedicalConditions = (hasMedicalConditionsInput === null) ? Boolean(medicalConditionsText) : hasMedicalConditionsInput;
+        const hasDisability = (hasDisabilityInput === null) ? disabilityFlags.length > 0 : hasDisabilityInput;
+
+        const allergies = hasAllergies ? allergiesText : '';
+        const medicalConditions = hasMedicalConditions ? medicalConditionsText : '';
+        if (!hasDisability) disabilityFlags = [];
 
         const idObj = (idDocument && typeof idDocument === 'object') ? idDocument : {};
         const idType = collapseWs(idObj.idType);
@@ -587,7 +628,7 @@ export const addStudent = async (req, res) => {
                 studentEmail: normalizedStudentEmail,
                 transfer: { isTransfer: isTransferFlag, previousSchoolName: prevSchool, transferReason },
                 notes: collapseWs(notes),
-                medical: { allergies, medicalConditions, disabilityFlags, bloodGroup },
+                medical: { hasAllergies, hasMedicalConditions, hasDisability, allergies, medicalConditions, disabilityFlags, bloodGroup },
                 idDocument: { idType, idNumber, issuedBy, expiresAt },
                 address: String(address || effectiveNeighborhood || '').trim(),
                 isSomali: effectiveIsSomali,
@@ -595,6 +636,7 @@ export const addStudent = async (req, res) => {
                 residenceDistrictId: effectiveIsSomali ? effectiveDistrictId : '',
                 residenceNeighborhood: effectiveNeighborhood,
                 admissionDate: admissionDateParsed,
+                emisNumber: normalizedEmisNumber,
             });
 
             // Optional: photo can be attached on create via multipart/form-data (field: photo)
@@ -1115,6 +1157,7 @@ export const updateStudent = async (req, res) => {
             'medical',
             'idDocument',
             'notes',
+            'emisNumber',
             'address',
             'admissionDate',
             'status',
@@ -1157,6 +1200,10 @@ export const updateStudent = async (req, res) => {
         if ('birthPlace' in updates) {
             updates.birthPlace = collapseWs(updates.birthPlace);
             if (!updates.birthPlace) return res.status(400).json({ message: 'Birth place is required.' });
+        }
+
+        if ('emisNumber' in updates) {
+            updates.emisNumber = String(updates.emisNumber || '').trim();
         }
 
         if ('guardianRelationship' in updates) {
@@ -1239,11 +1286,31 @@ export const updateStudent = async (req, res) => {
             const incoming = (updates.medical && typeof updates.medical === 'object') ? updates.medical : {};
             const base = (current.medical && typeof current.medical === 'object') ? current.medical.toObject?.() || current.medical : {};
             const next = { ...base, ...incoming };
+            const hasAllergiesInput = normalizeBooleanInput(next.hasAllergies);
+            const hasMedicalConditionsInput = normalizeBooleanInput(next.hasMedicalConditions);
+            const hasDisabilityInput = normalizeBooleanInput(next.hasDisability);
+
+            const allergiesText = collapseWs(next.allergies);
+            const medicalConditionsText = collapseWs(next.medicalConditions);
+            let disabilityFlags = normalizeDisabilityFlags(next.disabilityFlags);
+            const bloodGroup = normalizeBloodGroup(next.bloodGroup);
+
+            const hasAllergies = (hasAllergiesInput === null) ? Boolean(allergiesText) : hasAllergiesInput;
+            const hasMedicalConditions = (hasMedicalConditionsInput === null) ? Boolean(medicalConditionsText) : hasMedicalConditionsInput;
+            const hasDisability = (hasDisabilityInput === null) ? disabilityFlags.length > 0 : hasDisabilityInput;
+
+            const allergies = hasAllergies ? allergiesText : '';
+            const medicalConditions = hasMedicalConditions ? medicalConditionsText : '';
+            if (!hasDisability) disabilityFlags = [];
+
             updates.medical = {
-                allergies: collapseWs(next.allergies),
-                medicalConditions: collapseWs(next.medicalConditions),
-                disabilityFlags: normalizeDisabilityFlags(next.disabilityFlags),
-                bloodGroup: normalizeBloodGroup(next.bloodGroup),
+                hasAllergies,
+                hasMedicalConditions,
+                hasDisability,
+                allergies,
+                medicalConditions,
+                disabilityFlags,
+                bloodGroup,
             };
         }
         if ('idDocument' in updates) {
@@ -1405,6 +1472,482 @@ export const updateStudent = async (req, res) => {
         }
         console.error('Update student error', err);
         res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Bulk import students from Excel template
+// @route   POST /api/students/import
+// @access  Private
+export const importStudents = async (req, res) => {
+    try {
+        const {
+            academicYearId,
+            gradeSectionId,
+            cohortId,
+            dryRun,
+            rows,
+        } = req.body || {};
+
+        if (!mongoose.isValidObjectId(academicYearId) || !mongoose.isValidObjectId(gradeSectionId)) {
+            return res.status(400).json({
+                message: 'academicYearId and gradeSectionId are required',
+                code: 'students.import.serverErrors.badRequest',
+            });
+        }
+
+        const inputRows = Array.isArray(rows) ? rows : [];
+        if (!inputRows.length) {
+            return res.status(400).json({
+                message: 'rows is required',
+                code: 'students.import.serverErrors.missingRows',
+            });
+        }
+
+        const cls = await GradeSection.findById(gradeSectionId).populate(['grade', 'shift']);
+        if (!cls) return res.status(404).json({ message: 'Section not found.' });
+
+        if (!mongoose.isValidObjectId(academicYearId)) return res.status(400).json({ message: 'Invalid academicYearId' });
+        const Cohort = (await import('../models/Cohort.js')).default;
+
+        let cohortDoc = null;
+        if (cohortId) {
+            if (!mongoose.isValidObjectId(cohortId)) return res.status(400).json({ message: 'Invalid cohortId' });
+            cohortDoc = await Cohort.findById(cohortId).lean();
+            if (!cohortDoc) return res.status(400).json({ message: 'Invalid cohortId' });
+        } else {
+            const candidates = await Cohort.find({ startAcademicYear: academicYearId, status: 'active' })
+                .sort({ orderNumber: -1, createdAt: -1 })
+                .limit(2)
+                .lean();
+            if (candidates.length === 1) {
+                cohortDoc = candidates[0];
+            } else {
+                return res.status(400).json({
+                    message: 'cohortId is required',
+                    code: 'students.import.serverErrors.cohortRequired',
+                });
+            }
+        }
+
+        const sectionCode = normalizeSectionLetter(cls.section);
+        if (!sectionCode) {
+            return res.status(400).json({ message: 'Invalid grade section letter; update the section to a single letter.' });
+        }
+
+        const errors = [];
+        const seen = new Set();
+
+        for (const r of inputRows) {
+            const rowIndex = Number(r?.excelRow || 0) || 0;
+            const fullNameRaw = String(r?.fullName || '').trim();
+            const motherNameRaw = String(r?.motherName || '').trim();
+            const genderRaw = String(r?.gender || '').trim();
+            const dobRaw = String(r?.dob || '').trim();
+            const birthPlaceRaw = String(r?.birthPlace || '').trim();
+            const emisNumberRaw = String(r?.emisNumber || '').trim();
+            const guardianNameRaw = String(r?.guardianName || '').trim();
+            const guardianRelationshipRaw = String(r?.guardianRelationship || '').trim();
+            const guardianPhone1Raw = String(r?.guardianPhone1 || '').trim();
+            const guardianPhone2Raw = String(r?.guardianPhone2 || '').trim();
+            const guardianEmailRaw = String(r?.guardianEmail || '').trim();
+            const studentPhoneRaw = String(r?.studentPhone || '').trim();
+            const studentEmailRaw = String(r?.studentEmail || '').trim();
+            const admissionDateRaw = String(r?.admissionDate || '').trim();
+            const regionIdRaw = String(r?.residenceRegionId || '').trim();
+            const districtIdRaw = String(r?.residenceDistrictId || '').trim();
+            const neighborhoodRaw = String(r?.residenceNeighborhood || '').trim();
+            const isSomaliRaw = String(r?.isSomali || '').trim();
+            const transferIsTransferRaw = String(r?.transferIsTransfer || '').trim();
+            const transferPreviousSchoolNameRaw = String(r?.transferPreviousSchoolName || '').trim();
+            const medicalAllergiesRaw = String(r?.medicalAllergies || '').trim();
+            const medicalConditionsRaw = String(r?.medicalConditions || '').trim();
+            const disabilityFlagsRaw = String(r?.disabilityFlags || '').trim();
+            const bloodGroupRaw = String(r?.bloodGroup || '').trim();
+            const idTypeRaw = String(r?.idType || '').trim();
+            const idNumberRaw = String(r?.idNumber || '').trim();
+            const idIssuedByRaw = String(r?.idIssuedBy || '').trim();
+            const idExpiresAtRaw = String(r?.idExpiresAt || '').trim();
+
+            const isSomaliParsed = normalizeBooleanInput(isSomaliRaw);
+            const effectiveIsSomali = (isSomaliParsed === null) ? true : isSomaliParsed;
+            if (isSomaliRaw && isSomaliParsed === null) {
+                errors.push({ type: 'field', field: 'isSomali', row: rowIndex, code: 'students.import.serverErrors.isSomaliInvalid', message: 'Is Somali must be Yes or No.' });
+            }
+
+            if (!fullNameRaw) {
+                errors.push({ type: 'field', field: 'fullName', row: rowIndex, code: 'students.import.serverErrors.fullNameRequired', message: 'Full Name is required.' });
+            }
+            if (!motherNameRaw) {
+                errors.push({ type: 'field', field: 'motherName', row: rowIndex, code: 'students.import.serverErrors.motherNameRequired', message: 'Mother Name is required.' });
+            }
+            if (!genderRaw) {
+                errors.push({ type: 'field', field: 'gender', row: rowIndex, code: 'students.import.serverErrors.genderRequired', message: 'Gender is required.' });
+            }
+            if (!dobRaw) {
+                errors.push({ type: 'field', field: 'dob', row: rowIndex, code: 'students.import.serverErrors.dobRequired', message: 'DOB is required.' });
+            }
+            if (!birthPlaceRaw) {
+                errors.push({ type: 'field', field: 'birthPlace', row: rowIndex, code: 'students.import.serverErrors.birthPlaceRequired', message: 'Birth place is required.' });
+            }
+            if (!guardianNameRaw) {
+                errors.push({ type: 'field', field: 'guardianName', row: rowIndex, code: 'students.import.serverErrors.guardianNameRequired', message: 'Guardian name is required.' });
+            }
+            if (!guardianRelationshipRaw) {
+                errors.push({ type: 'field', field: 'guardianRelationship', row: rowIndex, code: 'students.import.serverErrors.guardianRelationshipRequired', message: 'Guardian relationship is required.' });
+            }
+            if (!guardianPhone1Raw) {
+                errors.push({ type: 'field', field: 'guardianPhone1', row: rowIndex, code: 'students.import.serverErrors.guardianPhone1Required', message: 'Guardian phone (primary) is required.' });
+            }
+            if (!admissionDateRaw) {
+                errors.push({ type: 'field', field: 'admissionDate', row: rowIndex, code: 'students.import.serverErrors.admissionDateRequired', message: 'Admission Date is required.' });
+            }
+            if (effectiveIsSomali && !regionIdRaw) {
+                errors.push({ type: 'field', field: 'residenceRegionId', row: rowIndex, code: 'students.import.serverErrors.regionRequired', message: 'Region is required.' });
+            }
+            if (effectiveIsSomali && !districtIdRaw) {
+                errors.push({ type: 'field', field: 'residenceDistrictId', row: rowIndex, code: 'students.import.serverErrors.districtRequired', message: 'District is required.' });
+            }
+            if (!neighborhoodRaw) {
+                errors.push({ type: 'field', field: 'residenceNeighborhood', row: rowIndex, code: 'students.import.serverErrors.neighborhoodRequired', message: 'Neighborhood is required.' });
+            }
+
+            const transferFlag = normalizeBooleanInput(transferIsTransferRaw);
+            const effectiveTransfer = (transferFlag === null) ? false : transferFlag;
+            if (transferIsTransferRaw && transferFlag === null) {
+                errors.push({ type: 'field', field: 'transferIsTransfer', row: rowIndex, code: 'students.import.serverErrors.transferFlagInvalid', message: 'Transfer Student must be Yes or No.' });
+            }
+            if (effectiveTransfer && !transferPreviousSchoolNameRaw) {
+                errors.push({ type: 'field', field: 'transferPreviousSchoolName', row: rowIndex, code: 'students.import.serverErrors.transferPreviousSchoolRequired', message: 'Previous school name is required for transfer students.' });
+            }
+
+            const allergiesFlag = normalizeBooleanInput(medicalAllergiesRaw);
+            if (medicalAllergiesRaw && allergiesFlag === null) {
+                errors.push({ type: 'field', field: 'medicalAllergies', row: rowIndex, code: 'students.import.serverErrors.medicalAllergiesInvalid', message: 'Allergies must be Yes or No.' });
+            }
+            const conditionsFlag = normalizeBooleanInput(medicalConditionsRaw);
+            if (medicalConditionsRaw && conditionsFlag === null) {
+                errors.push({ type: 'field', field: 'medicalConditions', row: rowIndex, code: 'students.import.serverErrors.medicalConditionsInvalid', message: 'Medical Conditions must be Yes or No.' });
+            }
+            const disabilityFlag = normalizeBooleanInput(disabilityFlagsRaw);
+            if (disabilityFlagsRaw && disabilityFlag === null) {
+                errors.push({ type: 'field', field: 'disabilityFlags', row: rowIndex, code: 'students.import.serverErrors.disabilityFlagsInvalid', message: 'Disability Flags must be Yes or No.' });
+            }
+
+            const normalizedFullName = toTitleCaseWords(fullNameRaw);
+            const normalizedMotherName = toTitleCaseWords(motherNameRaw);
+            const normalizedGuardianName = toTitleCaseWords(guardianNameRaw);
+            if (normalizedFullName && countWords(normalizedFullName) !== 4) {
+                errors.push({ type: 'field', field: 'fullName', row: rowIndex, code: 'students.import.serverErrors.fullNameFourNames', message: 'Full Name must contain exactly 4 names.' });
+            }
+            if (normalizedMotherName && countWords(normalizedMotherName) !== 4) {
+                errors.push({ type: 'field', field: 'motherName', row: rowIndex, code: 'students.import.serverErrors.motherNameFourNames', message: 'Mother Name must contain exactly 4 names.' });
+            }
+            if (normalizedGuardianName && countWords(normalizedGuardianName) !== 4) {
+                errors.push({ type: 'field', field: 'guardianName', row: rowIndex, code: 'students.import.serverErrors.guardianNameFourNames', message: 'Guardian name must contain exactly 4 names.' });
+            }
+
+            const genderNorm = normalizeGenderInput(genderRaw) || genderRaw;
+            if (!['Male', 'Female'].includes(String(genderNorm || ''))) {
+                errors.push({ type: 'field', field: 'gender', row: rowIndex, code: 'students.import.serverErrors.genderInvalid', message: 'Invalid gender.' });
+            }
+
+            const relNorm = normalizeGuardianRelationshipInput(guardianRelationshipRaw) || guardianRelationshipRaw;
+            if (!['Father', 'Mother', 'Guardian', 'Other'].includes(String(relNorm || ''))) {
+                errors.push({ type: 'field', field: 'guardianRelationship', row: rowIndex, code: 'students.import.serverErrors.guardianRelationshipInvalid', message: 'Invalid guardian relationship.' });
+            }
+
+            if (guardianPhone1Raw && !isValidSomaliaPhone(guardianPhone1Raw)) {
+                errors.push({ type: 'field', field: 'guardianPhone1', row: rowIndex, code: 'students.import.serverErrors.guardianPhone1Invalid', message: 'Invalid guardian phone number.' });
+            }
+            if (guardianPhone2Raw && !isValidSomaliaPhone(guardianPhone2Raw)) {
+                errors.push({ type: 'field', field: 'guardianPhone2', row: rowIndex, code: 'students.import.serverErrors.guardianPhone2Invalid', message: 'Invalid guardian phone number (secondary).' });
+            }
+            if (studentPhoneRaw && !isValidSomaliaPhone(studentPhoneRaw)) {
+                errors.push({ type: 'field', field: 'studentPhone', row: rowIndex, code: 'students.import.serverErrors.studentPhoneInvalid', message: 'Invalid student phone number.' });
+            }
+
+            if (!isValidEmailBasic(guardianEmailRaw)) {
+                errors.push({ type: 'field', field: 'guardianEmail', row: rowIndex, code: 'students.import.serverErrors.guardianEmailInvalid', message: 'Invalid guardian email.' });
+            }
+            if (!isValidEmailBasic(studentEmailRaw)) {
+                errors.push({ type: 'field', field: 'studentEmail', row: rowIndex, code: 'students.import.serverErrors.studentEmailInvalid', message: 'Invalid student email.' });
+            }
+
+            if (effectiveIsSomali && regionIdRaw && !isValidSomaliaRegionId(regionIdRaw)) {
+                errors.push({ type: 'field', field: 'residenceRegionId', row: rowIndex, code: 'students.import.serverErrors.regionInvalid', message: 'Invalid region.' });
+            }
+            if (effectiveIsSomali && regionIdRaw && districtIdRaw && !isValidSomaliaDistrictId(regionIdRaw, districtIdRaw)) {
+                errors.push({ type: 'field', field: 'residenceDistrictId', row: rowIndex, code: 'students.import.serverErrors.districtInvalid', message: 'Invalid district.' });
+            }
+
+            const normalizedBloodGroup = normalizeBloodGroup(bloodGroupRaw);
+            if (bloodGroupRaw && !normalizedBloodGroup) {
+                errors.push({ type: 'field', field: 'bloodGroup', row: rowIndex, code: 'students.import.serverErrors.bloodGroupInvalid', message: 'Invalid blood group.' });
+            }
+
+            const anyIdProvided = Boolean(idTypeRaw || idNumberRaw || idIssuedByRaw || idExpiresAtRaw);
+            if (anyIdProvided && (!idTypeRaw || !idNumberRaw)) {
+                errors.push({ type: 'field', field: 'idType', row: rowIndex, code: 'students.import.serverErrors.idDocumentRequired', message: 'ID Type and ID Number are required when providing ID document details.' });
+            }
+            if (idExpiresAtRaw) {
+                try {
+                    parseDateOnlyOrThrow(idExpiresAtRaw, 'idDocument.expiresAt');
+                } catch {
+                    errors.push({ type: 'field', field: 'idExpiresAt', row: rowIndex, code: 'students.import.serverErrors.idDocumentExpiryInvalid', message: 'Invalid id document expiry date.' });
+                }
+            }
+
+            try {
+                if (dobRaw) parseDateOnlyOrThrow(dobRaw, 'dob');
+            } catch {
+                errors.push({ type: 'field', field: 'dob', row: rowIndex, code: 'students.import.serverErrors.dobInvalid', message: 'Invalid dob.' });
+            }
+            try {
+                if (admissionDateRaw) parseDateOnlyOrThrow(admissionDateRaw, 'admissionDate');
+            } catch {
+                errors.push({ type: 'field', field: 'admissionDate', row: rowIndex, code: 'students.import.serverErrors.admissionDateInvalid', message: 'Invalid admissionDate.' });
+            }
+
+            const dedupeKey = `${normalizedFullName.toLowerCase()}|${normalizedMotherName.toLowerCase()}|${dobRaw}`;
+            if (normalizedFullName && normalizedMotherName && dobRaw) {
+                if (seen.has(dedupeKey)) {
+                    errors.push({ type: 'row', field: 'fullName', row: rowIndex, code: 'students.import.serverErrors.duplicateRow', message: 'Duplicate student row in template.' });
+                } else {
+                    seen.add(dedupeKey);
+                }
+            }
+
+            void emisNumberRaw;
+        }
+
+        if (errors.length) {
+            return res.status(400).json({
+                message: 'Import validation failed',
+                code: 'students.import.serverErrors.validationFailed',
+                errors,
+            });
+        }
+
+        const summary = {
+            rows: inputRows.length,
+            created: 0,
+        };
+
+        if (Boolean(dryRun)) {
+            return res.json({
+                message: 'Validated',
+                code: 'students.import.serverMessages.validated',
+                summary,
+            });
+        }
+
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        const createdIds = [];
+        try {
+            for (const r of inputRows) {
+                const normalizedFullName = toTitleCaseWords(r.fullName);
+                const normalizedMotherName = toTitleCaseWords(r.motherName);
+                const normalizedGuardianName = toTitleCaseWords(r.guardianName);
+                const normalizedBirthPlace = collapseWs(r.birthPlace);
+
+                const dobDate = parseDateOnlyOrThrow(r.dob, 'dob');
+                const admissionDateParsed = parseDateOnlyOrThrow(r.admissionDate, 'admissionDate');
+
+                const genderNorm = normalizeGenderInput(r.gender) || r.gender;
+                const relNorm = normalizeGuardianRelationshipInput(r.guardianRelationship) || r.guardianRelationship;
+
+                const normalizedGuardianPhone1 = normalizeSomaliaPhone(String(r.guardianPhone1 || '').trim());
+                const normalizedGuardianPhone2 = r.guardianPhone2 ? normalizeSomaliaPhone(String(r.guardianPhone2 || '').trim()) : '';
+                const normalizedStudentPhone = r.studentPhone ? normalizeSomaliaPhone(String(r.studentPhone || '').trim()) : '';
+
+                const normalizedGuardianEmail = String(r.guardianEmail || '').trim().toLowerCase();
+                const normalizedStudentEmail = String(r.studentEmail || '').trim().toLowerCase();
+
+                const isSomaliParsed = normalizeBooleanInput(r.isSomali);
+                const effectiveIsSomali = (isSomaliParsed === null) ? true : isSomaliParsed;
+
+                const transferFlag = normalizeBooleanInput(r.transferIsTransfer);
+                const isTransfer = (transferFlag === null) ? false : transferFlag;
+                const transferPreviousSchoolName = collapseWs(r.transferPreviousSchoolName);
+                const transferReason = collapseWs(r.transferReason);
+
+                const allergiesFlag = normalizeBooleanInput(r.medicalAllergies);
+                const medicalConditionsFlag = normalizeBooleanInput(r.medicalConditions);
+                const disabilityFlag = normalizeBooleanInput(r.disabilityFlags);
+
+                const hasAllergies = allergiesFlag === true;
+                const hasMedicalConditions = medicalConditionsFlag === true;
+                const hasDisability = disabilityFlag === true;
+
+                const allergies = '';
+                const medicalConditions = '';
+                const disabilityFlags = [];
+                const bloodGroup = normalizeBloodGroup(r.bloodGroup);
+
+                const idType = collapseWs(r.idType);
+                const idNumber = collapseWs(r.idNumber);
+                const issuedBy = collapseWs(r.idIssuedBy);
+                let expiresAt = null;
+                if (r.idExpiresAt) {
+                    expiresAt = parseDateOnlyOrThrow(r.idExpiresAt, 'idDocument.expiresAt');
+                }
+
+                const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const nameTokens = collapseWs(normalizedFullName).split(' ').filter(Boolean).map(escapeRegex);
+                const namePattern = nameTokens.join('\\s+');
+                const nameRegex = new RegExp(`^${namePattern}$`, 'i');
+
+                const motherTokens = collapseWs(normalizedMotherName).split(' ').filter(Boolean).map(escapeRegex);
+                const motherPattern = motherTokens.join('\\s+');
+                const motherRegex = new RegExp(`^${motherPattern}$`, 'i');
+
+                const { start: dobStart, end: dobEnd } = dayRangeUtc(dobDate);
+                const existingPerson = await Student.findOne({
+                    fullName: nameRegex,
+                    motherName: motherRegex,
+                    dob: { $gte: dobStart, $lt: dobEnd }
+                }).session(session);
+                if (existingPerson) {
+                    await session.abortTransaction();
+                    return res.status(409).json({
+                        message: 'This person already exists in the system. Please use “Enroll existing student” instead of creating a new record.',
+                        code: 'students.import.serverErrors.duplicatePerson',
+                    });
+                }
+
+                const studentDoc = new Student({
+                    fullName: normalizedFullName,
+                    motherName: normalizedMotherName,
+                    gender: genderNorm,
+                    dob: dobDate,
+                    birthPlace: normalizedBirthPlace,
+                    guardianName: normalizedGuardianName,
+                    guardianRelationship: relNorm,
+                    contactNumber: normalizedGuardianPhone1,
+                    guardianPhone1: normalizedGuardianPhone1,
+                    guardianPhone2: normalizedGuardianPhone2,
+                    guardianEmail: normalizedGuardianEmail,
+                    studentPhone: normalizedStudentPhone,
+                    studentEmail: normalizedStudentEmail,
+                    transfer: { isTransfer, previousSchoolName: transferPreviousSchoolName, transferReason },
+                    notes: collapseWs(r.notes),
+                    medical: { hasAllergies, hasMedicalConditions, hasDisability, allergies, medicalConditions, disabilityFlags, bloodGroup },
+                    idDocument: { idType, idNumber, issuedBy, expiresAt },
+                    address: String(r.residenceNeighborhood || '').trim(),
+                    isSomali: effectiveIsSomali,
+                    residenceRegionId: effectiveIsSomali ? String(r.residenceRegionId || '').trim() : '',
+                    residenceDistrictId: effectiveIsSomali ? String(r.residenceDistrictId || '').trim() : '',
+                    residenceNeighborhood: String(r.residenceNeighborhood || '').trim(),
+                    admissionDate: admissionDateParsed,
+                    emisNumber: String(r.emisNumber || '').trim(),
+                });
+
+                await studentDoc.save({ session });
+
+                await Enrollment.create([{
+                    student: studentDoc._id,
+                    gradeSection: cls._id,
+                    academicYear: academicYearId,
+                    grade: cls.grade._id,
+                    shift: cls.shift._id,
+                    cohort: cohortDoc?._id || undefined,
+                    status: 'active',
+                    joinedAt: admissionDateParsed,
+                }], { session });
+
+                try {
+                    if (cohortDoc?._id) {
+                        const cohortName = String(cohortDoc?.name || '').trim();
+                        const prefix = getCohortPrefix(cohortName) || 'DU';
+                        let orderStr = '';
+                        const orderValue = Number(cohortDoc?.orderNumber || 0);
+                        if (Number.isFinite(orderValue) && orderValue > 0) {
+                            orderStr = String(orderValue);
+                        } else {
+                            const numMatch = (cohortName.match(/\d+/) || [''])[0];
+                            orderStr = numMatch || '1';
+                        }
+
+                        await ensureGlobalStudentCounter(session);
+                        const ctr = await Counter.findOneAndUpdate(
+                            { key: STUDENT_GLOBAL_COUNTER_KEY },
+                            { $inc: { seq: 1 } },
+                            { new: true, upsert: true, session }
+                        );
+                        const seq = String(ctr?.seq || 1).padStart(2, '0');
+                        const code = `${prefix}${orderStr}${sectionCode}${seq}`;
+                        studentDoc.studentId = code;
+                        await studentDoc.save({ session });
+                    }
+                } catch (idErr) {
+                    console.warn('Cohort-coded studentId generation warning:', idErr);
+                }
+
+                try {
+                    const DEFAULT_STUDENT_PASSWORD = getDefaultInitialPassword();
+                    const sid = String(studentDoc.studentId || '').trim();
+                    if (sid) {
+                        const conflict = await User.exists({ username: sid }).session(session);
+                        if (conflict) {
+                            await session.abortTransaction();
+                            session.endSession();
+                            return res.status(409).json({ message: 'Student login already exists (username conflict).' });
+                        }
+
+                        const hashed = await bcrypt.hash(DEFAULT_STUDENT_PASSWORD, 10);
+                        await User.create([{
+                            fullName: studentDoc.fullName,
+                            username: sid,
+                            password: hashed,
+                            role: 'student',
+                            studentRef: studentDoc._id,
+                            mustChangePassword: true,
+                            status: normalizeStudentStatusToUserStatus(studentDoc.status),
+                        }], { session });
+                    }
+                } catch (userErr) {
+                    await session.abortTransaction();
+                    session.endSession();
+                    console.error('Create student User login failed:', userErr);
+                    if (String(userErr?.message || '').includes('DEFAULT_INITIAL_PASSWORD')) {
+                        return res.status(500).json({ message: 'Missing DEFAULT_INITIAL_PASSWORD (set it in backend/.env)' });
+                    }
+                    return res.status(500).json({ message: 'Failed to create student login account' });
+                }
+
+                createdIds.push(String(studentDoc._id));
+            }
+
+            await session.commitTransaction();
+            session.endSession();
+
+            summary.created = createdIds.length;
+
+            publishRealtime({ type: 'students:changed', ts: Date.now() });
+            publishRealtime({ type: 'users:changed', ts: Date.now() });
+
+            return res.json({
+                message: 'Imported',
+                code: 'students.import.serverMessages.imported',
+                summary,
+            });
+        } catch (err) {
+            await session.abortTransaction();
+            session.endSession();
+            console.error('importStudents error', err);
+            return res.status(500).json({
+                message: 'Server Error',
+                code: 'students.import.serverErrors.serverError',
+            });
+        }
+    } catch (err) {
+        console.error('importStudents error', err);
+        return res.status(500).json({
+            message: 'Server Error',
+            code: 'students.import.serverErrors.serverError',
+        });
     }
 };
 

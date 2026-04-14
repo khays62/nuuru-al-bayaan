@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useI18n } from '../../../i18n/useI18n';
+import { buildSubjectColorMap, getSubjectTextColor, toShortTeacherName } from '../utils/slotFormatters';
 
 const DND_SLOT_MIME = 'text/x-timetable-slot-id';
 
@@ -40,6 +41,16 @@ export default function TimetableGrid({
     if (!byDay.has(d)) continue; // show only selected days
     byDay.get(d).push(s);
   }
+
+  const subjectColorMap = useMemo(() => {
+    const names = [];
+    for (const s of slots) {
+      if (s?.isBreak) continue;
+      const name = String(s?.subject?.subjectName || '').trim();
+      if (name) names.push(name);
+    }
+    return buildSubjectColorMap(names);
+  }, [slots]);
 
   const findSlotForCell = (dayIdx, period) => {
     const list = byDay.get(dayIdx) || [];
@@ -152,8 +163,15 @@ export default function TimetableGrid({
                       <div className="text-xs text-(--nb-color-muted)">{t('timetable.grid.break')}</div>
                     ) : (
                       <>
-                        <div className="text-sm font-medium">{cellSlot.subject?.subjectName || '-'}</div>
-                        <div className="text-xs text-(--nb-color-muted)">{cellSlot.teacher?.fullName || '-'}{cellSlot.room ? ` - ${t('common.room')} ${cellSlot.room}` : ''}</div>
+                        <div
+                          className="text-sm font-bold"
+                          style={{ color: getSubjectTextColor(cellSlot.subject?.subjectName, subjectColorMap) || undefined }}
+                        >
+                          {cellSlot.subject?.subjectName || '-'}
+                        </div>
+                        <div className="text-[10px] text-(--nb-color-muted) leading-snug">
+                          {toShortTeacherName(cellSlot.teacher?.fullName) || '-'}{cellSlot.room ? ` - ${t('common.room')} ${cellSlot.room}` : ''}
+                        </div>
                       </>
                     )}
                   </div>

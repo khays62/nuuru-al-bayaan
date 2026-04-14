@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Plus, Printer, RotateCcw } from 'lucide-react';
+import { Download, Plus, Printer, RotateCcw, Upload } from 'lucide-react';
 import StudentTable from '../components/StudentTable';
 import StudentForm from '../components/StudentForm';
+import StudentImportExcelModal from '../components/StudentImportExcelModal.jsx';
+import { STUDENT_IMPORT_TEMPLATE_FIELDS, getTemplateHeaderLabel } from '../importTemplateConfig.js';
 import Modal from '../../../shared/components/ui/Modal.jsx';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -40,11 +42,12 @@ import { useI18n } from '../../../i18n/useI18n';
 import { useAuth } from '../../../auth/AuthContext';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { studentKeys } from '../queryKeys';
+import { SOMALIA_REGIONS, SOMALIA_DISTRICTS_BY_REGION } from '../../../shared/data/somaliaAdminDivisions.js';
 
 // Student listing page using reusable entity list hook + pagination controls
 export default function StudentPage() {
     const { auth, hasPermission } = useAuth();
-    const { t } = useI18n();
+    const { t, lang, isRTL } = useI18n();
     const queryClient = useQueryClient();
     const isAdmin = String(auth?.user?.role || '').toLowerCase() === 'admin';
     const canAddStudent = isAdmin || hasPermission('students', 'add');
@@ -53,9 +56,11 @@ export default function StudentPage() {
     const canDownloadStudents = isAdmin || hasPermission('students', 'download');
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImportOpen, setIsImportOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
     const [loadingEdit, setLoadingEdit] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [downloadingTemplate, setDownloadingTemplate] = useState(false);
     const [createFormKey, setCreateFormKey] = useState(0);
     const [gradeSectionFilter, setGradeSectionFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
@@ -265,10 +270,10 @@ export default function StudentPage() {
     };
     // ------------------------------------------------------------
     // Edit Flow Optimization:
-    //  1. Furo modal isla markiiba (instant UX) halkii aan ka sugi lahayn profile fetch.
-    //  2. Ku soo bandhig xogta liiska (basic) si user u arko form.
-    //  3. Kadib si asyncronous ah u cusboonaysii profile dhammeystiran marka la soo helo.
-    //  4. Isticmaal cache ku saleysan memory si edit mar labaad ah u deg degsado.
+    //  1. Open the modal immediately (instant UX) instead of waiting for profile fetch.
+    //  2. Show basic list data so the user can see the form.
+    //  3. Update with the full profile asynchronously when it arrives.
+    //  4. Use cache-based memory so repeat edits are faster.
     // ------------------------------------------------------------
     const handleEdit = async (student) => {
         if (!canEditStudent) {
@@ -407,6 +412,15 @@ export default function StudentPage() {
     };
 
     const canExport = Boolean(canDownloadStudents && !isLoading && Array.isArray(students) && students.length > 0);
+    const importFiltersReady = Boolean(yearFilter && gradeFilter && shiftFilter && gradeSectionFilter);
+    const importParams = useMemo(() => ({
+        academicYearId: yearFilter,
+        gradeSectionId: gradeSectionFilter,
+        cohortId,
+        gradeId: gradeFilter,
+        shiftId: shiftFilter,
+    }), [yearFilter, gradeSectionFilter, cohortId, gradeFilter, shiftFilter]);
+
     const buildExportPayload = useCallback(async () => {
         if (!canExport) return null;
 
@@ -424,6 +438,7 @@ export default function StudentPage() {
 
         const cols = [
             { key: 'studentId', label: t('students.table.columns.studentId'), get: (st) => st.studentId || '' },
+            { key: 'emisNumber', label: t('students.table.columns.emisNumber'), get: (st) => st.emisNumber || '' },
             { key: 'fullName', label: t('students.table.columns.fullName'), get: (st) => st.fullName || '' },
             { key: 'gender', label: t('students.table.columns.gender'), get: (st) => st.gender || '' },
             { key: 'grade', label: t('students.table.columns.grade'), get: (st) => st.grade || '' },
@@ -462,6 +477,213 @@ export default function StudentPage() {
             rows,
         };
     }, [canExport, students, sections, gradeSectionFilter, cohortId, yearFilter, gradeFilter, shiftFilter, statusFilter, years, grades, shifts, t]);
+
+    const ensureImportFilters = () => {
+        if (!importFiltersReady) {
+            toast.error(t('students.import.errors.selectFiltersFirst'));
+            return false;
+        }
+        return true;
+    };
+
+    const safeFilePart = (s) => String(s || '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^\p{L}\p{N}_-]+/gu, '')
+        .slice(0, 50);
+
+    const downloadStudentTemplate = async () => {
+        if (!canAddStudent) {
+            toast.error(t('students.table.permissions.noAdd'));
+            return;
+        }
+        if (!ensureImportFilters()) return;
+        if (downloadingTemplate) return;
+
+        setDownloadingTemplate(true);
+        try {
+            const ExcelJS = (await import('exceljs')).default;
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'Nuuru Al-Bayaan';
+            wb.created = new Date();
+
+            const ws = wb.addWorksheet('Students');
+            const headers = STUDENT_IMPORT_TEMPLATE_FIELDS.map((h) => getTemplateHeaderLabel(h, lang));
+            ws.addRow(headers);
+            ws.getRow(1).font = { bold: true };
+            ws.views = [{ state: 'frozen', ySplit: 1, rightToLeft: Boolean(isRTL) }];
+            ws.columns = headers.map(() => ({ width: 22 }));
+
+            const maxRows = 500;
+            const colIndexByKey = new Map();
+            STUDENT_IMPORT_TEMPLATE_FIELDS.forEach((field, idx) => {
+                colIndexByKey.set(field.key, idx + 1);
+            });
+
+            const listSheet = wb.addWorksheet('_lists');
+            listSheet.state = 'veryHidden';
+            listSheet.views = [{ rightToLeft: Boolean(isRTL) }];
+
+            const toColumnLetter = (n) => {
+                let num = Number(n || 0);
+                let out = '';
+                while (num > 0) {
+                    const rem = (num - 1) % 26;
+                    out = String.fromCharCode(65 + rem) + out;
+                    num = Math.floor((num - 1) / 26);
+                }
+                return out || 'A';
+            };
+
+            const uniqueValues = (arr) => Array.from(new Set((arr || []).filter(Boolean)));
+
+            const writeListColumn = (colIndex, values) => {
+                const clean = uniqueValues(values);
+                clean.forEach((value, idx) => {
+                    listSheet.getCell(idx + 1, colIndex).value = value;
+                });
+                const colLetter = toColumnLetter(colIndex);
+                return `'${listSheet.name}'!$${colLetter}$1:$${colLetter}$${Math.max(clean.length, 1)}`;
+            };
+
+            const applyListValidation = (colIndex, range) => {
+                if (!colIndex) return;
+                for (let row = 2; row <= maxRows; row += 1) {
+                    ws.getCell(row, colIndex).dataValidation = {
+                        type: 'list',
+                        allowBlank: true,
+                        formulae: [range],
+                        showErrorMessage: false,
+                    };
+                }
+            };
+
+            const applyDateValidation = (colIndex) => {
+                if (!colIndex) return;
+                ws.getColumn(colIndex).numFmt = 'yyyy-mm-dd';
+                for (let row = 2; row <= maxRows; row += 1) {
+                    ws.getCell(row, colIndex).dataValidation = {
+                        type: 'date',
+                        operator: 'between',
+                        allowBlank: true,
+                        formulae: [new Date(1900, 0, 1), new Date(2100, 11, 31)],
+                    };
+                }
+            };
+
+            const yesNoList = [
+                t('common.yes', { defaultValue: 'Yes' }),
+                t('common.no', { defaultValue: 'No' }),
+            ];
+            const genderList = [
+                t('students.form.male', { defaultValue: 'Male' }),
+                t('students.form.female', { defaultValue: 'Female' }),
+            ];
+            const guardianRelList = [
+                t('students.form.relationships.father', { defaultValue: 'Father' }),
+                t('students.form.relationships.mother', { defaultValue: 'Mother' }),
+                t('students.form.relationships.guardian', { defaultValue: 'Guardian' }),
+                t('students.form.relationships.other', { defaultValue: 'Other' }),
+            ];
+            const nationalityList = [
+                t('students.address.nationality.somali', { defaultValue: 'Somali' }),
+                t('students.address.nationality.notSomali', { defaultValue: 'Not Somali' }),
+            ];
+            const idTypeList = [
+                t('students.form.idDocument.types.nationalId', { defaultValue: 'National ID' }),
+                t('students.form.idDocument.types.passport', { defaultValue: 'Passport' }),
+                t('students.form.idDocument.types.birthCertificate', { defaultValue: 'Birth Certificate' }),
+                t('students.form.idDocument.types.other', { defaultValue: 'Other' }),
+            ];
+            const bloodGroupList = ['A+','A-','B+','B-','AB+','AB-','O+','O-'];
+
+            const langKey = String(lang || 'en').toLowerCase().startsWith('ar')
+                ? 'ar'
+                : (String(lang || 'en').toLowerCase().startsWith('so') ? 'so' : 'en');
+            const regionList = uniqueValues(
+                SOMALIA_REGIONS.map((r) => r?.label?.[langKey] || r?.label?.en)
+            );
+
+            const districtRows = Object.values(SOMALIA_DISTRICTS_BY_REGION || {}).flat();
+            const districtList = uniqueValues(
+                districtRows.map((d) => d?.label?.[langKey] || d?.label?.en)
+            );
+
+            const yesNoRange = writeListColumn(1, yesNoList);
+            const genderRange = writeListColumn(2, genderList);
+            const guardianRelRange = writeListColumn(3, guardianRelList);
+            const nationalityRange = writeListColumn(4, nationalityList);
+            const idTypeRange = writeListColumn(5, idTypeList);
+            const bloodGroupRange = writeListColumn(6, bloodGroupList);
+            const regionRange = writeListColumn(7, regionList);
+            const districtRange = writeListColumn(8, districtList);
+
+            applyListValidation(colIndexByKey.get('gender'), genderRange);
+            applyDateValidation(colIndexByKey.get('dob'));
+            applyDateValidation(colIndexByKey.get('admissionDate'));
+            applyListValidation(colIndexByKey.get('guardianRelationship'), guardianRelRange);
+            applyListValidation(colIndexByKey.get('isSomali'), nationalityRange);
+            applyListValidation(colIndexByKey.get('residenceRegionId'), regionRange);
+            applyListValidation(colIndexByKey.get('residenceDistrictId'), districtRange);
+            applyListValidation(colIndexByKey.get('idType'), idTypeRange);
+            applyDateValidation(colIndexByKey.get('idExpiresAt'));
+            applyListValidation(colIndexByKey.get('medicalAllergies'), yesNoRange);
+            applyListValidation(colIndexByKey.get('medicalConditions'), yesNoRange);
+            applyListValidation(colIndexByKey.get('disabilityFlags'), yesNoRange);
+            applyListValidation(colIndexByKey.get('transferIsTransfer'), yesNoRange);
+            applyListValidation(colIndexByKey.get('bloodGroup'), bloodGroupRange);
+
+            const gs = (sections || []).find((s) => String(s._id) === String(gradeSectionFilter));
+            const gradeName = grades.find((g) => String(g._id) === String(gradeFilter))?.gradeName || '';
+            const shiftName = shifts.find((s) => String(s._id) === String(shiftFilter))?.shiftName || '';
+            const secName = gs?.section ? `${t('students.export.sectionPrefix')} ${gs.section}` : '';
+
+            const meta = wb.addWorksheet('_meta');
+            meta.addRow(['academicYearId', String(yearFilter || '')]);
+            meta.addRow(['gradeSectionId', String(gradeSectionFilter || '')]);
+            meta.addRow(['cohortId', String(cohortId || '')]);
+            meta.addRow(['gradeId', String(gradeFilter || '')]);
+            meta.addRow(['shiftId', String(shiftFilter || '')]);
+            meta.addRow(['gradeName', String(gradeName || '')]);
+            meta.addRow(['shiftName', String(shiftName || '')]);
+            meta.addRow(['section', String(secName || '')]);
+            meta.addRow(['generatedAt', new Date().toISOString()]);
+            meta.state = 'veryHidden';
+
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const parts = [
+                'students_template',
+                safeFilePart(gradeName) || safeFilePart(gradeFilter),
+                safeFilePart(shiftName) || safeFilePart(shiftFilter),
+                safeFilePart(secName) || safeFilePart(gradeSectionFilter),
+            ].filter(Boolean);
+            a.download = `${parts.join('_')}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Template download failed', e);
+            toast.error(e?.message || t('common.error', { defaultValue: 'Error' }));
+        } finally {
+            setDownloadingTemplate(false);
+        }
+    };
+
+    const openImportModal = () => {
+        if (!canAddStudent) {
+            toast.error(t('students.table.permissions.noAdd'));
+            return;
+        }
+        if (!ensureImportFilters()) return;
+        setIsImportOpen(true);
+    };
 
     const handleReset = () => {
         setYearFilter('');
@@ -595,21 +817,43 @@ export default function StudentPage() {
                         </FilterRow>
                     </div>
 
-                    {/* Row 2: Add button (left) + Actions (right) */}
-                    <div className="w-full flex items-center justify-between gap-2 flex-wrap">
-                        {canAddStudent && (
-                            <Button
-                                variant="brand"
-                                size="lg"
-                                onClick={handleAddNew}
-                                icon={<Plus size={20} />}
+                    {/* Row 2: Add + Import (left) + Actions (right) */}
+                    <div className="w-full flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full lg:w-auto">
+                            {canAddStudent && (
+                                <Button
+                                    variant="brand"
+                                    size="lg"
+                                    onClick={handleAddNew}
+                                    icon={<Plus size={20} />}
+                                    className="w-full sm:w-auto justify-center"
+                                >
+                                    {t('students.addNew')}
+                                </Button>
+                            )}
+                            <ActionButton
+                                variant="outline"
+                                onClick={downloadStudentTemplate}
+                                disabled={!importFiltersReady || downloadingTemplate}
+                                icon={<Download size={16} />}
                                 className="w-full sm:w-auto justify-center"
+                                title={t('students.import.actions.downloadTemplate')}
                             >
-                                {t('students.addNew')}
-                            </Button>
-                        )}
+                                {t('students.import.actions.downloadTemplate')}
+                            </ActionButton>
+                            <ActionButton
+                                variant="outline"
+                                onClick={openImportModal}
+                                disabled={!importFiltersReady}
+                                icon={<Upload size={16} />}
+                                className="w-full sm:w-auto justify-center"
+                                title={t('students.import.actions.importExcel')}
+                            >
+                                {t('students.import.actions.importExcel')}
+                            </ActionButton>
+                        </div>
 
-                        <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full sm:w-auto">
+                        <div className="flex items-center justify-end gap-2 flex-nowrap overflow-x-auto w-full lg:w-auto">
                             {canDownloadStudents && (
                                 <>
                                     <ActionButton
@@ -700,6 +944,16 @@ export default function StudentPage() {
                     />
                 </div>
             </Modal>
+
+            <StudentImportExcelModal
+                isOpen={isImportOpen}
+                onClose={() => setIsImportOpen(false)}
+                canInput={canAddStudent}
+                importParams={importParams}
+                onImported={() => {
+                    try { queryClient.invalidateQueries({ queryKey: studentKeys.adminListBase }); } catch { /* ignore */ }
+                }}
+            />
 
             {/* Transfer flow removed from Student page; use Transfers page */}
         </div>

@@ -37,6 +37,10 @@ function dateToISODateOnlyUTC(d) {
   }
 }
 
+function isValidTime24h(value) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || ''));
+}
+
 function clampDateRange(from, to) {
   const start = from || todayUTCDateOnly();
   const end = to || start;
@@ -114,6 +118,50 @@ export const markAttendanceBulk = async (req, res) => {
     const pCode = String(periodCode).trim();
     if (!pCode) return res.status(400).json({ message: 'Invalid periodCode' });
 
+    // Actor (admin/staff/teacher). Keep legacy Teacher ref support when available.
+    const actorUserId = req.user?._id && mongoose.isValidObjectId(req.user._id) ? req.user._id : null;
+    const actorRole = ['admin', 'staff', 'teacher'].includes(String(req.user?.role || '').toLowerCase())
+      ? String(req.user.role).toLowerCase()
+      : null;
+    const isTeacherRole = actorRole === 'teacher';
+    const teacherRefId = req.user?.teacherRef && mongoose.isValidObjectId(req.user.teacherRef)
+      ? req.user.teacherRef
+      : null;
+
+    if (isTeacherRole) {
+      if (pCode === 'DAY') {
+        return res.status(403).json({ message: 'Teachers cannot mark daily attendance.' });
+      }
+      if (!teacherRefId) {
+        return res.status(403).json({ message: 'Teacher assignment required.' });
+      }
+
+      const parts = pCode.split('-');
+      if (parts.length !== 2 || !isValidTime24h(parts[0]) || !isValidTime24h(parts[1])) {
+        return res.status(400).json({ message: 'Invalid periodCode' });
+      }
+      const startTime = parts[0];
+      const endTime = parts[1];
+      const { project, js } = projectDayOfWeekFromUTCDate(when);
+      const dayCandidates = Array.from(new Set([project, js]))
+        .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+
+      const slot = await Timetable.findOne({
+        gradeSection: gradeSectionId,
+        teacher: teacherRefId,
+        startTime,
+        endTime,
+        dayOfWeek: { $in: dayCandidates },
+        isBreak: { $nin: [true, 'true', 1, '1'] },
+      })
+        .select('_id')
+        .lean();
+
+      if (!slot) {
+        return res.status(403).json({ message: 'Teachers can only mark their assigned lesson periods.' });
+      }
+    }
+
     // Prevent mixing Daily vs Lesson attendance for the same section+date.
     // - If Daily (DAY) exists, block any per-period marking.
     // - If any per-period exists, block Daily (DAY) marking.
@@ -138,16 +186,12 @@ export const markAttendanceBulk = async (req, res) => {
       }
     }
 
-    // Actor (admin/staff/teacher). Keep legacy Teacher ref support when available.
-    const actorUserId = req.user?._id && mongoose.isValidObjectId(req.user._id) ? req.user._id : null;
-    const actorRole = ['admin', 'staff', 'teacher'].includes(String(req.user?.role || '').toLowerCase())
-      ? String(req.user.role).toLowerCase()
-      : null;
-
     // Option 1 (Admin-first): markedBy (Teacher ref) is optional until teacher auth exists.
-    const actorTeacher = (markedBy && mongoose.isValidObjectId(markedBy))
-      ? markedBy
-      : (req.user?.teacherRef && mongoose.isValidObjectId(req.user.teacherRef) ? req.user.teacherRef : null);
+    const actorTeacher = isTeacherRole
+      ? teacherRefId
+      : (markedBy && mongoose.isValidObjectId(markedBy))
+        ? markedBy
+        : (req.user?.teacherRef && mongoose.isValidObjectId(req.user.teacherRef) ? req.user.teacherRef : null);
 
     const now = new Date();
 
